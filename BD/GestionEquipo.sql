@@ -21,9 +21,8 @@ CREATE TABLE Usuarios (
   cedula VARCHAR(20) UNIQUE NOT NULL,
   telefono VARCHAR(20),
   correo VARCHAR(100) UNIQUE,
-  area VARCHAR(150),
-  usuario_login VARCHAR(50) UNIQUE NOT NULL,
-  contrasena_hash VARCHAR(255) NOT NULL,
+  area_usuarios VARCHAR(150),
+  contrasena VARCHAR(255) NOT NULL,
   id_rol INT NOT NULL,
   estado ENUM('Activo', 'Inactivo') DEFAULT 'Activo',
   fecha_registro DATETIME DEFAULT NOW(),
@@ -32,7 +31,6 @@ CREATE TABLE Usuarios (
   FOREIGN KEY (id_rol) REFERENCES Roles(id_rol),
   FOREIGN KEY (creado_por) REFERENCES Usuarios(id_usuario),
   INDEX idx_cedula (cedula),
-  INDEX idx_usuario_login (usuario_login),
   INDEX idx_estado (estado),
   INDEX idx_rol (id_rol)
 );
@@ -87,11 +85,7 @@ CREATE TABLE Categorias_Equipo (
 -- =========================
 -- TABLA DE TIPOS DE EQUIPO
 -- =========================
-CREATE TABLE Tipos_Equipo (
-  id_tipo INT PRIMARY KEY AUTO_INCREMENT,
-  nombre_tipo ENUM('Equipo Completo', 'Componente Individual') NOT NULL,
-  descripcion VARCHAR(200)
-);
+-- Eliminado: Tipos_Equipo (redundante). El tipo se deriva de Categorias_Equipo.es_componente
 
 -- ===================
 -- TABLA DE ELEMENTOS
@@ -99,8 +93,7 @@ CREATE TABLE Tipos_Equipo (
 CREATE TABLE Elementos (
   codigo_equipo INT PRIMARY KEY AUTO_INCREMENT,
   id_categoria INT NOT NULL,
-  id_tipo INT NOT NULL,
-  id_ambiente INT,
+  id_ambiente INT NOT NULL,
   tipo VARCHAR(100) NOT NULL,
   marca VARCHAR(100),
   modelo VARCHAR(100),
@@ -118,12 +111,10 @@ CREATE TABLE Elementos (
   incluye_torre BOOLEAN DEFAULT FALSE,
   specs_completas TEXT,
   FOREIGN KEY (id_categoria) REFERENCES Categorias_Equipo(id_categoria),
-  FOREIGN KEY (id_tipo) REFERENCES Tipos_Equipo(id_tipo),
-  FOREIGN KEY (id_ambiente) REFERENCES Ambientes(id_ambiente) ON DELETE SET NULL,
+  FOREIGN KEY (id_ambiente) REFERENCES Ambientes(id_ambiente) ON DELETE RESTRICT,
   FOREIGN KEY (registrado_por) REFERENCES Usuarios(id_usuario),
   INDEX idx_tipo (tipo),
   INDEX idx_numero_serie (numero_serie),
-  INDEX idx_tipo_equipo (id_tipo),
   INDEX idx_ambiente (id_ambiente)
 );
 
@@ -482,14 +473,14 @@ SELECT
     e.tipo,
     e.marca,
     e.modelo,
-    t.nombre_tipo,
+    CASE WHEN c.es_componente = TRUE THEN 'Componente Individual' ELSE 'Equipo Completo' END AS nombre_tipo,
     a.nombre_ambiente,
     a.codigo_ambiente,
     a.tipo_ambiente,
     e.estado_fisico,
     e.fecha_adquisicion
 FROM Elementos e
-INNER JOIN Tipos_Equipo t ON e.id_tipo = t.id_tipo
+INNER JOIN Categorias_Equipo c ON e.id_categoria = c.id_categoria
 LEFT JOIN Ambientes a ON e.id_ambiente = a.id_ambiente
 INNER JOIN Estado_Equipo ee ON e.codigo_equipo = ee.codigo_equipo
 WHERE ee.estado_operativo = 'Disponible'
@@ -544,7 +535,7 @@ SELECT
     u.nombre_usuario,
     u.cedula,
     r.nombre_rol,
-    u.area,
+    u.area_usuarios,
     COUNT(DISTINCT re.codigo_equipo) AS equipos_asignados,
     GROUP_CONCAT(
         CONCAT(e.tipo, ' - ', e.numero_serie)
@@ -557,7 +548,7 @@ LEFT JOIN Responsables_Equipo re ON u.id_usuario = re.id_usuario
     AND re.estado_responsabilidad = 'Activo'
 LEFT JOIN Elementos e ON re.codigo_equipo = e.codigo_equipo
 WHERE u.estado = 'Activo'
-GROUP BY u.id_usuario, u.nombre_usuario, u.cedula, r.nombre_rol, u.area;
+GROUP BY u.id_usuario, u.nombre_usuario, u.cedula, r.nombre_rol, u.area_usuarios;
 
 -- ===========================
 -- PROCEDIMIENTOS ALMACENADOS
@@ -908,11 +899,6 @@ INSERT INTO Roles (nombre_rol, descripcion) VALUES
 ('Instructor', 'Gestión de equipos y asignaciones'),
 ('Aprendiz', 'Consulta y uso de equipos asignados');
 
--- Insertar tipos de equipo
-INSERT INTO Tipos_Equipo (nombre_tipo, descripcion) VALUES
-('Equipo Completo', 'Computador completo con todos sus componentes'),
-('Componente Individual', 'Componente individual que puede formar parte de un equipo');
-
 -- Insertar categorías de ejemplo
 INSERT INTO Categorias_Equipo (nombre_categoria, descripcion, es_componente) VALUES
 ('Computador de Escritorio', 'Equipos de escritorio completos', FALSE),
@@ -932,6 +918,32 @@ INSERT INTO Ambientes (codigo_ambiente, nombre_ambiente, tipo_ambiente, capacida
 ('TAL-301', 'Taller de Ensamble', 'Taller', 20, '3', 'Edificio B', 'Taller para ensamble y mantenimiento'),
 ('BOD-001', 'Bodega Principal', 'Bodega', 0, '1', 'Edificio C', 'Almacenamiento de equipos');
 
+-- Ambientes adicionales (códigos numéricos)
+INSERT INTO Ambientes (codigo_ambiente, nombre_ambiente, tipo_ambiente) VALUES
+('101', 'Ambiente 101', 'Aula'),
+('102', 'Ambiente 102', 'Aula'),
+('103', 'Ambiente 103', 'Aula'),
+('104', 'Ambiente 104', 'Aula'),
+('105', 'Ambiente 105', 'Aula'),
+('106', 'Ambiente 106', 'Aula'),
+('107', 'Ambiente 107', 'Aula'),
+('201', 'Ambiente 201', 'Aula'),
+('202', 'Ambiente 202', 'Aula'),
+('203', 'Ambiente 203', 'Aula'),
+('204', 'Ambiente 204', 'Aula'),
+('205', 'Ambiente 205', 'Aula'),
+('301', 'Ambiente 301', 'Aula'),
+('302', 'Ambiente 302', 'Aula'),
+('401', 'Ambiente 401', 'Aula'),
+('402', 'Ambiente 402', 'Aula'),
+('403', 'Ambiente 403', 'Aula'),
+('501', 'Ambiente 501', 'Aula'),
+('502', 'Ambiente 502', 'Aula'),
+('503', 'Ambiente 503', 'Aula'),
+('504', 'Ambiente 504', 'Aula'),
+('505', 'Ambiente 505', 'Aula'),
+('506', 'Ambiente 506', 'Aula');
+
 -- Insertar criterios de asignación automática
 INSERT INTO Criterios_Asignacion (nombre_criterio, prioridad, descripcion, parametros) VALUES
 ('Estado Físico', 1, 'Prioriza equipos en mejor estado físico', '{"orden": ["Nuevo", "Bueno", "Regular"]}'),
@@ -944,9 +956,8 @@ INSERT INTO Usuarios (
     cedula, 
     telefono, 
     correo, 
-    area, 
-    usuario_login, 
-    contrasena_hash, 
+    area_usuarios, 
+    contrasena, 
     id_rol,
     estado
 ) VALUES (
@@ -955,7 +966,6 @@ INSERT INTO Usuarios (
     '3001234567',
     'admin@sena.edu.co',
     'Sistemas',
-    'admin',
     '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi',
     1,
     'Activo'

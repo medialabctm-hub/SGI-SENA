@@ -301,6 +301,46 @@ body{
   padding:12px 18px
 }
 
+.header-nav{
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+
+.nav-btn{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  background:rgba(255,255,255,0.14);
+  color:#fff;
+  border:1px solid rgba(255,255,255,0.25);
+  padding:8px 12px;
+  border-radius:9999px;
+  font-weight:600;
+  line-height:1;
+  cursor:pointer;
+  transition:background .18s ease, transform .18s ease, box-shadow .18s ease;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+}
+
+.nav-btn svg{
+  font-size:16px;
+}
+
+.nav-btn:hover{
+  background:rgba(255,255,255,0.24);
+  transform:translateY(-1px);
+}
+
+.nav-btn:active{
+  transform:translateY(0);
+}
+
+.nav-btn:focus-visible{
+  outline:2px solid #fff;
+  outline-offset:2px;
+}
+
 .app-logo{
   background:#fff;
   color:var(--success-800);
