@@ -10,6 +10,7 @@ export default function Register() {
   const [cedula, setCedula] = useState('')
   const [email, setEmail] = useState('')
   const [telefono, setTelefono] = useState('')
+  const [area, setArea] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [rol, setRol] = useState('Aprendiz')
@@ -61,8 +62,9 @@ export default function Register() {
         body: JSON.stringify({
           nombre: name,
           cedula,
-          correo: email,
+          correo: (email || '').trim().toLowerCase(),
           telefono,
+          area,
           contrasena: password,
           rol
         })
@@ -137,6 +139,15 @@ export default function Register() {
             />
           </label>
           {errores.telefono_usuario && <div className="error-msg">{errores.telefono_usuario}</div>}
+          <label className="input">
+            <span className="icon"><FiUser /></span>
+            <input
+              type="text"
+              placeholder="Área de trabajo"
+              value={area}
+              onChange={e => setArea(e.target.value)}
+            />
+          </label>
           <label className="input">
             <span className="icon"><FiLock /></span>
             <input

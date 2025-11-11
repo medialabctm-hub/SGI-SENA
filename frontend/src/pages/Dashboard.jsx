@@ -25,7 +25,7 @@ export default function Dashboard() {
 
         <div className="cards-grid">
           <Card title="Registrar Equipo" subtitle="Agregar nuevo equipo" icon={<FiPlus />} to="/equipos" />
-          <Card title="Consultar Equipo" subtitle="Buscar equipos" icon={<FiSearch />} to="/equipos" />
+          <Card title="Consultar Equipo" subtitle="Buscar equipos" icon={<FiSearch />} to="/equipos/consultar" />
           <Card title="Personal Registrado" subtitle="Ver usuarios" icon={<FiUsers />} to="/usuarios" />
           <Card title="Configuración" subtitle="Ajustes del sistema" icon={<FiSettings />} to="/config" />
         </div>

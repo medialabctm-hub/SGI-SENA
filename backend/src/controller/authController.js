@@ -7,14 +7,16 @@ import process from 'process';
 export const registerUser = async (req, res) => {
   try {
     const { nombre, cedula, correo, telefono, contrasena, rol } = req.body;
-    if (!nombre || !cedula || !correo || !telefono || !contrasena || !rol) {
+    const area = (req.body.area ?? req.body.area_usuarios ?? '').toString().trim();
+    const correoNorm = (correo || '').toString().trim().toLowerCase();
+    if (!nombre || !cedula || !correoNorm || !telefono || !contrasena || !rol) {
       return res.status(400).json({ error: 'Todos los campos son obligatorios' });
     }
 
     // Validar si el usuario ya existe
     const [[usuarioExistente]] = await db.execute(
-      'SELECT id_usuario FROM Usuarios WHERE correo = ? OR cedula = ?',
-      [correo, cedula]
+      'SELECT id_usuario FROM Usuarios WHERE LOWER(TRIM(correo)) = ? OR cedula = ?',
+      [correoNorm, cedula]
     );
     if (usuarioExistente) {
       return res.status(409).json({ error: 'El usuario ya existe' });
@@ -34,11 +36,54 @@ export const registerUser = async (req, res) => {
 
     // Insertar usuario
     await db.execute(
-      'INSERT INTO Usuarios (nombre_usuario, cedula, correo, telefono, contrasena, id_rol, estado) VALUES (?, ?, ?, ?, ?, ?, ?)',
-      [nombre, cedula, correo, telefono, hash, rolRow.id_rol, 'Activo']
+      'INSERT INTO Usuarios (nombre_usuario, cedula, correo, telefono, area_usuarios, contrasena, id_rol, estado) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      [nombre, cedula, correoNorm, telefono, area || null, hash, rolRow.id_rol, 'Activo']
     );
 
     return res.status(201).json({ message: 'Usuario registrado correctamente' });
+  } catch (err) {
+    return res.status(500).json({ error: 'Error en el servidor', details: err.message });
+  }
+};
+
+// Perfil del usuario autenticado
+export const me = async (req, res) => {
+  try {
+    const auth = req.headers.authorization || '';
+    const token = auth.startsWith('Bearer ') ? auth.slice(7) : null;
+    if (!token) return res.status(401).json({ error: 'No autorizado' });
+
+    const secret = process.env.JWT_SECRET;
+    if (!secret) return res.status(500).json({ error: 'JWT_SECRET no configurado' });
+
+    let payload;
+    try {
+      payload = jwt.verify(token, secret);
+    } catch {
+      return res.status(401).json({ error: 'Token inválido' });
+    }
+
+    const [[user]] = await db.execute(
+      `SELECT u.id_usuario, u.nombre_usuario, u.correo, u.telefono, u.cedula, u.area_usuarios AS area, r.nombre_rol
+       FROM Usuarios u
+       LEFT JOIN Roles r ON r.id_rol = u.id_rol
+       WHERE u.id_usuario = ? AND u.estado = "Activo"`,
+      [payload.id]
+    );
+
+    if (!user) return res.status(404).json({ error: 'Usuario no encontrado' });
+
+    return res.json({
+      user: {
+        id_usuario: user.id_usuario,
+        nombre_usuario: user.nombre_usuario,
+        correo: user.correo,
+        telefono: user.telefono,
+        cedula: user.cedula,
+        area: user.area,
+        nombre_rol: user.nombre_rol,
+      }
+    });
   } catch (err) {
     return res.status(500).json({ error: 'Error en el servidor', details: err.message });
   }
@@ -53,7 +98,10 @@ export const loginUser = async (req, res) => {
     }
 
     const [[usuario]] = await db.execute(
-      'SELECT * FROM Usuarios WHERE cedula = ? AND estado = "Activo"',
+      `SELECT u.*, u.area_usuarios AS area, r.nombre_rol
+       FROM Usuarios u
+       LEFT JOIN Roles r ON r.id_rol = u.id_rol
+       WHERE u.cedula = ? AND u.estado = "Activo"`,
       [cedula]
     );
     if (!usuario) {
@@ -66,13 +114,26 @@ export const loginUser = async (req, res) => {
     }
 
     // Generar token JWT
+    const secret = process.env.JWT_SECRET;
+    if (!secret) return res.status(500).json({ error: 'JWT_SECRET no configurado' });
     const token = jwt.sign(
       { id: usuario.id_usuario, rol: usuario.id_rol },
-      process.env.JWT_SECRET || 'secret',
+      secret,
       { expiresIn: '1d' }
     );
 
-    return res.json({ token, user: { id: usuario.id_usuario, nombre: usuario.nombre_usuario, rol: usuario.id_rol } });
+    return res.json({
+      token,
+      user: {
+        id_usuario: usuario.id_usuario,
+        nombre_usuario: usuario.nombre_usuario,
+        correo: usuario.correo,
+        telefono: usuario.telefono,
+        cedula: usuario.cedula,
+        nombre_rol: usuario.nombre_rol,
+        area: usuario.area,
+      },
+    });
   } catch (err) {
     return res.status(500).json({ error: 'Error en el servidor', details: err.message });
   }
