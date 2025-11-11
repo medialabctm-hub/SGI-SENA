@@ -14,7 +14,7 @@ backend/
 │   ├── models/     # Modelos de datos
 │   └── routes/     # Rutas de la API
 │       ├── authRoutes.js    # Rutas de autenticación
-├── index.js        # Punto de entrada de la aplicación
+├── server.js        # Punto de entrada de la aplicación
 └── package.json    # Dependencias y scripts
 ```
 ## Requisitos Previos
