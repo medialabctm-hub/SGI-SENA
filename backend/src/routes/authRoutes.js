@@ -1,4 +1,5 @@
 import { registerUser, loginUser, deleteUser, updateUser, me } from '../controller/authController.js';
+import { listUsers, getUserDetails } from '../controller/authController.js';
 import express from 'express';
 import rateLimit from 'express-rate-limit';
 
@@ -15,6 +16,12 @@ const loginLimiter = rateLimit({
 
 // Eliminar usuario
 router.delete('/user/:id', deleteUser);
+
+// Obtener detalle de usuario (incluye equipos asignados activos)
+router.get('/user/:id', getUserDetails);
+
+// Listar usuarios
+router.get('/users', listUsers);
 
 // Actualizar usuario
 router.put('/user/:id', updateUser);

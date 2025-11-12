@@ -50,6 +50,18 @@
   --success-800: #01af00;
   --success-900: #16943a;
 
+  /* Info / Primary accent (used for neutral action like "Ver") */
+  --info-50: #e6f0ff;
+  --info-100: #cfe3ff;
+  --info-200: #b7d6ff;
+  --info-300: #9fc8ff;
+  --info-400: #74b4ff;
+  --info-500: #3b8bff;
+  --info-600: #1770e6;
+  --info-700: #1258bf;
+  --info-800: #0b47a6;
+  --info-900: #083277;
+
   /* DarkMode */
   --darkmode-50: #244a4d;
   --darkmode-100: #214345;
@@ -559,4 +571,44 @@ body{
 /* Responsive adjustments for web mimic of mobile look */
 @media(min-width:700px){
   .cards-grid{grid-template-columns:repeat(2,1fr)}
+}
+
+/* Sidebar styles scoped to Config page (uses .sidebar wrapper) */
+.sidebar{ padding-left:18px; padding-top:8px; }
+.sidebar .big-card{
+  text-align:left;
+  padding:14px 16px;
+  border-radius:12px;
+  display:flex;
+  align-items:center;
+  gap:12px;
+  background:linear-gradient(180deg,#fff,#fbfbfb);
+  border:1px solid #f0f0f0;
+  transition:transform .12s ease, box-shadow .12s ease, background .12s ease;
+}
+.sidebar .big-card:hover{
+  transform:translateY(-4px);
+  box-shadow:0 8px 22px rgba(17,17,17,0.06);
+}
+.sidebar .big-card .icon{font-size:18px;color:var(--success-800)}
+.sidebar .big-card.active-card{
+  border-left:6px solid var(--success-800);
+  background:linear-gradient(90deg, rgba(67,160,71,0.06), rgba(255,255,255,0));
+}
+
+.sidebar .big-card div{ color: #1a2a3a; }
+.sidebar .big-card.active-card div{ color: var(--success-800); }
+
+/* Center and style page title for simple pages like Config */
+.page.simple-page > h2{
+  text-align:center;
+  font-size:22px;
+  font-weight:700;
+  color:#000;
+  margin:18px 0 8px 0;
+}
+
+@media(max-width:800px){
+  .sidebar{width:100% !important}
+  .page.simple-page > h2{font-size:18px}
 }

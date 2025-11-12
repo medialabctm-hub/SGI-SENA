@@ -17,6 +17,7 @@
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.0.0",
+    "patch-package": "^8.0.1",
     "vite": "^5.4.21"
   }
 }
