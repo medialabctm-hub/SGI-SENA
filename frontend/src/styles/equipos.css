@@ -109,3 +109,99 @@
   margin-top: 1em;
   text-align: center;
 }
+
+/* Consultar Equipo */
+.consulta-container {
+  max-width: 100%;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+.consulta-title {
+  text-align: center;
+  margin-top: 1.5rem;
+}
+
+.consulta-form {
+  display: flex;
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.consulta-input {
+  flex: 1;
+  padding: 12px;
+  border-radius: 10px;
+  border: 1px solid #e6e6e6;
+  max-width: 42%;
+}
+
+.error-msg {
+  color: #dc3545;
+  margin-top: 12px;
+}
+
+.consulta-card {
+  margin-top: 18px;
+  padding: 0;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+}
+
+.consulta-table-wrap {
+  overflow-x: auto;
+}
+
+.consulta-table {
+  width: 100%;
+  min-width: 2000px;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 14px;
+  background: #fff;
+}
+
+.consulta-th {
+  padding: 12px;
+  background: #f7f7f7;
+  border: 1px solid #ddd;
+  text-align: left;
+  font-size: 14px;
+  font-weight: 700;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+.consulta-td {
+  padding: 12px;
+  border: 1px solid #ddd;
+  font-size: 14px;
+}
+
+.consulta-table tbody tr:nth-child(even) {
+  background: #fafafa;
+}
+
+.sticky-col {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: inherit;
+}
+
+.consulta-th.sticky-col {
+  z-index: 3;
+}
+
+.row-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.cell-input,
+.cell-textarea {
+  width: 100%;
+}

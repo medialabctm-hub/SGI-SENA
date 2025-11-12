@@ -12,6 +12,25 @@ export async function listarAmbientes(req, res) {
   }
 }
 
+export async function listarEquipos(req, res) {
+  try {
+    const query = `
+      SELECT e.codigo_equipo, e.tipo, e.marca, e.modelo, e.numero_serie, e.descripcion,
+             e.fecha_adquisicion, e.costo, e.vida_util_meses, e.estado_fisico,
+             e.incluye_mouse, e.incluye_teclado, e.incluye_monitor, e.incluye_torre,
+             e.specs_completas,
+             a.id_ambiente, a.nombre_ambiente, a.codigo_ambiente
+      FROM Elementos e
+      LEFT JOIN Ambientes a ON a.id_ambiente = e.id_ambiente
+      ORDER BY e.codigo_equipo ASC
+    `;
+    const [rows] = await defaultDb.execute(query);
+    return res.json(rows);
+  } catch (err) {
+    return res.status(500).json({ error: 'Error al listar equipos', detalle: err.message });
+  }
+}
+
 // Controlador para registrar un nuevo equipo
 export async function registrarEquipo(req, res) {
   try {
@@ -160,5 +179,68 @@ export async function obtenerEquipoPorCodigo(req, res) {
     return res.json(row);
   } catch (err) {
     return res.status(500).json({ error: 'Error al consultar equipo', detalle: err.message });
+  }
+}
+
+export async function actualizarEquipo(req, res) {
+  try {
+    const { codigo } = req.params;
+    if (!codigo) return res.status(400).json({ error: 'codigo requerido' });
+
+    const body = req.body || {};
+
+    // Resolver id_ambiente si viene 'ambiente' en texto o codigo
+    let ambienteId = body.id_ambiente ?? null;
+    if (!ambienteId && body.ambiente) {
+      const [[amb]] = await defaultDb.execute(
+        'SELECT id_ambiente FROM Ambientes WHERE id_ambiente = ? OR codigo_ambiente = ? OR nombre_ambiente = ? LIMIT 1',
+        [body.ambiente, body.ambiente, body.ambiente]
+      );
+      ambienteId = amb?.id_ambiente || null;
+    }
+
+    const allowed = [
+      'tipo', 'marca', 'modelo', 'numero_serie', 'descripcion', 'fecha_adquisicion',
+      'costo', 'vida_util_meses', 'estado_fisico', 'incluye_mouse', 'incluye_teclado',
+      'incluye_monitor', 'incluye_torre', 'specs_completas'
+    ];
+
+    const sets = [];
+    const params = [];
+
+    for (const key of allowed) {
+      if (Object.prototype.hasOwnProperty.call(body, key)) {
+        sets.push(`${key} = ?`);
+        params.push(body[key]);
+      }
+    }
+    if (ambienteId) {
+      sets.push('id_ambiente = ?');
+      params.push(ambienteId);
+    }
+
+    if (sets.length === 0) {
+      return res.status(400).json({ error: 'Sin cambios para actualizar' });
+    }
+
+    const query = `UPDATE Elementos SET ${sets.join(', ')} WHERE codigo_equipo = ?`;
+    params.push(codigo);
+    const [result] = await defaultDb.execute(query, params);
+    if (result.affectedRows === 0) return res.status(404).json({ error: 'Equipo no encontrado' });
+    return res.json({ ok: true, updated: result.affectedRows });
+  } catch (err) {
+    return res.status(500).json({ error: 'Error al actualizar equipo', detalle: err.message });
+  }
+}
+
+export async function eliminarEquipo(req, res) {
+  try {
+    const { codigo } = req.params;
+    if (!codigo) return res.status(400).json({ error: 'codigo requerido' });
+    const [result] = await defaultDb.execute('DELETE FROM Elementos WHERE codigo_equipo = ?', [codigo]);
+    if (result.affectedRows === 0) return res.status(404).json({ error: 'Equipo no encontrado' });
+    return res.json({ ok: true, deleted: result.affectedRows });
+  } catch (err) {
+    return res.status(500).json({ error: 'Error al eliminar equipo', detalle: err.message });
   }
 }
