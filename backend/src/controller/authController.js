@@ -189,3 +189,55 @@ export const updateUser = async (req, res) => {
     return res.status(500).json({ error: 'Error en el servidor', details: err.message });
   }
 };
+
+// Listar usuarios activos con número de equipos asignados
+export const listUsers = async (req, res) => {
+  try {
+    const [rows] = await db.execute(
+      `SELECT u.id_usuario, u.nombre_usuario, u.cedula, u.correo, u.telefono,
+              u.area_usuarios AS area, r.nombre_rol,
+              (SELECT COUNT(*) FROM Responsables_Equipo re WHERE re.id_usuario = u.id_usuario AND re.estado_responsabilidad = 'Activo') AS equipos_asignados
+       FROM Usuarios u
+       LEFT JOIN Roles r ON r.id_rol = u.id_rol
+       WHERE u.estado = 'Activo'
+       ORDER BY u.nombre_usuario`
+    );
+    return res.json(rows);
+  } catch (err) {
+    return res.status(500).json({ error: 'Error al listar usuarios', details: err.message });
+  }
+};
+
+// Obtener detalle de un usuario y los equipos asignados activos
+export const getUserDetails = async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!id) return res.status(400).json({ error: 'ID requerido' });
+
+    const [[user]] = await db.execute(
+      `SELECT u.id_usuario, u.nombre_usuario, u.cedula, u.correo, u.telefono, u.area_usuarios AS area, r.nombre_rol
+       FROM Usuarios u
+       LEFT JOIN Roles r ON r.id_rol = u.id_rol
+       WHERE u.id_usuario = ? AND u.estado = 'Activo'`,
+      [id]
+    );
+    if (!user) return res.status(404).json({ error: 'Usuario no encontrado' });
+
+    const [equipos] = await db.execute(
+      `SELECT e.codigo_equipo, e.numero_serie, e.tipo, e.marca, e.modelo, ee.estado_operativo,
+              a.nombre_ambiente, a.codigo_ambiente, re.fecha_asignacion,
+              re.tipo_responsabilidad, DATEDIFF(NOW(), re.fecha_asignacion) AS dias_asignado
+       FROM Responsables_Equipo re
+       INNER JOIN Elementos e ON re.codigo_equipo = e.codigo_equipo
+       LEFT JOIN Estado_Equipo ee ON e.codigo_equipo = ee.codigo_equipo
+       LEFT JOIN Ambientes a ON e.id_ambiente = a.id_ambiente
+       WHERE re.id_usuario = ? AND re.estado_responsabilidad = 'Activo'
+       ORDER BY re.fecha_asignacion DESC`,
+      [id]
+    );
+
+    return res.json({ user, equipos });
+  } catch (err) {
+    return res.status(500).json({ error: 'Error al obtener detalle', details: err.message });
+  }
+};
