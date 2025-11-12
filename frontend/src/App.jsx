@@ -5,6 +5,7 @@ import Login from './pages/Login'
 import Register from './pages/Register'
 import Dashboard from './pages/Dashboard'
 import Equipos from './pages/Equipos'
+import ConsultarEquipo from './pages/ConsultarEquipo'
 import Usuarios from './pages/Usuarios'
 import Config from './pages/Config'
 import ProtectedRoute from './components/ProtectedRoute'
@@ -36,6 +37,11 @@ export default function App() {
       <Route path="/equipos" element={
         <ProtectedRoute>
           <Equipos />
+        </ProtectedRoute>
+      } />
+      <Route path="/equipos/consultar" element={
+        <ProtectedRoute>
+          <ConsultarEquipo />
         </ProtectedRoute>
       } />
       <Route path="/usuarios" element={

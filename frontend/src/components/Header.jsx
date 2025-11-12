@@ -7,7 +7,7 @@ import ConfirmModal from './ConfirmModal';
 import PerfilModal from './PerfilModal';
 
 export default function Header({ onOpenNotifications }) {
-  const user = JSON.parse(localStorage.getItem('user') || '{}')
+  const [user, setUser] = useState(JSON.parse(localStorage.getItem('user') || '{}'))
   const [toast, setToast] = useState(null)
   const [showConfirm, setShowConfirm] = useState(false)
   const [showPerfil, setShowPerfil] = useState(false)
@@ -28,6 +28,28 @@ export default function Header({ onOpenNotifications }) {
 
   function go(ruta) {
     nav(ruta)
+  }
+
+  async function handleOpenPerfil() {
+    try {
+      const token = localStorage.getItem('token')
+      if (!token) return
+      const res = await fetch('/api/auth/me', {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      })
+      if (res.ok) {
+        const data = await res.json()
+        if (data && data.user) {
+          setUser(data.user)
+          try { localStorage.setItem('user', JSON.stringify(data.user)) } catch {}
+        }
+      }
+    } catch (err) {
+      // Silencioso: si falla seguimos mostrando lo que haya en localStorage
+    }
+    setShowPerfil(true)
   }
 
   return (
@@ -51,7 +73,7 @@ export default function Header({ onOpenNotifications }) {
         </nav>
         <div className="header-right">
           <button className="icon-btn" onClick={onOpenNotifications} aria-label="notificaciones"><FiBell /><span className="badge">3</span></button>
-          <button className="icon-btn" onClick={() => setShowPerfil(true)} aria-label="perfil"><FiUser /></button>
+          <button className="icon-btn" onClick={handleOpenPerfil} aria-label="perfil"><FiUser /></button>
           <button className="icon-btn" onClick={handleLogout} aria-label="cerrar sesión"><FiLogOut /></button>
         </div>
       </header>

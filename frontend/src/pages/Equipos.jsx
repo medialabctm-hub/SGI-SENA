@@ -25,18 +25,15 @@ export default function Equipos() {
     incluye_torre: false,
     specs_completas: '',
   })
+
   const [errores, setErrores] = useState({})
   const [mensaje, setMensaje] = useState('')
   const [ambientes, setAmbientes] = useState([])
   const [codigoEquipo, setCodigoEquipo] = useState(null)
 
   useEffect(() => {
-    fetch('/api/ambientes')
-      .then(r => r.json())
-      .then(data => setAmbientes(data))
-      .catch(() => setAmbientes([]))
+    setAmbientes([])
   }, [])
-
 
   // Handler para cambios en el formulario
   const handleChange = e => {
@@ -51,14 +48,15 @@ export default function Equipos() {
   const handleSubmit = async e => {
     e.preventDefault()
     let errs = {}
-  if (!form.codigo_equipo) errs.codigo_equipo = 'El código de inventario es obligatorio'
-  if (!form.tipo) errs.tipo = 'El tipo es obligatorio'
-  if (!form.marca) errs.marca = 'La marca es obligatoria'
-  if (!form.modelo) errs.modelo = 'El modelo es obligatorio'
-  if (!form.numero_serie) errs.numero_serie = 'El número de serie es obligatorio'
-  if (!form.estado_fisico) errs.estado_fisico = 'El estado físico es obligatorio'
-  if (!form.fecha_adquisicion) errs.fecha_adquisicion = 'La fecha de adquisición es obligatoria'
-  if (!form.ambiente) errs.ambiente = 'El ambiente es obligatorio'
+    if (!form.codigo_equipo) errs.codigo_equipo = 'El código de inventario es obligatorio'
+    if (!form.tipo) errs.tipo = 'El tipo es obligatorio'
+    if (!form.marca) errs.marca = 'La marca es obligatoria'
+    if (!form.modelo) errs.modelo = 'El modelo es obligatorio'
+    if (!form.numero_serie) errs.numero_serie = 'El número de serie es obligatorio'
+    if (!form.estado_fisico) errs.estado_fisico = 'El estado físico es obligatorio'
+    if (!form.fecha_adquisicion) errs.fecha_adquisicion = 'La fecha de adquisición es obligatoria'
+    if (!form.ambiente) errs.ambiente = 'El ambiente es obligatorio'
+
     setErrores(errs)
     setMensaje('')
     setCodigoEquipo(null)
@@ -76,6 +74,7 @@ export default function Equipos() {
         setForm({
           codigo_equipo: '', tipo: '', marca: '', modelo: '', numero_serie: '', descripcion: '', fecha_adquisicion: '', costo: '', vida_util_meses: '', estado_fisico: 'Bueno', ambiente: '', incluye_mouse: false, incluye_teclado: false, incluye_monitor: false, incluye_torre: false, specs_completas: ''
         })
+
       } else {
         setMensaje(data.error || 'Error al registrar equipo')
       }
@@ -97,7 +96,7 @@ export default function Equipos() {
           </div>
           <div className="form-row">
             <label>Ambiente *</label>
-            <input name="ambiente" value={form.ambiente} onChange={handleChange} placeholder="Ej: LAB-101, AULA-201, etc." />
+            <input name="ambiente" value={form.ambiente} onChange={handleChange} placeholder="ID, código o nombre del ambiente" />
             {errores.ambiente && <span className="error-text">{errores.ambiente}</span>}
           </div>
           <div className="form-row">
