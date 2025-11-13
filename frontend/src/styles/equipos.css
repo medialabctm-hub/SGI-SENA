@@ -145,50 +145,68 @@
   margin-top: 18px;
   padding: 0;
   border-radius: 12px;
-  overflow: hidden;
+  /* allow children (buttons) to overflow so shadows/transforms are visible */
+  overflow: visible;
   box-shadow: 0 8px 24px rgba(0,0,0,0.08);
 }
 
 .consulta-table-wrap {
   overflow-x: auto;
+  overflow-y: visible; /* allow vertical overflow so hover shadows aren't clipped */
 }
+
+/* Make consulta card visually match Usuarios panel so layout aligns */
+.consulta-card{ background:#fff; padding:28px 40px; box-shadow:0 6px 18px rgba(15,23,42,0.06); border-radius:12px }
+.consulta-table-wrap{ padding:6px 0 }
+
+/* CONSULTA-EQUIPO specific overrides: keep adjustments local to this card only */
+.consulta-card .users-actions{ margin-top:14px; position: relative; z-index: 99999 }
+.consulta-card .users-actions .btn{ z-index:100000; min-width:120px; padding:12px 18px }
+.consulta-card .users-actions .btn:hover{ transform: translateY(-3px); box-shadow: 0 22px 56px rgba(15,23,42,0.16); z-index:100001 }
+
+/* Ensure the consulta table header stays behind the action overlays (only here) */
+.consulta-card .consulta-table thead th{ z-index:1 }
+
+/* Revert global users-actions impact for Usuarios page specifically so Usuarios keeps its intended look */
+.users-panel .users-actions{ margin-top:0 }
+.users-panel .users-actions .btn{ min-width:86px; padding:10px 14px; z-index: auto }
 
 .consulta-table {
+  /* Match users-table sizing and spacing */
   width: 100%;
-  min-width: 2000px;
-  border-collapse: separate;
-  border-spacing: 0;
-  font-size: 14px;
-  background: #fff;
+  border-collapse: collapse;
+  margin-top: 8px;
+  font-size: 0.97rem;
+  background: transparent;
 }
 
-.consulta-th {
-  padding: 12px;
-  background: #f7f7f7;
-  border: 1px solid #ddd;
-  text-align: left;
-  font-size: 14px;
-  font-weight: 700;
+.consulta-table thead th{
+  text-align:left;
+  padding:18px 16px;
+  background:#fafafa;
+  color:#1a2a3a;
+  font-weight:700;
+  border-bottom:1px solid #eee;
   position: sticky;
-  top: 0;
-  z-index: 2;
+  top:0;
+  z-index:1; /* keep header behind action hover overlays */
 }
 
-.consulta-td {
-  padding: 12px;
-  border: 1px solid #ddd;
-  font-size: 14px;
+.consulta-table tbody td{
+  padding:14px 12px;
+  vertical-align:middle;
+  border-bottom:1px solid #f4f4f4;
+  color: #24303a;
+  font-size:0.97rem;
 }
 
-.consulta-table tbody tr:nth-child(even) {
-  background: #fafafa;
-}
+.consulta-table tbody tr:nth-child(even) { background: #fafafa }
 
-.sticky-col {
-  position: sticky;
-  left: 0;
-  z-index: 1;
-  background: inherit;
+.sticky-col{ position: sticky; left:0; z-index:3; background:#fff }
+
+.users-table{
+  width:100%;
+  table-layout: auto;
 }
 
 .consulta-th.sticky-col {
@@ -364,16 +382,18 @@
 }
 .users-table thead th{
   text-align:left;
-  padding:12px 10px;
+  padding:18px 16px;
   background:#fafafa;
   color:#1a2a3a;
   font-weight:700;
   border-bottom:1px solid #eee;
 }
 .users-table tbody td{
-  padding:12px 10px;
+  padding:18px 16px;
   vertical-align:middle;
   border-bottom:1px solid #f4f4f4;
+  color: #24303a;
+  font-size:1rem;
 }
 .users-table tbody tr:hover{ background:#fbfffb }
 
@@ -387,7 +407,6 @@
 .users-table .btn-verde{ padding:6px 10px }
 
 /* Users panel and toolbar */
-.users-panel{ background:transparent; padding:12px 0 }
 .users-toolbar{ display:flex; justify-content:space-between; align-items:center; gap:12px }
 .search-input{ padding:8px 12px; border-radius:10px; border:1px solid #e9e9e9; min-width:320px }
 
@@ -405,7 +424,8 @@
 .users-panel{
   background:#fff;
   border-radius:12px;
-  padding:18px 18px 22px 18px;
+  /* restore the spacious users panel look */
+  padding:28px 40px 28px 40px;
   box-shadow: 0 6px 18px rgba(15,23,42,0.06);
 }
 
@@ -428,13 +448,13 @@
 
 /* Table cell tweaks */
 .users-table tbody td{
-  padding:14px 12px;
+  padding:18px 16px; /* taller rows, breathing room */
   vertical-align:middle;
   border-bottom:1px solid #f4f4f4;
   color: #24303a;
-  font-size:0.97rem;
+  font-size:1rem;
 }
-.users-table tbody tr:hover{ background: linear-gradient(90deg,#fbfffb,#ffffff); transform: translateZ(0); }
+.users-table tbody tr:hover{ background: linear-gradient(90deg,#fbfffb,#ffffff); }
 
 /* Buttons */
 .users-table .btn{ padding:8px 10px; border-radius:8px; font-size:0.9rem; border:1px solid #dfe7ea; background:#fff; color:#1f2937; cursor:pointer; transition: all .12s }
@@ -456,31 +476,38 @@
 }
 
 .users-table .btn-edit{
-  background: linear-gradient(180deg,var(--success-600),var(--success-700));
+  background: linear-gradient(180deg,var(--success-600),var(--success-800));
   color: #fff;
-  border: 1px solid rgba(1,175,0,0.12);
-  box-shadow: 0 2px 6px rgba(1,175,0,0.06);
+  border: none;
+  box-shadow: 0 10px 30px rgba(1,175,0,0.14);
+  padding: 12px 18px;
+  font-size: 1rem;
+  font-weight: 700;
+  border-radius: 12px;
 }
 .users-table .btn-edit:hover{
-  background: linear-gradient(180deg,var(--success-700),var(--success-800));
-  transform: translateY(-2px);
-  box-shadow: 0 10px 26px rgba(1,175,0,0.12);
+  background: linear-gradient(180deg,var(--success-700),var(--success-900));
+  transform: translateY(-4px);
+  box-shadow: 0 28px 60px rgba(1,175,0,0.18);
 }
 
 /* Delete button (red) */
 .users-table .btn-delete{
-  background: linear-gradient(180deg,#ff6b6b,#e53935);
+  background: linear-gradient(180deg,#ff5a5a,#d32f2f);
   color: #fff;
-  border: 1px solid rgba(230,50,35,0.12);
-  box-shadow: 0 6px 14px rgba(229,57,53,0.08);
+  border: none;
+  box-shadow: 0 12px 30px rgba(211,47,47,0.14);
   transition: background .12s ease, transform .12s ease, box-shadow .12s ease, filter .12s ease;
+  padding: 12px 18px;
+  font-size: 1rem;
+  font-weight: 700;
+  border-radius: 12px;
 }
 .users-table .btn-delete:hover{
-  /* lighter, warmer hover gradient to indicate pointer */
-  background: linear-gradient(180deg,#ff8f8f,#f05a45);
+  background: linear-gradient(180deg,#ff7b7b,#f44336);
   transform: translateY(-4px);
-  box-shadow: 0 20px 40px rgba(229,57,53,0.16);
-  filter: brightness(1.04);
+  box-shadow: 0 28px 60px rgba(211,47,47,0.22);
+  filter: brightness(1.06);
 }
 .users-table .btn-delete:active{
   transform: translateY(-1px) scale(0.995);
@@ -494,24 +521,31 @@
   flex-wrap: nowrap; /* keep all action buttons in a single row */
   overflow-x: auto; /* allow horizontal scroll if container is too narrow */
   -webkit-overflow-scrolling: touch;
+  /* push actions slightly down so hover/shadow don't intersect sticky header */
+  margin-top: 6px;
 }
 .users-actions .btn{
   margin-right: 0; /* spacing handled by gap */
-  padding: 10px 14px; /* thicker, more 'gordito' */
-  min-width: 86px;
+  padding: 12px 18px; /* larger, more prominent buttons */
+  min-width: 120px; /* wider tappable area */
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  border-radius: 10px;
-  font-size: 0.95rem;
-  font-weight: 600;
+  gap: 10px;
+  border-radius: 12px;
+  font-size: 1rem;
+  font-weight: 700;
   background-clip: padding-box;
-  transition: transform .12s, box-shadow .12s, opacity .12s;
+  transition: transform .12s, box-shadow .15s, opacity .12s;
   white-space: nowrap;
-  box-shadow: 0 8px 18px rgba(15,23,42,0.08); /* stronger base shadow */
+  box-shadow: 0 12px 36px rgba(15,23,42,0.12); /* stronger base shadow */
+  position: relative; /* allow z-index to bring above neighboring cells */
+  z-index: 99999;
 }
-.users-actions .btn:hover{ transform: translateY(-3px); box-shadow: 0 18px 40px rgba(15,23,42,0.12) }
+.users-actions .btn:hover{ transform: translateY(-3px); box-shadow: 0 22px 56px rgba(15,23,42,0.16); z-index:100000 }
+
+/* Ensure table cells don't clip button shadows/transforms */
+.users-table td, .users-table th { overflow: visible }
 
 /* small pill for Equipos count */
 .equip-count{ display:inline-block; background:#f1f8f3; color:#246733; padding:4px 8px; border-radius:999px; font-weight:600; font-size:0.9rem }
@@ -525,4 +559,81 @@
 }
 
 /* End additional polish */
+
+/* Force consulta-card action buttons lower than table header (highest specificity) */
+.consulta-card .users-actions{ margin-top:22px !important }
+.consulta-card .users-actions .btn{ margin-top:0 !important }
+
+/* Ensure the actual ConsultarEquipo wrapper (added class) allows visible overflow
+  and places action buttons lower than the table header so shadows are not clipped. */
+.consulta-panel { overflow: visible !important; position: relative }
+/* Make action buttons smaller on ConsultarEquipo so they don't protrude above the row */
+.consulta-panel .users-actions{ margin-top:6px !important }
+.consulta-panel .users-actions .btn{
+  padding:12px 18px !important;
+  min-width:120px !important;
+  font-size:1rem !important;
+  border-radius:12px !important;
+  box-shadow: 0 12px 36px rgba(15,23,42,0.12) !important;
+  z-index: 99999 !important;
+}
+.consulta-panel .users-table td, .consulta-panel .users-table th { overflow: visible !important }
+.consulta-panel .users-table thead th{ position: sticky; top:0; z-index:1 }
+
+/* Absolute overlay for row actions to avoid sticky header clipping */
+.consulta-panel .actions-cell{ position: relative; min-height: 44px }
+.consulta-panel .row-actions-overlay{
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%) scale(0.98);
+  opacity: 0;
+  pointer-events: none;
+  transition: transform .12s ease, opacity .12s ease;
+  z-index: 1200000 !important;
+}
+.consulta-panel .users-table tbody tr:hover .row-actions-overlay{
+  opacity: 1;
+  transform: translateY(-50%) scale(1);
+  pointer-events: auto;
+}
+.consulta-panel .users-actions.inline-fallback{ display: none }
+@media(max-width:720px){
+  .consulta-panel .row-actions-overlay{ display:none }
+  .consulta-panel .users-actions.inline-fallback{ display:flex; gap:8px }
+}
+
+  /* Right-side feedback panels (success / error) */
+  .feedback-panel-right{
+    position: fixed;
+    right: 20px;
+    top: 120px;
+    width: 320px;
+    max-width: calc(100% - 48px);
+    display:flex;
+    gap:12px;
+    align-items:flex-start;
+    padding:12px 14px;
+    border-radius:10px;
+    box-shadow: 0 18px 44px rgba(2,40,12,0.12);
+    z-index: 200000;
+    transform: translateX(6px);
+    animation: fp-slide 260ms cubic-bezier(.2,.9,.2,1);
+  }
+  .feedback-panel-right .fp-icon{ width:44px; height:44px; border-radius:8px; display:inline-flex; align-items:center; justify-content:center; font-weight:700; font-size:18px; background:#fff; box-shadow: 0 6px 18px rgba(2,40,12,0.06) }
+  .feedback-panel-right .fp-body{ flex:1 }
+  .feedback-panel-right .fp-title{ font-weight:800; color:inherit }
+  .feedback-panel-right .fp-msg{ margin-top:6px; color:inherit }
+  .feedback-panel-right .fp-meta{ margin-top:8px; font-size:0.95rem }
+  .feedback-panel-right .fp-close{ background:transparent; border:none; font-size:18px; cursor:pointer; color:inherit }
+  .feedback-panel-right.success{ background: linear-gradient(180deg,#e9f7ef,#dff4e6); border-left:5px solid #2e7d32; color:#0f3d19 }
+  .feedback-panel-right.success .fp-icon{ color:#2e7d32 }
+  .feedback-panel-right.error{ background: linear-gradient(180deg,#ffecec,#ffdede); border-left:5px solid #c62828; color:#3a0b0b }
+  .feedback-panel-right.error .fp-icon{ color:#c62828 }
+
+  @keyframes fp-slide{ from{ opacity:0; transform: translateX(18px) } to{ opacity:1; transform: translateX(0) } }
+
+  @media(max-width:900px){ .feedback-panel-right{ right:12px; top:90px; width:280px } }
+  @media(max-width:520px){ .feedback-panel-right{ position: static; margin:12px auto; transform:none; width:auto } }
+
 

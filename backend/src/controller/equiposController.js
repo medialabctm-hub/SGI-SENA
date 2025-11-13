@@ -148,6 +148,14 @@ export async function registrarEquipo(req, res) {
       ];
     }
     const [result] = await defaultDb.execute(query, params);
+    // Intent: crear notificación de equipo registrado (global)
+    try {
+      const { createNotification } = await import('./notificationsController.js')
+      await createNotification({ tipo: 'equipment.register', titulo: 'Equipo registrado', mensaje: `Equipo ${tipo} ${marca} ${modelo} registrado`, id_usuario: null, data: { id: result.insertId, numero_serie } })
+    } catch (err) {
+      console.warn('No se pudo crear notificación de equipo:', err?.message || err)
+    }
+
     res.status(201).json({ ok: true, id: result.insertId });
   } catch (err) {
     if (err.code === 'ER_DUP_ENTRY') {
@@ -227,6 +235,14 @@ export async function actualizarEquipo(req, res) {
     params.push(codigo);
     const [result] = await defaultDb.execute(query, params);
     if (result.affectedRows === 0) return res.status(404).json({ error: 'Equipo no encontrado' });
+
+    try {
+      const { createNotification } = await import('./notificationsController.js')
+      await createNotification({ tipo: 'equipment.update', titulo: 'Equipo actualizado', mensaje: `Equipo ${codigo} actualizado`, id_usuario: null, data: { codigo } })
+    } catch (err) {
+      console.warn('No se pudo crear notificación de actualización de equipo:', err?.message || err)
+    }
+
     return res.json({ ok: true, updated: result.affectedRows });
   } catch (err) {
     return res.status(500).json({ error: 'Error al actualizar equipo', detalle: err.message });
@@ -239,6 +255,14 @@ export async function eliminarEquipo(req, res) {
     if (!codigo) return res.status(400).json({ error: 'codigo requerido' });
     const [result] = await defaultDb.execute('DELETE FROM Elementos WHERE codigo_equipo = ?', [codigo]);
     if (result.affectedRows === 0) return res.status(404).json({ error: 'Equipo no encontrado' });
+
+    try {
+      const { createNotification } = await import('./notificationsController.js')
+      await createNotification({ tipo: 'equipment.delete', titulo: 'Equipo eliminado', mensaje: `Equipo ${codigo} eliminado`, id_usuario: null, data: { codigo } })
+    } catch (err) {
+      console.warn('No se pudo crear notificación de eliminación de equipo:', err?.message || err)
+    }
+
     return res.json({ ok: true, deleted: result.affectedRows });
   } catch (err) {
     return res.status(500).json({ error: 'Error al eliminar equipo', detalle: err.message });

@@ -2,6 +2,12 @@ import React, { useEffect, useState } from 'react'
 import Toast from '../components/Toast'
 import Header from '../components/Header'
 import NotificationsModal from '../components/NotificationsModal'
+import Profile from './config/Profile'
+import Security from './config/Security'
+import UsersManagement from './config/UsersManagement'
+import RolesAreas from './config/RolesAreas'
+import Notifications from './config/Notifications'
+import AppSettings from './config/AppSettings'
 import { useNavigate } from 'react-router-dom'
 
 const SIDEBAR = [
@@ -210,12 +216,12 @@ export default function Config() {
         <SectionSidebar />
         <div style={{flex:1}}>
           <h2 style={{textAlign:'center', marginTop: 6}}>Configuración</h2>
-          {selected==='profile' && <ProfilePanel />}
-          {selected==='security' && <SecurityPanel />}
-          {selected==='users' && <UsersPanel />}
-          {selected==='roles' && <Placeholder title="Roles y Áreas">Aquí puedes gestionar roles y áreas. (Pendiente de implementación)</Placeholder>}
-          {selected==='notifications' && <Placeholder title="Notificaciones">Configura cómo quieres recibir notificaciones y alertas.</Placeholder>}
-          {selected==='app' && <Placeholder title="Ajustes de la App">Preferencias globales de la aplicación.</Placeholder>}
+          {selected==='profile' && <Profile />}
+          {selected==='security' && <Security />}
+          {selected==='users' && <UsersManagement />}
+          {selected==='roles' && <RolesAreas />}
+          {selected==='notifications' && <Notifications />}
+          {selected==='app' && <AppSettings />}
         </div>
       </div>
       {showNotifications && <NotificationsModal onClose={() => setShowNotifications(false)} />}

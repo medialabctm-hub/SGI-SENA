@@ -1,5 +1,6 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { FiBell, FiLogOut, FiUser, FiHome, FiSettings, FiUsers, FiMonitor } from 'react-icons/fi'
+import NotificationsModal from './NotificationsModal'
 import { useNavigate } from 'react-router-dom'
 import logo from '/public/images/logoSena.png'
 import Toast from './Toast';
@@ -12,6 +13,9 @@ export default function Header({ onOpenNotifications }) {
   const [showConfirm, setShowConfirm] = useState(false)
   const [showPerfil, setShowPerfil] = useState(false)
   const nav = useNavigate()
+  const [unreadCount, setUnreadCount] = useState(0)
+  const [showNotifications, setShowNotifications] = useState(false)
+  const [bellHovered, setBellHovered] = useState(false)
 
   function handleLogout() {
     setShowConfirm(true)
@@ -52,6 +56,34 @@ export default function Header({ onOpenNotifications }) {
     setShowPerfil(true)
   }
 
+  // Fetch unread notifications count
+  async function fetchUnread() {
+    try {
+      const token = localStorage.getItem('token')
+      const res = await fetch('/api/notifications', {
+        headers: token ? { Authorization: `Bearer ${token}` } : {}
+      })
+      if (!res.ok) return
+      const data = await res.json()
+      const unread = (data || []).filter((n) => !n.leido).length
+      setUnreadCount(unread)
+    } catch (err) {
+      console.warn('No se pudo obtener contador de notificaciones', err)
+    }
+  }
+
+  useEffect(() => {
+    fetchUnread()
+    const onUpdate = () => fetchUnread()
+    window.addEventListener('notifications-updated', onUpdate)
+    // also refresh when window gains focus
+    window.addEventListener('focus', onUpdate)
+    return () => {
+      window.removeEventListener('notifications-updated', onUpdate)
+      window.removeEventListener('focus', onUpdate)
+    }
+  }, [])
+
   return (
     <>
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
@@ -72,11 +104,22 @@ export default function Header({ onOpenNotifications }) {
           <button className="nav-btn" onClick={() => go('/config')} title="Configuración"><FiSettings /> <span>Config</span></button>
         </nav>
         <div className="header-right">
-          <button className="icon-btn" onClick={onOpenNotifications} aria-label="notificaciones"><FiBell /><span className="badge">3</span></button>
+          <button
+            className="icon-btn"
+            onClick={() => { fetchUnread(); if (onOpenNotifications) onOpenNotifications(); else setShowNotifications(true) }}
+            aria-label="notificaciones"
+            onMouseEnter={() => setBellHovered(true)}
+            onMouseLeave={() => setBellHovered(false)}
+            style={{ cursor: 'pointer' }}
+          >
+            <FiBell />
+            {unreadCount > 0 && <span className="badge">{unreadCount}</span>}
+          </button>
           <button className="icon-btn" onClick={handleOpenPerfil} aria-label="perfil"><FiUser /></button>
           <button className="icon-btn" onClick={handleLogout} aria-label="cerrar sesión"><FiLogOut /></button>
         </div>
       </header>
+      {showNotifications && <NotificationsModal onClose={() => setShowNotifications(false)} />}
     </>
   )
 }

@@ -132,154 +132,137 @@ export default function ConsultarEquipo() {
   return (
     <div className="page simple-page">
       <Header />
-      <main className="container consulta-container">
-        <h2 className="consulta-title">Consultar Equipo</h2>
-        <form onSubmit={handleBuscar} className="consulta-form">
-          <input
-            type="number"
-            placeholder="Código de inventario"
-            value={codigo}
-            onChange={e => setCodigo(e.target.value)}
-            className="consulta-input"
-          />
-          <button className="btn primary" type="submit" disabled={loading}>
-            {loading ? 'Buscando...' : 'Buscar'}
-          </button>
-          <button type="button" className="btn" onClick={handleMostrarTodos} disabled={loading}>
-            {loading ? 'Cargando...' : 'Mostrar todos'}
-          </button>
-        </form>
-        {error && <div className="error-msg">{error}</div>}
-        {equipos.length > 0 && (
-          <div className="stats-card consulta-card">
-            <div className="consulta-table-wrap">
-              <table className="consulta-table">
-                <thead>
-                  <tr>
-                    <th className="consulta-th sticky-col">Código</th>
-                    <th className="consulta-th">Tipo</th>
-                    <th className="consulta-th">Marca</th>
-                    <th className="consulta-th">Modelo</th>
-                    <th className="consulta-th">N° Serie</th>
-                    <th className="consulta-th">Estado</th>
-                    <th className="consulta-th">Fecha Adquisición</th>
-                    <th className="consulta-th">Costo</th>
-                    <th className="consulta-th">Ambiente</th>
-                    <th className="consulta-th">Código Ambiente</th>
-                    <th className="consulta-th">Vida útil (meses)</th>
-                    <th className="consulta-th">Mouse</th>
-                    <th className="consulta-th">Teclado</th>
-                    <th className="consulta-th">Monitor</th>
-                    <th className="consulta-th">Torre</th>
-                    <th className="consulta-th">Descripción</th>
-                    <th className="consulta-th">Especificaciones</th>
-                    <th className="consulta-th">Acciones</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {equipos.map((eq) => (
-                    <tr key={eq.codigo_equipo}>
-                      <td className="consulta-td sticky-col">{eq.codigo_equipo}</td>
-                      <td className="consulta-td">
-                        {editingCodigo === eq.codigo_equipo ? (
-                          <input value={draft.tipo || ''} onChange={e=>onDraft('tipo', e.target.value)} className="cell-input" />
-                        ) : (eq.tipo)}
-                      </td>
-                      <td className="consulta-td">
-                        {editingCodigo === eq.codigo_equipo ? (
-                          <input value={draft.marca || ''} onChange={e=>onDraft('marca', e.target.value)} className="cell-input" />
-                        ) : (eq.marca || '-')}
-                      </td>
-                      <td className="consulta-td">
-                        {editingCodigo === eq.codigo_equipo ? (
-                          <input value={draft.modelo || ''} onChange={e=>onDraft('modelo', e.target.value)} className="cell-input" />
-                        ) : (eq.modelo || '-')}
-                      </td>
-                      <td className="consulta-td">
-                        {editingCodigo === eq.codigo_equipo ? (
-                          <input value={draft.numero_serie || ''} onChange={e=>onDraft('numero_serie', e.target.value)} className="cell-input" />
-                        ) : (eq.numero_serie || '-')}
-                      </td>
-                      <td className="consulta-td">
-                        {editingCodigo === eq.codigo_equipo ? (
-                          <input value={draft.estado_fisico || ''} onChange={e=>onDraft('estado_fisico', e.target.value)} className="cell-input" />
-                        ) : (eq.estado_fisico || '-')}
-                      </td>
-                      <td className="consulta-td">
-                        {editingCodigo === eq.codigo_equipo ? (
-                          <input type="date" value={draft.fecha_adquisicion || ''} onChange={e=>onDraft('fecha_adquisicion', e.target.value)} className="cell-input" />
-                        ) : (eq.fecha_adquisicion || '-')}
-                      </td>
-                      <td className="consulta-td">
-                        {editingCodigo === eq.codigo_equipo ? (
-                          <input type="number" value={draft.costo ?? ''} onChange={e=>onDraft('costo', e.target.value === '' ? null : Number(e.target.value))} className="cell-input" />
-                        ) : (eq.costo ?? '-')}
-                      </td>
-                      <td className="consulta-td">
-                        {editingCodigo === eq.codigo_equipo ? (
-                          <input value={draft.nombre_ambiente || ''} onChange={e=>onDraft('nombre_ambiente', e.target.value)} className="cell-input" placeholder="Nombre ambiente (solo visual)" />
-                        ) : (eq.nombre_ambiente || '-')}
-                      </td>
-                      <td className="consulta-td">
-                        {editingCodigo === eq.codigo_equipo ? (
-                          <input value={draft.ambiente || eq.codigo_ambiente || ''} onChange={e=>onDraft('ambiente', e.target.value)} className="cell-input" placeholder="ID/ Código/ Nombre" />
-                        ) : (eq.codigo_ambiente || '-')}
-                      </td>
-                      <td className="consulta-td">
-                        {editingCodigo === eq.codigo_equipo ? (
-                          <input type="number" value={draft.vida_util_meses ?? ''} onChange={e=>onDraft('vida_util_meses', e.target.value === '' ? null : Number(e.target.value))} className="cell-input" />
-                        ) : (eq.vida_util_meses ?? '-')}
-                      </td>
-                      <td className="consulta-td">
-                        {editingCodigo === eq.codigo_equipo ? (
-                          <input type="checkbox" checked={!!draft.incluye_mouse} onChange={e=>onDraft('incluye_mouse', e.target.checked)} />
-                        ) : (eq.incluye_mouse ? 'Sí' : 'No')}
-                      </td>
-                      <td className="consulta-td">
-                        {editingCodigo === eq.codigo_equipo ? (
-                          <input type="checkbox" checked={!!draft.incluye_teclado} onChange={e=>onDraft('incluye_teclado', e.target.checked)} />
-                        ) : (eq.incluye_teclado ? 'Sí' : 'No')}
-                      </td>
-                      <td className="consulta-td">
-                        {editingCodigo === eq.codigo_equipo ? (
-                          <input type="checkbox" checked={!!draft.incluye_monitor} onChange={e=>onDraft('incluye_monitor', e.target.checked)} />
-                        ) : (eq.incluye_monitor ? 'Sí' : 'No')}
-                      </td>
-                      <td className="consulta-td">
-                        {editingCodigo === eq.codigo_equipo ? (
-                          <input type="checkbox" checked={!!draft.incluye_torre} onChange={e=>onDraft('incluye_torre', e.target.checked)} />
-                        ) : (eq.incluye_torre ? 'Sí' : 'No')}
-                      </td>
-                      <td className="consulta-td">
-                        {editingCodigo === eq.codigo_equipo ? (
-                          <textarea value={draft.descripcion || ''} onChange={e=>onDraft('descripcion', e.target.value)} className="cell-textarea" />
-                        ) : (eq.descripcion || '-')}
-                      </td>
-                      <td className="consulta-td">
-                        {editingCodigo === eq.codigo_equipo ? (
-                          <textarea value={draft.specs_completas || ''} onChange={e=>onDraft('specs_completas', e.target.value)} className="cell-textarea" />
-                        ) : (eq.specs_completas || '-')}
-                      </td>
-                      <td className="consulta-td">
-                        {editingCodigo === eq.codigo_equipo ? (
-                          <div className="row-actions">
-                            <button className="btn primary" type="button" onClick={saveEdit} disabled={loading}>Guardar</button>
-                            <button className="btn" type="button" onClick={cancelEdit} disabled={loading}>Cancelar</button>
-                          </div>
-                        ) : (
-                          <div className="row-actions">
-                            <button className="btn" type="button" onClick={() => startEdit(eq)} disabled={loading}>Editar</button>
-                            <button className="btn danger" type="button" onClick={() => handleDelete(eq.codigo_equipo)} disabled={loading}>Eliminar</button>
-                          </div>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+      <main className="container">
+        <div className="users-panel consulta-panel">
+          <div className="users-toolbar">
+            <h2 style={{ margin: 0 }}>Consultar Equipo</h2>
+            <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+              <input
+                type="number"
+                placeholder="Código de inventario"
+                value={codigo}
+                onChange={e => setCodigo(e.target.value)}
+                className="search-input"
+              />
+              <button className="btn primary" type="button" onClick={handleBuscar} disabled={loading}>
+                {loading ? 'Buscando...' : 'Buscar'}
+              </button>
+              <button type="button" className="btn" onClick={handleMostrarTodos} disabled={loading}>
+                {loading ? 'Cargando...' : 'Mostrar todos'}
+              </button>
             </div>
           </div>
-        )}
+
+          {error && <div className="error-msg" style={{ marginTop: 12 }}>{error}</div>}
+
+          <div style={{ marginTop: 12 }}>
+            {equipos.length > 0 ? (
+              <div style={{ overflowX: 'auto' }}>
+                <table className="users-table" style={{ width: '100%' }}>
+                  <thead>
+                    <tr>
+                      <th className="sticky-col">Código</th>
+                      <th>Tipo</th>
+                      <th>Marca</th>
+                      <th>Modelo</th>
+                      <th>N° Serie</th>
+                      <th>Estado</th>
+                      <th>Fecha Adquisición</th>
+                      <th>Costo</th>
+                      <th>Ambiente</th>
+                      <th>Código Ambiente</th>
+                      <th>Vida útil (meses)</th>
+                      <th>Mouse</th>
+                      <th>Teclado</th>
+                      <th>Monitor</th>
+                      <th>Torre</th>
+                      <th>Descripción</th>
+                      <th>Especificaciones</th>
+                      <th>Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {equipos.map((eq) => (
+                      <tr key={eq.codigo_equipo}>
+                        <td className="sticky-col">{eq.codigo_equipo}</td>
+                        <td>
+                          {editingCodigo === eq.codigo_equipo ? (
+                            <input value={draft.tipo || ''} onChange={e => onDraft('tipo', e.target.value)} className="cell-input" />
+                          ) : (eq.tipo)}
+                        </td>
+                        <td>{editingCodigo === eq.codigo_equipo ? (
+                          <input value={draft.marca || ''} onChange={e => onDraft('marca', e.target.value)} className="cell-input" />
+                        ) : (eq.marca || '-')}</td>
+                        <td>{editingCodigo === eq.codigo_equipo ? (
+                          <input value={draft.modelo || ''} onChange={e => onDraft('modelo', e.target.value)} className="cell-input" />
+                        ) : (eq.modelo || '-')}</td>
+                        <td>{editingCodigo === eq.codigo_equipo ? (
+                          <input value={draft.numero_serie || ''} onChange={e => onDraft('numero_serie', e.target.value)} className="cell-input" />
+                        ) : (eq.numero_serie || '-')}</td>
+                        <td>{editingCodigo === eq.codigo_equipo ? (
+                          <input value={draft.estado_fisico || ''} onChange={e => onDraft('estado_fisico', e.target.value)} className="cell-input" />
+                        ) : (eq.estado_fisico || '-')}</td>
+                        <td>{editingCodigo === eq.codigo_equipo ? (
+                          <input type="date" value={draft.fecha_adquisicion || ''} onChange={e => onDraft('fecha_adquisicion', e.target.value)} className="cell-input" />
+                        ) : (eq.fecha_adquisicion || '-')}</td>
+                        <td>{editingCodigo === eq.codigo_equipo ? (
+                          <input type="number" value={draft.costo ?? ''} onChange={e => onDraft('costo', e.target.value === '' ? null : Number(e.target.value))} className="cell-input" />
+                        ) : (eq.costo ?? '-')}</td>
+                        <td>{editingCodigo === eq.codigo_equipo ? (
+                          <input value={draft.nombre_ambiente || ''} onChange={e => onDraft('nombre_ambiente', e.target.value)} className="cell-input" placeholder="Nombre ambiente (solo visual)" />
+                        ) : (eq.nombre_ambiente || '-')}</td>
+                        <td>{editingCodigo === eq.codigo_equipo ? (
+                          <input value={draft.ambiente || eq.codigo_ambiente || ''} onChange={e => onDraft('ambiente', e.target.value)} className="cell-input" placeholder="ID/ Código/ Nombre" />
+                        ) : (eq.codigo_ambiente || '-')}</td>
+                        <td>{editingCodigo === eq.codigo_equipo ? (
+                          <input type="number" value={draft.vida_util_meses ?? ''} onChange={e => onDraft('vida_util_meses', e.target.value === '' ? null : Number(e.target.value))} className="cell-input" />
+                        ) : (eq.vida_util_meses ?? '-')}</td>
+                        <td>{editingCodigo === eq.codigo_equipo ? (
+                          <input type="checkbox" checked={!!draft.incluye_mouse} onChange={e => onDraft('incluye_mouse', e.target.checked)} />
+                        ) : (eq.incluye_mouse ? 'Sí' : 'No')}</td>
+                        <td>{editingCodigo === eq.codigo_equipo ? (
+                          <input type="checkbox" checked={!!draft.incluye_teclado} onChange={e => onDraft('incluye_teclado', e.target.checked)} />
+                        ) : (eq.incluye_teclado ? 'Sí' : 'No')}</td>
+                        <td>{editingCodigo === eq.codigo_equipo ? (
+                          <input type="checkbox" checked={!!draft.incluye_monitor} onChange={e => onDraft('incluye_monitor', e.target.checked)} />
+                        ) : (eq.incluye_monitor ? 'Sí' : 'No')}</td>
+                        <td>{editingCodigo === eq.codigo_equipo ? (
+                          <input type="checkbox" checked={!!draft.incluye_torre} onChange={e => onDraft('incluye_torre', e.target.checked)} />
+                        ) : (eq.incluye_torre ? 'Sí' : 'No')}</td>
+                        <td>{editingCodigo === eq.codigo_equipo ? (
+                          <textarea value={draft.descripcion || ''} onChange={e => onDraft('descripcion', e.target.value)} className="cell-textarea" />
+                        ) : (eq.descripcion || '-')}</td>
+                        <td>{editingCodigo === eq.codigo_equipo ? (
+                          <textarea value={draft.specs_completas || ''} onChange={e => onDraft('specs_completas', e.target.value)} className="cell-textarea" />
+                        ) : (eq.specs_completas || '-')}</td>
+                        <td className="users-actions">
+                          {editingCodigo === eq.codigo_equipo ? (
+                            <>
+                              <button className="btn-verde" type="button" onClick={saveEdit} disabled={loading}>Guardar</button>
+                              <button className="btn" type="button" onClick={cancelEdit} disabled={loading}>Cancelar</button>
+                            </>
+                          ) : (
+                            <>
+                              <button className="btn-edit" type="button" onClick={() => startEdit(eq)} disabled={loading}>Editar</button>
+                              <button className="btn-delete" type="button" onClick={() => handleDelete(eq.codigo_equipo)} disabled={loading}>Eliminar</button>
+                            </>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="users-empty">
+                <div>
+                  <strong>No hay equipos para mostrar</strong>
+                  <div style={{color:'#666', marginTop:6}}>Busca por código o presiona "Mostrar todos" para listar.</div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
       </main>
     </div>
   )

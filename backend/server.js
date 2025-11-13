@@ -6,6 +6,7 @@ import process from 'process';
 import authRoutes from './src/routes/authRoutes.js';
 import equiposRoutes from './src/routes/equiposRoutes.js';
 import ambientesRoutes from './src/routes/ambientesRoutes.js';
+import notificationsRoutes from './src/routes/notificationsRoutes.js';
 
 
 const app = express();
@@ -21,6 +22,7 @@ app.get('/health', (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/equipos', equiposRoutes);
 app.use('/api', ambientesRoutes);
+app.use('/api/notifications', notificationsRoutes);
 
 // Start server with simple retry on EADDRINUSE (tries next ports)
 const maxPort = 65535;

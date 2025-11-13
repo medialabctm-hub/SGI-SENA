@@ -40,6 +40,15 @@ export const registerUser = async (req, res) => {
       [nombre, cedula, correoNorm, telefono, area || null, hash, rolRow.id_rol, 'Activo']
     );
 
+    // Crear notificación de usuario registrado (global)
+    try {
+      // import dinamico para evitar ciclos
+      const { createNotification } = await import('./notificationsController.js')
+      await createNotification({ tipo: 'user.register', titulo: 'Nuevo usuario registrado', mensaje: `Usuario ${nombre} (${cedula}) se registró`, id_usuario: null, data: { cedula } })
+    } catch (err) {
+      console.warn('No se pudo crear notificación:', err.message)
+    }
+
     return res.status(201).json({ message: 'Usuario registrado correctamente' });
   } catch (err) {
     return res.status(500).json({ error: 'Error en el servidor', details: err.message });

@@ -30,6 +30,9 @@ export default function Equipos() {
   const [mensaje, setMensaje] = useState('')
   const [ambientes, setAmbientes] = useState([])
   const [codigoEquipo, setCodigoEquipo] = useState(null)
+  const [showSuccessPanel, setShowSuccessPanel] = useState(false)
+  const [showErrorPanel, setShowErrorPanel] = useState(false)
+  const [errorText, setErrorText] = useState('')
 
   useEffect(() => {
     setAmbientes([])
@@ -71,15 +74,31 @@ export default function Equipos() {
       if (resp.ok) {
         setMensaje('Equipo registrado correctamente')
         setCodigoEquipo(data.id)
+        // show green right panel
+        setShowSuccessPanel(true)
+        setShowErrorPanel(false)
+        setErrorText('')
+        // auto-hide
+        setTimeout(() => setShowSuccessPanel(false), 6000)
         setForm({
           codigo_equipo: '', tipo: '', marca: '', modelo: '', numero_serie: '', descripcion: '', fecha_adquisicion: '', costo: '', vida_util_meses: '', estado_fisico: 'Bueno', ambiente: '', incluye_mouse: false, incluye_teclado: false, incluye_monitor: false, incluye_torre: false, specs_completas: ''
         })
 
       } else {
-        setMensaje(data.error || 'Error al registrar equipo')
+        const errMsg = data.error || 'Error al registrar equipo'
+        setMensaje(errMsg)
+        setErrorText(errMsg)
+        setShowErrorPanel(true)
+        setShowSuccessPanel(false)
+        setTimeout(() => setShowErrorPanel(false), 6000)
       }
     } catch (err) {
-      setMensaje('Error de conexión con el servidor')
+      const errMsg = 'Error de conexión con el servidor'
+      setMensaje(errMsg)
+      setErrorText(errMsg)
+      setShowErrorPanel(true)
+      setShowSuccessPanel(false)
+      setTimeout(() => setShowErrorPanel(false), 6000)
     }
   }
 
@@ -160,11 +179,33 @@ export default function Equipos() {
         <div className="form-row">
           <button type="submit" className="btn-verde">Registrar Equipo</button>
         </div>
-        {mensaje && <div className="success-text">{mensaje}</div>}
-        {codigoEquipo && (
-          <div className="success-text">Código del equipo: <b>{codigoEquipo}</b></div>
-        )}
+        {mensaje && !showSuccessPanel && !showErrorPanel && <div className="success-text">{mensaje}</div>}
+        {codigoEquipo && !showSuccessPanel && <div className="success-text">Código del equipo: <b>{codigoEquipo}</b></div>}
       </form>
+
+      {/* Right-side feedback panels (non-intrusive) */}
+      {showSuccessPanel && (
+        <div className="feedback-panel-right success" role="status">
+          <div className="fp-icon">✔</div>
+          <div className="fp-body">
+            <div className="fp-title">Equipo registrado</div>
+            <div className="fp-msg">El equipo se registró correctamente en el inventario.</div>
+            {codigoEquipo && <div className="fp-meta">Código: <strong>{codigoEquipo}</strong></div>}
+          </div>
+          <button className="fp-close" onClick={() => setShowSuccessPanel(false)}>×</button>
+        </div>
+      )}
+
+      {showErrorPanel && (
+        <div className="feedback-panel-right error" role="alert">
+          <div className="fp-icon">!</div>
+          <div className="fp-body">
+            <div className="fp-title">Error al registrar</div>
+            <div className="fp-msg">{errorText}</div>
+          </div>
+          <button className="fp-close" onClick={() => setShowErrorPanel(false)}>×</button>
+        </div>
+      )}
     </div>
   )
 }

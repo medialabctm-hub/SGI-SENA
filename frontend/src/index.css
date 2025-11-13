@@ -409,7 +409,7 @@ body{
 }
 
 .welcome-card{
-  background:linear-gradient(90deg,var(--success-800),var(--success-900));
+  background:linear-gradient(90deg,var(--success-800));
   color:white;
   padding:18px;
   border-radius:14px;
