@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react'
 import Toast from '../components/Toast'
 import Header from '../components/Header'
-import NotificationsModal from '../components/NotificationsModal'
 import { useNavigate } from 'react-router-dom'
+import { parseApiResponse, buildErrorMessage } from '../utils/api'
 
 const SIDEBAR = [
   { id: 'profile', label: 'Perfil' },
@@ -23,7 +23,6 @@ export default function Config() {
   const [toast, setToast] = useState(null)
   const [loading, setLoading] = useState(false)
   const [selected, setSelected] = useState('profile')
-  const [showNotifications, setShowNotifications] = useState(false)
 
   useEffect(() => {
     setForm({
@@ -39,8 +38,7 @@ export default function Config() {
         const token = localStorage.getItem('token')
         if (!token) return
         const res = await fetch('/api/auth/me', { headers: { Authorization: `Bearer ${token}` } })
-        if (!res.ok) return
-        const data = await res.json()
+        const data = await parseApiResponse(res, 'No se pudo obtener el perfil del usuario')
         if (data?.user) {
           setUser(data.user)
           setForm({
@@ -52,7 +50,9 @@ export default function Config() {
           })
           try { localStorage.setItem('user', JSON.stringify(data.user)) } catch {}
         }
-      } catch (err) { }
+      } catch (err) {
+        setToast({ message: buildErrorMessage(err, 'No se pudo obtener el perfil del usuario'), type: 'error' })
+      }
     }
     fetchMe()
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -77,15 +77,14 @@ export default function Config() {
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ nombre: form.nombre_usuario, correo: form.correo, telefono: form.telefono, cedula: form.cedula, rol: user?.nombre_rol || 'Aprendiz' })
       })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data?.error || data?.message || 'Error al actualizar')
+      const data = await parseApiResponse(res, 'No se pudo actualizar el perfil')
       const updated = { ...user, nombre_usuario: form.nombre_usuario, correo: form.correo, telefono: form.telefono, cedula: form.cedula, area: form.area }
       setUser(updated)
       try { localStorage.setItem('user', JSON.stringify(updated)) } catch {}
       setToast({ message: data?.message || 'Usuario actualizado', type: 'success' })
       setEditing(false)
     } catch (err) {
-      setToast({ message: err.message || 'Error al actualizar', type: 'error' })
+      setToast({ message: buildErrorMessage(err, 'No se pudo actualizar el perfil'), type: 'error' })
     } finally { setLoading(false) }
   }
 
@@ -205,7 +204,7 @@ export default function Config() {
   return (
     <div className="page simple-page config-page">
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
-      <Header onOpenNotifications={() => setShowNotifications(true)} />
+      <Header />
       <div style={{display:'flex', gap:20, marginTop:12}}>
         <SectionSidebar />
         <div style={{flex:1}}>
@@ -218,7 +217,6 @@ export default function Config() {
           {selected==='app' && <Placeholder title="Ajustes de la App">Preferencias globales de la aplicación.</Placeholder>}
         </div>
       </div>
-      {showNotifications && <NotificationsModal onClose={() => setShowNotifications(false)} />}
     </div>
   )
 }

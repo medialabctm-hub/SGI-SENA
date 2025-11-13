@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { FiMail, FiLock, FiEye, FiUser, FiCreditCard, FiPhone } from 'react-icons/fi'
 import { validarRegistro, validarContraseña, validarEmail, validarTelefono, validarCaracteresEspeciales, validarEspaciosInicioFinalNombre } from '../utils/validaciones';
 import Toast from '../components/Toast';
+import { parseApiResponse, buildErrorMessage } from '../utils/api';
 
 
 export default function Register() {
@@ -69,15 +70,11 @@ export default function Register() {
           rol
         })
       })
-      const data = await res.json()
-      if (!res.ok) {
-        setToast({ message: data && data.error ? data.error : 'Error al registrar usuario', type: 'error' })
-        return
-      }
+      const data = await parseApiResponse(res, 'No se pudo completar el registro')
       setToast({ message: 'Registro exitoso, ahora puede iniciar sesión', type: 'success' })
       setTimeout(() => navigate('/login'), 1500)
     } catch (err) {
-      alert('Error de red o servidor')
+      setToast({ message: buildErrorMessage(err, 'No se pudo completar el registro'), type: 'error' })
     }
   }
 
@@ -175,6 +172,7 @@ export default function Register() {
             <select value={rol} onChange={e => setRol(e.target.value)} style={{ width: '100%', border: 'none', outline: 'none', background: 'transparent' }}>
               <option value="Aprendiz">Aprendiz</option>
               <option value="Instructor">Instructor</option>
+              <option value="Administrador">Administrador</option>
             </select>
           </label>
           <button className="btn primary" type="submit">Registrarse</button>

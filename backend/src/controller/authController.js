@@ -47,20 +47,13 @@ export const registerUser = async (req, res) => {
 };
 
 // Perfil del usuario autenticado
+// NOTA: Esta función usa req.user que ya está disponible gracias al middleware authenticate
+// La verificación del token ya se hace en authMiddleware.js, no es necesario duplicarla aquí
 export const me = async (req, res) => {
   try {
-    const auth = req.headers.authorization || '';
-    const token = auth.startsWith('Bearer ') ? auth.slice(7) : null;
-    if (!token) return res.status(401).json({ error: 'No autorizado' });
-
-    const secret = process.env.JWT_SECRET;
-    if (!secret) return res.status(500).json({ error: 'JWT_SECRET no configurado' });
-
-    let payload;
-    try {
-      payload = jwt.verify(token, secret);
-    } catch {
-      return res.status(401).json({ error: 'Token inválido' });
+    // req.user ya está disponible gracias al middleware authenticate
+    if (!req.user || !req.user.id) {
+      return res.status(401).json({ error: 'No autorizado' });
     }
 
     const [[user]] = await db.execute(
@@ -68,7 +61,7 @@ export const me = async (req, res) => {
        FROM Usuarios u
        LEFT JOIN Roles r ON r.id_rol = u.id_rol
        WHERE u.id_usuario = ? AND u.estado = "Activo"`,
-      [payload.id]
+      [req.user.id]
     );
 
     if (!user) return res.status(404).json({ error: 'Usuario no encontrado' });
@@ -239,5 +232,29 @@ export const getUserDetails = async (req, res) => {
     return res.json({ user, equipos });
   } catch (err) {
     return res.status(500).json({ error: 'Error al obtener detalle', details: err.message });
+  }
+};
+
+// Buscar usuario por cédula
+export const getUserByCedula = async (req, res) => {
+  try {
+    const { cedula } = req.params;
+    if (!cedula) return res.status(400).json({ error: 'Cédula requerida' });
+
+    const [[user]] = await db.execute(
+      `SELECT u.id_usuario, u.nombre_usuario, u.cedula, u.correo, u.telefono,
+              u.area_usuarios AS area, r.nombre_rol,
+              (SELECT COUNT(*) FROM Responsables_Equipo re WHERE re.id_usuario = u.id_usuario AND re.estado_responsabilidad = 'Activo') AS equipos_asignados
+       FROM Usuarios u
+       LEFT JOIN Roles r ON r.id_rol = u.id_rol
+       WHERE u.cedula = ? AND u.estado = 'Activo'`,
+      [cedula]
+    );
+
+    if (!user) return res.status(404).json({ error: 'Usuario no encontrado' });
+
+    return res.json(user);
+  } catch (err) {
+    return res.status(500).json({ error: 'Error al buscar usuario', details: err.message });
   }
 };

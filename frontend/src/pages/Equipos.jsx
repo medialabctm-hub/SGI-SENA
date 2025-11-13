@@ -1,6 +1,8 @@
 
 import React, { useState, useEffect } from 'react'
 import Header from '../components/Header'
+import Toast from '../components/Toast'
+import { parseApiResponse, buildErrorMessage } from '../utils/api'
 import '../styles/equipos.css'
 
 const ESTADOS_FISICOS = ['Nuevo', 'Bueno', 'Regular', 'Malo', 'Dañado']
@@ -8,7 +10,7 @@ const TIPOS = ['Computador de Escritorio', 'Portátil', 'Monitor', 'Mouse', 'Tec
 
 export default function Equipos() {
   const [form, setForm] = useState({
-    codigo_equipo: '',
+    codigo_inventario: '',
     tipo: '',
     marca: '',
     modelo: '',
@@ -27,9 +29,8 @@ export default function Equipos() {
   })
 
   const [errores, setErrores] = useState({})
-  const [mensaje, setMensaje] = useState('')
   const [ambientes, setAmbientes] = useState([])
-  const [codigoEquipo, setCodigoEquipo] = useState(null)
+  const [toast, setToast] = useState(null)
 
   useEffect(() => {
     setAmbientes([])
@@ -48,7 +49,7 @@ export default function Equipos() {
   const handleSubmit = async e => {
     e.preventDefault()
     let errs = {}
-    if (!form.codigo_equipo) errs.codigo_equipo = 'El código de inventario es obligatorio'
+    if (!form.codigo_inventario) errs.codigo_inventario = 'El código de inventario es obligatorio'
     if (!form.tipo) errs.tipo = 'El tipo es obligatorio'
     if (!form.marca) errs.marca = 'La marca es obligatoria'
     if (!form.modelo) errs.modelo = 'El modelo es obligatorio'
@@ -58,41 +59,48 @@ export default function Equipos() {
     if (!form.ambiente) errs.ambiente = 'El ambiente es obligatorio'
 
     setErrores(errs)
-    setMensaje('')
-    setCodigoEquipo(null)
+    setToast(null)
     if (Object.keys(errs).length > 0) return
     try {
+      const token = localStorage.getItem('token')
       const resp = await fetch('/api/equipos', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form)
-      })
-      const data = await resp.json()
-      if (resp.ok) {
-        setMensaje('Equipo registrado correctamente')
-        setCodigoEquipo(data.id)
-        setForm({
-          codigo_equipo: '', tipo: '', marca: '', modelo: '', numero_serie: '', descripcion: '', fecha_adquisicion: '', costo: '', vida_util_meses: '', estado_fisico: 'Bueno', ambiente: '', incluye_mouse: false, incluye_teclado: false, incluye_monitor: false, incluye_torre: false, specs_completas: ''
+        headers: { 
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          ...form,
+          codigo_inventario: form.codigo_inventario
         })
-
-      } else {
-        setMensaje(data.error || 'Error al registrar equipo')
-      }
+      })
+      const data = await parseApiResponse(resp, 'No se pudo registrar el equipo')
+      setToast({
+        message: `Equipo registrado correctamente (ID interno: ${data.id})`,
+        type: 'success'
+      })
+      setForm({
+        codigo_inventario: '', tipo: '', marca: '', modelo: '', numero_serie: '', descripcion: '', fecha_adquisicion: '', costo: '', vida_util_meses: '', estado_fisico: 'Bueno', ambiente: '', incluye_mouse: false, incluye_teclado: false, incluye_monitor: false, incluye_torre: false, specs_completas: ''
+      })
     } catch (err) {
-      setMensaje('Error de conexión con el servidor')
+      setToast({
+        message: buildErrorMessage(err, 'Error al registrar equipo'),
+        type: 'error'
+      })
     }
   }
 
   return (
     <div className="page simple-page">
+      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
       <Header className="equipos-header" />
       <h2 style={{textAlign: 'center', marginTop: '1.5rem'}}>Registrar Equipo</h2>
       <form className="form-equipos" onSubmit={handleSubmit}>
         <div className="form-grid">
           <div className="form-row">
             <label>Código de Inventario *</label>
-            <input name="codigo_equipo" value={form.codigo_equipo} onChange={handleChange} />
-            {errores.codigo_equipo && <span className="error-text">{errores.codigo_equipo}</span>}
+            <input name="codigo_inventario" value={form.codigo_inventario} onChange={handleChange} />
+            {errores.codigo_inventario && <span className="error-text">{errores.codigo_inventario}</span>}
           </div>
           <div className="form-row">
             <label>Ambiente *</label>
@@ -160,10 +168,6 @@ export default function Equipos() {
         <div className="form-row">
           <button type="submit" className="btn-verde">Registrar Equipo</button>
         </div>
-        {mensaje && <div className="success-text">{mensaje}</div>}
-        {codigoEquipo && (
-          <div className="success-text">Código del equipo: <b>{codigoEquipo}</b></div>
-        )}
       </form>
     </div>
   )

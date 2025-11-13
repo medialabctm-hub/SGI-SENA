@@ -8,6 +8,15 @@ import Equipos from './pages/Equipos'
 import ConsultarEquipo from './pages/ConsultarEquipo'
 import Usuarios from './pages/Usuarios'
 import Config from './pages/Config'
+import CrearNovedad from './pages/CrearNovedad'
+import CrearReporte from './pages/CrearReporte'
+import AsignarEquipo from './pages/AsignarEquipo'
+import MisEquipos from './pages/MisEquipos'
+import Novedades from './pages/Novedades'
+import Reportes from './pages/Reportes'
+import Mantenimientos from './pages/Mantenimientos'
+import CrearMantenimiento from './pages/CrearMantenimiento'
+import Asignaciones from './pages/Asignaciones'
 import ProtectedRoute from './components/ProtectedRoute'
 import RedirectIfAuth from './components/RedirectIfAuth'
 
@@ -52,6 +61,51 @@ export default function App() {
       <Route path="/config" element={
         <ProtectedRoute>
           <Config />
+        </ProtectedRoute>
+      } />
+      <Route path="/novedades" element={
+        <ProtectedRoute>
+          <Novedades />
+        </ProtectedRoute>
+      } />
+      <Route path="/novedades/crear" element={
+        <ProtectedRoute>
+          <CrearNovedad />
+        </ProtectedRoute>
+      } />
+      <Route path="/reportes" element={
+        <ProtectedRoute>
+          <Reportes />
+        </ProtectedRoute>
+      } />
+      <Route path="/reportes/crear" element={
+        <ProtectedRoute>
+          <CrearReporte />
+        </ProtectedRoute>
+      } />
+      <Route path="/equipos/asignar" element={
+        <ProtectedRoute>
+          <AsignarEquipo />
+        </ProtectedRoute>
+      } />
+      <Route path="/mis-equipos" element={
+        <ProtectedRoute>
+          <MisEquipos />
+        </ProtectedRoute>
+      } />
+      <Route path="/mantenimientos" element={
+        <ProtectedRoute>
+          <Mantenimientos />
+        </ProtectedRoute>
+      } />
+      <Route path="/mantenimientos/crear" element={
+        <ProtectedRoute>
+          <CrearMantenimiento />
+        </ProtectedRoute>
+      } />
+      <Route path="/asignaciones" element={
+        <ProtectedRoute>
+          <Asignaciones />
         </ProtectedRoute>
       } />
     </Routes>

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react'
 import Header from '../components/Header'
 import Toast from '../components/Toast'
 import ConfirmModal from '../components/ConfirmModal'
+import { parseApiResponse, buildErrorMessage } from '../utils/api'
 import '../styles/equipos.css'
 
 export default function Usuarios() {
@@ -14,6 +15,22 @@ export default function Usuarios() {
   const [editingUser, setEditingUser] = useState(null)
   const [form, setForm] = useState({ nombre: '', cedula: '', correo: '', telefono: '', area: '', rol: 'Aprendiz', contrasena: '' })
   const [confirm, setConfirm] = useState({ open: false, id: null })
+  const [currentUser, setCurrentUser] = useState(null)
+
+  // Obtener rol del usuario actual
+  useEffect(() => {
+    try {
+      const userData = localStorage.getItem('user')
+      if (userData) {
+        setCurrentUser(JSON.parse(userData))
+      }
+    } catch (error) {
+      console.error('Error al obtener datos del usuario:', error)
+    }
+  }, [])
+
+  const isAdmin = currentUser?.nombre_rol === 'Administrador'
+  const isInstructor = currentUser?.nombre_rol === 'Instructor'
 
   // deletion handler: calls API to delete the user stored in `confirm.id` and updates UI
   async function doDelete() {
@@ -26,12 +43,11 @@ export default function Usuarios() {
     try {
       setLoading(true)
       const res = await fetch(`/api/auth/user/${id}`, { method: 'DELETE', headers: getAuthHeaders() })
-      const data = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(data?.error || data?.message || 'Error al eliminar usuario')
+      const data = await parseApiResponse(res, 'No se pudo eliminar el usuario')
       setUsers(prev => prev.filter(u => u.id_usuario !== id))
       setToast({ message: data.message || 'Usuario eliminado', type: 'success' })
     } catch (err) {
-      setToast({ message: err.message || 'Error al eliminar', type: 'error' })
+      setToast({ message: buildErrorMessage(err, 'No se pudo eliminar el usuario'), type: 'error' })
     } finally {
       setLoading(false)
     }
@@ -54,11 +70,10 @@ export default function Usuarios() {
     setLoading(true)
     try {
       const res = await fetch('/api/auth/users', { headers: getAuthHeaders() })
-      if (!res.ok) throw new Error('Error al obtener usuarios')
-      const data = await res.json()
+      const data = await parseApiResponse(res, 'No se pudo obtener el listado de usuarios')
       setUsers(data)
     } catch (err) {
-      setToast({ message: err.message || 'Error', type: 'error' })
+      setToast({ message: buildErrorMessage(err, 'No se pudo obtener el listado de usuarios'), type: 'error' })
     } finally { setLoading(false) }
   }
 
@@ -69,14 +84,13 @@ export default function Usuarios() {
     (async () => {
       try {
         const res = await fetch(`/api/auth/user/${u.id_usuario}`, { headers: getAuthHeaders() })
-        if (!res.ok) throw new Error('No se pudo obtener usuario')
-        const data = await res.json()
+        const data = await parseApiResponse(res, 'No se pudo obtener usuario')
         const user = data.user || data
         setEditingUser(user)
         setForm({ nombre: user.nombre_usuario || '', cedula: user.cedula || '', correo: user.correo || '', telefono: user.telefono || '', area: user.area || '', rol: user.nombre_rol || 'Aprendiz', contrasena: '' })
         setShowForm(true)
       } catch (err) {
-        setToast({ message: err.message || 'Error', type: 'error' })
+        setToast({ message: buildErrorMessage(err, 'No se pudo cargar la información del usuario'), type: 'error' })
       }
     })()
   }
@@ -90,13 +104,12 @@ export default function Usuarios() {
       }
       // update only
       const res = await fetch(`/api/auth/user/${editingUser.id_usuario}`, { method: 'PUT', headers: getAuthHeaders(), body: JSON.stringify({ nombre: form.nombre, cedula: form.cedula, correo: form.correo, telefono: form.telefono, rol: form.rol }) })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data?.error || data?.message || 'Error al actualizar')
+      const data = await parseApiResponse(res, 'No se pudo actualizar el usuario')
       setToast({ message: data.message || 'Usuario actualizado', type: 'success' })
       setShowForm(false)
       fetchUsers()
     } catch (err) {
-      setToast({ message: err.message || 'Error', type: 'error' })
+      setToast({ message: buildErrorMessage(err, 'No se pudo actualizar el usuario'), type: 'error' })
     }
   }
 
@@ -105,11 +118,10 @@ export default function Usuarios() {
   async function openView(u) {
     try {
       const res = await fetch(`/api/auth/user/${u.id_usuario}`, { headers: getAuthHeaders() })
-      if (!res.ok) throw new Error('No se pudo obtener detalle')
-      const data = await res.json()
+      const data = await parseApiResponse(res, 'No se pudo obtener detalle')
       setViewUser(data)
     } catch (err) {
-      setToast({ message: err.message || 'Error', type: 'error' })
+      setToast({ message: buildErrorMessage(err, 'No se pudo obtener detalle del usuario'), type: 'error' })
     }
   }
 
@@ -151,8 +163,13 @@ export default function Usuarios() {
                           <td><span className="equip-count">{u.equipos_asignados || 0}</span></td>
                           <td className="users-actions">
                             <button className="btn btn-view" onClick={() => openView(u)}>Ver</button>
-                            <button className="btn btn-edit" onClick={() => openEdit(u)}>Editar</button>
-                            <button className="btn btn-delete" onClick={() => setConfirm({ open: true, id: u.id_usuario })}>Eliminar</button>
+                            {/* Editar y Eliminar: Solo Administrador */}
+                            {isAdmin && (
+                              <>
+                                <button className="btn btn-edit" onClick={() => openEdit(u)}>Editar</button>
+                                <button className="btn btn-delete" onClick={() => setConfirm({ open: true, id: u.id_usuario })}>Eliminar</button>
+                              </>
+                            )}
                           </td>
                         </tr>
                       ))}

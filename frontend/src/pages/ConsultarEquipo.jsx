@@ -1,52 +1,56 @@
 import React, { useState } from 'react'
 import Header from '../components/Header'
+import Toast from '../components/Toast'
+import ConfirmModal from '../components/ConfirmModal'
+import { parseApiResponse, buildErrorMessage } from '../utils/api'
 import '../styles/equipos.css'
 
 export default function ConsultarEquipo() {
   const [codigo, setCodigo] = useState('')
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
   const [equipos, setEquipos] = useState([])
   const [editingCodigo, setEditingCodigo] = useState(null)
   const [draft, setDraft] = useState({})
+  const [toast, setToast] = useState(null)
+  const [deleteConfirm, setDeleteConfirm] = useState({ open: false, codigo: null })
 
   async function handleBuscar(e) {
     e.preventDefault()
-    setError('')
+    setToast(null)
     setEquipos([])
-    if (!codigo) { setError('Ingrese el código del equipo'); return }
+    if (!codigo) {
+      setToast({ message: 'Ingresa el código de inventario a consultar.', type: 'error' })
+      return
+    }
     setLoading(true)
     try {
-      const res = await fetch(`/api/equipos/${encodeURIComponent(codigo)}`)
-      const data = await res.json()
-      if (!res.ok) {
-        setError(data?.error || 'No se pudo consultar el equipo')
-        setEquipos([])
-      } else {
-        setEquipos([data])
-      }
-    } catch {
-      setError('Error de conexión con el servidor')
+      const token = localStorage.getItem('token')
+      const res = await fetch(`/api/equipos/${encodeURIComponent(codigo)}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      const data = await parseApiResponse(res, 'No se pudo consultar el equipo')
+      setEquipos([data])
+    } catch (err) {
+      setEquipos([])
+      setToast({ message: buildErrorMessage(err, 'No se pudo consultar el equipo'), type: 'error' })
     } finally {
       setLoading(false)
     }
   }
 
   async function handleMostrarTodos() {
-    setError('')
+    setToast(null)
     setLoading(true)
     try {
-      const res = await fetch('/api/equipos')
-      const data = await res.json()
-      if (!res.ok) {
-        setError(data?.error || 'No se pudo listar los equipos')
-        setEquipos([])
-      } else {
-        setEquipos(Array.isArray(data) ? data : [])
-      }
-    } catch {
-      setError('Error de conexión con el servidor')
+      const token = localStorage.getItem('token')
+      const res = await fetch('/api/equipos', {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      const data = await parseApiResponse(res, 'No se pudo listar los equipos')
+      setEquipos(Array.isArray(data) ? data : [])
+    } catch (err) {
       setEquipos([])
+      setToast({ message: buildErrorMessage(err, 'No se pudo listar los equipos'), type: 'error' })
     } finally {
       setLoading(false)
     }
@@ -72,7 +76,7 @@ export default function ConsultarEquipo() {
   async function saveEdit() {
     if (!editingCodigo) return
     setLoading(true)
-    setError('')
+    setToast(null)
     try {
       const payload = { ...draft }
       // normalizar booleanos
@@ -83,45 +87,53 @@ export default function ConsultarEquipo() {
       // permitir enviar 'ambiente' como texto/código si el usuario lo edita
       if (payload.ambiente && payload.ambiente.trim() === '') delete payload.ambiente
 
+      const token = localStorage.getItem('token')
       const res = await fetch(`/api/equipos/${encodeURIComponent(editingCodigo)}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
         body: JSON.stringify(payload)
       })
-      const data = await res.json().catch(() => ({}))
-      if (!res.ok) {
-        setError(data?.error || 'No se pudo actualizar el equipo')
-        return
-      }
-      // actualizar lista local
+      const data = await parseApiResponse(res, 'No se pudo actualizar el equipo')
       setEquipos(prev => prev.map(eq => eq.codigo_equipo === editingCodigo ? {
         ...eq,
         ...draft,
         fecha_adquisicion: draft.fecha_adquisicion || eq.fecha_adquisicion
       } : eq))
+      setToast({ message: data?.message || 'Equipo actualizado correctamente', type: 'success' })
       cancelEdit()
-    } catch {
-      setError('Error de conexión con el servidor')
+    } catch (err) {
+      setToast({ message: buildErrorMessage(err, 'No se pudo actualizar el equipo'), type: 'error' })
     } finally {
       setLoading(false)
     }
   }
 
-  async function handleDelete(codigoEq) {
-    if (!window.confirm(`¿Eliminar equipo ${codigoEq}? Esta acción no se puede deshacer.`)) return
+  function confirmDelete(codigoEq) {
+    setDeleteConfirm({ open: true, codigo: codigoEq })
+  }
+
+  async function handleDelete() {
+    const codigoEq = deleteConfirm.codigo
+    if (!codigoEq) return
+    
+    setDeleteConfirm({ open: false, codigo: null })
     setLoading(true)
-    setError('')
+    setToast(null)
     try {
-      const res = await fetch(`/api/equipos/${encodeURIComponent(codigoEq)}`, { method: 'DELETE' })
-      const data = await res.json().catch(() => ({}))
-      if (!res.ok) {
-        setError(data?.error || 'No se pudo eliminar el equipo')
-        return
-      }
+      const token = localStorage.getItem('token')
+      const res = await fetch(`/api/equipos/${encodeURIComponent(codigoEq)}`, { 
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      await parseApiResponse(res, 'No se pudo eliminar el equipo')
       setEquipos(prev => prev.filter(eq => eq.codigo_equipo !== codigoEq))
       if (editingCodigo === codigoEq) cancelEdit()
-    } catch {
-      setError('Error de conexión con el servidor')
+      setToast({ message: `Equipo ${codigoEq} eliminado correctamente`, type: 'success' })
+    } catch (err) {
+      setToast({ message: buildErrorMessage(err, 'No se pudo eliminar el equipo'), type: 'error' })
     } finally {
       setLoading(false)
     }
@@ -129,157 +141,276 @@ export default function ConsultarEquipo() {
 
   
 
+  function getEstadoBadge(estado) {
+    const estados = {
+      'Bueno': { color: '#10b981', bg: '#d1fae5' },
+      'Regular': { color: '#f59e0b', bg: '#fef3c7' },
+      'Malo': { color: '#ef4444', bg: '#fee2e2' },
+      'Nuevo': { color: '#3b82f6', bg: '#dbeafe' },
+      'En Reparación': { color: '#8b5cf6', bg: '#ede9fe' }
+    }
+    const estadoInfo = estados[estado] || { color: '#6b7280', bg: '#f3f4f6' }
+    return (
+      <span style={{
+        padding: '4px 10px',
+        borderRadius: '12px',
+        fontSize: '0.85rem',
+        fontWeight: 600,
+        color: estadoInfo.color,
+        background: estadoInfo.bg,
+        display: 'inline-block'
+      }}>
+        {estado || '-'}
+      </span>
+    )
+  }
+
+  function formatCurrency(value) {
+    if (!value) return '-'
+    return new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(value)
+  }
+
+  function formatDate(dateString) {
+    if (!dateString) return '-'
+    try {
+      const date = new Date(dateString)
+      return date.toLocaleDateString('es-ES', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+      })
+    } catch {
+      return dateString
+    }
+  }
+
   return (
     <div className="page simple-page">
       <Header />
-      <main className="container consulta-container">
-        <h2 className="consulta-title">Consultar Equipo</h2>
-        <form onSubmit={handleBuscar} className="consulta-form">
-          <input
-            type="number"
-            placeholder="Código de inventario"
-            value={codigo}
-            onChange={e => setCodigo(e.target.value)}
-            className="consulta-input"
-          />
-          <button className="btn primary" type="submit" disabled={loading}>
-            {loading ? 'Buscando...' : 'Buscar'}
-          </button>
-          <button type="button" className="btn" onClick={handleMostrarTodos} disabled={loading}>
-            {loading ? 'Cargando...' : 'Mostrar todos'}
-          </button>
-        </form>
-        {error && <div className="error-msg">{error}</div>}
-        {equipos.length > 0 && (
-          <div className="stats-card consulta-card">
-            <div className="consulta-table-wrap">
-              <table className="consulta-table">
-                <thead>
-                  <tr>
-                    <th className="consulta-th sticky-col">Código</th>
-                    <th className="consulta-th">Tipo</th>
-                    <th className="consulta-th">Marca</th>
-                    <th className="consulta-th">Modelo</th>
-                    <th className="consulta-th">N° Serie</th>
-                    <th className="consulta-th">Estado</th>
-                    <th className="consulta-th">Fecha Adquisición</th>
-                    <th className="consulta-th">Costo</th>
-                    <th className="consulta-th">Ambiente</th>
-                    <th className="consulta-th">Código Ambiente</th>
-                    <th className="consulta-th">Vida útil (meses)</th>
-                    <th className="consulta-th">Mouse</th>
-                    <th className="consulta-th">Teclado</th>
-                    <th className="consulta-th">Monitor</th>
-                    <th className="consulta-th">Torre</th>
-                    <th className="consulta-th">Descripción</th>
-                    <th className="consulta-th">Especificaciones</th>
-                    <th className="consulta-th">Acciones</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {equipos.map((eq) => (
-                    <tr key={eq.codigo_equipo}>
-                      <td className="consulta-td sticky-col">{eq.codigo_equipo}</td>
-                      <td className="consulta-td">
-                        {editingCodigo === eq.codigo_equipo ? (
-                          <input value={draft.tipo || ''} onChange={e=>onDraft('tipo', e.target.value)} className="cell-input" />
-                        ) : (eq.tipo)}
-                      </td>
-                      <td className="consulta-td">
-                        {editingCodigo === eq.codigo_equipo ? (
-                          <input value={draft.marca || ''} onChange={e=>onDraft('marca', e.target.value)} className="cell-input" />
-                        ) : (eq.marca || '-')}
-                      </td>
-                      <td className="consulta-td">
-                        {editingCodigo === eq.codigo_equipo ? (
-                          <input value={draft.modelo || ''} onChange={e=>onDraft('modelo', e.target.value)} className="cell-input" />
-                        ) : (eq.modelo || '-')}
-                      </td>
-                      <td className="consulta-td">
-                        {editingCodigo === eq.codigo_equipo ? (
-                          <input value={draft.numero_serie || ''} onChange={e=>onDraft('numero_serie', e.target.value)} className="cell-input" />
-                        ) : (eq.numero_serie || '-')}
-                      </td>
-                      <td className="consulta-td">
-                        {editingCodigo === eq.codigo_equipo ? (
-                          <input value={draft.estado_fisico || ''} onChange={e=>onDraft('estado_fisico', e.target.value)} className="cell-input" />
-                        ) : (eq.estado_fisico || '-')}
-                      </td>
-                      <td className="consulta-td">
-                        {editingCodigo === eq.codigo_equipo ? (
-                          <input type="date" value={draft.fecha_adquisicion || ''} onChange={e=>onDraft('fecha_adquisicion', e.target.value)} className="cell-input" />
-                        ) : (eq.fecha_adquisicion || '-')}
-                      </td>
-                      <td className="consulta-td">
-                        {editingCodigo === eq.codigo_equipo ? (
-                          <input type="number" value={draft.costo ?? ''} onChange={e=>onDraft('costo', e.target.value === '' ? null : Number(e.target.value))} className="cell-input" />
-                        ) : (eq.costo ?? '-')}
-                      </td>
-                      <td className="consulta-td">
-                        {editingCodigo === eq.codigo_equipo ? (
-                          <input value={draft.nombre_ambiente || ''} onChange={e=>onDraft('nombre_ambiente', e.target.value)} className="cell-input" placeholder="Nombre ambiente (solo visual)" />
-                        ) : (eq.nombre_ambiente || '-')}
-                      </td>
-                      <td className="consulta-td">
-                        {editingCodigo === eq.codigo_equipo ? (
-                          <input value={draft.ambiente || eq.codigo_ambiente || ''} onChange={e=>onDraft('ambiente', e.target.value)} className="cell-input" placeholder="ID/ Código/ Nombre" />
-                        ) : (eq.codigo_ambiente || '-')}
-                      </td>
-                      <td className="consulta-td">
-                        {editingCodigo === eq.codigo_equipo ? (
-                          <input type="number" value={draft.vida_util_meses ?? ''} onChange={e=>onDraft('vida_util_meses', e.target.value === '' ? null : Number(e.target.value))} className="cell-input" />
-                        ) : (eq.vida_util_meses ?? '-')}
-                      </td>
-                      <td className="consulta-td">
-                        {editingCodigo === eq.codigo_equipo ? (
-                          <input type="checkbox" checked={!!draft.incluye_mouse} onChange={e=>onDraft('incluye_mouse', e.target.checked)} />
-                        ) : (eq.incluye_mouse ? 'Sí' : 'No')}
-                      </td>
-                      <td className="consulta-td">
-                        {editingCodigo === eq.codigo_equipo ? (
-                          <input type="checkbox" checked={!!draft.incluye_teclado} onChange={e=>onDraft('incluye_teclado', e.target.checked)} />
-                        ) : (eq.incluye_teclado ? 'Sí' : 'No')}
-                      </td>
-                      <td className="consulta-td">
-                        {editingCodigo === eq.codigo_equipo ? (
-                          <input type="checkbox" checked={!!draft.incluye_monitor} onChange={e=>onDraft('incluye_monitor', e.target.checked)} />
-                        ) : (eq.incluye_monitor ? 'Sí' : 'No')}
-                      </td>
-                      <td className="consulta-td">
-                        {editingCodigo === eq.codigo_equipo ? (
-                          <input type="checkbox" checked={!!draft.incluye_torre} onChange={e=>onDraft('incluye_torre', e.target.checked)} />
-                        ) : (eq.incluye_torre ? 'Sí' : 'No')}
-                      </td>
-                      <td className="consulta-td">
-                        {editingCodigo === eq.codigo_equipo ? (
-                          <textarea value={draft.descripcion || ''} onChange={e=>onDraft('descripcion', e.target.value)} className="cell-textarea" />
-                        ) : (eq.descripcion || '-')}
-                      </td>
-                      <td className="consulta-td">
-                        {editingCodigo === eq.codigo_equipo ? (
-                          <textarea value={draft.specs_completas || ''} onChange={e=>onDraft('specs_completas', e.target.value)} className="cell-textarea" />
-                        ) : (eq.specs_completas || '-')}
-                      </td>
-                      <td className="consulta-td">
-                        {editingCodigo === eq.codigo_equipo ? (
-                          <div className="row-actions">
-                            <button className="btn primary" type="button" onClick={saveEdit} disabled={loading}>Guardar</button>
-                            <button className="btn" type="button" onClick={cancelEdit} disabled={loading}>Cancelar</button>
-                          </div>
-                        ) : (
-                          <div className="row-actions">
-                            <button className="btn" type="button" onClick={() => startEdit(eq)} disabled={loading}>Editar</button>
-                            <button className="btn danger" type="button" onClick={() => handleDelete(eq.codigo_equipo)} disabled={loading}>Eliminar</button>
-                          </div>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+      <ConfirmModal
+        open={deleteConfirm.open}
+        title="Eliminar Equipo"
+        message={`¿Estás seguro de que deseas eliminar el equipo ${deleteConfirm.codigo}? Esta acción no se puede deshacer.`}
+        confirmText="Eliminar"
+        cancelText="Cancelar"
+        type="danger"
+        onConfirm={handleDelete}
+        onCancel={() => setDeleteConfirm({ open: false, codigo: null })}
+      />
+      <main className="container">
+        <div className="users-panel">
+          <div className="users-toolbar">
+            <h2 style={{margin:0}}>Consultar Equipo</h2>
+            <div style={{display:'flex', gap:12, alignItems:'center'}}>
+              <form onSubmit={handleBuscar} style={{display:'flex', gap:12, alignItems:'center'}}>
+                <input
+                  type="text"
+                  placeholder="Buscar por código de inventario..."
+                  value={codigo}
+                  onChange={e => setCodigo(e.target.value)}
+                  className="search-input"
+                />
+                <button className="btn btn-verde" type="submit" disabled={loading}>
+                  {loading ? 'Buscando...' : 'Buscar'}
+                </button>
+                <button type="button" className="btn" onClick={handleMostrarTodos} disabled={loading}>
+                  {loading ? 'Cargando...' : 'Mostrar todos'}
+                </button>
+              </form>
             </div>
           </div>
-        )}
+
+          <div style={{marginTop:12}}>
+            {loading ? (
+              <div>Cargando equipos...</div>
+            ) : equipos.length > 0 ? (
+              <div style={{overflowX:'auto'}}>
+                <table className="users-table" style={{width:'100%'}}>
+                  <thead>
+                    <tr>
+                      <th>Código Inventario</th>
+                      <th>ID Interno</th>
+                      <th>Tipo</th>
+                      <th>Marca</th>
+                      <th>Modelo</th>
+                      <th>N° Serie</th>
+                      <th>Estado</th>
+                      <th>Fecha Adquisición</th>
+                      <th>Costo</th>
+                      <th>Ambiente</th>
+                      <th>Código Ambiente</th>
+                      <th>Vida útil (meses)</th>
+                      <th>Mouse</th>
+                      <th>Teclado</th>
+                      <th>Monitor</th>
+                      <th>Torre</th>
+                      <th>Descripción</th>
+                      <th>Especificaciones</th>
+                      <th style={{width:180}}>Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {equipos.map((eq) => (
+                      <tr key={eq.codigo_equipo}>
+                        <td>{eq.codigo_inventario || '-'}</td>
+                        <td>{eq.codigo_equipo}</td>
+                        <td>
+                          {editingCodigo === eq.codigo_equipo ? (
+                            <input value={draft.tipo || ''} onChange={e=>onDraft('tipo', e.target.value)} className="cell-input" />
+                          ) : (eq.tipo)}
+                        </td>
+                        <td>
+                          {editingCodigo === eq.codigo_equipo ? (
+                            <input value={draft.marca || ''} onChange={e=>onDraft('marca', e.target.value)} className="cell-input" />
+                          ) : (eq.marca || '-')}
+                        </td>
+                        <td>
+                          {editingCodigo === eq.codigo_equipo ? (
+                            <input value={draft.modelo || ''} onChange={e=>onDraft('modelo', e.target.value)} className="cell-input" />
+                          ) : (eq.modelo || '-')}
+                        </td>
+                        <td>
+                          {editingCodigo === eq.codigo_equipo ? (
+                            <input value={draft.numero_serie || ''} onChange={e=>onDraft('numero_serie', e.target.value)} className="cell-input" />
+                          ) : (eq.numero_serie || '-')}
+                        </td>
+                        <td>
+                          {editingCodigo === eq.codigo_equipo ? (
+                            <input value={draft.estado_fisico || ''} onChange={e=>onDraft('estado_fisico', e.target.value)} className="cell-input" />
+                          ) : getEstadoBadge(eq.estado_fisico)}
+                        </td>
+                        <td>
+                          {editingCodigo === eq.codigo_equipo ? (
+                            <input type="date" value={draft.fecha_adquisicion || ''} onChange={e=>onDraft('fecha_adquisicion', e.target.value)} className="cell-input" />
+                          ) : formatDate(eq.fecha_adquisicion)}
+                        </td>
+                        <td>
+                          {editingCodigo === eq.codigo_equipo ? (
+                            <input type="number" value={draft.costo ?? ''} onChange={e=>onDraft('costo', e.target.value === '' ? null : Number(e.target.value))} className="cell-input" />
+                          ) : formatCurrency(eq.costo)}
+                        </td>
+                        <td>
+                          {editingCodigo === eq.codigo_equipo ? (
+                            <input value={draft.nombre_ambiente || ''} onChange={e=>onDraft('nombre_ambiente', e.target.value)} className="cell-input" placeholder="Nombre ambiente (solo visual)" />
+                          ) : (eq.nombre_ambiente || '-')}
+                        </td>
+                        <td>
+                          {editingCodigo === eq.codigo_equipo ? (
+                            <input value={draft.ambiente || eq.codigo_ambiente || ''} onChange={e=>onDraft('ambiente', e.target.value)} className="cell-input" placeholder="ID/ Código/ Nombre" />
+                          ) : (eq.codigo_ambiente || '-')}
+                        </td>
+                        <td>
+                          {editingCodigo === eq.codigo_equipo ? (
+                            <input type="number" value={draft.vida_util_meses ?? ''} onChange={e=>onDraft('vida_util_meses', e.target.value === '' ? null : Number(e.target.value))} className="cell-input" />
+                          ) : (eq.vida_util_meses ?? '-')}
+                        </td>
+                        <td>
+                          {editingCodigo === eq.codigo_equipo ? (
+                            <input type="checkbox" checked={!!draft.incluye_mouse} onChange={e=>onDraft('incluye_mouse', e.target.checked)} />
+                          ) : (
+                            <span style={{
+                              padding: '4px 10px',
+                              borderRadius: '12px',
+                              fontSize: '0.85rem',
+                              fontWeight: 600,
+                              color: eq.incluye_mouse ? '#10b981' : '#6b7280',
+                              background: eq.incluye_mouse ? '#d1fae5' : '#f3f4f6',
+                              display: 'inline-block'
+                            }}>
+                              {eq.incluye_mouse ? 'Sí' : 'No'}
+                            </span>
+                          )}
+                        </td>
+                        <td>
+                          {editingCodigo === eq.codigo_equipo ? (
+                            <input type="checkbox" checked={!!draft.incluye_teclado} onChange={e=>onDraft('incluye_teclado', e.target.checked)} />
+                          ) : (
+                            <span style={{
+                              padding: '4px 10px',
+                              borderRadius: '12px',
+                              fontSize: '0.85rem',
+                              fontWeight: 600,
+                              color: eq.incluye_teclado ? '#10b981' : '#6b7280',
+                              background: eq.incluye_teclado ? '#d1fae5' : '#f3f4f6',
+                              display: 'inline-block'
+                            }}>
+                              {eq.incluye_teclado ? 'Sí' : 'No'}
+                            </span>
+                          )}
+                        </td>
+                        <td>
+                          {editingCodigo === eq.codigo_equipo ? (
+                            <input type="checkbox" checked={!!draft.incluye_monitor} onChange={e=>onDraft('incluye_monitor', e.target.checked)} />
+                          ) : (
+                            <span style={{
+                              padding: '4px 10px',
+                              borderRadius: '12px',
+                              fontSize: '0.85rem',
+                              fontWeight: 600,
+                              color: eq.incluye_monitor ? '#10b981' : '#6b7280',
+                              background: eq.incluye_monitor ? '#d1fae5' : '#f3f4f6',
+                              display: 'inline-block'
+                            }}>
+                              {eq.incluye_monitor ? 'Sí' : 'No'}
+                            </span>
+                          )}
+                        </td>
+                        <td>
+                          {editingCodigo === eq.codigo_equipo ? (
+                            <input type="checkbox" checked={!!draft.incluye_torre} onChange={e=>onDraft('incluye_torre', e.target.checked)} />
+                          ) : (
+                            <span style={{
+                              padding: '4px 10px',
+                              borderRadius: '12px',
+                              fontSize: '0.85rem',
+                              fontWeight: 600,
+                              color: eq.incluye_torre ? '#10b981' : '#6b7280',
+                              background: eq.incluye_torre ? '#d1fae5' : '#f3f4f6',
+                              display: 'inline-block'
+                            }}>
+                              {eq.incluye_torre ? 'Sí' : 'No'}
+                            </span>
+                          )}
+                        </td>
+                        <td>
+                          {editingCodigo === eq.codigo_equipo ? (
+                            <textarea value={draft.descripcion || ''} onChange={e=>onDraft('descripcion', e.target.value)} className="cell-textarea" />
+                          ) : (eq.descripcion || '-')}
+                        </td>
+                        <td>
+                          {editingCodigo === eq.codigo_equipo ? (
+                            <textarea value={draft.specs_completas || ''} onChange={e=>onDraft('specs_completas', e.target.value)} className="cell-textarea" />
+                          ) : (eq.specs_completas || '-')}
+                        </td>
+                        <td className="users-actions">
+                          {editingCodigo === eq.codigo_equipo ? (
+                            <>
+                              <button className="btn btn-verde" type="button" onClick={saveEdit} disabled={loading}>Guardar</button>
+                              <button className="btn" type="button" onClick={cancelEdit} disabled={loading}>Cancelar</button>
+                            </>
+                          ) : (
+                            <>
+                              <button className="btn btn-edit" type="button" onClick={() => startEdit(eq)} disabled={loading}>Editar</button>
+                              <button className="btn btn-delete" type="button" onClick={() => confirmDelete(eq.codigo_equipo)} disabled={loading}>Eliminar</button>
+                            </>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="users-empty">
+                <div>
+                  <strong>No hay equipos para mostrar</strong>
+                  <div style={{color:'#666', marginTop:6}}>Busca un equipo por código de inventario o haz clic en "Mostrar todos" para ver todos los equipos.</div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
       </main>
     </div>
   )

@@ -35,6 +35,26 @@ CREATE TABLE Usuarios (
   INDEX idx_rol (id_rol)
 );
 
+-- ========================
+-- TABLA DE NOTIFICACIONES
+-- ========================
+CREATE TABLE Notificaciones (
+  id_notificacion INT PRIMARY KEY AUTO_INCREMENT,
+  id_usuario INT NOT NULL,
+  titulo VARCHAR(140) NOT NULL,
+  cuerpo TEXT,
+  tipo ENUM('info', 'aviso', 'alerta', 'critica') DEFAULT 'info',
+  leida TINYINT(1) DEFAULT 0,
+  fecha_creacion DATETIME DEFAULT NOW(),
+  fecha_lectura DATETIME,
+  metadata JSON,
+  creado_por INT,
+  FOREIGN KEY (id_usuario) REFERENCES Usuarios(id_usuario) ON DELETE CASCADE,
+  FOREIGN KEY (creado_por) REFERENCES Usuarios(id_usuario) ON DELETE SET NULL,
+  INDEX idx_usuario_leida (id_usuario, leida),
+  INDEX idx_fecha_notificacion (fecha_creacion)
+);
+
 -- =================
 -- TABLA DE AMBIENTES
 -- =================
@@ -92,6 +112,7 @@ CREATE TABLE Categorias_Equipo (
 -- ===================
 CREATE TABLE Elementos (
   codigo_equipo INT PRIMARY KEY AUTO_INCREMENT,
+  codigo_inventario VARCHAR(50) NOT NULL UNIQUE,
   id_categoria INT NOT NULL,
   id_ambiente INT NOT NULL,
   tipo VARCHAR(100) NOT NULL,
@@ -911,38 +932,30 @@ INSERT INTO Categorias_Equipo (nombre_categoria, descripcion, es_componente) VAL
 ('Router', 'Equipos de red', FALSE);
 
 -- Insertar ambientes de ejemplo
-INSERT INTO Ambientes (codigo_ambiente, nombre_ambiente, tipo_ambiente, capacidad_personas, piso, edificio, descripcion) VALUES
-('LAB-101', 'Laboratorio de Cómputo 1', 'Laboratorio', 30, '1', 'Edificio A', 'Laboratorio principal de cómputo'),
-('LAB-102', 'Laboratorio de Cómputo 2', 'Laboratorio', 25, '1', 'Edificio A', 'Laboratorio secundario'),
-('AULA-201', 'Aula Múltiple 201', 'Aula', 40, '2', 'Edificio A', 'Aula para clases teóricas'),
-('TAL-301', 'Taller de Ensamble', 'Taller', 20, '3', 'Edificio B', 'Taller para ensamble y mantenimiento'),
-('BOD-001', 'Bodega Principal', 'Bodega', 0, '1', 'Edificio C', 'Almacenamiento de equipos');
-
--- Ambientes adicionales (códigos numéricos)
 INSERT INTO Ambientes (codigo_ambiente, nombre_ambiente, tipo_ambiente) VALUES
-('101', 'Ambiente 101', 'Aula'),
-('102', 'Ambiente 102', 'Aula'),
-('103', 'Ambiente 103', 'Aula'),
-('104', 'Ambiente 104', 'Aula'),
-('105', 'Ambiente 105', 'Aula'),
-('106', 'Ambiente 106', 'Aula'),
-('107', 'Ambiente 107', 'Aula'),
-('201', 'Ambiente 201', 'Aula'),
-('202', 'Ambiente 202', 'Aula'),
-('203', 'Ambiente 203', 'Aula'),
-('204', 'Ambiente 204', 'Aula'),
-('205', 'Ambiente 205', 'Aula'),
-('301', 'Ambiente 301', 'Aula'),
-('302', 'Ambiente 302', 'Aula'),
-('401', 'Ambiente 401', 'Aula'),
-('402', 'Ambiente 402', 'Aula'),
-('403', 'Ambiente 403', 'Aula'),
-('501', 'Ambiente 501', 'Aula'),
-('502', 'Ambiente 502', 'Aula'),
-('503', 'Ambiente 503', 'Aula'),
-('504', 'Ambiente 504', 'Aula'),
-('505', 'Ambiente 505', 'Aula'),
-('506', 'Ambiente 506', 'Aula');
+('101','Ambiente 101','Aula'),
+('102','Ambiente 102','Aula'),
+('103','Ambiente 103','Aula'),
+('104','Ambiente 104','Aula'),
+('105','Ambiente 105','Aula'),
+('106','Ambiente 106','Aula'),
+('107','Ambiente 107','Aula'),
+('201','Ambiente 201','Aula'),
+('202','Ambiente 202','Aula'),
+('203','Ambiente 203','Aula'),
+('204','Ambiente 204','Aula'),
+('205','Ambiente 205','Aula'),
+('301','Ambiente 301','Aula'),
+('302','Ambiente 302','Aula'),
+('401','Ambiente 401','Aula'),
+('402','Ambiente 402','Aula'),
+('403','Ambiente 403','Aula'),
+('501','Ambiente 501','Aula'),
+('502','Ambiente 502','Aula'),
+('503','Ambiente 503','Aula'),
+('504','Ambiente 504','Aula'),
+('505','Ambiente 505','Aula'),
+('506','Ambiente 506','Aula');
 
 -- Insertar criterios de asignación automática
 INSERT INTO Criterios_Asignacion (nombre_criterio, prioridad, descripcion, parametros) VALUES
@@ -986,4 +999,4 @@ ALTER TABLE Ambientes COMMENT = 'Ubicaciones físicas donde se encuentran los eq
 ALTER TABLE Responsables_Equipo COMMENT = 'Gestión de múltiples responsables por equipo';
 ALTER TABLE Imagenes_Equipo COMMENT = 'Almacenamiento de rutas de imágenes de equipos';
 ALTER TABLE Imagenes_Ambiente COMMENT = 'Almacenamiento de rutas de imágenes de ambientes';
-ALTER TABLE Historial_Equipos COMMENT = 'Registro histórico de eventos de equipos (reemplaza rastreo temporal)';
+ALTER TABLE Historial_Equipos COMMENT = 'Registro histórico de eventos de equipos (reemplaza rastreo temporal)';

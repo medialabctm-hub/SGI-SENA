@@ -6,7 +6,12 @@ import process from 'process';
 import authRoutes from './src/routes/authRoutes.js';
 import equiposRoutes from './src/routes/equiposRoutes.js';
 import ambientesRoutes from './src/routes/ambientesRoutes.js';
-
+import notificationsRoutes from './src/routes/notificationsRoutes.js';
+import permissionsRoutes from './src/routes/permissionsRoutes.js';
+import novedadesRoutes from './src/routes/novedadesRoutes.js';
+import reportesRoutes from './src/routes/reportesRoutes.js';
+import mantenimientoRoutes from './src/routes/mantenimientoRoutes.js';
+import estadisticasRoutes from './src/routes/estadisticasRoutes.js';
 
 const app = express();
 app.use(express.json());
@@ -21,6 +26,12 @@ app.get('/health', (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/equipos', equiposRoutes);
 app.use('/api', ambientesRoutes);
+app.use('/api/notifications', notificationsRoutes);
+app.use('/api/permissions', permissionsRoutes);
+app.use('/api/novedades', novedadesRoutes);
+app.use('/api/reportes', reportesRoutes);
+app.use('/api/mantenimiento', mantenimientoRoutes);
+app.use('/api/estadisticas', estadisticasRoutes);
 
 // Start server with simple retry on EADDRINUSE (tries next ports)
 const maxPort = 65535;

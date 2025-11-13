@@ -1,6 +1,8 @@
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { FiMail, FiLock, FiEye } from 'react-icons/fi'
+import Toast from '../components/Toast'
+import { buildErrorMessage, parseApiResponse } from '../utils/api'
 import { validarLogin } from '../utils/validaciones';
 
 
@@ -8,6 +10,7 @@ export default function Login() {
   const [cedula, setCedula] = useState('')
   const [contrasena, setPassword] = useState('')
   const [errores, setErrores] = useState({})
+  const [toast, setToast] = useState(null)
   const navigate = useNavigate()
 
   async function handleSubmit(e) {
@@ -30,20 +33,13 @@ export default function Login() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ cedula, contrasena })
       })
-      const data = await res.json()
-      if (!res.ok) {
-        if (data && data.error) {
-          alert(data.error)
-        } else {
-          alert('Error al iniciar sesión')
-        }
-        return
-      }
+      const data = await parseApiResponse(res, 'No se pudo iniciar sesión')
       localStorage.setItem('token', data.token)
       localStorage.setItem('user', JSON.stringify(data.user))
+      setToast({ message: 'Inicio de sesión exitoso', type: 'success' })
       navigate('/dashboard')
     } catch (err) {
-      alert('Error de red o servidor')
+      setToast({ message: buildErrorMessage(err, 'No se pudo iniciar sesión'), type: 'error' })
     }
   }
 
@@ -55,6 +51,7 @@ export default function Login() {
       backgroundPosition: 'center',
       minHeight: '100vh'
     }}>
+      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
       <div className="login-card">
         <div className="logo-box">
           <div className="logo"><img src='/public/images/logoSena.png' alt="Logo SENA" /></div>

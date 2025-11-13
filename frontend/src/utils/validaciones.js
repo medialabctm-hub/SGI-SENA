@@ -24,20 +24,16 @@ export const validarEspaciosEnBlanco = (valor, campo) => {
   return null;
 };
 
-// Para nombre, solo error si hay espacios al inicio o final
-export const validarEspaciosInicioFinalNombre = (valor, campo) => {
-  if (valor !== valor.trim()) {
-    return `El campo ${campo} no puede tener espacios al inicio ni al final`;
-  }
-  return null;
-};
-
+// Validar espacios al inicio o final (función genérica reutilizable)
 export const validarEspaciosInicioFinal = (valor, campo) => {
   if (valor !== valor.trim()) {
     return `El campo ${campo} no puede tener espacios al inicio ni al final`;
   }
   return null;
 };
+
+// Alias para compatibilidad con código existente
+export const validarEspaciosInicioFinalNombre = validarEspaciosInicioFinal;
 
 export const validarEmail = email => {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
