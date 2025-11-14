@@ -71,8 +71,9 @@ export default function Usuarios() {
     try {
       const res = await fetch('/api/auth/users', { headers: getAuthHeaders() })
       const data = await parseApiResponse(res, 'No se pudo obtener el listado de usuarios')
-      setUsers(data)
+      setUsers(Array.isArray(data) ? data : [])
     } catch (err) {
+      setUsers([])
       setToast({ message: buildErrorMessage(err, 'No se pudo obtener el listado de usuarios'), type: 'error' })
     } finally { setLoading(false) }
   }

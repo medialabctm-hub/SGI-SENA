@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
-import { FiBell, FiLogOut, FiUser, FiHome, FiSettings, FiUsers, FiMonitor } from 'react-icons/fi'
+import { FiBell, FiLogOut, FiUser, FiHome, FiSettings, FiUsers } from 'react-icons/fi'
 import { useNavigate } from 'react-router-dom'
 import logo from '/public/images/logoSena.png'
 import Toast from './Toast';

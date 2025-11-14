@@ -19,7 +19,7 @@ export async function listarEquipos(req, res) {
       SELECT e.codigo_equipo, e.codigo_inventario, e.tipo, e.marca, e.modelo, e.numero_serie, e.descripcion,
              e.fecha_adquisicion, e.costo, e.vida_util_meses, e.estado_fisico,
              e.incluye_mouse, e.incluye_teclado, e.incluye_monitor, e.incluye_torre,
-             e.specs_completas, e.fecha_proximo_mantenimiento,
+             e.specs_completas,
              a.id_ambiente, a.nombre_ambiente, a.codigo_ambiente
       FROM Elementos e
       LEFT JOIN Ambientes a ON a.id_ambiente = e.id_ambiente
@@ -220,7 +220,7 @@ export async function obtenerEquipoPorCodigo(req, res) {
       SELECT e.codigo_equipo, e.codigo_inventario, e.tipo, e.marca, e.modelo, e.numero_serie, e.descripcion,
              e.fecha_adquisicion, e.costo, e.vida_util_meses, e.estado_fisico,
              e.incluye_mouse, e.incluye_teclado, e.incluye_monitor, e.incluye_torre,
-             e.specs_completas, e.fecha_proximo_mantenimiento,
+             e.specs_completas,
              a.id_ambiente, a.nombre_ambiente, a.codigo_ambiente
       FROM Elementos e
       LEFT JOIN Ambientes a ON a.id_ambiente = e.id_ambiente

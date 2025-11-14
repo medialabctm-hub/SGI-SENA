@@ -59,6 +59,8 @@ export const PERMISSIONS = {
   REPORTES: {
     VIEW: 'reportes:view',        // Ver reportes
     CREATE: 'reportes:create',    // Crear reportes
+    UPDATE: 'reportes:update',    // Actualizar reportes
+    DELETE: 'reportes:delete',    // Eliminar reportes
     EXPORT: 'reportes:export',    // Exportar reportes
   },
 
@@ -133,6 +135,8 @@ export const ROLE_PERMISSIONS = {
     // Reportes - acceso completo
     PERMISSIONS.REPORTES.VIEW,
     PERMISSIONS.REPORTES.CREATE,
+    PERMISSIONS.REPORTES.UPDATE,
+    PERMISSIONS.REPORTES.DELETE,
     PERMISSIONS.REPORTES.EXPORT,
 
     // Ambientes - acceso completo
@@ -173,7 +177,7 @@ export const ROLE_PERMISSIONS = {
     // Mantenimiento - consulta completa
     PERMISSIONS.MANTENIMIENTO.VIEW,
 
-    // Reportes - crear y ver
+    // Reportes - crear, ver y exportar (sin editar/eliminar)
     PERMISSIONS.REPORTES.VIEW,
     PERMISSIONS.REPORTES.CREATE,
     PERMISSIONS.REPORTES.EXPORT,

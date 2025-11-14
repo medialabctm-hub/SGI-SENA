@@ -263,7 +263,6 @@ export async function obtenerMantenimientoPorId(req, res) {
         e.marca AS equipo_marca,
         e.modelo AS equipo_modelo,
         e.numero_serie,
-        e.fecha_proximo_mantenimiento,
         u.nombre_usuario AS realizado_por_nombre,
         t.nombre_usuario AS tecnico_nombre
       FROM Mantenimiento m
