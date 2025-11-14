@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom'
 import { FiMail, FiLock, FiEye } from 'react-icons/fi'
 import Toast from '../components/Toast'
 import { buildErrorMessage, parseApiResponse } from '../utils/api'
-import { validarLogin } from '../utils/validaciones';
 
 
 export default function Login() {
