@@ -16,6 +16,7 @@ import Reportes from './pages/Reportes';
 import Mantenimientos from './pages/Mantenimientos';
 import CrearMantenimiento from './pages/CrearMantenimiento';
 import Asignaciones from './pages/Asignaciones';
+import Ambientes from './pages/Ambientes';
 import ProtectedRoute from './components/ProtectedRoute';
 import RedirectIfAuth from './components/RedirectIfAuth';
 
@@ -155,6 +156,14 @@ export default function App() {
         element={
           <ProtectedRoute>
             <Asignaciones />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/ambientes"
+        element={
+          <ProtectedRoute>
+            <Ambientes />
           </ProtectedRoute>
         }
       />

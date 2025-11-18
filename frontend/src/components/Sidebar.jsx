@@ -12,7 +12,8 @@ import {
   FiUserCheck,
   FiChevronDown,
   FiChevronRight,
-  FiHome
+  FiHome,
+  FiMapPin
 } from 'react-icons/fi'
 import { useSidebar } from '../contexts/SidebarContext'
 
@@ -49,20 +50,18 @@ export default function Sidebar({ user }) {
       { title: 'Registrar Equipo', path: '/equipos', icon: <FiPlus />, roles: ['Administrador'] },
       { title: 'Consultar Equipo', path: '/equipos/consultar', icon: <FiSearch />, roles: ['all'] },
       { title: 'Mis Equipos', path: '/mis-equipos', icon: <FiPackage />, roles: ['all'] },
-      { title: 'Asignar Equipo', path: '/equipos/asignar', icon: <FiUsers />, roles: ['Administrador', 'Instructor'] },
-      { title: 'Ver Asignaciones', path: '/asignaciones', icon: <FiUserCheck />, roles: ['Administrador', 'Instructor'] }
+      { title: 'Asignar Equipo', path: '/equipos/asignar', icon: <FiUsers />, roles: ['Administrador', 'Instructor'] }
     ],
     incidencias: [
-      { title: 'Ver Novedades', path: '/novedades', icon: <FiAlertCircle />, roles: ['Administrador', 'Instructor'] },
-      { title: 'Registrar Novedad', path: '/novedades/crear', icon: <FiAlertCircle />, roles: ['Administrador', 'Instructor'] },
-      { title: 'Ver Reportes', path: '/reportes', icon: <FiFileText />, roles: ['Administrador', 'Instructor'] },
-      { title: 'Crear Reporte', path: '/reportes/crear', icon: <FiFileText />, roles: ['Administrador', 'Instructor'] }
+      { title: 'Novedades', path: '/novedades', icon: <FiAlertCircle />, roles: ['Administrador', 'Instructor'] },
+      { title: 'Reportes', path: '/reportes', icon: <FiFileText />, roles: ['Administrador', 'Instructor'] }
     ],
     mantenimiento: [
       { title: 'Historial de Mantenimientos', path: '/mantenimientos', icon: <FiTool />, roles: ['all'] }
     ],
     config: [
       { title: 'Personal Registrado', path: '/usuarios', icon: <FiUsers />, roles: ['Administrador', 'Instructor'] },
+      { title: 'Gestión de Ambientes', path: '/ambientes', icon: <FiMapPin />, roles: ['Administrador'] },
       { title: 'Configuración', path: '/config', icon: <FiSettings />, roles: ['all'] }
     ]
   }

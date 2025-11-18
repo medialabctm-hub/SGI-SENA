@@ -72,6 +72,14 @@ export const PERMISSIONS = {
     DELETE: 'ambientes:delete',   // Eliminar ambientes
   },
 
+  // Gestión de clases y programaciones
+  CLASES: {
+    VIEW: 'clases:view',          // Ver clases
+    CREATE: 'clases:create',      // Crear clases
+    UPDATE: 'clases:update',      // Actualizar/iniciar/finalizar clases
+    DELETE: 'clases:delete',      // Eliminar clases
+  },
+
   // Notificaciones del sistema
   NOTIFICACIONES: {
     VIEW: 'notificaciones:view',  // Ver propias notificaciones
@@ -145,6 +153,12 @@ export const ROLE_PERMISSIONS = {
     PERMISSIONS.AMBIENTES.UPDATE,
     PERMISSIONS.AMBIENTES.DELETE,
 
+    // Clases - acceso completo
+    PERMISSIONS.CLASES.VIEW,
+    PERMISSIONS.CLASES.CREATE,
+    PERMISSIONS.CLASES.UPDATE,
+    PERMISSIONS.CLASES.DELETE,
+
     // Notificaciones - acceso completo
     PERMISSIONS.NOTIFICACIONES.VIEW,
     PERMISSIONS.NOTIFICACIONES.CREATE,
@@ -184,6 +198,11 @@ export const ROLE_PERMISSIONS = {
 
     // Ambientes - solo consulta
     PERMISSIONS.AMBIENTES.VIEW,
+
+    // Clases - puede crear, ver, iniciar y finalizar sus propias clases
+    PERMISSIONS.CLASES.VIEW,
+    PERMISSIONS.CLASES.CREATE,
+    PERMISSIONS.CLASES.UPDATE,
 
     // Notificaciones - solo propias
     PERMISSIONS.NOTIFICACIONES.VIEW,
