@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import Toast from '../components/Toast'
 import Header from '../components/Header'
+import Sidebar from '../components/Sidebar'
 import { useNavigate } from 'react-router-dom'
 import { parseApiResponse, buildErrorMessage } from '../utils/api'
 
@@ -203,11 +204,14 @@ export default function Config() {
 
   return (
     <div className="page simple-page config-page">
-      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
       <Header />
-      <div style={{display:'flex', gap:20, marginTop:12}}>
-        <SectionSidebar />
-        <div style={{flex:1}}>
+      <div className="dashboard-layout">
+        <Sidebar user={user} />
+        <main className="dashboard-main">
+          {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+          <div style={{display:'flex', gap:20, marginTop:12}}>
+            <SectionSidebar />
+            <div style={{flex:1}}>
           <h2 style={{textAlign:'center', marginTop: 6}}>Configuración</h2>
           {selected==='profile' && <ProfilePanel />}
           {selected==='security' && <SecurityPanel />}
@@ -215,7 +219,9 @@ export default function Config() {
           {selected==='roles' && <Placeholder title="Roles y Áreas">Aquí puedes gestionar roles y áreas. (Pendiente de implementación)</Placeholder>}
           {selected==='notifications' && <Placeholder title="Notificaciones">Configura cómo quieres recibir notificaciones y alertas.</Placeholder>}
           {selected==='app' && <Placeholder title="Ajustes de la App">Preferencias globales de la aplicación.</Placeholder>}
-        </div>
+            </div>
+          </div>
+        </main>
       </div>
     </div>
   )

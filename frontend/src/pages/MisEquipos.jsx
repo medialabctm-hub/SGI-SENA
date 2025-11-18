@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import Header from '../components/Header'
+import Sidebar from '../components/Sidebar'
 import Toast from '../components/Toast'
 import { FiPackage, FiInbox } from 'react-icons/fi'
 import '../styles/equipos.css'
@@ -8,9 +9,18 @@ export default function MisEquipos() {
   const [equipos, setEquipos] = useState([])
   const [loading, setLoading] = useState(false)
   const [toast, setToast] = useState(null)
+  const [user, setUser] = useState(null)
 
   useEffect(() => {
     fetchMisEquipos()
+    try {
+      const userData = localStorage.getItem('user')
+      if (userData) {
+        setUser(JSON.parse(userData))
+      }
+    } catch (error) {
+      console.error('Error al obtener datos del usuario:', error)
+    }
   }, [])
 
   async function fetchMisEquipos() {
@@ -41,9 +51,10 @@ export default function MisEquipos() {
   return (
     <div className="page simple-page">
       <Header />
-      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
-      
-      <main className="container">
+      <div className="dashboard-layout">
+        <Sidebar user={user} />
+        <main className="dashboard-main">
+          {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
         <div className="form-equipos form-modern">
           <div className="form-header">
             <div className="form-icon-wrapper" style={{ background: 'linear-gradient(135deg, #845ef7 0%, #7048e8 100%)' }}>
@@ -167,7 +178,8 @@ export default function MisEquipos() {
             </button>
           </div>
         </div>
-      </main>
+        </main>
+      </div>
     </div>
   )
 }

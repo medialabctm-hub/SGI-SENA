@@ -1,5 +1,6 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import Header from '../components/Header'
+import Sidebar from '../components/Sidebar'
 import Toast from '../components/Toast'
 import ConfirmModal from '../components/ConfirmModal'
 import { parseApiResponse, buildErrorMessage } from '../utils/api'
@@ -13,6 +14,18 @@ export default function ConsultarEquipo() {
   const [draft, setDraft] = useState({})
   const [toast, setToast] = useState(null)
   const [deleteConfirm, setDeleteConfirm] = useState({ open: false, codigo: null })
+  const [user, setUser] = useState(null)
+
+  useEffect(() => {
+    try {
+      const userData = localStorage.getItem('user')
+      if (userData) {
+        setUser(JSON.parse(userData))
+      }
+    } catch (error) {
+      console.error('Error al obtener datos del usuario:', error)
+    }
+  }, [])
 
   async function handleBuscar(e) {
     e.preventDefault()
@@ -187,19 +200,21 @@ export default function ConsultarEquipo() {
   return (
     <div className="page simple-page">
       <Header />
-      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
-      <ConfirmModal
-        open={deleteConfirm.open}
-        title="Eliminar Equipo"
-        message={`¿Estás seguro de que deseas eliminar el equipo ${deleteConfirm.codigo}? Esta acción no se puede deshacer.`}
-        confirmText="Eliminar"
-        cancelText="Cancelar"
-        type="danger"
-        onConfirm={handleDelete}
-        onCancel={() => setDeleteConfirm({ open: false, codigo: null })}
-      />
-      <main className="container">
-        <div className="users-panel">
+      <div className="dashboard-layout">
+        <Sidebar user={user} />
+        <main className="dashboard-main">
+          {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+          <ConfirmModal
+            open={deleteConfirm.open}
+            title="Eliminar Equipo"
+            message={`¿Estás seguro de que deseas eliminar el equipo ${deleteConfirm.codigo}? Esta acción no se puede deshacer.`}
+            confirmText="Eliminar"
+            cancelText="Cancelar"
+            type="danger"
+            onConfirm={handleDelete}
+            onCancel={() => setDeleteConfirm({ open: false, codigo: null })}
+          />
+          <div className="users-panel">
           <div className="users-toolbar">
             <h2 style={{margin:0}}>Consultar Equipo</h2>
             <div style={{display:'flex', gap:12, alignItems:'center'}}>
@@ -410,8 +425,9 @@ export default function ConsultarEquipo() {
               </div>
             )}
           </div>
-        </div>
-      </main>
+          </div>
+        </main>
+      </div>
     </div>
   )
 }

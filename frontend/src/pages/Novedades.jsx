@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import Header from '../components/Header'
+import Sidebar from '../components/Sidebar'
 import Toast from '../components/Toast'
 import { FiAlertCircle, FiEye, FiCheckCircle, FiXCircle, FiEdit } from 'react-icons/fi'
 import { parseApiResponse, buildErrorMessage } from '../utils/api'
@@ -138,9 +139,10 @@ export default function Novedades() {
   return (
     <div className="page simple-page">
       <Header />
+      <div className="dashboard-layout">
+        <Sidebar user={user} />
+        <main className="dashboard-main">
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
-      
-      <main className="container">
         <div className="form-equipos form-modern" style={{ maxWidth: '1200px' }}>
           <div className="form-header">
             <div className="form-icon-wrapper" style={{ background: 'linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%)' }}>
@@ -229,7 +231,6 @@ export default function Novedades() {
             </div>
           )}
         </div>
-      </main>
 
       {selectedNovedad && (
         <div style={{
@@ -383,6 +384,8 @@ export default function Novedades() {
           </div>
         </div>
       )}
+        </main>
+      </div>
     </div>
   )
 }

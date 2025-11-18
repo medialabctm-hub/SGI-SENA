@@ -3,9 +3,7 @@ import {
   FiBell,
   FiLogOut,
   FiUser,
-  FiHome,
-  FiSettings,
-  FiUsers,
+  FiMenu,
 } from 'react-icons/fi';
 import { useNavigate } from 'react-router-dom';
 import logo from '/public/images/logoSena.png';
@@ -14,6 +12,7 @@ import ConfirmModal from './ConfirmModal';
 import PerfilModal from './PerfilModal';
 import NotificationsModal from './NotificationsModal';
 import { buildErrorMessage, parseApiResponse } from '../utils/api';
+import { useSidebar } from '../contexts/SidebarContext';
 
 export default function Header() {
   const [user, setUser] = useState(
@@ -29,6 +28,7 @@ export default function Header() {
   const [lastSync, setLastSync] = useState(null);
   const nav = useNavigate();
   const notificationsRef = useRef(null);
+  const { toggleSidebar } = useSidebar();
 
   // Obtener rol del usuario
   const userRole = user?.nombre_rol || '';
@@ -50,10 +50,6 @@ export default function Header() {
 
   const cancelLogout = () => {
     setShowConfirm(false);
-  };
-
-  const go = (ruta) => {
-    nav(ruta);
   };
 
   const fetchNotifications = useCallback(
@@ -228,85 +224,69 @@ export default function Header() {
         user={user}
         onClose={() => setShowPerfil(false)}
       />
-      <header className="app-header">
-        <div className="header-left">
-          <div className="app-logo">
-            <img src={logo} alt="logo" />
-          </div>
-          <div className="app-title">
-            <div className="name">Gestión de Equipos</div>
-            <div className="sub">SENA</div>
-          </div>
-        </div>
-        <nav className="header-nav">
-          <button
-            className="nav-btn"
-            onClick={() => go('/dashboard')}
-            title="Inicio"
-          >
-            <FiHome /> <span>Inicio</span>
-          </button>
-          {/* Usuarios: Admin e Instructor */}
-          {(isAdmin || isInstructor) && (
+      <header className="app-header-wrapper">
+        <div className="app-header">
+          <div className="header-left">
             <button
-              className="nav-btn"
-              onClick={() => go('/usuarios')}
-              title="Usuarios"
-            >
-              <FiUsers /> <span>Usuarios</span>
-            </button>
-          )}
-          <button
-            className="nav-btn"
-            onClick={() => go('/config')}
-            title="Configuración"
-          >
-            <FiSettings /> <span>Config</span>
-          </button>
-        </nav>
-        <div className="header-right">
-          <div className="notifications-wrapper" ref={notificationsRef}>
-            <button
-              className="nav-btn nav-btn--icon"
-              onClick={handleToggleNotifications}
-              aria-label="notificaciones"
+              className="sidebar-toggle-btn"
+              onClick={toggleSidebar}
+              aria-label="Toggle sidebar"
               type="button"
             >
-              <FiBell />
+              <FiMenu />
             </button>
-            {unreadCount > 0 && (
-              <span className="notifications-counter" aria-live="polite">
-                {unreadCount > 99 ? '99+' : unreadCount}
-              </span>
-            )}
-            {showNotifications && (
-              <NotificationsModal
-                onClose={() => setShowNotifications(false)}
-                notifications={notifications}
-                loading={notificationsLoading}
-                unreadCount={unreadCount}
-                onMarkAsRead={markNotificationAsRead}
-                onMarkAllRead={markAllNotificationsAsRead}
-                lastSync={lastSync}
-              />
-            )}
+            <div className="app-logo">
+              <img src={logo} alt="logo" />
+            </div>
+            <div className="app-title">
+              <div className="name">Gestión de Equipos</div>
+              <div className="sub">SENA</div>
+            </div>
           </div>
-          <button
-            className="nav-btn nav-btn--icon"
-            onClick={handleOpenPerfil}
-            aria-label="perfil"
-            type="button"
-          >
-            <FiUser />
-          </button>
-          <button
-            className="nav-btn nav-btn--icon"
-            onClick={handleLogout}
-            aria-label="cerrar sesión"
-            type="button"
-          >
-            <FiLogOut />
-          </button>
+          <div className="header-right">
+            <div className="notifications-wrapper" ref={notificationsRef}>
+              <button
+                className="header-icon-btn"
+                onClick={handleToggleNotifications}
+                aria-label="notificaciones"
+                type="button"
+              >
+                <FiBell />
+                {unreadCount > 0 && (
+                  <span className="notifications-counter" aria-live="polite">
+                    {unreadCount > 99 ? '99+' : unreadCount}
+                  </span>
+                )}
+              </button>
+              {showNotifications && (
+                <NotificationsModal
+                  onClose={() => setShowNotifications(false)}
+                  notifications={notifications}
+                  loading={notificationsLoading}
+                  unreadCount={unreadCount}
+                  onMarkAsRead={markNotificationAsRead}
+                  onMarkAllRead={markAllNotificationsAsRead}
+                  lastSync={lastSync}
+                />
+              )}
+            </div>
+            <button
+              className="header-icon-btn"
+              onClick={handleOpenPerfil}
+              aria-label="perfil"
+              type="button"
+            >
+              <FiUser />
+            </button>
+            <button
+              className="header-icon-btn"
+              onClick={handleLogout}
+              aria-label="cerrar sesión"
+              type="button"
+            >
+              <FiLogOut />
+            </button>
+          </div>
         </div>
       </header>
     </>

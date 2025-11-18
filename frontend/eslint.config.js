@@ -1,11 +1,17 @@
 import js from '@eslint/js';
 import globals from 'globals';
 import prettier from 'eslint-config-prettier';
+import react from 'eslint-plugin-react';
+import reactHooks from 'eslint-plugin-react-hooks';
 
 export default [
   js.configs.recommended,
   {
     files: ['**/*.{js,jsx}'],
+    plugins: {
+      react,
+      'react-hooks': reactHooks,
+    },
     languageOptions: {
       ecmaVersion: 2022,
       sourceType: 'module',
@@ -19,6 +25,11 @@ export default [
         },
       },
     },
+    settings: {
+      react: {
+        version: 'detect',
+      },
+    },
     rules: {
       // Estilo de código
       'no-var': 'error',
@@ -28,12 +39,21 @@ export default [
 
       // Buenas prácticas
       'no-console': ['warn', { allow: ['warn', 'error'] }],
-      'no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
+      'no-unused-vars': [
+        'warn',
+        {
+          argsIgnorePattern: '^_',
+          varsIgnorePattern: '^_',
+          ignoreRestSiblings: true
+        }
+      ],
       'no-param-reassign': ['error', { props: false }],
 
       // React
-      'react/prop-types': 'off', // Si usas TypeScript, esto no es necesario
-      'react/react-in-jsx-scope': 'off', // No necesario en React 17+
+      'react/prop-types': 'off',
+      'react/react-in-jsx-scope': 'off',
+      'react-hooks/rules-of-hooks': 'error',
+      'react-hooks/exhaustive-deps': 'warn',
     },
   },
   prettier,
