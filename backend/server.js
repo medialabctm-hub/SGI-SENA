@@ -23,6 +23,7 @@ import novedadesRoutes from './src/routes/novedadesRoutes.js';
 import reportesRoutes from './src/routes/reportesRoutes.js';
 import mantenimientoRoutes from './src/routes/mantenimientoRoutes.js';
 import estadisticasRoutes from './src/routes/estadisticasRoutes.js';
+import clasesRoutes from './src/routes/clasesRoutes.js';
 
 const app = express();
 const desiredPort = Number(config.server.PORT) || 3000;
@@ -87,6 +88,7 @@ app.use('/api/novedades', novedadesRoutes);
 app.use('/api/reportes', reportesRoutes);
 app.use('/api/mantenimiento', mantenimientoRoutes);
 app.use('/api/estadisticas', estadisticasRoutes);
+app.use('/api', clasesRoutes);
 
 // Ruta 404
 app.use((req, res) => {

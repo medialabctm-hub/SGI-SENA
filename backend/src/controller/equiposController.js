@@ -1,17 +1,9 @@
 import defaultDb from '../config/dbconfig.js';
 import { notifyNuevoEquipo } from '../services/notificationService.js';
 
-// Listar ambientes para el formulario
-export async function listarAmbientes(req, res) {
-  try {
-    const [rows] = await defaultDb.execute(
-      'SELECT id_ambiente, nombre_ambiente, codigo_ambiente FROM Ambientes WHERE estado_ambiente = "Activo"'
-    );
-    res.json(rows);
-  } catch (err) {
-    res.status(500).json({ error: 'Error al obtener ambientes', detalle: err.message });
-  }
-}
+// Esta función se movió a ambientesController.js
+// Se mantiene aquí solo para compatibilidad temporal si hay referencias
+// TODO: Eliminar esta función y usar la de ambientesController
 
 export async function listarEquipos(req, res) {
   try {

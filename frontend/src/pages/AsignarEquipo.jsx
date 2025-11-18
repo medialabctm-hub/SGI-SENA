@@ -2,11 +2,13 @@ import React, { useState, useEffect } from 'react'
 import Header from '../components/Header'
 import Sidebar from '../components/Sidebar'
 import Toast from '../components/Toast'
-import { FiUserPlus, FiPackage, FiUsers, FiShield, FiFileText, FiSearch, FiCheck } from 'react-icons/fi'
+import ConfirmModal from '../components/ConfirmModal'
+import { FiUserPlus, FiPackage, FiUsers, FiShield, FiFileText, FiSearch, FiCheck, FiUserCheck, FiTrash2, FiList } from 'react-icons/fi'
 import { parseApiResponse, buildErrorMessage } from '../utils/api'
 import '../styles/equipos.css'
 
 export default function AsignarEquipo() {
+  const [activeTab, setActiveTab] = useState('asignar') // 'asignar' o 'ver'
   const [form, setForm] = useState({
     codigo_equipo: '',
     id_usuario: '',
@@ -23,6 +25,9 @@ export default function AsignarEquipo() {
   const [cedulaUsuario, setCedulaUsuario] = useState('')
   const [usuarioEncontrado, setUsuarioEncontrado] = useState(null)
   const [buscandoUsuario, setBuscandoUsuario] = useState(false)
+  const [asignaciones, setAsignaciones] = useState([])
+  const [loadingAsignaciones, setLoadingAsignaciones] = useState(false)
+  const [deleteConfirm, setDeleteConfirm] = useState({ open: false, id: null, info: null })
 
   useEffect(() => {
     try {
@@ -35,7 +40,107 @@ export default function AsignarEquipo() {
     }
   }, [])
 
+  useEffect(() => {
+    // Verificar si hay un parámetro de URL para la pestaña
+    const urlParams = new URLSearchParams(window.location.search)
+    const tabParam = urlParams.get('tab')
+    if (tabParam === 'ver') {
+      setActiveTab('ver')
+    }
+  }, [])
+
+  useEffect(() => {
+    if (activeTab === 'ver') {
+      fetchAsignaciones()
+    }
+  }, [activeTab])
+
   const isInstructor = user?.nombre_rol === 'Instructor'
+  const isAdmin = user?.nombre_rol === 'Administrador'
+
+  async function fetchAsignaciones() {
+    setLoadingAsignaciones(true)
+    try {
+      const token = localStorage.getItem('token')
+      const res = await fetch('/api/equipos/asignaciones', {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      const data = await parseApiResponse(res, 'No se pudo cargar las asignaciones')
+      setAsignaciones(Array.isArray(data) ? data : [])
+    } catch (err) {
+      setToast({ message: buildErrorMessage(err, 'Error al cargar asignaciones'), type: 'error' })
+      setAsignaciones([])
+    } finally {
+      setLoadingAsignaciones(false)
+    }
+  }
+
+  function formatDate(dateString) {
+    if (!dateString) return '-'
+    const date = new Date(dateString)
+    return date.toLocaleDateString('es-ES', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    })
+  }
+
+  function getTipoResponsabilidadBadge(tipo) {
+    const tipos = {
+      'Principal': { color: '#3b82f6', bg: '#dbeafe' },
+      'Secundario': { color: '#6b7280', bg: '#f3f4f6' }
+    }
+    const tipoInfo = tipos[tipo] || tipos['Principal']
+    return (
+      <span style={{
+        padding: '4px 10px',
+        borderRadius: '12px',
+        fontSize: '0.85rem',
+        fontWeight: 600,
+        color: tipoInfo.color,
+        background: tipoInfo.bg,
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: '4px'
+      }}>
+        <FiShield size={12} />
+        {tipo}
+      </span>
+    )
+  }
+
+  function confirmDelete(id, info) {
+    setDeleteConfirm({ 
+      open: true, 
+      id,
+      info: info || 'esta asignación'
+    })
+  }
+
+  async function handleDelete() {
+    const id = deleteConfirm.id
+    if (!id) return
+    
+    setDeleteConfirm({ open: false, id: null, info: null })
+    setLoadingAsignaciones(true)
+    setToast(null)
+    try {
+      const token = localStorage.getItem('token')
+      const res = await fetch(`/api/equipos/asignaciones/${id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      const data = await parseApiResponse(res, 'No se pudo eliminar la asignación')
+      setToast({ message: data.message || 'Asignación eliminada correctamente', type: 'success' })
+      await fetchAsignaciones()
+    } catch (err) {
+      setToast({ message: buildErrorMessage(err, 'Error al eliminar la asignación'), type: 'error' })
+    } finally {
+      setLoadingAsignaciones(false)
+    }
+  }
 
   async function buscarEquipo() {
     if (!codigoInventario.trim()) {
@@ -181,6 +286,10 @@ export default function AsignarEquipo() {
         })
         limpiarEquipo()
         limpiarUsuario()
+        // Actualizar lista de asignaciones si está visible
+        if (activeTab === 'ver') {
+          await fetchAsignaciones()
+        }
       } else {
         setToast({ 
           message: data.error || 'Error al asignar el equipo', 
@@ -201,24 +310,85 @@ export default function AsignarEquipo() {
         <Sidebar user={user} />
         <main className="dashboard-main">
           {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+          <ConfirmModal
+            open={deleteConfirm.open}
+            title="Eliminar Asignación"
+            message={`¿Estás seguro de que deseas eliminar ${deleteConfirm.info}? Esta acción no se puede deshacer.`}
+            confirmText="Eliminar"
+            cancelText="Cancelar"
+            type="danger"
+            onConfirm={handleDelete}
+            onCancel={() => setDeleteConfirm({ open: false, id: null, info: null })}
+          />
         <div className="form-equipos form-modern">
           <div className="form-header">
             <div className="form-icon-wrapper" style={{ background: 'linear-gradient(135deg, #51cf66 0%, #40c057 100%)' }}>
               <FiUserPlus size={28} color="#fff" />
             </div>
-            <div>
-              <h2 style={{ margin: 0, fontSize: '28px', fontWeight: 700, color: '#1a2a3a' }}>Asignar Equipo</h2>
+            <div style={{ flex: 1 }}>
+              <h2 style={{ margin: 0, fontSize: '28px', fontWeight: 700, color: '#1a2a3a' }}>Asignación de Equipos</h2>
               <p style={{ color: '#666', marginTop: 8, fontSize: '15px' }}>
                 {isInstructor 
-                  ? 'Asigna equipos a aprendices bajo tu supervisión'
-                  : 'Asigna equipos a cualquier usuario del sistema'
+                  ? 'Asigna equipos a aprendices y gestiona las asignaciones'
+                  : 'Asigna equipos a usuarios y gestiona todas las asignaciones'
                 }
               </p>
             </div>
           </div>
 
-          <div className="form-divider"></div>
+          {/* Pestañas */}
+          <div style={{ 
+            display: 'flex', 
+            gap: '0.5rem', 
+            marginTop: '1.5rem',
+            borderBottom: '2px solid #e5e7eb',
+            paddingBottom: '0'
+          }}>
+            <button
+              onClick={() => setActiveTab('asignar')}
+              style={{
+                padding: '0.75rem 1.5rem',
+                border: 'none',
+                background: 'transparent',
+                color: activeTab === 'asignar' ? '#40c057' : '#6b7280',
+                fontWeight: activeTab === 'asignar' ? 600 : 400,
+                fontSize: '1rem',
+                cursor: 'pointer',
+                borderBottom: activeTab === 'asignar' ? '3px solid #40c057' : '3px solid transparent',
+                transition: 'all 0.2s',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem'
+              }}
+            >
+              <FiUserPlus size={18} />
+              Asignar Equipo
+            </button>
+            <button
+              onClick={() => setActiveTab('ver')}
+              style={{
+                padding: '0.75rem 1.5rem',
+                border: 'none',
+                background: 'transparent',
+                color: activeTab === 'ver' ? '#40c057' : '#6b7280',
+                fontWeight: activeTab === 'ver' ? 600 : 400,
+                fontSize: '1rem',
+                cursor: 'pointer',
+                borderBottom: activeTab === 'ver' ? '3px solid #40c057' : '3px solid transparent',
+                transition: 'all 0.2s',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem'
+              }}
+            >
+              <FiList size={18} />
+              Ver Asignaciones
+            </button>
+          </div>
 
+          <div className="form-divider" style={{ marginTop: '0' }}></div>
+
+          {activeTab === 'asignar' ? (
           <form onSubmit={handleSubmit}>
             {/* Sección: Búsqueda de Equipo */}
             <div className="form-section">
@@ -425,6 +595,104 @@ export default function AsignarEquipo() {
               </button>
             </div>
           </form>
+          ) : (
+            <div style={{ marginTop: '1.5rem' }}>
+              {loadingAsignaciones ? (
+                <div style={{ textAlign: 'center', padding: '3rem' }}>
+                  <div className="loading-spinner"></div>
+                  <p style={{ marginTop: '1rem', color: '#666' }}>Cargando asignaciones...</p>
+                </div>
+              ) : asignaciones.length === 0 ? (
+                <div className="empty-state">
+                  <div className="empty-icon-wrapper">
+                    <FiUserCheck size={48} color="#9ca3af" />
+                  </div>
+                  <h3>No hay asignaciones activas</h3>
+                  <p>Las asignaciones de equipos aparecerán aquí</p>
+                </div>
+              ) : (
+                <div style={{ overflowX: 'auto' }}>
+                  <table className="consulta-table" style={{ marginTop: '1rem' }}>
+                    <thead>
+                      <tr>
+                        <th>ID</th>
+                        <th>Equipo</th>
+                        <th>Usuario</th>
+                        <th>Tipo Responsabilidad</th>
+                        <th>Fecha Asignación</th>
+                        <th>Días Asignado</th>
+                        <th>Asignado Por</th>
+                        <th>Observaciones</th>
+                        <th>Acciones</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {asignaciones.map((asig) => (
+                        <tr key={asig.id_responsable}>
+                          <td>{asig.id_responsable}</td>
+                          <td>
+                            <div>
+                              <strong>{asig.equipo_tipo} {asig.equipo_marca} {asig.equipo_modelo}</strong>
+                              <div style={{ fontSize: '0.85rem', color: '#666', marginTop: '4px' }}>
+                                Código: {asig.codigo_inventario || asig.codigo_equipo}
+                                {asig.numero_serie && <span> | S/N: {asig.numero_serie}</span>}
+                              </div>
+                            </div>
+                          </td>
+                          <td>
+                            <div>
+                              <strong>{asig.usuario_nombre}</strong>
+                              <div style={{ fontSize: '0.85rem', color: '#666', marginTop: '4px' }}>
+                                Cédula: {asig.usuario_cedula}
+                                {asig.usuario_rol && (
+                                  <span style={{
+                                    marginLeft: '8px',
+                                    padding: '2px 8px',
+                                    borderRadius: '8px',
+                                    fontSize: '0.75rem',
+                                    background: '#e0e7ff',
+                                    color: '#4338ca',
+                                    fontWeight: 600
+                                  }}>
+                                    {asig.usuario_rol}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </td>
+                          <td>{getTipoResponsabilidadBadge(asig.tipo_responsabilidad)}</td>
+                          <td>{formatDate(asig.fecha_asignacion)}</td>
+                          <td>
+                            <span style={{ fontWeight: 600, color: '#3b82f6' }}>
+                              {asig.dias_asignado || 0} días
+                            </span>
+                          </td>
+                          <td>{asig.asignado_por_nombre || 'Sistema'}</td>
+                          <td style={{ maxWidth: '200px', fontSize: '0.9rem', color: '#666' }}>
+                            {asig.observaciones || '-'}
+                          </td>
+                          <td>
+                            <button
+                              className="btn danger"
+                              onClick={() => confirmDelete(
+                                asig.id_responsable,
+                                `la asignación del equipo "${asig.equipo_tipo} ${asig.equipo_marca} ${asig.equipo_modelo}" a "${asig.usuario_nombre}"`
+                              )}
+                              style={{ padding: '6px 12px', fontSize: '0.9rem' }}
+                              disabled={loadingAsignaciones}
+                            >
+                              <FiTrash2 size={14} style={{ marginRight: '4px' }} />
+                              Eliminar
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          )}
         </div>
         </main>
       </div>

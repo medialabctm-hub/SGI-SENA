@@ -213,6 +213,78 @@ CREATE TABLE Responsables_Equipo (
   INDEX idx_equipo_activo (codigo_equipo, estado_responsabilidad)
 );
 
+-- ================================
+-- TABLA DE CLASES/PROGRAMACIONES
+-- ================================
+CREATE TABLE Clases (
+  id_clase INT PRIMARY KEY AUTO_INCREMENT,
+  id_ambiente INT NOT NULL,
+  id_instructor INT NOT NULL,
+  nombre_clase VARCHAR(200),
+  descripcion TEXT,
+  fecha_clase DATE NOT NULL,
+  hora_inicio TIME NOT NULL,
+  hora_fin TIME NOT NULL,
+  estado_clase ENUM('Programada', 'En Curso', 'Finalizada', 'Cancelada') DEFAULT 'Programada',
+  fecha_inicio_real DATETIME,
+  fecha_fin_real DATETIME,
+  observaciones TEXT,
+  creado_por INT,
+  fecha_creacion DATETIME DEFAULT NOW(),
+  FOREIGN KEY (id_ambiente) REFERENCES Ambientes(id_ambiente) ON DELETE RESTRICT,
+  FOREIGN KEY (id_instructor) REFERENCES Usuarios(id_usuario) ON DELETE RESTRICT,
+  FOREIGN KEY (creado_por) REFERENCES Usuarios(id_usuario),
+  INDEX idx_ambiente (id_ambiente),
+  INDEX idx_instructor (id_instructor),
+  INDEX idx_fecha_hora (fecha_clase, hora_inicio, hora_fin),
+  INDEX idx_estado (estado_clase),
+  INDEX idx_ambiente_fecha (id_ambiente, fecha_clase, hora_inicio)
+);
+
+-- ================================
+-- TABLA DE PARTICIPANTES DE CLASE
+-- ================================
+CREATE TABLE Participantes_Clase (
+  id_participante INT PRIMARY KEY AUTO_INCREMENT,
+  id_clase INT NOT NULL,
+  id_aprendiz INT NOT NULL,
+  fecha_registro DATETIME DEFAULT NOW(),
+  presente BOOLEAN DEFAULT TRUE,
+  observaciones TEXT,
+  FOREIGN KEY (id_clase) REFERENCES Clases(id_clase) ON DELETE CASCADE,
+  FOREIGN KEY (id_aprendiz) REFERENCES Usuarios(id_usuario) ON DELETE CASCADE,
+  INDEX idx_clase (id_clase),
+  INDEX idx_aprendiz (id_aprendiz),
+  UNIQUE KEY uk_clase_aprendiz (id_clase, id_aprendiz)
+);
+
+-- ================================
+-- TABLA DE RESPONSABILIDADES AMBIENTE
+-- ================================
+CREATE TABLE Responsabilidades_Ambiente (
+  id_responsabilidad_ambiente INT PRIMARY KEY AUTO_INCREMENT,
+  id_ambiente INT NOT NULL,
+  id_clase INT,
+  id_usuario INT NOT NULL,
+  tipo_responsabilidad ENUM('Principal', 'Secundario') NOT NULL,
+  fecha_inicio DATETIME NOT NULL,
+  fecha_fin DATETIME,
+  estado_responsabilidad ENUM('Activa', 'Finalizada') DEFAULT 'Activa',
+  observaciones TEXT,
+  creado_por INT,
+  fecha_creacion DATETIME DEFAULT NOW(),
+  FOREIGN KEY (id_ambiente) REFERENCES Ambientes(id_ambiente) ON DELETE CASCADE,
+  FOREIGN KEY (id_clase) REFERENCES Clases(id_clase) ON DELETE SET NULL,
+  FOREIGN KEY (id_usuario) REFERENCES Usuarios(id_usuario) ON DELETE CASCADE,
+  FOREIGN KEY (creado_por) REFERENCES Usuarios(id_usuario),
+  INDEX idx_ambiente (id_ambiente),
+  INDEX idx_clase (id_clase),
+  INDEX idx_usuario (id_usuario),
+  INDEX idx_estado (estado_responsabilidad),
+  INDEX idx_fechas (fecha_inicio, fecha_fin),
+  INDEX idx_ambiente_activa (id_ambiente, estado_responsabilidad, fecha_inicio, fecha_fin)
+);
+
 -- =======================
 -- TABLA DE MANTENIMIENTO
 -- =======================
@@ -450,6 +522,32 @@ BEGIN
         UPDATE Imagenes_Ambiente
         SET es_principal = FALSE
         WHERE id_ambiente = NEW.id_ambiente;
+    END IF;
+END;
+//
+
+-- Trigger para finalizar responsabilidades anteriores cuando inicia una nueva clase
+CREATE TRIGGER trg_finalizar_responsabilidades_ambiente_anterior
+BEFORE UPDATE ON Clases
+FOR EACH ROW
+BEGIN
+    -- Si la clase cambia a "En Curso", finalizar responsabilidades activas del mismo ambiente
+    IF OLD.estado_clase <> 'En Curso' AND NEW.estado_clase = 'En Curso' THEN
+        UPDATE Responsabilidades_Ambiente
+        SET estado_responsabilidad = 'Finalizada',
+            fecha_fin = NOW()
+        WHERE id_ambiente = NEW.id_ambiente
+        AND estado_responsabilidad = 'Activa'
+        AND (fecha_fin IS NULL OR fecha_fin > NOW());
+    END IF;
+    
+    -- Si la clase finaliza, finalizar sus responsabilidades
+    IF OLD.estado_clase <> 'Finalizada' AND NEW.estado_clase = 'Finalizada' THEN
+        UPDATE Responsabilidades_Ambiente
+        SET estado_responsabilidad = 'Finalizada',
+            fecha_fin = COALESCE(NEW.fecha_fin_real, NOW())
+        WHERE id_clase = NEW.id_clase
+        AND estado_responsabilidad = 'Activa';
     END IF;
 END;
 //
@@ -908,6 +1006,138 @@ BEGIN
 END;
 //
 
+-- Procedimiento para iniciar una clase y asignar responsabilidades
+CREATE PROCEDURE sp_iniciar_clase(
+    IN p_id_clase INT,
+    IN p_fecha_inicio_real DATETIME
+)
+BEGIN
+    DECLARE v_id_ambiente INT;
+    DECLARE v_id_instructor INT;
+    DECLARE v_fecha_fin_estimada DATETIME;
+    DECLARE v_hora_fin TIME;
+    DECLARE v_fecha_clase DATE;
+    DECLARE v_done INT DEFAULT FALSE;
+    DECLARE v_id_aprendiz INT;
+    DECLARE cur_aprendices CURSOR FOR 
+        SELECT id_aprendiz FROM Participantes_Clase WHERE id_clase = p_id_clase AND presente = TRUE;
+    DECLARE CONTINUE HANDLER FOR NOT FOUND SET v_done = TRUE;
+    
+    -- Obtener información de la clase
+    SELECT id_ambiente, id_instructor, hora_fin, fecha_clase INTO v_id_ambiente, v_id_instructor, v_hora_fin, v_fecha_clase
+    FROM Clases
+    WHERE id_clase = p_id_clase;
+    
+    IF v_id_ambiente IS NULL THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Clase no encontrada';
+    END IF;
+    
+    -- Calcular fecha fin estimada: combinar fecha_clase con hora_fin
+    SET v_fecha_fin_estimada = CONCAT(v_fecha_clase, ' ', v_hora_fin);
+    
+    -- Finalizar responsabilidades activas anteriores del mismo ambiente
+    UPDATE Responsabilidades_Ambiente
+    SET estado_responsabilidad = 'Finalizada',
+        fecha_fin = p_fecha_inicio_real
+    WHERE id_ambiente = v_id_ambiente
+    AND estado_responsabilidad = 'Activa'
+    AND (fecha_fin IS NULL OR fecha_fin > p_fecha_inicio_real);
+    
+    -- Asignar responsabilidad principal al instructor
+    INSERT INTO Responsabilidades_Ambiente (
+        id_ambiente, id_clase, id_usuario, tipo_responsabilidad,
+        fecha_inicio, fecha_fin, estado_responsabilidad, creado_por
+    ) VALUES (
+        v_id_ambiente, p_id_clase, v_id_instructor, 'Principal',
+        p_fecha_inicio_real, v_fecha_fin_estimada, 'Activa', v_id_instructor
+    );
+    
+    -- Asignar responsabilidades secundarias a los aprendices presentes
+    OPEN cur_aprendices;
+    read_loop: LOOP
+        FETCH cur_aprendices INTO v_id_aprendiz;
+        IF v_done THEN
+            LEAVE read_loop;
+        END IF;
+        
+        INSERT INTO Responsabilidades_Ambiente (
+            id_ambiente, id_clase, id_usuario, tipo_responsabilidad,
+            fecha_inicio, fecha_fin, estado_responsabilidad, creado_por
+        ) VALUES (
+            v_id_ambiente, p_id_clase, v_id_aprendiz, 'Secundario',
+            p_fecha_inicio_real, v_fecha_fin_estimada, 'Activa', v_id_instructor
+        );
+    END LOOP;
+    CLOSE cur_aprendices;
+    
+    -- Actualizar estado de la clase
+    UPDATE Clases
+    SET estado_clase = 'En Curso',
+        fecha_inicio_real = p_fecha_inicio_real
+    WHERE id_clase = p_id_clase;
+    
+    SELECT 'Clase iniciada y responsabilidades asignadas correctamente' AS mensaje;
+END;
+//
+
+-- Procedimiento para finalizar una clase y finalizar responsabilidades
+CREATE PROCEDURE sp_finalizar_clase(
+    IN p_id_clase INT,
+    IN p_fecha_fin_real DATETIME
+)
+BEGIN
+    DECLARE v_fecha_fin DATETIME;
+    
+    SET v_fecha_fin = COALESCE(p_fecha_fin_real, NOW());
+    
+    -- Finalizar todas las responsabilidades de esta clase
+    UPDATE Responsabilidades_Ambiente
+    SET estado_responsabilidad = 'Finalizada',
+        fecha_fin = v_fecha_fin
+    WHERE id_clase = p_id_clase
+    AND estado_responsabilidad = 'Activa';
+    
+    -- Actualizar estado de la clase
+    UPDATE Clases
+    SET estado_clase = 'Finalizada',
+        fecha_fin_real = v_fecha_fin
+    WHERE id_clase = p_id_clase;
+    
+    SELECT 'Clase finalizada y responsabilidades cerradas correctamente' AS mensaje;
+END;
+//
+
+-- Procedimiento para obtener responsables actuales de un ambiente
+CREATE PROCEDURE sp_responsables_ambiente_actual(
+    IN p_id_ambiente INT,
+    IN p_fecha_consulta DATETIME
+)
+BEGIN
+    SET p_fecha_consulta = COALESCE(p_fecha_consulta, NOW());
+    
+    SELECT 
+        ra.id_responsabilidad_ambiente,
+        ra.id_usuario,
+        u.nombre_usuario,
+        r.nombre_rol,
+        ra.tipo_responsabilidad,
+        ra.fecha_inicio,
+        ra.fecha_fin,
+        c.nombre_clase,
+        c.id_clase,
+        c.estado_clase
+    FROM Responsabilidades_Ambiente ra
+    INNER JOIN Usuarios u ON ra.id_usuario = u.id_usuario
+    LEFT JOIN Roles r ON u.id_rol = r.id_rol
+    LEFT JOIN Clases c ON ra.id_clase = c.id_clase
+    WHERE ra.id_ambiente = p_id_ambiente
+    AND ra.estado_responsabilidad = 'Activa'
+    AND ra.fecha_inicio <= p_fecha_consulta
+    AND (ra.fecha_fin IS NULL OR ra.fecha_fin >= p_fecha_consulta)
+    ORDER BY ra.tipo_responsabilidad DESC, ra.fecha_inicio DESC;
+END;
+//
+
 DELIMITER ;
 
 -- ======================
@@ -992,6 +1222,8 @@ CREATE INDEX idx_responsables_activos ON Responsables_Equipo(estado_responsabili
 CREATE INDEX idx_mantenimiento_pendiente ON Mantenimiento(estado_mantenimiento, fecha_proximo);
 CREATE INDEX idx_novedades_pendientes ON Novedades(estado_resolucion, fecha_novedad);
 CREATE INDEX idx_historial_fecha ON Historial_Equipos(codigo_equipo, fecha_evento);
+CREATE INDEX idx_clases_activas ON Clases(estado_clase, fecha_clase, hora_inicio);
+CREATE INDEX idx_responsabilidades_activas_ambiente ON Responsabilidades_Ambiente(id_ambiente, estado_responsabilidad, fecha_inicio, fecha_fin);
 
 -- Comentarios de documentación
 ALTER TABLE Elementos COMMENT = 'Tabla principal de equipos y componentes tecnológicos';
@@ -999,4 +1231,7 @@ ALTER TABLE Ambientes COMMENT = 'Ubicaciones físicas donde se encuentran los eq
 ALTER TABLE Responsables_Equipo COMMENT = 'Gestión de múltiples responsables por equipo';
 ALTER TABLE Imagenes_Equipo COMMENT = 'Almacenamiento de rutas de imágenes de equipos';
 ALTER TABLE Imagenes_Ambiente COMMENT = 'Almacenamiento de rutas de imágenes de ambientes';
-ALTER TABLE Historial_Equipos COMMENT = 'Registro histórico de eventos de equipos (reemplaza rastreo temporal)';
+ALTER TABLE Historial_Equipos COMMENT = 'Registro histórico de eventos de equipos (reemplaza rastreo temporal)';
+ALTER TABLE Clases COMMENT = 'Programación de clases en ambientes con horarios específicos';
+ALTER TABLE Participantes_Clase COMMENT = 'Registro de aprendices que participan en cada clase';
+ALTER TABLE Responsabilidades_Ambiente COMMENT = 'Responsabilidades temporales sobre el inventario de un ambiente durante clases';
