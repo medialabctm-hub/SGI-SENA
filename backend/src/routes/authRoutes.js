@@ -1,10 +1,19 @@
-import { registerUser, loginUser, deleteUser, updateUser, me } from '../controller/authController.js';
-import { listUsers, getUserDetails, getUserByCedula } from '../controller/authController.js';
+import {
+  registerUser,
+  loginUser,
+  deleteUser,
+  updateUser,
+  me,
+  listUsers,
+  getUserDetails,
+  getUserByCedula,
+} from '../controller/authController.js';
 import express from 'express';
 import rateLimit from 'express-rate-limit';
 import { authenticate } from '../middleware/authMiddleware.js';
 import { requirePermission, requireRole, requireOwnership } from '../middleware/authorization.js';
 import { PERMISSIONS } from '../config/permissions.js';
+import { validate, registerSchema, loginSchema, updateUserSchema } from '../validators/authValidator.js';
 
 const router = express.Router(); 
 
@@ -22,10 +31,10 @@ const loginLimiter = rateLimit({
 // ============================================
 
 // Registro de usuario (público)
-router.post('/register', registerUser);
+router.post('/register', validate(registerSchema), registerUser);
 
 // Login de usuario (público)
-router.post('/login', loginLimiter, loginUser);
+router.post('/login', loginLimiter, validate(loginSchema), loginUser);
 
 // ============================================
 // RUTAS PROTEGIDAS (requieren autenticación)
@@ -66,6 +75,7 @@ router.get('/user/:id',
 router.put('/user/:id', 
   authenticate,
   requireOwnership((req) => req.params.id),
+  validate(updateUserSchema),
   updateUser
 );
 

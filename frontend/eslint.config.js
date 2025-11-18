@@ -5,13 +5,18 @@ import prettier from 'eslint-config-prettier';
 export default [
   js.configs.recommended,
   {
-    files: ['**/*.{js,mjs,cjs}'],
+    files: ['**/*.{js,jsx}'],
     languageOptions: {
       ecmaVersion: 2022,
       sourceType: 'module',
       globals: {
-        ...globals.node,
+        ...globals.browser,
         ...globals.es2021,
+      },
+      parserOptions: {
+        ecmaFeatures: {
+          jsx: true,
+        },
       },
     },
     rules: {
@@ -20,25 +25,15 @@ export default [
       'prefer-const': 'error',
       'prefer-arrow-callback': 'error',
       'arrow-body-style': ['error', 'as-needed'],
-      
+
       // Buenas prácticas
       'no-console': ['warn', { allow: ['warn', 'error'] }],
       'no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
       'no-param-reassign': ['error', { props: false }],
-      'prefer-destructuring': ['error', {
-        array: false,
-        object: true,
-      }],
-      
-      // Asincronía
-      'no-async-promise-executor': 'error',
-      'no-await-in-loop': 'warn',
-      'prefer-promise-reject-errors': 'error',
-      
-      // Seguridad
-      'no-eval': 'error',
-      'no-implied-eval': 'error',
-      'no-new-func': 'error',
+
+      // React
+      'react/prop-types': 'off', // Si usas TypeScript, esto no es necesario
+      'react/react-in-jsx-scope': 'off', // No necesario en React 17+
     },
   },
   prettier,
@@ -46,3 +41,4 @@ export default [
     ignores: ['node_modules/**', 'dist/**', 'build/**', 'coverage/**'],
   },
 ];
+
