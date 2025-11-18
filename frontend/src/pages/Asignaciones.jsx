@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import Header from '../components/Header'
+import Sidebar from '../components/Sidebar'
 import Toast from '../components/Toast'
 import ConfirmModal from '../components/ConfirmModal'
 import { FiUserCheck, FiTrash2, FiPackage, FiUser, FiCalendar, FiShield } from 'react-icons/fi'
@@ -115,20 +116,22 @@ export default function Asignaciones() {
   return (
     <div className="page simple-page">
       <Header />
-      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
-      <ConfirmModal
-        open={deleteConfirm.open}
-        title="Eliminar Asignación"
-        message={`¿Estás seguro de que deseas eliminar ${deleteConfirm.info}? Esta acción no se puede deshacer.`}
-        confirmText="Eliminar"
-        cancelText="Cancelar"
-        type="danger"
-        onConfirm={handleDelete}
-        onCancel={() => setDeleteConfirm({ open: false, id: null, info: null })}
-      />
-      
-      <main className="container">
-        <div className="form-equipos form-modern" style={{ maxWidth: '1400px' }}>
+      <div className="dashboard-layout">
+        <Sidebar user={user} />
+        <main className="dashboard-main">
+          {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+          <ConfirmModal
+            open={deleteConfirm.open}
+            title="Eliminar Asignación"
+            message={`¿Estás seguro de que deseas eliminar ${deleteConfirm.info}? Esta acción no se puede deshacer.`}
+            confirmText="Eliminar"
+            cancelText="Cancelar"
+            type="danger"
+            onConfirm={handleDelete}
+            onCancel={() => setDeleteConfirm({ open: false, id: null, info: null })}
+          />
+          
+          <div className="form-equipos form-modern" style={{ maxWidth: '1400px' }}>
           <div className="form-header">
             <div className="form-icon-wrapper" style={{ background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)' }}>
               <FiUserCheck size={28} color="#fff" />
@@ -237,8 +240,9 @@ export default function Asignaciones() {
               </table>
             </div>
           )}
-        </div>
-      </main>
+          </div>
+        </main>
+      </div>
     </div>
   )
 }

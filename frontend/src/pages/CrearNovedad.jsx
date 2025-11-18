@@ -1,5 +1,6 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import Header from '../components/Header'
+import Sidebar from '../components/Sidebar'
 import Toast from '../components/Toast'
 import { FiAlertCircle, FiPackage, FiFileText, FiSearch, FiCheck, FiX } from 'react-icons/fi'
 import { parseApiResponse, buildErrorMessage } from '../utils/api'
@@ -16,6 +17,18 @@ export default function CrearNovedad() {
   const [codigoInventario, setCodigoInventario] = useState('')
   const [equipoEncontrado, setEquipoEncontrado] = useState(null)
   const [buscandoEquipo, setBuscandoEquipo] = useState(false)
+  const [user, setUser] = useState(null)
+
+  useEffect(() => {
+    try {
+      const userData = localStorage.getItem('user')
+      if (userData) {
+        setUser(JSON.parse(userData))
+      }
+    } catch (error) {
+      console.error('Error al obtener datos del usuario:', error)
+    }
+  }, [])
 
   async function buscarEquipo() {
     if (!codigoInventario.trim()) {
@@ -116,9 +129,10 @@ export default function CrearNovedad() {
   return (
     <div className="page simple-page">
       <Header />
-      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
-      
-      <main className="container">
+      <div className="dashboard-layout">
+        <Sidebar user={user} />
+        <main className="dashboard-main">
+          {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
         <div className="form-equipos form-modern">
           <div className="form-header">
             <div className="form-icon-wrapper" style={{ background: 'linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%)' }}>
@@ -267,7 +281,8 @@ export default function CrearNovedad() {
             </div>
           </form>
         </div>
-      </main>
+        </main>
+      </div>
     </div>
   )
 }

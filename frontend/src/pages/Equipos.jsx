@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect } from 'react'
 import Header from '../components/Header'
+import Sidebar from '../components/Sidebar'
 import Toast from '../components/Toast'
 import { parseApiResponse, buildErrorMessage } from '../utils/api'
 import '../styles/equipos.css'
@@ -31,9 +32,18 @@ export default function Equipos() {
   const [errores, setErrores] = useState({})
   const [ambientes, setAmbientes] = useState([])
   const [toast, setToast] = useState(null)
+  const [user, setUser] = useState(null)
 
   useEffect(() => {
     setAmbientes([])
+    try {
+      const userData = localStorage.getItem('user')
+      if (userData) {
+        setUser(JSON.parse(userData))
+      }
+    } catch (error) {
+      console.error('Error al obtener datos del usuario:', error)
+    }
   }, [])
 
   // Handler para cambios en el formulario
@@ -92,10 +102,13 @@ export default function Equipos() {
 
   return (
     <div className="page simple-page">
-      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
-      <Header className="equipos-header" />
-      <h2 style={{textAlign: 'center', marginTop: '1.5rem'}}>Registrar Equipo</h2>
-      <form className="form-equipos" onSubmit={handleSubmit}>
+      <Header />
+      <div className="dashboard-layout">
+        <Sidebar user={user} />
+        <main className="dashboard-main">
+          {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+          <h2 style={{textAlign: 'center', marginTop: '1.5rem'}}>Registrar Equipo</h2>
+          <form className="form-equipos" onSubmit={handleSubmit}>
         <div className="form-grid">
           <div className="form-row">
             <label>Código de Inventario *</label>
@@ -169,6 +182,8 @@ export default function Equipos() {
           <button type="submit" className="btn-verde">Registrar Equipo</button>
         </div>
       </form>
+        </main>
+      </div>
     </div>
   )
 }

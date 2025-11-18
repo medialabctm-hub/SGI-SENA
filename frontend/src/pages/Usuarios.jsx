@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import Header from '../components/Header';
+import Sidebar from '../components/Sidebar';
 import Toast from '../components/Toast';
 import ConfirmModal from '../components/ConfirmModal';
 import { parseApiResponse, buildErrorMessage } from '../utils/api';
@@ -192,8 +193,10 @@ export default function Usuarios() {
   return (
     <div className="page simple-page">
       <Header />
-      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
-      <main className="container">
+      <div className="dashboard-layout">
+        <Sidebar user={currentUser} />
+        <main className="dashboard-main">
+          {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
         <div className="users-panel">
           <div className="users-toolbar">
             <h2 style={{margin:0}}>Usuarios</h2>
@@ -404,6 +407,7 @@ export default function Usuarios() {
         onConfirm={doDelete}
         onCancel={() => setConfirm({ open: false, id: null })}
       />
+      </div>
     </div>
   );
 }

@@ -22,6 +22,8 @@
     "@vitejs/plugin-react": "^4.0.0",
     "eslint": "^9.39.1",
     "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-hooks": "^7.0.1",
     "patch-package": "^8.0.1",
     "prettier": "^3.6.2",
     "vite": "^7.2.2"
