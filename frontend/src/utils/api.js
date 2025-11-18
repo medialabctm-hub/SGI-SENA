@@ -7,7 +7,7 @@ export class ApiError extends Error {
   }
 }
 
-async function extractJson(response) {
+const extractJson = async (response) => {
   try {
     const text = await response.text();
     if (!text) return null;
@@ -15,9 +15,12 @@ async function extractJson(response) {
   } catch {
     return null;
   }
-}
+};
 
-export async function parseApiResponse(response, defaultErrorMessage = 'Error en la solicitud') {
+export const parseApiResponse = async (
+  response,
+  defaultErrorMessage = 'Error en la solicitud'
+) => {
   const data = await extractJson(response);
   if (!response.ok) {
     const message =
@@ -30,17 +33,18 @@ export async function parseApiResponse(response, defaultErrorMessage = 'Error en
     throw new ApiError(message, response.status, data);
   }
   return data;
-}
+};
 
-export function buildErrorMessage(error, fallback = 'Error inesperado') {
+export const buildErrorMessage = (error, fallback = 'Error inesperado') => {
   if (!error) return fallback;
   if (error instanceof ApiError) {
-    if (error.status === 0) return 'Servicio no disponible. Verifica tu conexión.';
+    if (error.status === 0) {
+      return 'Servicio no disponible. Verifica tu conexión.';
+    }
     return `${error.message}${error.status ? ` (código ${error.status})` : ''}`;
   }
   if (error instanceof Error) {
     return error.message || fallback;
   }
   return fallback;
-}
-
+};

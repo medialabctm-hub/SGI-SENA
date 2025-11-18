@@ -1,8 +1,19 @@
-// Backend placeholder - simple Express server for health checks
 import express from 'express';
-import { config } from './src/config/config.js';
+import cors from 'cors';
+import helmet from 'helmet';
+import hpp from 'hpp';
+import xssClean from 'xss-clean';
+import morgan from 'morgan';
+import cookieParser from 'cookie-parser';
 import process from 'process';
 
+import { config } from './src/config/config.js';
+import { errorHandler } from './src/utils/errors.js';
+import { logger } from './src/utils/logger.js';
+// Inicializar contenedor de dependencias
+import './src/di/setup.js';
+
+// Importar rutas
 import authRoutes from './src/routes/authRoutes.js';
 import equiposRoutes from './src/routes/equiposRoutes.js';
 import ambientesRoutes from './src/routes/ambientesRoutes.js';
@@ -14,15 +25,59 @@ import mantenimientoRoutes from './src/routes/mantenimientoRoutes.js';
 import estadisticasRoutes from './src/routes/estadisticasRoutes.js';
 
 const app = express();
-app.use(express.json());
 const desiredPort = Number(config.server.PORT) || 3000;
 
+// ============================================
+// MIDDLEWARES DE SEGURIDAD
+// ============================================
 
+// Helmet - Configuración de headers de seguridad
+app.use(helmet());
+
+// CORS - Configuración de origen cruzado
+app.use(
+  cors({
+    origin: config.cors.origin || 'http://localhost:5173',
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+  })
+);
+
+// HPP - Protección contra HTTP Parameter Pollution
+app.use(hpp());
+
+// XSS Clean - Protección contra XSS
+app.use(xssClean());
+
+// Body parser
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// Cookie parser
+app.use(cookieParser());
+
+// Morgan - Logging de requests
+if (process.env.NODE_ENV === 'development') {
+  app.use(morgan('dev'));
+} else {
+  app.use(morgan('combined'));
+}
+
+// ============================================
+// RUTAS
+// ============================================
+
+// Health check
 app.get('/health', (req, res) => {
-  res.json({ status: 'ok', env: process.env.NODE_ENV || 'development' });
+  res.json({
+    status: 'ok',
+    env: process.env.NODE_ENV || 'development',
+    timestamp: new Date().toISOString(),
+  });
 });
 
-// Rutas de autenticación
+// API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/equipos', equiposRoutes);
 app.use('/api', ambientesRoutes);
@@ -33,33 +88,71 @@ app.use('/api/reportes', reportesRoutes);
 app.use('/api/mantenimiento', mantenimientoRoutes);
 app.use('/api/estadisticas', estadisticasRoutes);
 
-// Start server with simple retry on EADDRINUSE (tries next ports)
+// Ruta 404
+app.use((req, res) => {
+  res.status(404).json({
+    success: false,
+    error: 'Ruta no encontrada',
+    path: req.originalUrl,
+  });
+});
+
+// ============================================
+// MANEJO DE ERRORES
+// ============================================
+
+app.use(errorHandler);
+
+// ============================================
+// INICIO DEL SERVIDOR
+// ============================================
+
 const maxPort = 65535;
+
 const startServer = (port) => {
   try {
     const server = app.listen(port, () => {
-      console.log(`Servidor corriendo en puerto ${port} en modo ${config.server.mode || 'development'}`);
+      logger.info(`Servidor corriendo en puerto ${port}`, {
+        mode: config.server.mode || 'development',
+        env: process.env.NODE_ENV || 'development',
+      });
     });
 
     server.on('error', (err) => {
       if (err && err.code === 'EADDRINUSE') {
-        console.error(`Puerto ${port} en uso (EADDRINUSE).`);
+        logger.warn(`Puerto ${port} en uso (EADDRINUSE)`);
         const next = port + 1;
         if (next <= maxPort) {
-          console.log(`Intentando iniciar en el puerto ${next}...`);
-          // small delay to avoid race
+          logger.info(`Intentando iniciar en el puerto ${next}...`);
           setTimeout(() => startServer(next), 200);
         } else {
-          console.error('No hay puertos disponibles para iniciar el servidor.');
+          logger.error('No hay puertos disponibles para iniciar el servidor');
           process.exit(1);
         }
       } else {
-        console.error('Error al iniciar el servidor:', err);
+        logger.error('Error al iniciar el servidor', { error: err.message });
         process.exit(1);
       }
     });
+
+    // Manejo de señales para cierre graceful
+    process.on('SIGTERM', () => {
+      logger.info('SIGTERM recibido, cerrando servidor...');
+      server.close(() => {
+        logger.info('Servidor cerrado');
+        process.exit(0);
+      });
+    });
+
+    process.on('SIGINT', () => {
+      logger.info('SIGINT recibido, cerrando servidor...');
+      server.close(() => {
+        logger.info('Servidor cerrado');
+        process.exit(0);
+      });
+    });
   } catch (err) {
-    console.error('Excepción al intentar iniciar el servidor:', err);
+    logger.error('Excepción al intentar iniciar el servidor', { error: err.message });
     process.exit(1);
   }
 };
