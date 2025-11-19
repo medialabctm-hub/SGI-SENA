@@ -6,7 +6,6 @@ import Toast from '../components/Toast'
 import { FiPlus, FiAlertCircle } from 'react-icons/fi'
 import { parseApiResponse, buildErrorMessage } from '../utils/api'
 import '../styles/dashboard.css'
-import '../styles/sidebar.css'
 
 export default function Dashboard() {
   const [user, setUser] = useState(null)

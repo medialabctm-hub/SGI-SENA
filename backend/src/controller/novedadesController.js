@@ -63,7 +63,7 @@ export async function crearNovedad(req, res) {
             codigo_equipo,
             tipo_novedad,
             reportado_por: userId,
-            ruta: `/novedades/${result.insertId}`
+            ruta: `/novedades`
           },
           creadoPor: userId
         })
@@ -92,7 +92,7 @@ export async function crearNovedad(req, res) {
             id_novedad: result.insertId,
             codigo_equipo,
             tipo_novedad,
-            ruta: `/novedades/${result.insertId}`
+            ruta: `/novedades`
           },
           creadoPor: userId
         })

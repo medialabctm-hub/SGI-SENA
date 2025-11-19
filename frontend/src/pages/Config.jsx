@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import Toast from '../components/Toast'
 import Header from '../components/Header'
 import NotificationsModal from '../components/NotificationsModal'
@@ -56,7 +56,9 @@ export default function Config() {
             cedula: data.user.cedula || '',
             area: data.user.area || ''
           })
-          try { localStorage.setItem('user', JSON.stringify(data.user)) } catch {}
+          try { localStorage.setItem('user', JSON.stringify(data.user)) } catch (e) {
+            // localStorage puede fallar en modo privado o cuando está lleno; ignorar silenciosamente
+          }
         }
       } catch (err) { }
     }
@@ -87,7 +89,9 @@ export default function Config() {
       if (!res.ok) throw new Error(data?.error || data?.message || 'Error al actualizar')
       const updated = { ...user, nombre_usuario: form.nombre_usuario, correo: form.correo, telefono: form.telefono, cedula: form.cedula, area: form.area }
       setUser(updated)
-      try { localStorage.setItem('user', JSON.stringify(updated)) } catch {}
+      try { localStorage.setItem('user', JSON.stringify(updated)) } catch (e) {
+        // localStorage puede fallar en modo privado o cuando está lleno; ignorar silenciosamente
+      }
       setToast({ message: data?.message || 'Usuario actualizado', type: 'success' })
       setEditing(false)
     } catch (err) {

@@ -2,6 +2,39 @@ import defaultDb from '../config/dbconfig.js'
 import { createForUsers, createForRole } from '../services/notificationService.js'
 
 /**
+ * Actualiza automáticamente el estado de mantenimientos programados a "En Proceso"
+ * cuando llega la fecha/hora programada
+ * Esta función se ejecuta antes de consultar mantenimientos para asegurar estados actualizados
+ */
+async function actualizarEstadosAutomaticos() {
+  try {
+    const [mantenimientosProgramados] = await defaultDb.execute(
+      `SELECT id_mantenimiento, codigo_equipo, fecha_mantenimiento 
+       FROM Mantenimiento 
+       WHERE estado_mantenimiento = 'Programado' 
+       AND fecha_mantenimiento <= NOW()`
+    )
+
+    if (mantenimientosProgramados.length > 0) {
+      const ids = mantenimientosProgramados.map(m => m.id_mantenimiento)
+      const placeholders = ids.map(() => '?').join(',')
+      
+      await defaultDb.execute(
+        `UPDATE Mantenimiento 
+         SET estado_mantenimiento = 'En Proceso' 
+         WHERE id_mantenimiento IN (${placeholders})`,
+        ids
+      )
+
+      console.log(`Actualizados ${mantenimientosProgramados.length} mantenimiento(s) a estado "En Proceso"`)
+    }
+  } catch (err) {
+    // No fallar si hay error, solo loguear
+    console.error('Error al actualizar estados automáticos de mantenimientos:', err)
+  }
+}
+
+/**
  * Crear un nuevo mantenimiento
  * Admin e Instructor: pueden crear mantenimientos para cualquier equipo
  * Aprendiz: solo puede crear mantenimientos para equipos que tiene asignados
@@ -198,6 +231,9 @@ export async function crearMantenimiento(req, res) {
  */
 export async function listarMantenimientos(req, res) {
   try {
+    // Actualizar estados automáticamente antes de listar
+    await actualizarEstadosAutomaticos()
+
     const userId = req.user?.id
     const userRole = req.user?.rol
 
@@ -252,6 +288,9 @@ export async function listarMantenimientos(req, res) {
  */
 export async function obtenerMantenimientoPorId(req, res) {
   try {
+    // Actualizar estados automáticamente antes de obtener el detalle
+    await actualizarEstadosAutomaticos()
+
     const { id } = req.params
     const userId = req.user?.id
     const userRole = req.user?.rol
