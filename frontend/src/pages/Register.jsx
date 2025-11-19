@@ -4,6 +4,7 @@ import { FiMail, FiLock, FiEye, FiUser, FiCreditCard, FiPhone } from 'react-icon
 import { validarRegistro, validarContraseña, validarEmail, validarTelefono, validarCaracteresEspeciales, validarEspaciosInicioFinalNombre } from '../utils/validaciones';
 import Toast from '../components/Toast';
 import { parseApiResponse, buildErrorMessage } from '../utils/api';
+import '../styles/auth.css';
 
 
 export default function Register() {

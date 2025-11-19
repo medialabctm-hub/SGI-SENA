@@ -30,7 +30,7 @@ export class UserRepository extends BaseRepository {
    */
   async findByCedula(cedula) {
     return this.findOne(
-      `SELECT u.*, u.area_usuarios AS area, r.nombre_rol
+      `SELECT u.*, u.area_usuarios AS area, r.nombre_rol, u.requiere_cambio_contrasena
        FROM Usuarios u
        LEFT JOIN Roles r ON r.id_rol = u.id_rol
        WHERE u.cedula = ? AND u.estado = "Activo"`,
@@ -46,7 +46,7 @@ export class UserRepository extends BaseRepository {
   async findById(userId) {
     return this.findOne(
       `SELECT u.id_usuario, u.nombre_usuario, u.correo, u.telefono, u.cedula, 
-              u.area_usuarios AS area, r.nombre_rol
+              u.area_usuarios AS area, r.nombre_rol, u.requiere_cambio_contrasena
        FROM Usuarios u
        LEFT JOIN Roles r ON r.id_rol = u.id_rol
        WHERE u.id_usuario = ? AND u.estado = "Activo"`,

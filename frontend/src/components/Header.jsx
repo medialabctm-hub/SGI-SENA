@@ -13,6 +13,10 @@ import PerfilModal from './PerfilModal';
 import NotificationsModal from './NotificationsModal';
 import { buildErrorMessage, parseApiResponse } from '../utils/api';
 import { useSidebar } from '../contexts/SidebarContext';
+import '../styles/header.css';
+import '../styles/toast.css';
+import '../styles/modal.css';
+import '../styles/notifications.css';
 
 export default function Header() {
   const [user, setUser] = useState(

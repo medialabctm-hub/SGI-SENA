@@ -7,6 +7,10 @@ import {
   listUsers,
   getUserDetails,
   getUserByCedula,
+  cambiarContrasenaObligatorio,
+  solicitarRecuperacionContrasena,
+  validarTokenRecuperacion,
+  restablecerContrasena,
 } from '../controller/authController.js';
 import express from 'express';
 import rateLimit from 'express-rate-limit';
@@ -36,9 +40,21 @@ router.post('/register', validate(registerSchema), registerUser);
 // Login de usuario (público)
 router.post('/login', loginLimiter, validate(loginSchema), loginUser);
 
+// Solicitar recuperación de contraseña (público)
+router.post('/recuperar-contrasena', solicitarRecuperacionContrasena);
+
+// Validar token de recuperación (público)
+router.get('/validar-token/:token', validarTokenRecuperacion);
+
+// Restablecer contraseña con token (público)
+router.post('/restablecer-contrasena', restablecerContrasena);
+
 // ============================================
 // RUTAS PROTEGIDAS (requieren autenticación)
 // ============================================
+
+// Cambiar contraseña obligatorio (cuando requiere_cambio_contrasena es true)
+router.post('/cambiar-contrasena', authenticate, cambiarContrasenaObligatorio);
 
 // Perfil del usuario autenticado
 router.get('/me', authenticate, me);

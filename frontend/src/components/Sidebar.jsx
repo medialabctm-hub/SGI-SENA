@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import {
   FiPlus,
@@ -16,6 +16,7 @@ import {
   FiMapPin
 } from 'react-icons/fi'
 import { useSidebar } from '../contexts/SidebarContext'
+import '../styles/sidebar.css'
 
 export default function Sidebar({ user }) {
   const { isOpen, closeSidebar } = useSidebar()
@@ -28,11 +29,48 @@ export default function Sidebar({ user }) {
 
   // Estado de menús expandidos
   const [expandedMenus, setExpandedMenus] = useState({
-    equipos: true,
+    equipos: false,
     incidencias: false,
     mantenimiento: false,
     config: false
   })
+
+  // Expandir automáticamente el menú correspondiente según la ruta actual
+  useEffect(() => {
+    const path = location.pathname
+    
+    // Determinar qué menú debe estar expandido basándose en la ruta
+    // Solo expandir el menú correspondiente y colapsar los demás
+    if (path.startsWith('/equipos') || path.startsWith('/mis-equipos') || path.startsWith('/asignaciones')) {
+      setExpandedMenus({
+        equipos: true,
+        incidencias: false,
+        mantenimiento: false,
+        config: false
+      })
+    } else if (path.startsWith('/novedades') || path.startsWith('/reportes')) {
+      setExpandedMenus({
+        equipos: false,
+        incidencias: true,
+        mantenimiento: false,
+        config: false
+      })
+    } else if (path.startsWith('/mantenimientos')) {
+      setExpandedMenus({
+        equipos: false,
+        incidencias: false,
+        mantenimiento: true,
+        config: false
+      })
+    } else if (path.startsWith('/usuarios') || path.startsWith('/ambientes') || path.startsWith('/config')) {
+      setExpandedMenus({
+        equipos: false,
+        incidencias: false,
+        mantenimiento: false,
+        config: true
+      })
+    }
+  }, [location.pathname])
 
   const toggleMenu = (menu) => {
     setExpandedMenus(prev => ({
