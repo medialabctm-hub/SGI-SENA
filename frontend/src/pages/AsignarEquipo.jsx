@@ -3,7 +3,7 @@ import Header from '../components/Header'
 import Sidebar from '../components/Sidebar'
 import Toast from '../components/Toast'
 import ConfirmModal from '../components/ConfirmModal'
-import { FiUserPlus, FiPackage, FiUsers, FiShield, FiFileText, FiSearch, FiCheck, FiUserCheck, FiTrash2, FiList } from 'react-icons/fi'
+import { FiUserPlus, FiPackage, FiUsers, FiShield, FiFileText, FiSearch, FiCheck, FiUserCheck, FiTrash2, FiList, FiAlertCircle } from 'react-icons/fi'
 import { parseApiResponse, buildErrorMessage } from '../utils/api'
 import '../styles/equipos.css'
 
@@ -258,6 +258,15 @@ export default function AsignarEquipo() {
       return
     }
 
+    // Validar que el equipo no esté en mantenimiento
+    if (equipoEncontrado?.estado_mantenimiento_activo === 'En Proceso') {
+      setToast({ 
+        message: `Este equipo está en mantenimiento (${equipoEncontrado.tipo_mantenimiento_activo || 'En Proceso'}). No se puede asignar hasta que el mantenimiento finalice.`, 
+        type: 'error' 
+      })
+      return
+    }
+
     try {
       setLoading(true)
       const token = localStorage.getItem('token')
@@ -436,14 +445,38 @@ export default function AsignarEquipo() {
               {equipoEncontrado && (
                 <div className="equipo-found-card">
                   <div className="equipo-found-header">
-                    <FiCheck size={20} color="#43a047" />
-                    <span>Equipo encontrado</span>
+                    {equipoEncontrado.estado_mantenimiento_activo === 'En Proceso' ? (
+                      <>
+                        <FiAlertCircle size={20} color="#f59e0b" />
+                        <span>Equipo en Mantenimiento</span>
+                      </>
+                    ) : (
+                      <>
+                        <FiCheck size={20} color="#43a047" />
+                        <span>Equipo encontrado</span>
+                      </>
+                    )}
                   </div>
                   <div className="equipo-found-info">
                     <div><strong>Código:</strong> {equipoEncontrado.codigo_inventario}</div>
                     <div><strong>Equipo:</strong> {equipoEncontrado.tipo} {equipoEncontrado.marca} {equipoEncontrado.modelo}</div>
                     {equipoEncontrado.nombre_ambiente && (
                       <div><strong>Ambiente:</strong> {equipoEncontrado.nombre_ambiente}</div>
+                    )}
+                    {equipoEncontrado.estado_mantenimiento_activo === 'En Proceso' && (
+                      <div style={{ 
+                        marginTop: '12px', 
+                        padding: '12px', 
+                        background: '#fef3c7', 
+                        borderRadius: '8px',
+                        border: '1px solid #f59e0b'
+                      }}>
+                        <strong style={{ color: '#f59e0b' }}>⚠️ Equipo en Mantenimiento</strong>
+                        <div style={{ marginTop: '4px', fontSize: '0.9rem', color: '#92400e' }}>
+                          Este equipo está actualmente en mantenimiento ({equipoEncontrado.tipo_mantenimiento_activo || 'En Proceso'}). 
+                          No se puede asignar hasta que el mantenimiento finalice.
+                        </div>
+                      </div>
                     )}
                   </div>
                   <button

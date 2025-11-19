@@ -213,7 +213,13 @@ export async function obtenerEquipoPorCodigo(req, res) {
              e.fecha_adquisicion, e.costo, e.vida_util_meses, e.estado_fisico,
              e.incluye_mouse, e.incluye_teclado, e.incluye_monitor, e.incluye_torre,
              e.specs_completas,
-             a.id_ambiente, a.nombre_ambiente, a.codigo_ambiente
+             a.id_ambiente, a.nombre_ambiente, a.codigo_ambiente,
+             (SELECT estado_mantenimiento FROM Mantenimiento 
+              WHERE codigo_equipo = e.codigo_equipo AND estado_mantenimiento = 'En Proceso' 
+              ORDER BY fecha_mantenimiento DESC LIMIT 1) as estado_mantenimiento_activo,
+             (SELECT tipo_mantenimiento FROM Mantenimiento 
+              WHERE codigo_equipo = e.codigo_equipo AND estado_mantenimiento = 'En Proceso' 
+              ORDER BY fecha_mantenimiento DESC LIMIT 1) as tipo_mantenimiento_activo
       FROM Elementos e
       LEFT JOIN Ambientes a ON a.id_ambiente = e.id_ambiente
     `;
@@ -384,6 +390,22 @@ export async function asignarEquipo(req, res) {
     if (userRole === 'Instructor' && usuarioReceptor.nombre_rol !== 'Aprendiz') {
       return res.status(403).json({ 
         error: 'Los instructores solo pueden asignar equipos a aprendices' 
+      })
+    }
+
+    // Verificar si el equipo está en mantenimiento (estado "En Proceso")
+    const [[mantenimientoActivo]] = await defaultDb.execute(
+      `SELECT id_mantenimiento, estado_mantenimiento, tipo_mantenimiento 
+       FROM Mantenimiento 
+       WHERE codigo_equipo = ? AND estado_mantenimiento = 'En Proceso' 
+       ORDER BY fecha_mantenimiento DESC 
+       LIMIT 1`,
+      [codigo_equipo]
+    )
+
+    if (mantenimientoActivo) {
+      return res.status(409).json({ 
+        error: `Este equipo está actualmente en mantenimiento (${mantenimientoActivo.tipo_mantenimiento}). No se puede asignar hasta que el mantenimiento finalice.` 
       })
     }
 

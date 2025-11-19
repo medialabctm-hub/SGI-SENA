@@ -100,7 +100,7 @@ export async function crearReporte(req, res) {
               id_reporte: result.insertId,
               codigo_equipo,
               tipo_reporte,
-              ruta: `/reportes/${result.insertId}`
+              ruta: `/reportes`
             },
             creadoPor: userId
           })

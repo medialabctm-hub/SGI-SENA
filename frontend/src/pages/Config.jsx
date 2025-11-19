@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import Toast from '../components/Toast'
 import Header from '../components/Header'
 import Sidebar from '../components/Sidebar'
@@ -49,7 +49,9 @@ export default function Config() {
             cedula: data.user.cedula || '',
             area: data.user.area || ''
           })
-          try { localStorage.setItem('user', JSON.stringify(data.user)) } catch {}
+          try { localStorage.setItem('user', JSON.stringify(data.user)) } catch (e) {
+            // localStorage puede fallar en modo privado o cuando está lleno; ignorar silenciosamente
+          }
         }
       } catch (err) {
         setToast({ message: buildErrorMessage(err, 'No se pudo obtener el perfil del usuario'), type: 'error' })
@@ -81,7 +83,9 @@ export default function Config() {
       const data = await parseApiResponse(res, 'No se pudo actualizar el perfil')
       const updated = { ...user, nombre_usuario: form.nombre_usuario, correo: form.correo, telefono: form.telefono, cedula: form.cedula, area: form.area }
       setUser(updated)
-      try { localStorage.setItem('user', JSON.stringify(updated)) } catch {}
+      try { localStorage.setItem('user', JSON.stringify(updated)) } catch (e) {
+        // localStorage puede fallar en modo privado o cuando está lleno; ignorar silenciosamente
+      }
       setToast({ message: data?.message || 'Usuario actualizado', type: 'success' })
       setEditing(false)
     } catch (err) {

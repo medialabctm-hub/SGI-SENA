@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import Header from '../components/Header'
 import Sidebar from '../components/Sidebar'
 import Toast from '../components/Toast'
@@ -7,7 +7,6 @@ import ImportarEquipos from '../components/ImportarEquipos'
 import { FiPlus, FiUpload } from 'react-icons/fi'
 import { parseApiResponse, buildErrorMessage } from '../utils/api'
 import '../styles/equipos.css'
-import '../styles/sidebar.css'
 
 const ESTADOS_FISICOS = ['Nuevo', 'Bueno', 'Regular', 'Malo', 'Dañado']
 const TIPOS = ['Computador de Escritorio', 'Portátil', 'Monitor', 'Mouse', 'Teclado', 'Impresora', 'Proyector', 'Router']
@@ -34,12 +33,10 @@ export default function Equipos() {
   })
 
   const [errores, setErrores] = useState({})
-  const [ambientes, setAmbientes] = useState([])
   const [toast, setToast] = useState(null)
   const [user, setUser] = useState(null)
 
   useEffect(() => {
-    setAmbientes([])
     try {
       const userData = localStorage.getItem('user')
       if (userData) {
@@ -62,7 +59,7 @@ export default function Equipos() {
   // Handler para submit
   const handleSubmit = async e => {
     e.preventDefault()
-    let errs = {}
+    const errs = {}
     if (!form.codigo_inventario) errs.codigo_inventario = 'El código de inventario es obligatorio'
     if (!form.tipo) errs.tipo = 'El tipo es obligatorio'
     if (!form.marca) errs.marca = 'La marca es obligatoria'

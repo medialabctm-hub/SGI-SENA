@@ -39,19 +39,14 @@ export default [
 
       // Buenas prácticas
       'no-console': ['warn', { allow: ['warn', 'error'] }],
-      'no-unused-vars': [
-        'warn',
-        {
-          argsIgnorePattern: '^_',
-          varsIgnorePattern: '^_',
-          ignoreRestSiblings: true
-        }
-      ],
+      'no-unused-vars': 'off', // Desactivado para usar la regla de React
       'no-param-reassign': ['error', { props: false }],
 
       // React
       'react/prop-types': 'off',
       'react/react-in-jsx-scope': 'off',
+      'react/jsx-uses-react': 'error',
+      'react/jsx-uses-vars': 'error',
       'react-hooks/rules-of-hooks': 'error',
       'react-hooks/exhaustive-deps': 'warn',
     },
