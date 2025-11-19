@@ -59,6 +59,8 @@ export const PERMISSIONS = {
   REPORTES: {
     VIEW: 'reportes:view',        // Ver reportes
     CREATE: 'reportes:create',    // Crear reportes
+    UPDATE: 'reportes:update',    // Actualizar reportes
+    DELETE: 'reportes:delete',    // Eliminar reportes
     EXPORT: 'reportes:export',    // Exportar reportes
   },
 
@@ -68,6 +70,14 @@ export const PERMISSIONS = {
     CREATE: 'ambientes:create',   // Crear ambientes
     UPDATE: 'ambientes:update',   // Editar ambientes
     DELETE: 'ambientes:delete',   // Eliminar ambientes
+  },
+
+  // Gestión de clases y programaciones
+  CLASES: {
+    VIEW: 'clases:view',          // Ver clases
+    CREATE: 'clases:create',      // Crear clases
+    UPDATE: 'clases:update',      // Actualizar/iniciar/finalizar clases
+    DELETE: 'clases:delete',      // Eliminar clases
   },
 
   // Notificaciones del sistema
@@ -133,6 +143,8 @@ export const ROLE_PERMISSIONS = {
     // Reportes - acceso completo
     PERMISSIONS.REPORTES.VIEW,
     PERMISSIONS.REPORTES.CREATE,
+    PERMISSIONS.REPORTES.UPDATE,
+    PERMISSIONS.REPORTES.DELETE,
     PERMISSIONS.REPORTES.EXPORT,
 
     // Ambientes - acceso completo
@@ -140,6 +152,12 @@ export const ROLE_PERMISSIONS = {
     PERMISSIONS.AMBIENTES.CREATE,
     PERMISSIONS.AMBIENTES.UPDATE,
     PERMISSIONS.AMBIENTES.DELETE,
+
+    // Clases - acceso completo
+    PERMISSIONS.CLASES.VIEW,
+    PERMISSIONS.CLASES.CREATE,
+    PERMISSIONS.CLASES.UPDATE,
+    PERMISSIONS.CLASES.DELETE,
 
     // Notificaciones - acceso completo
     PERMISSIONS.NOTIFICACIONES.VIEW,
@@ -173,13 +191,18 @@ export const ROLE_PERMISSIONS = {
     // Mantenimiento - consulta completa
     PERMISSIONS.MANTENIMIENTO.VIEW,
 
-    // Reportes - crear y ver
+    // Reportes - crear, ver y exportar (sin editar/eliminar)
     PERMISSIONS.REPORTES.VIEW,
     PERMISSIONS.REPORTES.CREATE,
     PERMISSIONS.REPORTES.EXPORT,
 
     // Ambientes - solo consulta
     PERMISSIONS.AMBIENTES.VIEW,
+
+    // Clases - puede crear, ver, iniciar y finalizar sus propias clases
+    PERMISSIONS.CLASES.VIEW,
+    PERMISSIONS.CLASES.CREATE,
+    PERMISSIONS.CLASES.UPDATE,
 
     // Notificaciones - solo propias
     PERMISSIONS.NOTIFICACIONES.VIEW,

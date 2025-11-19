@@ -4,6 +4,7 @@ import { FiMail, FiLock, FiEye, FiUser, FiCreditCard, FiPhone } from 'react-icon
 import { validarRegistro, validarContraseña, validarEmail, validarTelefono, validarCaracteresEspeciales, validarEspaciosInicioFinalNombre } from '../utils/validaciones';
 import Toast from '../components/Toast';
 import { parseApiResponse, buildErrorMessage } from '../utils/api';
+import '../styles/auth.css';
 
 
 export default function Register() {
@@ -81,12 +82,31 @@ export default function Register() {
   return (
     <>
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
-      <div className="page login-page" style={{
-      backgroundImage: "url('public/images/fondo.png')",
-      backgroundSize: 'cover',
-      backgroundPosition: 'center',
-      minHeight: '100vh'
-    }}>
+      <div className="page login-page animated-bg">
+        <div className="bubbles-container">
+          {[...Array(50)].map((_, i) => {
+            const randomX = (Math.random() * 150 - 75)
+            const randomDelay = Math.random() * 25
+            const randomDuration = 12 + Math.random() * 15
+            const randomSize = 8 + Math.random() * 30
+            const randomOpacity = 0.08 + Math.random() * 0.25
+            return (
+              <div 
+                key={i} 
+                className="bubble" 
+                style={{
+                  left: `${Math.random() * 100}%`,
+                  animationDelay: `${randomDelay}s`,
+                  animationDuration: `${randomDuration}s`,
+                  width: `${randomSize}px`,
+                  height: `${randomSize}px`,
+                  opacity: randomOpacity,
+                  '--move-x': `${randomX}px`
+                }}
+              ></div>
+            )
+          })}
+        </div>
       <div className="login-card">
         <div className="logo-box">
           <div className="logo"><img src='/public/images/logoSena.png' alt="Logo SENA" /></div>

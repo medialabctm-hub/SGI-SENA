@@ -1,57 +1,93 @@
-import React, { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { FiMail, FiLock, FiEye } from 'react-icons/fi'
-import Toast from '../components/Toast'
-import { buildErrorMessage, parseApiResponse } from '../utils/api'
-import { validarLogin } from '../utils/validaciones';
-
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { FiMail, FiLock, FiEye } from 'react-icons/fi';
+import Toast from '../components/Toast';
+import { buildErrorMessage, parseApiResponse } from '../utils/api';
+import '../styles/auth.css';
 
 export default function Login() {
-  const [cedula, setCedula] = useState('')
-  const [contrasena, setPassword] = useState('')
-  const [errores, setErrores] = useState({})
-  const [toast, setToast] = useState(null)
-  const navigate = useNavigate()
+  const [cedula, setCedula] = useState('');
+  const [contrasena, setContrasena] = useState('');
+  const [errores, setErrores] = useState({});
+  const [toast, setToast] = useState(null);
+  const navigate = useNavigate();
 
-  async function handleSubmit(e) {
-    e.preventDefault()
-    const datos = {
-      cedula_usuario: cedula,
-      contraseña_usuario: contrasena
-    }
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
     // Validación mínima
-    const nuevosErrores = {}
-    if (!cedula) nuevosErrores.cedula_usuario = 'La cédula es obligatoria'
-    if (!contrasena) nuevosErrores.contraseña_usuario = 'La contraseña es obligatoria'
-    setErrores(nuevosErrores)
-    if (Object.keys(nuevosErrores).length > 0) return
+    const nuevosErrores = {};
+    if (!cedula) {
+      nuevosErrores.cedula_usuario = 'La cédula es obligatoria';
+    }
+    if (!contrasena) {
+      nuevosErrores.contraseña_usuario = 'La contraseña es obligatoria';
+    }
+    setErrores(nuevosErrores);
+    if (Object.keys(nuevosErrores).length > 0) {
+      return;
+    }
 
     // Llamada real al backend
     try {
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ cedula, contrasena })
-      })
-      const data = await parseApiResponse(res, 'No se pudo iniciar sesión')
-      localStorage.setItem('token', data.token)
-      localStorage.setItem('user', JSON.stringify(data.user))
-      setToast({ message: 'Inicio de sesión exitoso', type: 'success' })
-      navigate('/dashboard')
+        body: JSON.stringify({ cedula, contrasena }),
+      });
+      const data = await parseApiResponse(res, 'No se pudo iniciar sesión');
+      localStorage.setItem('token', data.token);
+      localStorage.setItem('user', JSON.stringify(data.user));
+      
+      // Si requiere cambio de contraseña, redirigir a la página de cambio
+      if (data.requiereCambioContrasena) {
+        setToast({ message: 'Debes cambiar tu contraseña antes de continuar', type: 'warning' });
+        navigate('/cambiar-contrasena');
+      } else {
+        setToast({ message: 'Inicio de sesión exitoso', type: 'success' });
+        navigate('/dashboard');
+      }
     } catch (err) {
-      setToast({ message: buildErrorMessage(err, 'No se pudo iniciar sesión'), type: 'error' })
+      setToast({
+        message: buildErrorMessage(err, 'No se pudo iniciar sesión'),
+        type: 'error',
+      });
     }
-  }
+  };
 
   return (
-    
-    <div className="page login-page" style={{
-      backgroundImage: "url('public/images/fondo.png')",
-      backgroundSize: 'cover',
-      backgroundPosition: 'center',
-      minHeight: '100vh'
-    }}>
-      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+    <div className="page login-page animated-bg">
+      <div className="bubbles-container">
+        {[...Array(50)].map((_, i) => {
+          const randomX = (Math.random() * 150 - 75)
+          const randomDelay = Math.random() * 25
+          const randomDuration = 12 + Math.random() * 15
+          const randomSize = 8 + Math.random() * 30
+          const randomOpacity = 0.08 + Math.random() * 0.25
+          return (
+            <div 
+              key={i} 
+              className="bubble" 
+              style={{
+                left: `${Math.random() * 100}%`,
+                animationDelay: `${randomDelay}s`,
+                animationDuration: `${randomDuration}s`,
+                width: `${randomSize}px`,
+                height: `${randomSize}px`,
+                opacity: randomOpacity,
+                '--move-x': `${randomX}px`
+              }}
+            ></div>
+          )
+        })}
+      </div>
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
+      )}
       <div className="login-card">
         <div className="logo-box">
           <div className="logo"><img src='/public/images/logoSena.png' alt="Logo SENA" /></div>
@@ -66,7 +102,7 @@ export default function Login() {
               type="text"
               placeholder="Cédula"
               value={cedula}
-              onChange={e => setCedula(e.target.value)}
+              onChange={(e) => setCedula(e.target.value)}
             />
           </label>
           {errores.cedula_usuario && <div className="error-msg">{errores.cedula_usuario}</div>}
@@ -76,7 +112,7 @@ export default function Login() {
               type="password"
               placeholder="Contraseña"
               value={contrasena}
-              onChange={e => setPassword(e.target.value)}
+              onChange={(e) => setContrasena(e.target.value)}
             />
             <span className="eye"><FiEye /></span>
           </label>
@@ -85,13 +121,29 @@ export default function Login() {
         </form>
 
         <div className="links">
-          <a href="#">¿Olvidaste tu contraseña?</a>
+          <a 
+            href="#" 
+            onClick={(e) => {
+              e.preventDefault();
+              navigate('/olvidar-contrasena');
+            }}
+          >
+            ¿Olvidaste tu contraseña?
+          </a>
           <div>
             ¿No tienes cuenta?{' '}
-            <a href="#" onClick={e => {e.preventDefault();navigate('/register')}}>Regístrate</a>
+            <a
+              href="#"
+              onClick={(e) => {
+                e.preventDefault();
+                navigate('/register');
+              }}
+            >
+              Regístrate
+            </a>
           </div>
         </div>
       </div>
     </div>
-  )
+  );
 }

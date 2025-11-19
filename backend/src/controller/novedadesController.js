@@ -1,5 +1,5 @@
 import defaultDb from '../config/dbconfig.js'
-import { createForUsers } from '../services/notificationService.js'
+import { createForUsers, createForRole } from '../services/notificationService.js'
 
 /**
  * Crear una nueva novedad

@@ -7,6 +7,7 @@ import ImportarEquipos from '../components/ImportarEquipos'
 import { FiPlus, FiUpload } from 'react-icons/fi'
 import { parseApiResponse, buildErrorMessage } from '../utils/api'
 import '../styles/equipos.css'
+import '../styles/sidebar.css'
 
 const ESTADOS_FISICOS = ['Nuevo', 'Bueno', 'Regular', 'Malo', 'Dañado']
 const TIPOS = ['Computador de Escritorio', 'Portátil', 'Monitor', 'Mouse', 'Teclado', 'Impresora', 'Proyector', 'Router']
@@ -37,6 +38,7 @@ export default function Equipos() {
   const [user, setUser] = useState(null)
 
   useEffect(() => {
+    setAmbientes([])
     try {
       const userData = localStorage.getItem('user')
       if (userData) {

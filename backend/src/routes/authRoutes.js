@@ -1,10 +1,23 @@
-import { registerUser, loginUser, deleteUser, updateUser, me } from '../controller/authController.js';
-import { listUsers, getUserDetails, getUserByCedula } from '../controller/authController.js';
+import {
+  registerUser,
+  loginUser,
+  deleteUser,
+  updateUser,
+  me,
+  listUsers,
+  getUserDetails,
+  getUserByCedula,
+  cambiarContrasenaObligatorio,
+  solicitarRecuperacionContrasena,
+  validarTokenRecuperacion,
+  restablecerContrasena,
+} from '../controller/authController.js';
 import express from 'express';
 import rateLimit from 'express-rate-limit';
 import { authenticate } from '../middleware/authMiddleware.js';
 import { requirePermission, requireRole, requireOwnership } from '../middleware/authorization.js';
 import { PERMISSIONS } from '../config/permissions.js';
+import { validate, registerSchema, loginSchema, updateUserSchema } from '../validators/authValidator.js';
 
 const router = express.Router(); 
 
@@ -22,14 +35,26 @@ const loginLimiter = rateLimit({
 // ============================================
 
 // Registro de usuario (público)
-router.post('/register', registerUser);
+router.post('/register', validate(registerSchema), registerUser);
 
 // Login de usuario (público)
-router.post('/login', loginLimiter, loginUser);
+router.post('/login', loginLimiter, validate(loginSchema), loginUser);
+
+// Solicitar recuperación de contraseña (público)
+router.post('/recuperar-contrasena', solicitarRecuperacionContrasena);
+
+// Validar token de recuperación (público)
+router.get('/validar-token/:token', validarTokenRecuperacion);
+
+// Restablecer contraseña con token (público)
+router.post('/restablecer-contrasena', restablecerContrasena);
 
 // ============================================
 // RUTAS PROTEGIDAS (requieren autenticación)
 // ============================================
+
+// Cambiar contraseña obligatorio (cuando requiere_cambio_contrasena es true)
+router.post('/cambiar-contrasena', authenticate, cambiarContrasenaObligatorio);
 
 // Perfil del usuario autenticado
 router.get('/me', authenticate, me);
@@ -66,6 +91,7 @@ router.get('/user/:id',
 router.put('/user/:id', 
   authenticate,
   requireOwnership((req) => req.params.id),
+  validate(updateUserSchema),
   updateUser
 );
 

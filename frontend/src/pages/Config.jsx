@@ -227,5 +227,4 @@ export default function Config() {
       {showNotifications && <NotificationsModal onClose={() => setShowNotifications(false)} />}
     </div>
   )
->>>>>>> feature/paginasMateo
 }

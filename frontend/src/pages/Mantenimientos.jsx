@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Header from '../components/Header'
+import Sidebar from '../components/Sidebar'
 import Toast from '../components/Toast'
 import ConfirmModal from '../components/ConfirmModal'
 import { FiTool, FiEye, FiCheckCircle, FiClock, FiXCircle, FiAlertCircle, FiPlus, FiEdit, FiTrash2 } from 'react-icons/fi'
@@ -199,20 +200,22 @@ export default function Mantenimientos() {
   return (
     <div className="page simple-page">
       <Header />
-      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
-      <ConfirmModal
-        open={deleteConfirm.open}
-        title="Eliminar Mantenimiento"
-        message="¿Estás seguro de que deseas eliminar este mantenimiento? Esta acción no se puede deshacer."
-        confirmText="Eliminar"
-        cancelText="Cancelar"
-        type="danger"
-        onConfirm={handleDelete}
-        onCancel={() => setDeleteConfirm({ open: false, id: null })}
-      />
-      
-      <main className="container">
-        <div className="form-equipos form-modern" style={{ maxWidth: '1200px' }}>
+      <div className="dashboard-layout">
+        <Sidebar user={user} />
+        <main className="dashboard-main">
+          {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+          <ConfirmModal
+            open={deleteConfirm.open}
+            title="Eliminar Mantenimiento"
+            message="¿Estás seguro de que deseas eliminar este mantenimiento? Esta acción no se puede deshacer."
+            confirmText="Eliminar"
+            cancelText="Cancelar"
+            type="danger"
+            onConfirm={handleDelete}
+            onCancel={() => setDeleteConfirm({ open: false, id: null })}
+          />
+          
+          <div className="form-equipos form-modern" style={{ maxWidth: '1200px' }}>
           <div className="form-header">
             <div className="form-icon-wrapper" style={{ background: 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)' }}>
               <FiTool size={28} color="#fff" />
@@ -323,8 +326,7 @@ export default function Mantenimientos() {
               </table>
             </div>
           )}
-        </div>
-      </main>
+          </div>
 
       {selectedMantenimiento && (
         <div style={{
@@ -561,6 +563,8 @@ export default function Mantenimientos() {
           </div>
         </div>
       )}
+        </main>
+      </div>
     </div>
   )
 }

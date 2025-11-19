@@ -1,17 +1,9 @@
 import defaultDb from '../config/dbconfig.js';
 import { notifyNuevoEquipo } from '../services/notificationService.js';
 
-// Listar ambientes para el formulario
-export async function listarAmbientes(req, res) {
-  try {
-    const [rows] = await defaultDb.execute(
-      'SELECT id_ambiente, nombre_ambiente, codigo_ambiente FROM Ambientes WHERE estado_ambiente = "Activo"'
-    );
-    res.json(rows);
-  } catch (err) {
-    res.status(500).json({ error: 'Error al obtener ambientes', detalle: err.message });
-  }
-}
+// Esta función se movió a ambientesController.js
+// Se mantiene aquí solo para compatibilidad temporal si hay referencias
+// TODO: Eliminar esta función y usar la de ambientesController
 
 export async function listarEquipos(req, res) {
   try {
@@ -19,7 +11,7 @@ export async function listarEquipos(req, res) {
       SELECT e.codigo_equipo, e.codigo_inventario, e.tipo, e.marca, e.modelo, e.numero_serie, e.descripcion,
              e.fecha_adquisicion, e.costo, e.vida_util_meses, e.estado_fisico,
              e.incluye_mouse, e.incluye_teclado, e.incluye_monitor, e.incluye_torre,
-             e.specs_completas, e.fecha_proximo_mantenimiento,
+             e.specs_completas,
              a.id_ambiente, a.nombre_ambiente, a.codigo_ambiente
       FROM Elementos e
       LEFT JOIN Ambientes a ON a.id_ambiente = e.id_ambiente
@@ -220,7 +212,7 @@ export async function obtenerEquipoPorCodigo(req, res) {
       SELECT e.codigo_equipo, e.codigo_inventario, e.tipo, e.marca, e.modelo, e.numero_serie, e.descripcion,
              e.fecha_adquisicion, e.costo, e.vida_util_meses, e.estado_fisico,
              e.incluye_mouse, e.incluye_teclado, e.incluye_monitor, e.incluye_torre,
-             e.specs_completas, e.fecha_proximo_mantenimiento,
+             e.specs_completas,
              a.id_ambiente, a.nombre_ambiente, a.codigo_ambiente
       FROM Elementos e
       LEFT JOIN Ambientes a ON a.id_ambiente = e.id_ambiente
