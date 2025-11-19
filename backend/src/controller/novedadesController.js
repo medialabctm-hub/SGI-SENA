@@ -55,8 +55,19 @@ export async function crearNovedad(req, res) {
       try {
         await createForRole({
           rolNombre: 'Administrador',
-          titulo: 'Nueva novedad reportada',
-          cuerpo: `El ${userRole} ${req.user?.nombre || 'usuario'} ha reportado una novedad de tipo "${tipo_novedad}" en el equipo ${equipoDesc}`,
+          titulo: {
+            key: 'nueva_novedad_reportada',
+            params: {}
+          },
+          cuerpo: {
+            key: 'nueva_novedad_reportada_cuerpo',
+            params: {
+              rol: userRole,
+              nombre: req.user?.nombre || 'usuario',
+              tipo_novedad,
+              equipo: equipoDesc
+            }
+          },
           tipo: 'alerta',
           metadata: {
             id_novedad: result.insertId,
@@ -85,8 +96,17 @@ export async function crearNovedad(req, res) {
         const userIds = responsables.map(r => r.id_usuario)
         await createForUsers({
           userIds,
-          titulo: 'Nueva novedad reportada en tu equipo',
-          cuerpo: `Se ha reportado una novedad de tipo "${tipo_novedad}" en el equipo ${equipoDesc}`,
+          titulo: {
+            key: 'nueva_novedad_en_tu_equipo',
+            params: {}
+          },
+          cuerpo: {
+            key: 'nueva_novedad_en_tu_equipo_cuerpo',
+            params: {
+              tipo_novedad,
+              equipo: equipoDesc
+            }
+          },
           tipo: 'aviso',
           metadata: {
             id_novedad: result.insertId,

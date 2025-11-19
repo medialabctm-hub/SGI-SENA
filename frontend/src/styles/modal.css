@@ -67,7 +67,7 @@
   margin: 0;
   font-size: 1.25rem;
   font-weight: 600;
-  color: #1a2a3a;
+  color: var(--neutral-800);
 }
 
 .modal-header .btn {

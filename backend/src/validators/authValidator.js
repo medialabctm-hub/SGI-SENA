@@ -14,6 +14,16 @@ export const registerSchema = z.object({
     errorMap: () => ({ message: 'Rol inválido' }),
   }),
   area: z.string().optional().nullable(),
+  codigo_invitacion: z.string().optional().nullable(),
+}).refine((data) => {
+  // Si el rol es Instructor, el código de invitación es requerido
+  if (data.rol === 'Instructor' && !data.codigo_invitacion) {
+    return false;
+  }
+  return true;
+}, {
+  message: 'El código de invitación es requerido para registrarse como Instructor',
+  path: ['codigo_invitacion'],
 });
 
 export const loginSchema = z.object({

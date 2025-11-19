@@ -93,8 +93,18 @@ export async function crearReporte(req, res) {
           const equipoDesc = `${equipoInfo.tipo} ${equipoInfo.marca} ${equipoInfo.modelo}`.trim()
           await createForUsers({
             userIds,
-            titulo: 'Nuevo reporte sobre tu equipo',
-            cuerpo: `Se ha creado un reporte de tipo "${tipo_reporte}" sobre el equipo ${equipoDesc}: ${titulo}`,
+            titulo: {
+              key: 'nuevo_reporte_equipo',
+              params: {}
+            },
+            cuerpo: {
+              key: 'nuevo_reporte_equipo_cuerpo',
+              params: {
+                tipo_reporte,
+                equipo: equipoDesc,
+                titulo
+              }
+            },
             tipo: 'info',
             metadata: {
               id_reporte: result.insertId,

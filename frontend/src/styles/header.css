@@ -1,9 +1,9 @@
 /* Header - Nuevo estilo banner blanco */
 .app-header-wrapper {
-  background: #e8e8e8;
+  background: var(--neutral-200);
   background-image: 
-    repeating-linear-gradient(0deg, transparent, transparent 20px, #d0d0d0 20px, #d0d0d0 21px),
-    repeating-linear-gradient(90deg, transparent, transparent 20px, #d0d0d0 20px, #d0d0d0 21px);
+    repeating-linear-gradient(0deg, transparent, transparent 20px, var(--neutral-300) 20px, var(--neutral-300) 21px),
+    repeating-linear-gradient(90deg, transparent, transparent 20px, var(--neutral-300) 20px, var(--neutral-300) 21px);
   background-size: 20px 20px;
   padding: 20px;
   display: flex;
@@ -12,8 +12,8 @@
 }
 
 .app-header {
-  background: #fff;
-  color: #1a2a3a;
+  background: white;
+  color: var(--neutral-800);
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -77,7 +77,7 @@
 }
 
 .app-title .sub {
-  color: #666;
+  color: var(--muted);
   font-size: 14px;
   margin-top: 2px;
 }
@@ -102,7 +102,7 @@
   height: 44px;
   border: none;
   background: var(--success-800);
-  color: #fff;
+  color: white;
   border-radius: 50%;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -144,11 +144,11 @@
   height: 20px;
   padding: 0 6px;
   border-radius: 50%;
-  background: #ff3b30;
-  color: #fff;
+  background: var(--error-500);
+  color: white;
   font-size: 11px;
   font-weight: 700;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
-  border: 2px solid #fff;
+  border: 2px solid white;
 }
 

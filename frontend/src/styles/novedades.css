@@ -1,0 +1,216 @@
+/* Novedades Styles */
+
+/* Icon wrapper con color rojo */
+.novedades-icon-wrapper {
+  background: var(--error-700);
+}
+
+.novedades-header-content {
+  flex: 1;
+}
+
+.novedades-title {
+  margin: 0;
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--neutral-800);
+}
+
+.novedades-subtitle {
+  color: var(--muted);
+  margin-top: 8px;
+  font-size: 15px;
+}
+
+/* Pestañas */
+.novedades-tabs {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 1.5rem;
+  border-bottom: 2px solid var(--neutral-200);
+  padding-bottom: 0;
+}
+
+.novedades-tab {
+  padding: 0.75rem 1.5rem;
+  border: none;
+  background: transparent;
+  color: var(--neutral-700);
+  font-weight: 400;
+  font-size: 1rem;
+  cursor: pointer;
+  border-bottom: 3px solid transparent;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.novedades-tab.active {
+  color: var(--error-500);
+  font-weight: 600;
+  border-bottom-color: var(--error-500);
+}
+
+.novedades-tab:hover {
+  color: var(--error-500);
+}
+
+/* Badge de estado */
+.novedades-estado-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.novedades-estado-badge.pendiente {
+  color: var(--warning-600);
+  background: var(--warning-50);
+}
+
+.novedades-estado-badge.en-proceso {
+  color: var(--info-600);
+  background: var(--info-50);
+}
+
+.novedades-estado-badge.resuelto {
+  color: var(--success-600);
+  background: var(--success-50);
+}
+
+.novedades-estado-badge.no-resuelto {
+  color: var(--error-500);
+  background: var(--error-50);
+}
+
+/* Tabla */
+.novedades-serie-numero {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.novedades-descripcion-cell {
+  max-width: 300px;
+}
+
+.novedades-descripcion-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.novedades-ver-btn {
+  padding: 6px 12px;
+  font-size: 0.9rem;
+}
+
+/* Modal de detalle */
+.novedades-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+}
+
+.novedades-modal-content {
+  background: white;
+  border-radius: 12px;
+  padding: 2rem;
+  max-width: 700px;
+  width: 100%;
+  max-height: 90vh;
+  overflow: auto;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+}
+
+.novedades-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
+.novedades-modal-title {
+  margin: 0;
+  font-size: 24px;
+  color: var(--neutral-800);
+}
+
+.novedades-modal-close {
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  color: var(--muted);
+}
+
+.novedades-modal-close:hover {
+  color: var(--neutral-700);
+}
+
+.novedades-modal-grid {
+  display: grid;
+  gap: 1rem;
+}
+
+.novedades-descripcion-box {
+  margin-top: 8px;
+  padding: 12px;
+  background: var(--neutral-50);
+  border-radius: 8px;
+  white-space: pre-wrap;
+}
+
+.novedades-estado-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.novedades-cambiar-estado-btn {
+  padding: 6px 12px;
+  font-size: 0.85rem;
+}
+
+.novedades-editar-estado-grid {
+  display: grid;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.novedades-estado-select {
+  padding: 8px;
+  border-radius: 6px;
+  border: 1.5px solid var(--success-200);
+  font-size: 0.95rem;
+}
+
+.novedades-observaciones-textarea {
+  padding: 8px;
+  border-radius: 6px;
+  border: 1.5px solid var(--success-200);
+  font-size: 0.95rem;
+  resize: vertical;
+}
+
+.novedades-editar-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.novedades-editar-btn {
+  flex: 1;
+}
+

@@ -645,7 +645,7 @@ export default function AsignarEquipo() {
                 </div>
               ) : (
                 <div style={{ overflowX: 'auto' }}>
-                  <table className="consulta-table" style={{ marginTop: '1rem' }}>
+                  <table className="consulta-table asignaciones-table" style={{ marginTop: '1rem' }}>
                     <thead>
                       <tr>
                         <th>ID</th>

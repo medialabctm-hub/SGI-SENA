@@ -44,7 +44,7 @@
   font-weight: 700;
   font-size: 14px;
   margin-bottom: 4px;
-  color: #1a2a3a;
+  color: var(--neutral-800);
 }
 
 .card-sub {
@@ -71,7 +71,7 @@
   margin: 0;
   font-size: 18px;
   font-weight: 700;
-  color: #1a2a3a;
+  color: var(--neutral-800);
 }
 
 .load-stats-btn {
@@ -88,7 +88,7 @@
 
 .load-stats-btn:hover {
   background: var(--success-800);
-  color: #fff;
+  color: white;
 }
 
 .stats-row {
@@ -108,7 +108,7 @@
 .stat-value {
   font-size: 22px;
   font-weight: 700;
-  color: #0b72ff;
+  color: var(--info-600);
 }
 
 .stat-label {
@@ -124,7 +124,7 @@
 .section-title {
   font-size: 18px;
   font-weight: 700;
-  color: #1a2a3a;
+  color: var(--neutral-800);
   margin-bottom: 16px;
 }
 
@@ -149,13 +149,13 @@
 }
 
 .quick-action-card.primary {
-  background: linear-gradient(135deg, var(--success-800), var(--success-900));
-  color: #fff;
+  background: var(--success-800);
+  color: white;
 }
 
 .quick-action-card.secondary {
-  background: linear-gradient(135deg, #ff6b6b, #ee5a6f);
-  color: #fff;
+  background: var(--error-500);
+  color: white;
 }
 
 .quick-action-card:hover {
@@ -206,7 +206,7 @@
 
 .info-text {
   margin: 0;
-  color: #666;
+  color: var(--muted);
   font-size: 14px;
   line-height: 1.6;
 }

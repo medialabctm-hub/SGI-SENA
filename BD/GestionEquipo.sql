@@ -402,6 +402,55 @@ CREATE TABLE Criterios_Asignacion (
   fecha_creacion DATETIME DEFAULT NOW()
 );
 
+-- ============================================
+-- TABLA DE CÓDIGOS DE SEGURIDAD
+-- ============================================
+CREATE TABLE IF NOT EXISTS Invitation_Codes (
+  id_codigo INT PRIMARY KEY AUTO_INCREMENT,
+  codigo VARCHAR(50) UNIQUE NOT NULL,
+  rol_destinado ENUM('Administrador', 'Instructor', 'Aprendiz') NOT NULL,
+  fecha_creacion DATETIME DEFAULT NOW(),
+  fecha_expiracion DATETIME,
+  max_usos INT DEFAULT 1 COMMENT 'Número máximo de veces que se puede usar el código (0 = ilimitado)',
+  usos_actuales INT DEFAULT 0 COMMENT 'Número de veces que se ha usado el código',
+  estado ENUM('Activo', 'Inactivo', 'Expirado', 'Agotado') DEFAULT 'Activo',
+  creado_por INT,
+  FOREIGN KEY (creado_por) REFERENCES Usuarios(id_usuario) ON DELETE SET NULL,
+  INDEX idx_codigo (codigo),
+  INDEX idx_rol (rol_destinado),
+  INDEX idx_estado (estado),
+  INDEX idx_expiracion (fecha_expiracion)
+);
+
+-- ============================================
+-- TABLA DE PREFERENCIAS DE USUARIO
+-- ============================================
+-- Almacena las preferencias de configuración de cada usuario
+-- como notificaciones, idioma, zona horaria, etc.
+
+CREATE TABLE IF NOT EXISTS Preferencias_Usuario (
+  id_preferencia INT PRIMARY KEY AUTO_INCREMENT,
+  id_usuario INT NOT NULL UNIQUE,
+  
+  -- Preferencias de notificaciones
+  notificaciones_email TINYINT(1) DEFAULT 1 COMMENT 'Recibir notificaciones por correo electrónico',
+  notificaciones_sms TINYINT(1) DEFAULT 0 COMMENT 'Recibir notificaciones por SMS',
+  notificaciones_app TINYINT(1) DEFAULT 1 COMMENT 'Recibir notificaciones en la aplicación',
+  
+  -- Preferencias de aplicación
+  idioma VARCHAR(10) DEFAULT 'es' COMMENT 'Idioma de la interfaz (es, en, etc.)',
+  zona_horaria VARCHAR(50) DEFAULT 'America/Bogota' COMMENT 'Zona horaria del usuario',
+  
+  -- Metadatos
+  fecha_creacion DATETIME DEFAULT NOW(),
+  fecha_actualizacion DATETIME DEFAULT NOW() ON UPDATE NOW(),
+  
+  FOREIGN KEY (id_usuario) REFERENCES Usuarios(id_usuario) ON DELETE CASCADE,
+  INDEX idx_usuario (id_usuario)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+ALTER TABLE Preferencias_Usuario COMMENT = 'Preferencias de configuración de usuario (notificaciones, idioma, zona horaria)';
+
 -- =========
 -- TRIGGERS
 -- =========
@@ -1227,7 +1276,7 @@ INSERT INTO Usuarios (
     '3001234567',
     'admin@sena.edu.co',
     'Sistemas',
-    '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi',
+    '$2a$12$zz2nWS1PBuSGeX4gNQS5..Jk8Juo5gb8r8ZYDNZreGcND1jrHlVzq',
     1,
     'Activo'
 );

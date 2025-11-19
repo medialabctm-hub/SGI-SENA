@@ -72,15 +72,49 @@ export class AuthService {
    * @returns {Promise<Object>} Resultado del registro
    */
   async registerUser(userData) {
-    const { nombre, cedula, correo, telefono, contrasena, rol, area } = userData;
+    const { nombre, cedula, correo, telefono, contrasena, rol, area, codigo_invitacion } = userData;
 
     // Validar datos usando estrategias
     this.validateUserData({ correo, contrasena, cedula });
 
-    // Validar si el usuario ya existe
+    // Si el rol es Instructor, validar código de invitación
+    if (rol === 'Instructor') {
+      if (!codigo_invitacion) {
+        throw new ValidationError('El código de invitación es requerido para registrarse como Instructor');
+      }
+
+      // Obtener servicio de códigos de invitación
+      const { ServiceFactory } = await import('../factories/ServiceFactory.js');
+      const invitationCodeService = ServiceFactory.create('invitationCodeService');
+      
+      // Validar código
+      await invitationCodeService.validateCode(codigo_invitacion, rol);
+      
+      // Usar código (incrementar contador)
+      await invitationCodeService.useCode(codigo_invitacion);
+    }
+
+    // Validar si el usuario ya existe (solo activos)
     const usuarioExistente = await this.userRepository.findByCedulaOrEmail(cedula, correo);
     if (usuarioExistente) {
+      this.logger.warn('Intento de registro con usuario existente', { 
+        cedula, 
+        correo, 
+        id_usuario_existente: usuarioExistente.id_usuario 
+      });
       throw new ConflictError('El usuario ya existe');
+    }
+
+    // Verificar si existe un usuario inactivo con la misma cédula o correo
+    // Si existe, eliminarlo físicamente para permitir el nuevo registro
+    const usuarioInactivo = await this.userRepository.findInactiveByCedulaOrEmail(cedula, correo);
+    if (usuarioInactivo) {
+      this.logger.info('Eliminando usuario inactivo para permitir nuevo registro', {
+        id_usuario_inactivo: usuarioInactivo.id_usuario,
+        cedula,
+        correo
+      });
+      await this.userRepository.delete(usuarioInactivo.id_usuario);
     }
 
     // Buscar rol
@@ -105,10 +139,19 @@ export class AuthService {
     const hash = await this.passwordService.hash(userToCreate.contrasena);
 
     // Crear usuario en el repositorio
-    await this.userRepository.create({
-      ...userToCreate,
-      contrasena: hash,
-    });
+    try {
+      await this.userRepository.create({
+        ...userToCreate,
+        contrasena: hash,
+      });
+    } catch (error) {
+      // Si es un error de clave duplicada, convertirlo en ConflictError
+      if (error.message.includes('ya está registrado') || error.message.includes('duplicado')) {
+        throw new ConflictError(error.message || 'El usuario ya existe');
+      }
+      // Re-lanzar otros errores
+      throw error;
+    }
 
     this.logger.info('Usuario registrado exitosamente', { cedula, correo });
     return { message: 'Usuario registrado correctamente' };
@@ -295,7 +338,7 @@ export class AuthService {
       throw new NotFoundError('Usuario');
     }
 
-    this.logger.info('Usuario eliminado (borrado lógico)', { userId });
+    this.logger.info('Usuario eliminado físicamente de la base de datos', { userId });
     return { message: 'Usuario eliminado correctamente' };
   }
 

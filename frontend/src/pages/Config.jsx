@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import Toast from '../components/Toast'
 import Header from '../components/Header'
+import Sidebar from '../components/Sidebar'
 import NotificationsModal from '../components/NotificationsModal'
 import Profile from './config/Profile'
 import Security from './config/Security'
@@ -8,19 +10,12 @@ import UsersManagement from './config/UsersManagement'
 import RolesAreas from './config/RolesAreas'
 import Notifications from './config/Notifications'
 import AppSettings from './config/AppSettings'
+import InvitationCodes from './config/InvitationCodes'
 import { useNavigate } from 'react-router-dom'
-
-const SIDEBAR = [
-  { id: 'profile', label: 'Perfil' },
-  { id: 'security', label: 'Seguridad' },
-  { id: 'users', label: 'Gestión de Usuarios' },
-  { id: 'roles', label: 'Roles y Áreas' },
-  { id: 'notifications', label: 'Notificaciones' },
-  { id: 'app', label: 'Ajustes de la App' }
-]
 
 export default function Config() {
   const nav = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [user, setUser] = useState(() => {
     try { return JSON.parse(localStorage.getItem('user') || '{}') } catch { return {} }
   })
@@ -28,8 +23,15 @@ export default function Config() {
   const [form, setForm] = useState({})
   const [toast, setToast] = useState(null)
   const [loading, setLoading] = useState(false)
-  const [selected, setSelected] = useState('profile')
+  const selected = searchParams.get('section') || 'profile'
   const [showNotifications, setShowNotifications] = useState(false)
+
+  useEffect(() => {
+    // Si no hay sección seleccionada, redirigir a profile por defecto
+    if (!searchParams.get('section')) {
+      setSearchParams({ section: 'profile' })
+    }
+  }, [searchParams, setSearchParams])
 
   useEffect(() => {
     setForm({
@@ -60,7 +62,7 @@ export default function Config() {
             // localStorage puede fallar en modo privado o cuando está lleno; ignorar silenciosamente
           }
         }
-      } catch (err) { }
+      } catch (err) { /* ignore */ }
     }
     fetchMe()
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -99,17 +101,6 @@ export default function Config() {
     } finally { setLoading(false) }
   }
 
-  function SectionSidebar() {
-    return (
-      <div className="sidebar" style={{width:240}}>
-        {SIDEBAR.map(s => (
-          <div key={s.id} className={`big-card ${selected===s.id? 'active-card':''}`} style={{marginBottom:12, cursor:'pointer'}} onClick={() => setSelected(s.id)}>
-            <div style={{fontWeight:700}}>{s.label}</div>
-          </div>
-        ))}
-      </div>
-    )
-  }
 
   function ProfilePanel() {
     return (
@@ -216,17 +207,18 @@ export default function Config() {
     <div className="page simple-page config-page">
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
       <Header onOpenNotifications={() => setShowNotifications(true)} />
-      <div style={{display:'flex', gap:20, marginTop:12}}>
-        <SectionSidebar />
-        <div style={{flex:1}}>
-          <h2 style={{textAlign:'center', marginTop: 6}}>Configuración</h2>
+      <div className="dashboard-layout">
+        <Sidebar user={user} />
+        <main className="dashboard-main">
+          <h2 style={{textAlign:'center', marginTop: 6, marginBottom: '1.5rem'}}>Configuración</h2>
           {selected==='profile' && <Profile />}
           {selected==='security' && <Security />}
           {selected==='users' && <UsersManagement />}
+          {selected==='invitation-codes' && <InvitationCodes />}
           {selected==='roles' && <RolesAreas />}
           {selected==='notifications' && <Notifications />}
           {selected==='app' && <AppSettings />}
-        </div>
+        </main>
       </div>
       {showNotifications && <NotificationsModal onClose={() => setShowNotifications(false)} />}
     </div>

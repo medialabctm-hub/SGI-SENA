@@ -5,6 +5,7 @@ import Toast from '../components/Toast'
 import { FiAlertCircle, FiEye, FiCheckCircle, FiXCircle, FiEdit, FiPackage, FiFileText, FiSearch, FiCheck, FiX, FiList } from 'react-icons/fi'
 import { parseApiResponse, buildErrorMessage } from '../utils/api'
 import '../styles/equipos.css'
+import '../styles/novedades.css'
 
 export default function Novedades() {
   const [activeTab, setActiveTab] = useState('ver') // 'ver' o 'crear'
@@ -172,24 +173,14 @@ export default function Novedades() {
 
   function getEstadoBadge(estado) {
     const estados = {
-      'Pendiente': { color: '#f59e0b', bg: '#fef3c7', icon: <FiAlertCircle size={14} /> },
-      'En Proceso': { color: '#3b82f6', bg: '#dbeafe', icon: <FiAlertCircle size={14} /> },
-      'Resuelto': { color: '#10b981', bg: '#d1fae5', icon: <FiCheckCircle size={14} /> },
-      'No Resuelto': { color: '#ef4444', bg: '#fee2e2', icon: <FiXCircle size={14} /> }
+      'Pendiente': { class: 'pendiente', icon: <FiAlertCircle size={14} /> },
+      'En Proceso': { class: 'en-proceso', icon: <FiAlertCircle size={14} /> },
+      'Resuelto': { class: 'resuelto', icon: <FiCheckCircle size={14} /> },
+      'No Resuelto': { class: 'no-resuelto', icon: <FiXCircle size={14} /> }
     }
     const estadoInfo = estados[estado] || estados['Pendiente']
     return (
-      <span style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: '4px',
-        padding: '4px 10px',
-        borderRadius: '12px',
-        fontSize: '0.85rem',
-        fontWeight: 600,
-        color: estadoInfo.color,
-        background: estadoInfo.bg
-      }}>
+      <span className={`novedades-estado-badge ${estadoInfo.class}`}>
         {estadoInfo.icon}
         {estado || 'Pendiente'}
       </span>
@@ -267,61 +258,29 @@ export default function Novedades() {
           {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
           <div className="form-equipos form-modern" style={{ maxWidth: '1200px' }}>
             <div className="form-header">
-              <div className="form-icon-wrapper" style={{ background: 'linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%)' }}>
+              <div className="form-icon-wrapper novedades-icon-wrapper">
                 <FiAlertCircle size={28} color="#fff" />
               </div>
-              <div style={{ flex: 1 }}>
-                <h2 style={{ margin: 0, fontSize: '28px', fontWeight: 700, color: '#1a2a3a' }}>Novedades</h2>
-                <p style={{ color: '#666', marginTop: 8, fontSize: '15px' }}>
+              <div className="novedades-header-content">
+                <h2 className="novedades-title">Novedades</h2>
+                <p className="novedades-subtitle">
                   Registro de incidencias y problemas con equipos
                 </p>
               </div>
             </div>
 
             {/* Pestañas */}
-            <div style={{ 
-              display: 'flex', 
-              gap: '0.5rem', 
-              marginTop: '1.5rem',
-              borderBottom: '2px solid #e5e7eb',
-              paddingBottom: '0'
-            }}>
+            <div className="novedades-tabs">
               <button
                 onClick={() => setActiveTab('ver')}
-                style={{
-                  padding: '0.75rem 1.5rem',
-                  border: 'none',
-                  background: 'transparent',
-                  color: activeTab === 'ver' ? '#ff6b6b' : '#6b7280',
-                  fontWeight: activeTab === 'ver' ? 600 : 400,
-                  fontSize: '1rem',
-                  cursor: 'pointer',
-                  borderBottom: activeTab === 'ver' ? '3px solid #ff6b6b' : '3px solid transparent',
-                  transition: 'all 0.2s',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.5rem'
-                }}
+                className={`novedades-tab ${activeTab === 'ver' ? 'active' : ''}`}
               >
                 <FiList size={18} />
                 Ver Novedades
               </button>
               <button
                 onClick={() => setActiveTab('crear')}
-                style={{
-                  padding: '0.75rem 1.5rem',
-                  border: 'none',
-                  background: 'transparent',
-                  color: activeTab === 'crear' ? '#ff6b6b' : '#6b7280',
-                  fontWeight: activeTab === 'crear' ? 600 : 400,
-                  fontSize: '1rem',
-                  cursor: 'pointer',
-                  borderBottom: activeTab === 'crear' ? '3px solid #ff6b6b' : '3px solid transparent',
-                  transition: 'all 0.2s',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.5rem'
-                }}
+                className={`novedades-tab ${activeTab === 'crear' ? 'active' : ''}`}
               >
                 <FiAlertCircle size={18} />
                 Registrar Novedad
@@ -367,16 +326,12 @@ export default function Novedades() {
                             <td>
                               <div>
                                 <strong>{novedad.equipo_tipo} {novedad.equipo_marca} {novedad.equipo_modelo}</strong>
-                                {novedad.numero_serie && <div style={{ fontSize: '0.85rem', color: '#666' }}>S/N: {novedad.numero_serie}</div>}
+                                {novedad.numero_serie && <div className="novedades-serie-numero">S/N: {novedad.numero_serie}</div>}
                               </div>
                             </td>
                             <td>{novedad.tipo_novedad}</td>
-                            <td style={{ maxWidth: '300px' }}>
-                              <div style={{
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis',
-                                whiteSpace: 'nowrap'
-                              }} title={novedad.descripcion}>
+                            <td className="novedades-descripcion-cell">
+                              <div className="novedades-descripcion-text" title={novedad.descripcion}>
                                 {novedad.descripcion}
                               </div>
                             </td>
@@ -385,9 +340,8 @@ export default function Novedades() {
                             <td>{getEstadoBadge(novedad.estado_resolucion)}</td>
                             <td>
                               <button
-                                className="btn"
+                                className="btn novedades-ver-btn"
                                 onClick={() => setSelectedNovedad(novedad)}
-                                style={{ padding: '6px 12px', fontSize: '0.9rem' }}
                               >
                                 <FiEye size={14} style={{ marginRight: '4px' }} />
                                 Ver
@@ -537,46 +491,19 @@ export default function Novedades() {
           </div>
 
           {selectedNovedad && (
-            <div style={{
-              position: 'fixed',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              background: 'rgba(0,0,0,0.5)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              zIndex: 1000,
-              padding: '20px'
-            }} onClick={() => setSelectedNovedad(null)}>
-              <div style={{
-                background: '#fff',
-                borderRadius: '12px',
-                padding: '2rem',
-                maxWidth: '700px',
-                width: '100%',
-                maxHeight: '90vh',
-                overflow: 'auto',
-                boxShadow: '0 20px 60px rgba(0,0,0,0.3)'
-              }} onClick={(e) => e.stopPropagation()}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-                  <h3 style={{ margin: 0, fontSize: '24px', color: '#1a2a3a' }}>Detalle de Novedad</h3>
+            <div className="novedades-modal-overlay" onClick={() => setSelectedNovedad(null)}>
+              <div className="novedades-modal-content" onClick={(e) => e.stopPropagation()}>
+                <div className="novedades-modal-header">
+                  <h3 className="novedades-modal-title">Detalle de Novedad</h3>
                   <button
                     onClick={() => setSelectedNovedad(null)}
-                    style={{
-                      background: 'none',
-                      border: 'none',
-                      fontSize: '24px',
-                      cursor: 'pointer',
-                      color: '#666'
-                    }}
+                    className="novedades-modal-close"
                   >
                     ×
                   </button>
                 </div>
 
-                <div style={{ display: 'grid', gap: '1rem' }}>
+                <div className="novedades-modal-grid">
                   <div>
                     <strong>ID:</strong> {selectedNovedad.id_novedad}
                   </div>
@@ -589,7 +516,7 @@ export default function Novedades() {
                   </div>
                   <div>
                     <strong>Descripción:</strong>
-                    <div style={{ marginTop: '8px', padding: '12px', background: '#f8f9fa', borderRadius: '8px', whiteSpace: 'pre-wrap' }}>
+                    <div className="novedades-descripcion-box">
                       {selectedNovedad.descripcion}
                     </div>
                   </div>
@@ -600,13 +527,12 @@ export default function Novedades() {
                     <strong>Fecha de reporte:</strong> {formatDate(selectedNovedad.fecha_novedad)}
                   </div>
                   <div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                    <div className="novedades-estado-header">
                       <strong>Estado:</strong>
                       {!editandoEstado && (user?.nombre_rol === 'Administrador' || user?.nombre_rol === 'Instructor') && (
                         <button
                           onClick={() => abrirEditarEstado(selectedNovedad)}
-                          className="btn"
-                          style={{ padding: '6px 12px', fontSize: '0.85rem' }}
+                          className="btn novedades-cambiar-estado-btn"
                         >
                           <FiEdit size={14} style={{ marginRight: '4px' }} />
                           Cambiar Estado
@@ -614,16 +540,11 @@ export default function Novedades() {
                       )}
                     </div>
                     {editandoEstado ? (
-                      <div style={{ display: 'grid', gap: '12px', marginTop: '8px' }}>
+                      <div className="novedades-editar-estado-grid">
                         <select
                           value={nuevoEstado}
                           onChange={(e) => setNuevoEstado(e.target.value)}
-                          style={{
-                            padding: '8px',
-                            borderRadius: '6px',
-                            border: '1.5px solid #b2dfdb',
-                            fontSize: '0.95rem'
-                          }}
+                          className="novedades-estado-select"
                         >
                           <option value="Pendiente">Pendiente</option>
                           <option value="En Proceso">En Proceso</option>
@@ -635,28 +556,20 @@ export default function Novedades() {
                           onChange={(e) => setObservacionesResolucion(e.target.value)}
                           placeholder="Observaciones de resolución (opcional)..."
                           rows={3}
-                          style={{
-                            padding: '8px',
-                            borderRadius: '6px',
-                            border: '1.5px solid #b2dfdb',
-                            fontSize: '0.95rem',
-                            resize: 'vertical'
-                          }}
+                          className="novedades-observaciones-textarea"
                         />
-                        <div style={{ display: 'flex', gap: '8px' }}>
+                        <div className="novedades-editar-buttons">
                           <button
                             onClick={guardarEstado}
-                            className="btn-primary btn-modern"
+                            className="btn-primary btn-modern novedades-editar-btn"
                             disabled={loading}
-                            style={{ flex: 1 }}
                           >
                             {loading ? 'Guardando...' : 'Guardar'}
                           </button>
                           <button
                             onClick={cancelarEditarEstado}
-                            className="btn-secondary btn-modern"
+                            className="btn-secondary btn-modern novedades-editar-btn"
                             disabled={loading}
-                            style={{ flex: 1 }}
                           >
                             Cancelar
                           </button>
@@ -679,7 +592,7 @@ export default function Novedades() {
                   {selectedNovedad.observaciones_resolucion && (
                     <div>
                       <strong>Observaciones de resolución:</strong>
-                      <div style={{ marginTop: '8px', padding: '12px', background: '#f8f9fa', borderRadius: '8px', whiteSpace: 'pre-wrap' }}>
+                      <div className="novedades-descripcion-box">
                         {selectedNovedad.observaciones_resolucion}
                       </div>
                     </div>

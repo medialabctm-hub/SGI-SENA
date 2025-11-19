@@ -13,7 +13,11 @@ import {
   FiChevronDown,
   FiChevronRight,
   FiHome,
-  FiMapPin
+  FiMapPin,
+  FiUser,
+  FiShield,
+  FiKey,
+  FiBell
 } from 'react-icons/fi'
 import { useSidebar } from '../contexts/SidebarContext'
 import '../styles/sidebar.css'
@@ -80,6 +84,14 @@ export default function Sidebar({ user }) {
   }
 
   const isActive = (path) => {
+    if (path.includes('?')) {
+      const [basePath, query] = path.split('?')
+      if (location.pathname === basePath) {
+        const urlParams = new URLSearchParams(location.search)
+        const pathParams = new URLSearchParams(query)
+        return urlParams.get('section') === pathParams.get('section')
+      }
+    }
     return location.pathname === path
   }
 
@@ -99,8 +111,14 @@ export default function Sidebar({ user }) {
     ],
     config: [
       { title: 'Personal Registrado', path: '/usuarios', icon: <FiUsers />, roles: ['Administrador', 'Instructor'] },
+      { title: 'Gestión de Usuarios', path: '/config?section=users', icon: <FiUsers />, roles: ['Administrador', 'Instructor'] },
       { title: 'Gestión de Ambientes', path: '/ambientes', icon: <FiMapPin />, roles: ['Administrador'] },
-      { title: 'Configuración', path: '/config', icon: <FiSettings />, roles: ['all'] }
+      { title: 'Perfil', path: '/config?section=profile', icon: <FiUser />, roles: ['all'] },
+      { title: 'Seguridad', path: '/config?section=security', icon: <FiShield />, roles: ['all'] },
+      { title: 'Códigos de Seguridad', path: '/config?section=invitation-codes', icon: <FiKey />, roles: ['Administrador'] },
+      { title: 'Roles y Áreas', path: '/config?section=roles', icon: <FiSettings />, roles: ['all'] },
+      { title: 'Notificaciones', path: '/config?section=notifications', icon: <FiBell />, roles: ['all'] },
+      { title: 'Ajustes de la App', path: '/config?section=app', icon: <FiSettings />, roles: ['all'] }
     ]
   }
 

@@ -16,6 +16,7 @@ export default function Register() {
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [rol, setRol] = useState('Aprendiz')
+  const [codigoInvitacion, setCodigoInvitacion] = useState('')
   const [errores, setErrores] = useState({})
   const navigate = useNavigate()
   const [toast, setToast] = useState(null)
@@ -68,7 +69,8 @@ export default function Register() {
           telefono,
           area,
           contrasena: password,
-          rol
+          rol,
+          codigo_invitacion: rol === 'Instructor' ? codigoInvitacion.trim() : null
         })
       })
       const data = await parseApiResponse(res, 'No se pudo completar el registro')
@@ -189,12 +191,35 @@ export default function Register() {
           {errores.confirmar_contraseña && <div className="error-msg">{errores.confirmar_contraseña}</div>}
           <label className="input">
             <span className="icon"></span>
-            <select value={rol} onChange={e => setRol(e.target.value)} style={{ width: '100%', border: 'none', outline: 'none', background: 'transparent' }}>
+            <select value={rol} onChange={e => {
+              setRol(e.target.value);
+              if (e.target.value !== 'Instructor') {
+                setCodigoInvitacion('');
+              }
+            }} style={{ width: '100%', border: 'none', outline: 'none', background: 'transparent' }}>
               <option value="Aprendiz">Aprendiz</option>
               <option value="Instructor">Instructor</option>
               <option value="Administrador">Administrador</option>
             </select>
           </label>
+          {rol === 'Instructor' && (
+            <>
+              <label className="input">
+                <span className="icon"><FiLock /></span>
+                <input
+                  type="text"
+                  placeholder="Código de Seguridad (requerido para Instructores)"
+                  value={codigoInvitacion}
+                  onChange={e => setCodigoInvitacion(e.target.value)}
+                  style={{ textTransform: 'uppercase' }}
+                />
+              </label>
+              {errores.codigo_invitacion && <div className="error-msg">{errores.codigo_invitacion}</div>}
+              <p style={{ fontSize: '0.85rem', color: '#666', marginTop: '-0.5rem', marginBottom: '1rem' }}>
+                Necesitas un código de invitación válido para registrarte como Instructor
+              </p>
+            </>
+          )}
           <button className="btn primary" type="submit">Registrarse</button>
         </form>
 

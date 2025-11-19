@@ -46,7 +46,7 @@
   --success-200: #5ee7b6;
   --success-300: #3ee2a7;
   --success-400: #21d997;
-  --success-500: #1cb981;
+  --success-900: #1cb981;
   --success-600: #18a271;
   --success-700: #158b61;
   --success-800: #01af00;
@@ -94,8 +94,8 @@ html,
 body {
   font-family: 'Segoe UI', 'Helvetica Neue', Arial;
   margin: 0;
-  background: #f7f7f7;
-  color: #111;
+  background: var(--neutral-50);
+  color: var(--neutral-900);
 }
 
 .page {
@@ -111,22 +111,22 @@ body {
 }
 
 ::-webkit-scrollbar-track {
-  background: #f1f1f1;
+  background: var(--neutral-100);
   border-radius: 10px;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: linear-gradient(135deg, #40c057 0%, #51cf66 100%);
+  background: linear-gradient(135deg, var(--success-900) 0%, var(--success-400) 100%);
   border-radius: 10px;
-  border: 2px solid #f1f1f1;
+  border: 2px solid var(--neutral-100);
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(135deg, #37b24d 0%, #40c057 100%);
+  background: linear-gradient(135deg, var(--success-600) 0%, var(--success-900) 100%);
 }
 
 ::-webkit-scrollbar-corner {
-  background: #f1f1f1;
+  background: var(--neutral-100);
 }
 
 /* Scrollbar para elementos con scroll específicos */
@@ -144,7 +144,7 @@ body {
 .consulta-table::-webkit-scrollbar-track,
 .form-equipos::-webkit-scrollbar-track,
 .modal-sheet::-webkit-scrollbar-track {
-  background: rgba(241, 241, 241, 0.5);
+  background: rgba(230, 228, 226, 0.5);
   border-radius: 10px;
 }
 
@@ -153,7 +153,7 @@ body {
 .consulta-table::-webkit-scrollbar-thumb,
 .form-equipos::-webkit-scrollbar-thumb,
 .modal-sheet::-webkit-scrollbar-thumb {
-  background: linear-gradient(135deg, #40c057 0%, #51cf66 100%);
+  background: linear-gradient(135deg, var(--success-900) 0%, var(--success-400) 100%);
   border-radius: 10px;
 }
 
@@ -162,13 +162,13 @@ body {
 .consulta-table::-webkit-scrollbar-thumb:hover,
 .form-equipos::-webkit-scrollbar-thumb:hover,
 .modal-sheet::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(135deg, #37b24d 0%, #40c057 100%);
+  background: linear-gradient(135deg, var(--success-600) 0%, var(--success-900) 100%);
 }
 
 /* Scrollbar para Firefox */
 * {
   scrollbar-width: thin;
-  scrollbar-color: #40c057 #f1f1f1;
+  scrollbar-color: var(--success-900) var(--neutral-100);
 }
 
 .sidebar-content,
@@ -177,7 +177,7 @@ body {
 .form-equipos,
 .modal-sheet {
   scrollbar-width: thin;
-  scrollbar-color: #40c057 rgba(241, 241, 241, 0.5);
+  scrollbar-color: var(--success-900) rgba(230, 228, 226, 0.5);
 }
 
 /* Estilos para páginas simples */
@@ -185,7 +185,7 @@ body {
   text-align: center;
   font-size: 22px;
   font-weight: 700;
-  color: #000;
+  color: var(--neutral-900);
   margin: 18px 0 8px 0;
 }
 
@@ -208,8 +208,8 @@ body {
   display: flex;
   align-items: center;
   gap: 12px;
-  background: linear-gradient(180deg, #fff, #fbfbfb);
-  border: 1px solid #f0f0f0;
+  background: linear-gradient(180deg, #fff, var(--neutral-50));
+  border: 1px solid var(--neutral-200);
   transition: transform 0.12s ease, box-shadow 0.12s ease, background 0.12s ease;
 }
 
@@ -229,7 +229,7 @@ body {
 }
 
 .sidebar .big-card div {
-  color: #1a2a3a;
+  color: var(--neutral-800);
 }
 
 .sidebar .big-card.active-card div {

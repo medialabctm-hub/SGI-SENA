@@ -107,8 +107,16 @@ export class NotificationObserver extends Observer {
     // Notificar a administradores sobre nuevo usuario
     await this.notificationService.createForRole({
       rolNombre: 'Administrador',
-      titulo: 'Nuevo usuario registrado',
-      cuerpo: `Se ha registrado un nuevo usuario: ${data.nombre}`,
+      titulo: {
+        key: 'nuevo_usuario_registrado',
+        params: {}
+      },
+      cuerpo: {
+        key: 'nuevo_usuario_registrado_cuerpo',
+        params: {
+          nombre: data.nombre
+        }
+      },
       tipo: 'info',
       metadata: { userId: data.id },
     });
@@ -136,8 +144,16 @@ export class NotificationObserver extends Observer {
   async handleMantenimientoDue(data) {
     await this.notificationService.createForUsers({
       userIds: [data.userId],
-      titulo: 'Mantenimiento próximo',
-      cuerpo: `El equipo ${data.equipo} requiere mantenimiento`,
+      titulo: {
+        key: 'mantenimiento_proximo',
+        params: {}
+      },
+      cuerpo: {
+        key: 'mantenimiento_proximo_cuerpo',
+        params: {
+          equipo: data.equipo
+        }
+      },
       tipo: 'aviso',
       metadata: { equipoId: data.equipoId },
     });

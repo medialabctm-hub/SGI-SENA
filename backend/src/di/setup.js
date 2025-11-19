@@ -10,10 +10,12 @@ import { container } from './Container.js';
 import { pool } from '../config/dbconfig.js';
 import { UserRepository } from '../repositories/UserRepository.js';
 import { RoleRepository } from '../repositories/RoleRepository.js';
+import { InvitationCodeRepository } from '../repositories/InvitationCodeRepository.js';
 import { logger } from '../utils/logger.js';
 import { PasswordService } from '../services/PasswordService.js';
 import { JwtService } from '../services/JwtService.js';
 import { AuthService } from '../services/AuthService.js';
+import { InvitationCodeService } from '../services/invitationCodeService.js';
 import process from 'process';
 
 // Wrapper para la base de datos que incluye el pool
@@ -42,6 +44,10 @@ container.register('roleRepository', (c) => {
   return new RoleRepository(c.resolve('db'));
 }, true);
 
+container.register('invitationCodeRepository', (c) => {
+  return new InvitationCodeRepository(c.resolve('db'));
+}, true);
+
 // Registrar servicios de utilidad (singleton)
 container.register('passwordService', () => {
   return new PasswordService(10);
@@ -65,6 +71,13 @@ container.register('authService', (c) => {
     c.resolve('roleRepository'),
     c.resolve('passwordService'),
     c.resolve('jwtService'),
+    c.resolve('logger')
+  );
+}, true);
+
+container.register('invitationCodeService', (c) => {
+  return new InvitationCodeService(
+    c.resolve('invitationCodeRepository'),
     c.resolve('logger')
   );
 }, true);

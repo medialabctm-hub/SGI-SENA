@@ -11,15 +11,15 @@
   flex: 1;
   padding: 18px;
   overflow-y: auto;
-  background: #f7f7f7;
+  background: var(--neutral-50);
   transition: margin-left 0.3s ease;
 }
 
 /* Sidebar Principal */
 .app-sidebar {
   width: 280px;
-  background: #fff;
-  border-right: 1px solid #e6e6e6;
+  background: white;
+  border-right: 1px solid var(--neutral-200);
   display: flex;
   flex-direction: column;
   overflow-y: auto;
@@ -100,7 +100,7 @@
   padding: 12px 16px;
   border: none;
   background: transparent;
-  color: #1a2a3a;
+  color: var(--neutral-800);
   font-size: 15px;
   font-weight: 500;
   cursor: pointer;
@@ -147,7 +147,7 @@
   padding: 12px 16px;
   border: none;
   background: transparent;
-  color: #1a2a3a;
+  color: var(--neutral-800);
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
@@ -175,7 +175,7 @@
 
 .sidebar-section-header svg:last-child {
   font-size: 16px;
-  color: #666;
+  color: var(--muted);
   margin-left: auto;
 }
 
@@ -207,7 +207,7 @@
   .app-sidebar {
     width: 100%;
     border-right: none;
-    border-bottom: 1px solid #e6e6e6;
+    border-bottom: 1px solid var(--neutral-200);
     max-height: 300px;
   }
 }

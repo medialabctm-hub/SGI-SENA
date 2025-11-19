@@ -1,6 +1,6 @@
 /* Users list improvements */
 .users-panel {
-  background: #fff;
+  background: white;
   border-radius: 12px;
   padding: 18px 18px 22px 18px;
   box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
@@ -16,15 +16,15 @@
 .users-toolbar h2 {
   margin: 0;
   font-size: 1.25rem;
-  color: #0f1720;
+  color: var(--neutral-800);
 }
 
 .search-input {
   padding: 10px 14px;
   border-radius: 10px;
-  border: 1px solid #e9e9e9;
+  border: 1px solid var(--neutral-200);
   min-width: 320px;
-  background: linear-gradient(180deg, #fff, #fbfcfd);
+  background: linear-gradient(180deg, white, var(--neutral-50));
   box-shadow: 0 2px 6px rgba(2, 6, 23, 0.04);
   transition: box-shadow 0.15s, transform 0.06s;
 }
@@ -44,29 +44,29 @@
 .users-table thead th {
   text-align: left;
   padding: 12px 10px;
-  background: #fafafa;
-  color: #1a2a3a;
+  background: var(--neutral-50);
+  color: var(--neutral-800);
   font-weight: 700;
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid var(--neutral-200);
 }
 
 .users-table tbody td {
   padding: 14px 12px;
   vertical-align: middle;
-  border-bottom: 1px solid #f4f4f4;
-  color: #24303a;
+  border-bottom: 1px solid var(--neutral-100);
+  color: var(--neutral-800);
   font-size: 0.97rem;
 }
 
 .users-table tbody tr:hover {
-  background: linear-gradient(90deg, #fbfffb, #ffffff);
+  background: var(--neutral-200);
   transform: translateZ(0);
 }
 
 .users-empty {
   text-align: center;
   padding: 36px;
-  background: linear-gradient(180deg, #fff, #fbfbfb);
+  background: linear-gradient(180deg, white, var(--neutral-50));
   border-radius: 12px;
   box-shadow: var(--card-shadow);
 }
@@ -110,9 +110,9 @@
   padding: 8px 10px;
   border-radius: 8px;
   font-size: 0.9rem;
-  border: 1px solid #dfe7ea;
-  background: #fff;
-  color: #1f2937;
+  border: 1px solid var(--neutral-200);
+  background: white;
+  color: var(--neutral-800);
   cursor: pointer;
   transition: all 0.12s;
 }
@@ -124,55 +124,55 @@
 
 .users-table .btn-verde {
   padding: 8px 12px;
-  background: #2e7d32;
-  color: #fff;
+  background: var(--success-700);
+  color: white;
   border: none;
 }
 
 .users-table .btn-verde:hover {
-  background: #276b2c;
+  background: var(--success-800);
 }
 
 /* Colorful action buttons */
 .users-table .btn-view {
-  background: linear-gradient(180deg, var(--info-200), var(--info-100));
-  color: var(--info-800);
+  background: var(--info-600);
+  color: white;
   border: 1px solid rgba(59, 139, 255, 0.28);
   box-shadow: 0 2px 6px rgba(11, 77, 160, 0.05);
 }
 
 .users-table .btn-view:hover {
-  background: linear-gradient(180deg, var(--info-300), var(--info-200));
+  background: var(--info-700);
   transform: translateY(-2px);
   box-shadow: 0 8px 20px rgba(11, 77, 160, 0.08);
 }
 
 .users-table .btn-edit {
-  background: linear-gradient(180deg, var(--success-600), var(--success-700));
-  color: #fff;
+  background: var(--success-800);
+  color: white;
   border: 1px solid rgba(1, 175, 0, 0.12);
   box-shadow: 0 2px 6px rgba(1, 175, 0, 0.06);
 }
 
 .users-table .btn-edit:hover {
-  background: linear-gradient(180deg, var(--success-700), var(--success-800));
+  background: var(--success-900);
   transform: translateY(-2px);
   box-shadow: 0 10px 26px rgba(1, 175, 0, 0.12);
 }
 
 /* Delete button (red) */
 .users-table .btn-delete {
-  background: linear-gradient(180deg, #ff6b6b, #e53935);
-  color: #fff;
-  border: 1px solid rgba(230, 50, 35, 0.12);
-  box-shadow: 0 6px 14px rgba(229, 57, 53, 0.08);
+  background: var(--error-500);
+  color: white;
+  border: 1px solid rgba(220, 53, 69, 0.12);
+  box-shadow: 0 6px 14px rgba(220, 53, 69, 0.08);
   transition: background 0.12s ease, transform 0.12s ease, box-shadow 0.12s ease, filter 0.12s ease;
 }
 
 .users-table .btn-delete:hover {
-  background: linear-gradient(180deg, #ff8f8f, #f05a45);
+  background: var(--error-600);
   transform: translateY(-4px);
-  box-shadow: 0 20px 40px rgba(229, 57, 53, 0.16);
+  box-shadow: 0 20px 40px rgba(220, 53, 69, 0.16);
   filter: brightness(1.04);
 }
 
@@ -183,8 +183,8 @@
 /* Small pill for Equipos count */
 .equip-count {
   display: inline-block;
-  background: #f1f8f3;
-  color: #246733;
+  background: var(--success-800);
+  color: white;
   padding: 4px 8px;
   border-radius: 999px;
   font-weight: 600;
@@ -206,8 +206,8 @@
 
 .btn-import-users {
   padding: 0.5rem 1rem;
-  background: #40c057;
-  color: #fff;
+  background: var(--success-900);
+  color: white;
   border: none;
   border-radius: 6px;
   cursor: pointer;
@@ -220,7 +220,7 @@
 }
 
 .btn-import-users:hover {
-  background: #37b24d;
+  background: var(--success-600);
 }
 
 .users-content {
@@ -236,7 +236,7 @@
 }
 
 .users-empty-message {
-  color: #666;
+  color: var(--muted);
   margin-top: 6px;
 }
 

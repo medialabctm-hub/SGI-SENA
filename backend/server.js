@@ -25,6 +25,8 @@ import mantenimientoRoutes from './src/routes/mantenimientoRoutes.js';
 import estadisticasRoutes from './src/routes/estadisticasRoutes.js';
 import clasesRoutes from './src/routes/clasesRoutes.js';
 import importRoutes from './src/routes/importRoutes.js';
+import invitationCodeRoutes from './src/routes/invitationCodeRoutes.js';
+import preferencesRoutes from './src/routes/preferencesRoutes.js';
 
 const app = express();
 const desiredPort = Number(config.server.PORT) || 3000;
@@ -91,6 +93,8 @@ app.use('/api/mantenimiento', mantenimientoRoutes);
 app.use('/api/estadisticas', estadisticasRoutes);
 app.use('/api', clasesRoutes);
 app.use('/api/import', importRoutes);
+app.use('/api/invitation-codes', invitationCodeRoutes);
+app.use('/api/preferences', preferencesRoutes);
 
 // Ruta 404
 app.use((req, res) => {
