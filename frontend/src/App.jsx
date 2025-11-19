@@ -2,6 +2,9 @@ import React from 'react';
 import { Routes, Route } from 'react-router-dom';
 import Login from './pages/Login';
 import Register from './pages/Register';
+import CambiarContrasena from './pages/CambiarContrasena';
+import OlvidarContrasena from './pages/OlvidarContrasena';
+import RestablecerContrasena from './pages/RestablecerContrasena';
 import Dashboard from './pages/Dashboard';
 import Equipos from './pages/Equipos';
 import ConsultarEquipo from './pages/ConsultarEquipo';
@@ -38,6 +41,22 @@ export default function App() {
             <Register />
           </RedirectIfAuth>
         }
+      />
+      <Route
+        path="/olvidar-contrasena"
+        element={
+          <RedirectIfAuth>
+            <OlvidarContrasena />
+          </RedirectIfAuth>
+        }
+      />
+      <Route
+        path="/restablecer-contrasena"
+        element={<RestablecerContrasena />}
+      />
+      <Route
+        path="/cambiar-contrasena"
+        element={<CambiarContrasena />}
       />
       <Route
         path="/"

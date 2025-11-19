@@ -1,0 +1,77 @@
+/* Modal Overlay */
+.modal-overlay {
+  position: fixed;
+  left: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+}
+
+.modal-sheet {
+  position: absolute;
+  top: 300px;
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18);
+  padding: 28px 32px;
+  max-width: 380px;
+  width: 100%;
+  text-align: center;
+  animation: modal-in 0.46s;
+}
+
+@keyframes modal-in {
+  from {
+    opacity: 0;
+    transform: translateY(-30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Modal para formularios */
+.modal-sheet.form-modal {
+  max-width: 800px;
+  text-align: left;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.modal-sheet.form-modal-small {
+  max-width: 520px;
+}
+
+.modal-sheet.form-modal-large {
+  max-width: 1200px;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.modal-header h3 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #1a2a3a;
+}
+
+.modal-header .btn {
+  padding: 0.5rem 1rem;
+  font-size: 0.9rem;
+}
+

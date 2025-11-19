@@ -1,0 +1,264 @@
+/* Dashboard */
+.container {
+  padding: 18px;
+}
+
+.welcome-card {
+  background: linear-gradient(90deg, var(--success-800), var(--success-900));
+  color: white;
+  padding: 18px;
+  border-radius: 14px;
+  box-shadow: var(--card-shadow);
+  margin-bottom: 18px;
+}
+
+.cards-grid {
+  display: grid;
+  grid-template-columns: repeat(1, 1fr);
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.big-card {
+  background: white;
+  border-radius: 12px;
+  padding: 16px 12px;
+  text-align: center;
+  box-shadow: var(--card-shadow);
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.big-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.card-icon {
+  font-size: 20px;
+  margin-bottom: 6px;
+  color: var(--success-800);
+}
+
+.card-title {
+  font-weight: 700;
+  font-size: 14px;
+  margin-bottom: 4px;
+  color: #1a2a3a;
+}
+
+.card-sub {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.stats-card {
+  background: white;
+  border-radius: 14px;
+  padding: 16px;
+  box-shadow: var(--card-shadow);
+  margin-bottom: 24px;
+}
+
+.stats-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.stats-header h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: #1a2a3a;
+}
+
+.load-stats-btn {
+  padding: 8px 16px;
+  border: 1px solid var(--success-800);
+  background: transparent;
+  color: var(--success-800);
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.load-stats-btn:hover {
+  background: var(--success-800);
+  color: #fff;
+}
+
+.stats-row {
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  margin-top: 12px;
+}
+
+.stat-box {
+  flex: 1;
+  padding: 12px;
+  border-radius: 10px;
+  text-align: center;
+}
+
+.stat-value {
+  font-size: 22px;
+  font-weight: 700;
+  color: #0b72ff;
+}
+
+.stat-label {
+  color: var(--muted);
+  font-size: 14px;
+}
+
+/* Accesos Rápidos */
+.quick-actions {
+  margin-bottom: 24px;
+}
+
+.section-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #1a2a3a;
+  margin-bottom: 16px;
+}
+
+.quick-actions-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+.quick-action-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 20px;
+  border: none;
+  border-radius: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: left;
+  box-shadow: var(--card-shadow);
+  background: #fff;
+}
+
+.quick-action-card.primary {
+  background: linear-gradient(135deg, var(--success-800), var(--success-900));
+  color: #fff;
+}
+
+.quick-action-card.secondary {
+  background: linear-gradient(135deg, #ff6b6b, #ee5a6f);
+  color: #fff;
+}
+
+.quick-action-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+
+.quick-action-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  flex-shrink: 0;
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.quick-action-card.primary .quick-action-icon {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+.quick-action-card.secondary .quick-action-icon {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+.quick-action-content h4 {
+  margin: 0 0 4px 0;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.quick-action-content p {
+  margin: 0;
+  font-size: 14px;
+  opacity: 0.9;
+}
+
+/* Información del Dashboard */
+.dashboard-info {
+  margin-top: 24px;
+  padding: 16px;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: var(--card-shadow);
+}
+
+.info-text {
+  margin: 0;
+  color: #666;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+/* Responsive */
+@media (min-width: 600px) {
+  .cards-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (min-width: 900px) {
+  .cards-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+@media (min-width: 1200px) {
+  .cards-grid {
+    grid-template-columns: repeat(5, 1fr);
+  }
+}
+
+@media (min-width: 1500px) {
+  .cards-grid {
+    grid-template-columns: repeat(6, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .quick-actions-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .stats-row {
+    flex-direction: column;
+    gap: 12px;
+  }
+}
+
+@media (max-width: 480px) {
+  .dashboard-main {
+    padding: 12px;
+  }
+
+  .quick-action-card {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .quick-action-content {
+    text-align: center;
+  }
+}
+

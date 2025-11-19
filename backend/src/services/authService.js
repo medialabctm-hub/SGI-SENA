@@ -147,6 +147,7 @@ export class AuthService {
 
     return {
       token,
+      requiereCambioContrasena: usuario.requiere_cambio_contrasena === 1 || usuario.requiere_cambio_contrasena === true,
       user: {
         id_usuario: usuario.id_usuario,
         nombre_usuario: usuario.nombre_usuario,
@@ -179,6 +180,7 @@ export class AuthService {
       cedula: user.cedula,
       area: user.area,
       nombre_rol: user.nombre_rol,
+      requiere_cambio_contrasena: user.requiere_cambio_contrasena === 1 || user.requiere_cambio_contrasena === true,
     };
   }
 
@@ -295,5 +297,186 @@ export class AuthService {
 
     this.logger.info('Usuario eliminado (borrado lógico)', { userId });
     return { message: 'Usuario eliminado correctamente' };
+  }
+
+  /**
+   * Cambia la contraseña de un usuario (obligatorio cuando requiere_cambio_contrasena es true)
+   * @param {number} userId - ID del usuario
+   * @param {string} contrasenaActual - Contraseña actual
+   * @param {string} nuevaContrasena - Nueva contraseña
+   * @returns {Promise<Object>} Resultado del cambio
+   */
+  async cambiarContrasenaObligatorio(userId, contrasenaActual, nuevaContrasena) {
+    const usuario = await this.userRepository.findById(userId);
+    
+    if (!usuario) {
+      throw new NotFoundError('Usuario');
+    }
+
+    // Validar contraseña actual
+    const usuarioCompleto = await this.userRepository.findOne(
+      'SELECT contrasena, requiere_cambio_contrasena FROM Usuarios WHERE id_usuario = ?',
+      [userId]
+    );
+
+    if (!usuarioCompleto) {
+      throw new NotFoundError('Usuario');
+    }
+
+    const valid = await this.passwordService.compare(contrasenaActual, usuarioCompleto.contrasena);
+    if (!valid) {
+      throw new AuthenticationError('La contraseña actual es incorrecta');
+    }
+
+    // Validar nueva contraseña
+    const passwordResult = this.passwordValidator.validate(nuevaContrasena);
+    if (!passwordResult.valid) {
+      throw new ValidationError(passwordResult.error);
+    }
+
+    // Hash de la nueva contraseña
+    const nuevaContrasenaHash = await this.passwordService.hash(nuevaContrasena);
+
+    // Actualizar contraseña y quitar el flag de cambio obligatorio
+    await this.userRepository.db.execute(
+      'UPDATE Usuarios SET contrasena = ?, requiere_cambio_contrasena = 0 WHERE id_usuario = ?',
+      [nuevaContrasenaHash, userId]
+    );
+
+    this.logger.info('Contraseña cambiada exitosamente', { userId });
+    return { message: 'Contraseña cambiada correctamente' };
+  }
+
+  /**
+   * Solicita recuperación de contraseña (envía correo con token)
+   * @param {string} cedula - Cédula del usuario
+   * @param {string} correo - Correo del usuario
+   * @returns {Promise<Object>} Resultado de la solicitud
+   */
+  async solicitarRecuperacionContrasena(cedula, correo) {
+    const usuario = await this.userRepository.findOne(
+      'SELECT id_usuario, nombre_usuario, correo FROM Usuarios WHERE cedula = ? AND correo = ? AND estado = "Activo"',
+      [cedula, correo.toLowerCase().trim()]
+    );
+
+    if (!usuario) {
+      // Por seguridad, no revelamos si el usuario existe o no
+      this.logger.warn('Intento de recuperación de contraseña - Usuario no encontrado', { cedula });
+      return { message: 'Si el usuario existe, se enviará un correo con las instrucciones' };
+    }
+
+    // Generar token único
+    const crypto = await import('crypto');
+    const token = crypto.default.randomBytes(32).toString('hex');
+    const fechaExpiracion = new Date();
+    fechaExpiracion.setHours(fechaExpiracion.getHours() + 1); // Expira en 1 hora
+
+    // Guardar token en la base de datos
+    await this.userRepository.db.execute(
+      `INSERT INTO Tokens_Recuperacion_Contrasena (id_usuario, token, fecha_expiracion)
+       VALUES (?, ?, ?)`,
+      [usuario.id_usuario, token, fechaExpiracion]
+    );
+
+    // Enviar correo con el token
+    const emailService = (await import('../services/emailService.js')).default;
+    const urlRecuperacion = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/restablecer-contrasena?token=${token}`;
+    
+    await emailService.enviarCorreoRecuperacion(
+      usuario.correo,
+      usuario.nombre_usuario,
+      urlRecuperacion
+    );
+
+    this.logger.info('Solicitud de recuperación de contraseña procesada', { 
+      userId: usuario.id_usuario,
+      cedula 
+    });
+
+    return { message: 'Si el usuario existe, se enviará un correo con las instrucciones' };
+  }
+
+  /**
+   * Valida un token de recuperación de contraseña
+   * @param {string} token - Token de recuperación
+   * @returns {Promise<Object>} Información del token
+   */
+  async validarTokenRecuperacion(token) {
+    const tokenData = await this.userRepository.findOne(
+      `SELECT t.*, u.nombre_usuario, u.correo 
+       FROM Tokens_Recuperacion_Contrasena t
+       INNER JOIN Usuarios u ON u.id_usuario = t.id_usuario
+       WHERE t.token = ? AND t.usado = 0 AND t.fecha_expiracion > NOW()`,
+      [token]
+    );
+
+    if (!tokenData) {
+      throw new AuthenticationError('Token inválido o expirado');
+    }
+
+    return {
+      token: tokenData.token,
+      nombre_usuario: tokenData.nombre_usuario,
+      correo: tokenData.correo
+    };
+  }
+
+  /**
+   * Restablece la contraseña usando un token de recuperación
+   * @param {string} token - Token de recuperación
+   * @param {string} nuevaContrasena - Nueva contraseña
+   * @returns {Promise<Object>} Resultado del restablecimiento
+   */
+  async restablecerContrasena(token, nuevaContrasena) {
+    // Validar token
+    const tokenData = await this.userRepository.findOne(
+      `SELECT t.*, u.id_usuario 
+       FROM Tokens_Recuperacion_Contrasena t
+       INNER JOIN Usuarios u ON u.id_usuario = t.id_usuario
+       WHERE t.token = ? AND t.usado = 0 AND t.fecha_expiracion > NOW()`,
+      [token]
+    );
+
+    if (!tokenData) {
+      throw new AuthenticationError('Token inválido o expirado');
+    }
+
+    // Validar nueva contraseña
+    const passwordResult = this.passwordValidator.validate(nuevaContrasena);
+    if (!passwordResult.valid) {
+      throw new ValidationError(passwordResult.error);
+    }
+
+    // Hash de la nueva contraseña
+    const nuevaContrasenaHash = await this.passwordService.hash(nuevaContrasena);
+
+    // Actualizar contraseña y marcar token como usado
+    const connection = await this.userRepository.db.pool.getConnection();
+    try {
+      await connection.beginTransaction();
+
+      await connection.execute(
+        'UPDATE Usuarios SET contrasena = ?, requiere_cambio_contrasena = 0 WHERE id_usuario = ?',
+        [nuevaContrasenaHash, tokenData.id_usuario]
+      );
+
+      await connection.execute(
+        'UPDATE Tokens_Recuperacion_Contrasena SET usado = 1, fecha_uso = NOW() WHERE token = ?',
+        [token]
+      );
+
+      await connection.commit();
+    } catch (error) {
+      await connection.rollback();
+      throw error;
+    } finally {
+      connection.release();
+    }
+
+    this.logger.info('Contraseña restablecida exitosamente', { 
+      userId: tokenData.id_usuario 
+    });
+
+    return { message: 'Contraseña restablecida correctamente' };
   }
 }

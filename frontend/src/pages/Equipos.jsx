@@ -3,13 +3,17 @@ import React, { useState, useEffect } from 'react'
 import Header from '../components/Header'
 import Sidebar from '../components/Sidebar'
 import Toast from '../components/Toast'
+import ImportarEquipos from '../components/ImportarEquipos'
+import { FiPlus, FiUpload } from 'react-icons/fi'
 import { parseApiResponse, buildErrorMessage } from '../utils/api'
 import '../styles/equipos.css'
+import '../styles/sidebar.css'
 
 const ESTADOS_FISICOS = ['Nuevo', 'Bueno', 'Regular', 'Malo', 'Dañado']
 const TIPOS = ['Computador de Escritorio', 'Portátil', 'Monitor', 'Mouse', 'Teclado', 'Impresora', 'Proyector', 'Router']
 
 export default function Equipos() {
+  const [activeTab, setActiveTab] = useState('registrar') // 'registrar' o 'importar'
   const [form, setForm] = useState({
     codigo_inventario: '',
     tipo: '',
@@ -107,8 +111,42 @@ export default function Equipos() {
         <Sidebar user={user} />
         <main className="dashboard-main">
           {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
-          <h2 style={{textAlign: 'center', marginTop: '1.5rem'}}>Registrar Equipo</h2>
-          <form className="form-equipos" onSubmit={handleSubmit}>
+          
+          <div className="form-equipos form-modern">
+            <div className="form-header">
+              <div className="form-icon-wrapper form-icon-wrapper-green">
+                <FiPlus size={28} color="#fff" />
+              </div>
+              <div className="form-header-content">
+                <h2 className="form-header-title">Registro de Equipos</h2>
+                <p className="form-header-subtitle">
+                  Registra equipos individualmente o importa múltiples equipos desde Excel
+                </p>
+              </div>
+            </div>
+
+            {/* Pestañas */}
+            <div className="form-tabs">
+              <button
+                onClick={() => setActiveTab('registrar')}
+                className={`form-tab ${activeTab === 'registrar' ? 'active' : ''}`}
+              >
+                <FiPlus size={18} />
+                Registrar Equipo
+              </button>
+              <button
+                onClick={() => setActiveTab('importar')}
+                className={`form-tab ${activeTab === 'importar' ? 'active' : ''}`}
+              >
+                <FiUpload size={18} />
+                Importar Equipos
+              </button>
+            </div>
+
+            <div className="form-divider form-divider-no-margin"></div>
+
+            {activeTab === 'registrar' ? (
+              <form className="form-equipos" onSubmit={handleSubmit}>
         <div className="form-grid">
           <div className="form-row">
             <label>Código de Inventario *</label>
@@ -182,6 +220,17 @@ export default function Equipos() {
           <button type="submit" className="btn-verde">Registrar Equipo</button>
         </div>
       </form>
+            ) : (
+              <ImportarEquipos 
+                onImportComplete={(resultados) => {
+                  setToast({
+                    message: `Importación completada: ${resultados.exitosos} exitosos, ${resultados.fallidos} fallidos`,
+                    type: resultados.fallidos === 0 ? 'success' : 'warning'
+                  })
+                }}
+              />
+            )}
+          </div>
         </main>
       </div>
     </div>

@@ -25,6 +25,7 @@ CREATE TABLE Usuarios (
   contrasena VARCHAR(255) NOT NULL,
   id_rol INT NOT NULL,
   estado ENUM('Activo', 'Inactivo') DEFAULT 'Activo',
+  requiere_cambio_contrasena TINYINT(1) DEFAULT 0 COMMENT 'Indica si el usuario debe cambiar su contraseña (generada automáticamente)',
   fecha_registro DATETIME DEFAULT NOW(),
   ultimo_acceso DATETIME,
   creado_por INT,
@@ -33,6 +34,23 @@ CREATE TABLE Usuarios (
   INDEX idx_cedula (cedula),
   INDEX idx_estado (estado),
   INDEX idx_rol (id_rol)
+);
+
+-- ============================================
+-- TABLA DE TOKENS DE RECUPERACIÓN DE CONTRASEÑA
+-- ============================================
+CREATE TABLE Tokens_Recuperacion_Contrasena (
+  id_token INT PRIMARY KEY AUTO_INCREMENT,
+  id_usuario INT NOT NULL,
+  token VARCHAR(255) UNIQUE NOT NULL,
+  fecha_creacion DATETIME DEFAULT NOW(),
+  fecha_expiracion DATETIME NOT NULL,
+  usado TINYINT(1) DEFAULT 0,
+  fecha_uso DATETIME NULL,
+  FOREIGN KEY (id_usuario) REFERENCES Usuarios(id_usuario) ON DELETE CASCADE,
+  INDEX idx_token (token),
+  INDEX idx_usuario (id_usuario),
+  INDEX idx_expiracion (fecha_expiracion, usado)
 );
 
 -- ========================

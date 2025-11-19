@@ -134,3 +134,71 @@ export const deleteUser = async (req, res, next) => {
     return next(error);
   }
 };
+
+/**
+ * Cambiar contraseña obligatorio (cuando requiere_cambio_contrasena es true)
+ */
+export const cambiarContrasenaObligatorio = async (req, res, next) => {
+  try {
+    if (!req.user || !req.user.id) {
+      return res.status(401).json({ error: 'No autorizado' });
+    }
+
+    const { contrasenaActual, nuevaContrasena } = req.body;
+    const authService = ServiceFactory.create('authService');
+    const result = await authService.cambiarContrasenaObligatorio(
+      req.user.id,
+      contrasenaActual,
+      nuevaContrasena
+    );
+    return res.json(result);
+  } catch (error) {
+    logger.error('Error en cambiarContrasenaObligatorio', { error: error.message });
+    return next(error);
+  }
+};
+
+/**
+ * Solicitar recuperación de contraseña
+ */
+export const solicitarRecuperacionContrasena = async (req, res, next) => {
+  try {
+    const { cedula, correo } = req.body;
+    const authService = ServiceFactory.create('authService');
+    const result = await authService.solicitarRecuperacionContrasena(cedula, correo);
+    return res.json(result);
+  } catch (error) {
+    logger.error('Error en solicitarRecuperacionContrasena', { error: error.message });
+    return next(error);
+  }
+};
+
+/**
+ * Validar token de recuperación de contraseña
+ */
+export const validarTokenRecuperacion = async (req, res, next) => {
+  try {
+    const { token } = req.params;
+    const authService = ServiceFactory.create('authService');
+    const result = await authService.validarTokenRecuperacion(token);
+    return res.json(result);
+  } catch (error) {
+    logger.error('Error en validarTokenRecuperacion', { error: error.message });
+    return next(error);
+  }
+};
+
+/**
+ * Restablecer contraseña con token
+ */
+export const restablecerContrasena = async (req, res, next) => {
+  try {
+    const { token, nuevaContrasena } = req.body;
+    const authService = ServiceFactory.create('authService');
+    const result = await authService.restablecerContrasena(token, nuevaContrasena);
+    return res.json(result);
+  } catch (error) {
+    logger.error('Error en restablecerContrasena', { error: error.message });
+    return next(error);
+  }
+};

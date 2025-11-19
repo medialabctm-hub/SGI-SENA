@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { FiMail, FiLock, FiEye } from 'react-icons/fi';
 import Toast from '../components/Toast';
 import { buildErrorMessage, parseApiResponse } from '../utils/api';
+import '../styles/auth.css';
 
 export default function Login() {
   const [cedula, setCedula] = useState('');
@@ -37,8 +38,15 @@ export default function Login() {
       const data = await parseApiResponse(res, 'No se pudo iniciar sesión');
       localStorage.setItem('token', data.token);
       localStorage.setItem('user', JSON.stringify(data.user));
-      setToast({ message: 'Inicio de sesión exitoso', type: 'success' });
-      navigate('/dashboard');
+      
+      // Si requiere cambio de contraseña, redirigir a la página de cambio
+      if (data.requiereCambioContrasena) {
+        setToast({ message: 'Debes cambiar tu contraseña antes de continuar', type: 'warning' });
+        navigate('/cambiar-contrasena');
+      } else {
+        setToast({ message: 'Inicio de sesión exitoso', type: 'success' });
+        navigate('/dashboard');
+      }
     } catch (err) {
       setToast({
         message: buildErrorMessage(err, 'No se pudo iniciar sesión'),
@@ -113,7 +121,15 @@ export default function Login() {
         </form>
 
         <div className="links">
-          <a href="#">¿Olvidaste tu contraseña?</a>
+          <a 
+            href="#" 
+            onClick={(e) => {
+              e.preventDefault();
+              navigate('/olvidar-contrasena');
+            }}
+          >
+            ¿Olvidaste tu contraseña?
+          </a>
           <div>
             ¿No tienes cuenta?{' '}
             <a
