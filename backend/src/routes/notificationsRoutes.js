@@ -43,4 +43,3 @@ router.patch('/:id/read',
 )
 
 export default router
-

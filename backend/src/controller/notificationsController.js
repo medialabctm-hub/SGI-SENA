@@ -160,4 +160,3 @@ export async function createNotification(req, res) {
     return res.status(500).json({ error: 'Error al crear la notificación', details: err.message })
   }
 }
-
