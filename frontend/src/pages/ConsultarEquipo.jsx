@@ -4,6 +4,9 @@ import Sidebar from '../components/Sidebar'
 import Toast from '../components/Toast'
 import ConfirmModal from '../components/ConfirmModal'
 import { parseApiResponse, buildErrorMessage } from '../utils/api'
+import { FiDownload, FiSearch, FiList } from 'react-icons/fi'
+import jsPDF from 'jspdf'
+import 'jspdf-autotable'
 import '../styles/equipos.css'
 
 export default function ConsultarEquipo() {
@@ -197,6 +200,142 @@ export default function ConsultarEquipo() {
     }
   }
 
+  async function handleDescargarPDF() {
+    setToast(null)
+    
+    // Si no hay equipos cargados, obtener todos primero
+    let equiposParaPDF = equipos
+    if (equipos.length === 0) {
+      setLoading(true)
+      try {
+        const token = localStorage.getItem('token')
+        const res = await fetch('/api/equipos', {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+        const data = await parseApiResponse(res, 'No se pudo obtener los equipos para el PDF')
+        equiposParaPDF = Array.isArray(data) ? data : []
+      } catch (err) {
+        setToast({ message: buildErrorMessage(err, 'No se pudo obtener los equipos para el PDF'), type: 'error' })
+        setLoading(false)
+        return
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    if (equiposParaPDF.length === 0) {
+      setToast({ message: 'No hay equipos para descargar', type: 'error' })
+      return
+    }
+
+    try {
+      // Crear nuevo documento PDF
+      const doc = new jsPDF('landscape', 'mm', 'a4')
+      
+      // Título
+      doc.setFontSize(18)
+      doc.setTextColor(0, 0, 0)
+      doc.text('Reporte de Equipos - SENA', 14, 15)
+      
+      // Fecha de generación
+      doc.setFontSize(10)
+      doc.setTextColor(100, 100, 100)
+      const fechaGeneracion = new Date().toLocaleDateString('es-ES', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      })
+      doc.text(`Generado el: ${fechaGeneracion}`, 14, 22)
+      
+      // Preparar datos para la tabla
+      const tableData = equiposParaPDF.map(eq => [
+        eq.codigo_inventario || '-',
+        eq.codigo_equipo || '-',
+        eq.tipo || '-',
+        eq.marca || '-',
+        eq.modelo || '-',
+        eq.numero_serie || '-',
+        eq.estado_fisico || '-',
+        eq.fecha_adquisicion ? formatDate(eq.fecha_adquisicion) : '-',
+        eq.costo ? formatCurrency(eq.costo) : '-',
+        eq.nombre_ambiente || '-',
+        eq.codigo_ambiente || '-',
+        eq.vida_util_meses ?? '-',
+        eq.incluye_mouse ? 'Sí' : 'No',
+        eq.incluye_teclado ? 'Sí' : 'No',
+        eq.incluye_monitor ? 'Sí' : 'No',
+        eq.incluye_torre ? 'Sí' : 'No',
+        (eq.descripcion || '-').substring(0, 30) + (eq.descripcion && eq.descripcion.length > 30 ? '...' : ''),
+        (eq.specs_completas || '-').substring(0, 30) + (eq.specs_completas && eq.specs_completas.length > 30 ? '...' : '')
+      ])
+
+      // Configurar la tabla
+      doc.autoTable({
+        startY: 28,
+        head: [[
+          'Código Inventario',
+          'ID Interno',
+          'Tipo',
+          'Marca',
+          'Modelo',
+          'N° Serie',
+          'Estado',
+          'Fecha Adquisición',
+          'Costo',
+          'Ambiente',
+          'Código Ambiente',
+          'Vida útil (meses)',
+          'Mouse',
+          'Teclado',
+          'Monitor',
+          'Torre',
+          'Descripción',
+          'Especificaciones'
+        ]],
+        body: tableData,
+        theme: 'striped',
+        headStyles: {
+          fillColor: [34, 139, 34], // Verde SENA
+          textColor: [255, 255, 255],
+          fontStyle: 'bold',
+          fontSize: 7
+        },
+        bodyStyles: {
+          fontSize: 6,
+          textColor: [0, 0, 0]
+        },
+        alternateRowStyles: {
+          fillColor: [245, 245, 245]
+        },
+        styles: {
+          cellPadding: 2,
+          overflow: 'linebreak',
+          cellWidth: 'wrap'
+        },
+        margin: { top: 28, left: 14, right: 14 },
+        pageBreak: 'auto',
+        rowPageBreak: 'avoid'
+      })
+
+      // Pie de página con total de equipos
+      const finalY = doc.lastAutoTable.finalY || 28
+      doc.setFontSize(10)
+      doc.setTextColor(0, 0, 0)
+      doc.text(`Total de equipos: ${equiposParaPDF.length}`, 14, finalY + 10)
+
+      // Guardar el PDF
+      const nombreArchivo = `equipos_sena_${new Date().toISOString().split('T')[0]}.pdf`
+      doc.save(nombreArchivo)
+      
+      setToast({ message: `PDF descargado exitosamente: ${nombreArchivo}`, type: 'success' })
+    } catch (err) {
+      console.error('Error al generar PDF:', err)
+      setToast({ message: 'Error al generar el PDF. Por favor, intenta nuevamente.', type: 'error' })
+    }
+  }
+
   return (
     <div className="page simple-page">
       <Header />
@@ -227,12 +366,18 @@ export default function ConsultarEquipo() {
                   className="search-input"
                 />
                 <button className="btn btn-verde" type="submit" disabled={loading}>
+                  <FiSearch size={16} />
                   {loading ? 'Buscando...' : 'Buscar'}
                 </button>
                 <button type="button" className="btn" onClick={handleMostrarTodos} disabled={loading}>
+                  <FiList size={16} />
                   {loading ? 'Cargando...' : 'Mostrar todos'}
                 </button>
               </form>
+              <button type="button" className="btn btn-verde" onClick={handleDescargarPDF} disabled={loading}>
+                <FiDownload size={16} />
+                Descargar PDF
+              </button>
             </div>
           </div>
 
