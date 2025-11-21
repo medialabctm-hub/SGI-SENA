@@ -19,6 +19,11 @@ import Mantenimientos from './pages/Mantenimientos';
 import CrearMantenimiento from './pages/CrearMantenimiento';
 import Asignaciones from './pages/Asignaciones';
 import Ambientes from './pages/Ambientes';
+import AsignarAmbientes from './pages/AsignarAmbientes';
+import VerificarInventario from './pages/VerificarInventario';
+import Horarios from './pages/Horarios';
+import HistorialVerificaciones from './pages/HistorialVerificaciones';
+import HistorialVerificacionesGeneral from './pages/HistorialVerificacionesGeneral';
 import ProtectedRoute from './components/ProtectedRoute';
 import RedirectIfAuth from './components/RedirectIfAuth';
 
@@ -86,6 +91,14 @@ export default function App() {
         element={
           <ProtectedRoute>
             <ConsultarEquipo />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/equipos/verificar"
+        element={
+          <ProtectedRoute>
+            <VerificarInventario />
           </ProtectedRoute>
         }
       />
@@ -182,6 +195,38 @@ export default function App() {
         element={
           <ProtectedRoute>
             <Ambientes />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/ambientes/asignar"
+        element={
+          <ProtectedRoute>
+            <AsignarAmbientes />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/horarios"
+        element={
+          <ProtectedRoute>
+            <Horarios />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/equipos/verificacion/historial"
+        element={
+          <ProtectedRoute>
+            <HistorialVerificacionesGeneral />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/equipos/historial-verificaciones/:codigo"
+        element={
+          <ProtectedRoute>
+            <HistorialVerificaciones />
           </ProtectedRoute>
         }
       />

@@ -24,9 +24,11 @@ import reportesRoutes from './src/routes/reportesRoutes.js';
 import mantenimientoRoutes from './src/routes/mantenimientoRoutes.js';
 import estadisticasRoutes from './src/routes/estadisticasRoutes.js';
 import clasesRoutes from './src/routes/clasesRoutes.js';
+import horariosRoutes from './src/routes/horariosRoutes.js';
 import importRoutes from './src/routes/importRoutes.js';
 import invitationCodeRoutes from './src/routes/invitationCodeRoutes.js';
 import preferencesRoutes from './src/routes/preferencesRoutes.js';
+import schedulerService from './src/services/schedulerService.js';
 
 const app = express();
 const desiredPort = Number(config.server.PORT) || 3000;
@@ -92,6 +94,7 @@ app.use('/api/reportes', reportesRoutes);
 app.use('/api/mantenimiento', mantenimientoRoutes);
 app.use('/api/estadisticas', estadisticasRoutes);
 app.use('/api', clasesRoutes);
+app.use('/api', horariosRoutes);
 app.use('/api/import', importRoutes);
 app.use('/api/invitation-codes', invitationCodeRoutes);
 app.use('/api/preferences', preferencesRoutes);
@@ -124,6 +127,12 @@ const startServer = (port) => {
         mode: config.server.mode || 'development',
         env: process.env.NODE_ENV || 'development',
       });
+      
+      // Iniciar scheduler para sincronización automática de responsabilidades
+      // Se ejecuta cada minuto para verificar clases que deben iniciar/finalizar
+      if (process.env.NODE_ENV !== 'test') {
+        schedulerService.start(1); // Sincronizar cada 1 minuto
+      }
     });
 
     server.on('error', (err) => {
@@ -146,6 +155,7 @@ const startServer = (port) => {
     // Manejo de señales para cierre graceful
     process.on('SIGTERM', () => {
       logger.info('SIGTERM recibido, cerrando servidor...');
+      schedulerService.stop();
       server.close(() => {
         logger.info('Servidor cerrado');
         process.exit(0);
@@ -154,6 +164,7 @@ const startServer = (port) => {
 
     process.on('SIGINT', () => {
       logger.info('SIGINT recibido, cerrando servidor...');
+      schedulerService.stop();
       server.close(() => {
         logger.info('Servidor cerrado');
         process.exit(0);

@@ -5,7 +5,10 @@ import {
   crearAmbiente,
   actualizarAmbiente,
   eliminarAmbiente,
-  listarAmbientesActivos
+  listarAmbientesActivos,
+  asignarAmbienteInstructor,
+  desasignarAmbienteInstructor,
+  listarAsignacionesAmbientes
 } from '../controller/ambientesController.js';
 import { authenticate } from '../middleware/authMiddleware.js';
 import { requirePermission } from '../middleware/authorization.js';
@@ -56,6 +59,27 @@ router.delete(
   '/ambientes/:id',
   requirePermission(PERMISSIONS.AMBIENTES.DELETE),
   eliminarAmbiente
+);
+
+// Asignar ambiente a instructor (permanente)
+router.post(
+  '/ambientes/asignar',
+  requirePermission(PERMISSIONS.AMBIENTES.UPDATE),
+  asignarAmbienteInstructor
+);
+
+// Desasignar ambiente de instructor
+router.delete(
+  '/ambientes/asignaciones/:id_responsabilidad',
+  requirePermission(PERMISSIONS.AMBIENTES.UPDATE),
+  desasignarAmbienteInstructor
+);
+
+// Listar asignaciones permanentes de ambientes
+router.get(
+  '/ambientes/asignaciones',
+  requirePermission(PERMISSIONS.AMBIENTES.VIEW),
+  listarAsignacionesAmbientes
 );
 
 export default router;

@@ -4,12 +4,14 @@ import Sidebar from '../components/Sidebar'
 import Toast from '../components/Toast'
 import ConfirmModal from '../components/ConfirmModal'
 import { parseApiResponse, buildErrorMessage } from '../utils/api'
-import { FiDownload, FiSearch, FiList } from 'react-icons/fi'
+import { FiDownload, FiSearch, FiList, FiClock } from 'react-icons/fi'
+import { useNavigate } from 'react-router-dom'
 import jsPDF from 'jspdf'
 import 'jspdf-autotable'
 import '../styles/equipos.css'
 
 export default function ConsultarEquipo() {
+  const navigate = useNavigate()
   const [codigo, setCodigo] = useState('')
   const [loading, setLoading] = useState(false)
   const [equipos, setEquipos] = useState([])
@@ -23,7 +25,8 @@ export default function ConsultarEquipo() {
     try {
       const userData = localStorage.getItem('user')
       if (userData) {
-        setUser(JSON.parse(userData))
+        const parsedUser = JSON.parse(userData)
+        setUser(parsedUser)
       }
     } catch (error) {
       console.error('Error al obtener datos del usuario:', error)
@@ -407,7 +410,7 @@ export default function ConsultarEquipo() {
                       <th>Torre</th>
                       <th>Descripción</th>
                       <th>Especificaciones</th>
-                      <th style={{width:180}}>Acciones</th>
+                      <th style={{width: user?.nombre_rol === 'Administrador' ? '280px' : '120px'}}>Acciones</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -551,8 +554,38 @@ export default function ConsultarEquipo() {
                             </>
                           ) : (
                             <>
-                              <button className="btn btn-edit" type="button" onClick={() => startEdit(eq)} disabled={loading}>Editar</button>
-                              <button className="btn btn-delete" type="button" onClick={() => confirmDelete(eq.codigo_equipo)} disabled={loading}>Eliminar</button>
+                              <button 
+                                className="btn btn-view" 
+                                type="button" 
+                                onClick={() => navigate(`/equipos/historial-verificaciones/${eq.codigo_equipo}`)} 
+                                disabled={loading}
+                                title="Ver historial de verificaciones"
+                                style={{ fontSize: '0.85rem', padding: '6px 12px', marginRight: '6px' }}
+                              >
+                                <FiClock size={14} />
+                                Historial
+                              </button>
+                              {user?.nombre_rol === 'Administrador' && (
+                                <>
+                                  <button 
+                                    className="btn btn-edit" 
+                                    type="button" 
+                                    onClick={() => startEdit(eq)} 
+                                    disabled={loading}
+                                    style={{ marginRight: '6px' }}
+                                  >
+                                    Editar
+                                  </button>
+                                  <button 
+                                    className="btn btn-delete" 
+                                    type="button" 
+                                    onClick={() => confirmDelete(eq.codigo_equipo)} 
+                                    disabled={loading}
+                                  >
+                                    Eliminar
+                                  </button>
+                                </>
+                              )}
                             </>
                           )}
                         </td>

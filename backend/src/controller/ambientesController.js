@@ -412,3 +412,213 @@ export async function listarAmbientesActivos(req, res) {
   }
 }
 
+/**
+ * Asignar ambiente a instructor (asignación permanente)
+ * Solo Administrador puede asignar ambientes
+ */
+export async function asignarAmbienteInstructor(req, res) {
+  try {
+    const { id_ambiente, id_instructor, jornada, observaciones } = req.body;
+    const asignadoPor = req.user?.id;
+
+    if (!id_ambiente || !id_instructor || !jornada) {
+      return res.status(400).json({
+        error: 'Faltan campos obligatorios',
+        detalle: 'Se requieren: id_ambiente, id_instructor, jornada'
+      });
+    }
+
+    // Validar jornada
+    const jornadasValidas = ['Mañana', 'Tarde', 'Noche'];
+    if (!jornadasValidas.includes(jornada)) {
+      return res.status(400).json({
+        error: 'Jornada inválida',
+        detalle: `La jornada debe ser una de: ${jornadasValidas.join(', ')}`
+      });
+    }
+
+    // Validar que el ambiente existe
+    const [[ambiente]] = await defaultDb.execute(
+      'SELECT id_ambiente, nombre_ambiente, codigo_ambiente FROM Ambientes WHERE id_ambiente = ?',
+      [id_ambiente]
+    );
+
+    if (!ambiente) {
+      return res.status(404).json({ error: 'Ambiente no encontrado' });
+    }
+
+    // Validar que el usuario es instructor
+    const [[instructor]] = await defaultDb.execute(
+      `SELECT u.id_usuario, u.nombre_usuario, r.nombre_rol
+       FROM Usuarios u
+       INNER JOIN Roles r ON u.id_rol = r.id_rol
+       WHERE u.id_usuario = ? AND u.estado = 'Activo' AND r.nombre_rol = 'Instructor'`,
+      [id_instructor]
+    );
+
+    if (!instructor) {
+      return res.status(404).json({
+        error: 'Instructor no encontrado',
+        detalle: 'El usuario debe ser un Instructor activo'
+      });
+    }
+
+    // Verificar si ya existe una asignación permanente activa para este instructor en esta jornada
+    // Permitimos múltiples instructores en la misma jornada, pero no duplicados del mismo instructor
+    const [[asignacionExistente]] = await defaultDb.execute(
+      `SELECT id_responsabilidad_ambiente
+       FROM Responsabilidades_Ambiente
+       WHERE id_ambiente = ?
+         AND id_usuario = ?
+         AND jornada = ?
+         AND id_clase IS NULL
+         AND estado_responsabilidad = 'Activa'
+         AND (fecha_fin IS NULL OR fecha_fin >= NOW())`,
+      [id_ambiente, id_instructor, jornada]
+    );
+
+    if (asignacionExistente) {
+      return res.status(409).json({
+        error: 'Asignación existente',
+        detalle: 'Este instructor ya está asignado a este ambiente en la jornada ' + jornada
+      });
+    }
+
+    // Crear nueva asignación permanente (id_clase = NULL indica asignación permanente)
+    const [result] = await defaultDb.execute(
+      `INSERT INTO Responsabilidades_Ambiente
+       (id_ambiente, id_clase, jornada, id_usuario, tipo_responsabilidad, fecha_inicio, fecha_fin, estado_responsabilidad, observaciones, creado_por)
+       VALUES (?, NULL, ?, ?, 'Principal', NOW(), NULL, 'Activa', ?, ?)`,
+      [id_ambiente, jornada, id_instructor, observaciones || null, asignadoPor]
+    );
+
+    return res.status(201).json({
+      ok: true,
+      id: result.insertId,
+      message: `Ambiente "${ambiente.nombre_ambiente}" asignado correctamente a ${instructor.nombre_usuario} en jornada ${jornada}`,
+      asignacion: {
+        id_responsabilidad: result.insertId,
+        ambiente: ambiente.nombre_ambiente,
+        instructor: instructor.nombre_usuario,
+        jornada: jornada
+      }
+    });
+  } catch (err) {
+    console.error('Error al asignar ambiente a instructor:', err);
+    return res.status(500).json({
+      error: 'Error al asignar ambiente',
+      detalle: err.message
+    });
+  }
+}
+
+/**
+ * Desasignar ambiente de instructor (finalizar asignación permanente)
+ */
+export async function desasignarAmbienteInstructor(req, res) {
+  try {
+    const { id_responsabilidad } = req.params;
+
+    // Validar que la asignación existe y es permanente
+    const [[asignacion]] = await defaultDb.execute(
+      `SELECT ra.id_responsabilidad_ambiente, ra.id_ambiente, ra.id_usuario,
+              a.nombre_ambiente, u.nombre_usuario AS instructor_nombre
+       FROM Responsabilidades_Ambiente ra
+       INNER JOIN Ambientes a ON ra.id_ambiente = a.id_ambiente
+       INNER JOIN Usuarios u ON ra.id_usuario = u.id_usuario
+       WHERE ra.id_responsabilidad_ambiente = ?
+         AND ra.id_clase IS NULL
+         AND ra.estado_responsabilidad = 'Activa'`,
+      [id_responsabilidad]
+    );
+
+    if (!asignacion) {
+      return res.status(404).json({
+        error: 'Asignación no encontrada',
+        detalle: 'La asignación no existe o no es una asignación permanente activa'
+      });
+    }
+
+    // Finalizar la asignación
+    await defaultDb.execute(
+      `UPDATE Responsabilidades_Ambiente
+       SET estado_responsabilidad = 'Finalizada',
+           fecha_fin = NOW()
+       WHERE id_responsabilidad_ambiente = ?`,
+      [id_responsabilidad]
+    );
+
+    return res.json({
+      ok: true,
+      message: `Asignación del ambiente "${asignacion.nombre_ambiente}" a ${asignacion.instructor_nombre} finalizada correctamente`
+    });
+  } catch (err) {
+    console.error('Error al desasignar ambiente:', err);
+    return res.status(500).json({
+      error: 'Error al desasignar ambiente',
+      detalle: err.message
+    });
+  }
+}
+
+/**
+ * Listar asignaciones permanentes de ambientes a instructores
+ */
+export async function listarAsignacionesAmbientes(req, res) {
+  try {
+    const { id_ambiente, id_instructor } = req.query;
+
+    let query = `
+      SELECT 
+        ra.id_responsabilidad_ambiente,
+        ra.id_ambiente,
+        a.nombre_ambiente,
+        a.codigo_ambiente,
+        a.tipo_ambiente,
+        ra.jornada,
+        ra.id_usuario,
+        u.nombre_usuario AS instructor_nombre,
+        u.cedula AS instructor_cedula,
+        ra.tipo_responsabilidad,
+        ra.fecha_inicio,
+        ra.fecha_fin,
+        ra.estado_responsabilidad,
+        ra.observaciones,
+        COUNT(DISTINCT e.codigo_equipo) AS total_equipos,
+        u_asignador.nombre_usuario AS asignado_por_nombre
+      FROM Responsabilidades_Ambiente ra
+      INNER JOIN Ambientes a ON ra.id_ambiente = a.id_ambiente
+      INNER JOIN Usuarios u ON ra.id_usuario = u.id_usuario
+      LEFT JOIN Usuarios u_asignador ON ra.creado_por = u_asignador.id_usuario
+      LEFT JOIN Elementos e ON a.id_ambiente = e.id_ambiente
+      WHERE ra.id_clase IS NULL
+    `;
+
+    const params = [];
+
+    if (id_ambiente) {
+      query += ' AND ra.id_ambiente = ?';
+      params.push(id_ambiente);
+    }
+
+    if (id_instructor) {
+      query += ' AND ra.id_usuario = ?';
+      params.push(id_instructor);
+    }
+
+    query += `
+      GROUP BY ra.id_responsabilidad_ambiente
+      ORDER BY ra.fecha_inicio DESC, a.nombre_ambiente ASC
+    `;
+
+    const [rows] = await defaultDb.execute(query, params);
+    return res.json(rows);
+  } catch (err) {
+    console.error('Error al listar asignaciones de ambientes:', err);
+    return res.status(500).json({
+      error: 'Error al listar asignaciones',
+      detalle: err.message
+    });
+  }
+}
+

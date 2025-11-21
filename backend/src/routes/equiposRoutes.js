@@ -1,5 +1,5 @@
 import express from 'express';
-import { registrarEquipo, obtenerEquipoPorCodigo, listarEquipos, actualizarEquipo, eliminarEquipo, asignarEquipo, obtenerMisEquipos, listarAsignaciones, eliminarAsignacion } from '../controller/equiposController.js';
+import { registrarEquipo, obtenerEquipoPorCodigo, listarEquipos, actualizarEquipo, eliminarEquipo, asignarEquipo, obtenerMisEquipos, listarAsignaciones, eliminarAsignacion, obtenerEquiposAmbientesInstructor, registrarVerificacionInventario, consultarHistorialVerificaciones, obtenerHistorialEquipo } from '../controller/equiposController.js';
 import { authenticate } from '../middleware/authMiddleware.js';
 import { requirePermission, requireAnyPermission } from '../middleware/authorization.js';
 import { PERMISSIONS } from '../config/permissions.js';
@@ -48,10 +48,21 @@ router.get('/asignaciones',
   listarAsignaciones
 );
 
+// Obtener historial de verificaciones de un equipo específico
+// IMPORTANTE: Esta ruta debe ir ANTES de /:codigo para evitar conflictos
+router.get('/:codigo/historial-verificaciones', 
+  authenticate,
+  requireAnyPermission([
+    PERMISSIONS.EQUIPOS.VIEW,
+    PERMISSIONS.EQUIPOS.VIEW_OWN
+  ]),
+  obtenerHistorialEquipo
+);
+
 // Consultar equipo por código
 // Admin e Instructor: pueden ver cualquier equipo
 // Aprendiz: solo equipos asignados (controlador valida)
-// IMPORTANTE: Esta ruta debe ir DESPUÉS de las rutas específicas como /asignaciones
+// IMPORTANTE: Esta ruta debe ir DESPUÉS de las rutas específicas como /asignaciones y /:codigo/historial-verificaciones
 router.get('/:codigo', 
   authenticate,
   requireAnyPermission([
@@ -96,6 +107,32 @@ router.delete('/asignaciones/:id',
     PERMISSIONS.EQUIPOS.ASSIGN_TO_APRENDIZ
   ]),
   eliminarAsignacion
+);
+
+// Obtener equipos de ambientes asignados al instructor (para verificación)
+// Solo instructores
+router.get('/verificacion/ambientes', 
+  authenticate,
+  obtenerEquiposAmbientesInstructor
+);
+
+// Registrar verificación física de inventario
+// Solo instructores
+router.post('/verificacion', 
+  authenticate,
+  registrarVerificacionInventario
+);
+
+// Consultar historial de verificaciones
+// Admin: ve todas las verificaciones
+// Instructor: solo sus propias verificaciones
+router.get('/verificacion/historial', 
+  authenticate,
+  requireAnyPermission([
+    PERMISSIONS.EQUIPOS.VIEW,
+    PERMISSIONS.EQUIPOS.VIEW_OWN
+  ]),
+  consultarHistorialVerificaciones
 );
 
 export default router;

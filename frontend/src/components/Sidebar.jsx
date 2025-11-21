@@ -17,7 +17,10 @@ import {
   FiUser,
   FiShield,
   FiKey,
-  FiBell
+  FiBell,
+  FiCheckCircle,
+  FiCalendar,
+  FiClock
 } from 'react-icons/fi'
 import { useSidebar } from '../contexts/SidebarContext'
 import '../styles/sidebar.css'
@@ -36,6 +39,7 @@ export default function Sidebar({ user }) {
     equipos: false,
     incidencias: false,
     mantenimiento: false,
+    horarios: false,
     config: false
   })
 
@@ -64,6 +68,15 @@ export default function Sidebar({ user }) {
         equipos: false,
         incidencias: false,
         mantenimiento: true,
+        horarios: false,
+        config: false
+      })
+    } else if (path.startsWith('/horarios') || path.startsWith('/clases')) {
+      setExpandedMenus({
+        equipos: false,
+        incidencias: false,
+        mantenimiento: false,
+        horarios: true,
         config: false
       })
     } else if (path.startsWith('/usuarios') || path.startsWith('/ambientes') || path.startsWith('/config')) {
@@ -71,6 +84,7 @@ export default function Sidebar({ user }) {
         equipos: false,
         incidencias: false,
         mantenimiento: false,
+        horarios: false,
         config: true
       })
     }
@@ -100,7 +114,9 @@ export default function Sidebar({ user }) {
       { title: 'Registrar Equipo', path: '/equipos', icon: <FiPlus />, roles: ['Administrador'] },
       { title: 'Consultar Equipo', path: '/equipos/consultar', icon: <FiSearch />, roles: ['all'] },
       { title: 'Mis Equipos', path: '/mis-equipos', icon: <FiPackage />, roles: ['all'] },
-      { title: 'Asignar Equipo', path: '/equipos/asignar', icon: <FiUsers />, roles: ['Administrador', 'Instructor'] }
+      { title: 'Asignar Equipo', path: '/equipos/asignar', icon: <FiUsers />, roles: ['Administrador', 'Instructor'] },
+      { title: 'Verificar Inventario', path: '/equipos/verificar', icon: <FiCheckCircle />, roles: ['Instructor'] },
+      { title: 'Historial de Verificaciones', path: '/equipos/verificacion/historial', icon: <FiClock />, roles: ['all'] }
     ],
     incidencias: [
       { title: 'Novedades', path: '/novedades', icon: <FiAlertCircle />, roles: ['Administrador', 'Instructor'] },
@@ -109,10 +125,16 @@ export default function Sidebar({ user }) {
     mantenimiento: [
       { title: 'Historial de Mantenimientos', path: '/mantenimientos', icon: <FiTool />, roles: ['all'] }
     ],
+    horarios: [
+      { title: 'Mis Horarios', path: '/horarios', icon: <FiCalendar />, roles: ['Instructor'] },
+      { title: 'Gestión de Horarios', path: '/horarios', icon: <FiCalendar />, roles: ['Administrador'] },
+      { title: 'Consultar Responsables', path: '/horarios/responsables', icon: <FiClock />, roles: ['all'] }
+    ],
     config: [
       { title: 'Personal Registrado', path: '/usuarios', icon: <FiUsers />, roles: ['Administrador', 'Instructor'] },
       { title: 'Gestión de Usuarios', path: '/config?section=users', icon: <FiUsers />, roles: ['Administrador', 'Instructor'] },
       { title: 'Gestión de Ambientes', path: '/ambientes', icon: <FiMapPin />, roles: ['Administrador'] },
+      { title: 'Asignar Ambientes', path: '/ambientes/asignar', icon: <FiUserCheck />, roles: ['Administrador'] },
       { title: 'Perfil', path: '/config?section=profile', icon: <FiUser />, roles: ['all'] },
       { title: 'Seguridad', path: '/config?section=security', icon: <FiShield />, roles: ['all'] },
       { title: 'Códigos de Seguridad', path: '/config?section=invitation-codes', icon: <FiKey />, roles: ['Administrador'] },
@@ -187,6 +209,7 @@ export default function Sidebar({ user }) {
         {renderMenuSection('equipos', 'Gestión de Equipos', <FiPackage />)}
         {renderMenuSection('incidencias', 'Incidencias / Reportes', <FiAlertCircle />)}
         {renderMenuSection('mantenimiento', 'Mantenimiento', <FiTool />)}
+        {renderMenuSection('horarios', 'Horarios y Clases', <FiCalendar />)}
         {renderMenuSection('config', 'Configuración / Usuarios', <FiSettings />)}
         </div>
       </aside>

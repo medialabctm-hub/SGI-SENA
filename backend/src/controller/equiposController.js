@@ -606,3 +606,449 @@ export async function eliminarAsignacion(req, res) {
     return res.status(500).json({ error: 'Error al eliminar la asignación', details: err.message })
   }
 }
+
+/**
+ * Obtener equipos de ambientes asignados al instructor actual
+ * Solo para instructores: muestra equipos de ambientes donde tienen responsabilidad activa
+ */
+export async function obtenerEquiposAmbientesInstructor(req, res) {
+  try {
+    const userId = req.user?.id
+    const userRole = req.user?.rol
+
+    // Solo instructores pueden acceder a esta funcionalidad
+    if (userRole !== 'Instructor') {
+      return res.status(403).json({ 
+        error: 'Solo los instructores pueden verificar el inventario de sus ambientes' 
+      })
+    }
+
+    // Determinar jornada actual basada en la hora
+    const horaActual = new Date().getHours();
+    let jornadaActual = 'Mañana'; // Por defecto
+    if (horaActual >= 6 && horaActual < 12) {
+      jornadaActual = 'Mañana';
+    } else if (horaActual >= 12 && horaActual < 18) {
+      jornadaActual = 'Tarde';
+    } else {
+      jornadaActual = 'Noche';
+    }
+
+    // Obtener ambientes donde el instructor tiene responsabilidad activa
+    // Incluye tanto asignaciones permanentes (id_clase IS NULL) como temporales (con id_clase)
+    // Para permanentes, solo muestra las de la jornada actual
+    // Para temporales (clases), verifica que la clase esté dentro del rango de tiempo actual
+    const [ambientes] = await defaultDb.execute(
+      `SELECT DISTINCT
+        ra.id_ambiente,
+        a.nombre_ambiente,
+        a.codigo_ambiente,
+        ra.tipo_responsabilidad,
+        ra.fecha_inicio,
+        ra.fecha_fin,
+        ra.jornada,
+        ra.id_clase,
+        c.estado_clase,
+        CASE WHEN ra.id_clase IS NULL THEN 'Permanente' ELSE 'Temporal' END AS tipo_asignacion
+      FROM Responsabilidades_Ambiente ra
+      INNER JOIN Ambientes a ON ra.id_ambiente = a.id_ambiente
+      LEFT JOIN Clases c ON ra.id_clase = c.id_clase
+      WHERE ra.id_usuario = ?
+        AND ra.estado_responsabilidad = 'Activa'
+        AND ra.fecha_inicio <= NOW()
+        AND (ra.fecha_fin IS NULL OR ra.fecha_fin >= NOW())
+        AND (
+          (ra.id_clase IS NULL AND ra.jornada = ?)
+          OR (
+            ra.id_clase IS NOT NULL 
+            AND c.estado_clase IN ('Programada', 'En Curso')
+            AND c.fecha_clase = CURDATE()
+            AND CONCAT(c.fecha_clase, ' ', c.hora_inicio) <= NOW()
+            AND CONCAT(c.fecha_clase, ' ', c.hora_fin) >= NOW()
+          )
+        )
+      ORDER BY a.nombre_ambiente`,
+      [userId, jornadaActual]
+    )
+
+    // Log para debug
+    console.log(`[Verificación Inventario] Instructor ${userId}, Jornada: ${jornadaActual}, Ambientes encontrados: ${ambientes.length}`)
+    if (ambientes.length > 0) {
+      console.log(`[Verificación Inventario] Ambientes:`, ambientes.map(a => ({
+        ambiente: a.nombre_ambiente,
+        tipo: a.tipo_asignacion,
+        estado_clase: a.estado_clase,
+        id_clase: a.id_clase
+      })))
+    }
+
+    if (ambientes.length === 0) {
+      return res.json({
+        ambientes: [],
+        equipos: []
+      })
+    }
+
+    const ambienteIds = ambientes.map(a => a.id_ambiente)
+
+    // Obtener todos los equipos de esos ambientes
+    const [equipos] = await defaultDb.execute(
+      `SELECT 
+        e.codigo_equipo,
+        e.codigo_inventario,
+        e.tipo,
+        e.marca,
+        e.modelo,
+        e.numero_serie,
+        e.estado_fisico,
+        e.descripcion,
+        e.id_ambiente,
+        a.nombre_ambiente,
+        a.codigo_ambiente,
+        (SELECT MAX(fecha_verificacion) 
+         FROM Verificaciones_Inventario 
+         WHERE codigo_equipo = e.codigo_equipo 
+         AND id_usuario = ?) AS ultima_verificacion
+      FROM Elementos e
+      INNER JOIN Ambientes a ON e.id_ambiente = a.id_ambiente
+      WHERE e.id_ambiente IN (${ambienteIds.map(() => '?').join(',')})
+      ORDER BY a.nombre_ambiente, e.codigo_inventario`,
+      [userId, ...ambienteIds]
+    )
+
+    return res.json({
+      ambientes,
+      equipos
+    })
+  } catch (err) {
+    console.error('Error al obtener equipos de ambientes del instructor:', err)
+    return res.status(500).json({ 
+      error: 'Error al obtener equipos de ambientes', 
+      details: err.message 
+    })
+  }
+}
+
+/**
+ * Registrar verificación física de un equipo
+ * Solo instructores pueden verificar equipos de sus ambientes
+ */
+export async function registrarVerificacionInventario(req, res) {
+  try {
+    const { codigo_equipo, estado_verificacion, observaciones } = req.body
+    const userId = req.user?.id
+    const userRole = req.user?.rol
+
+    if (!codigo_equipo || !estado_verificacion) {
+      return res.status(400).json({ 
+        error: 'Faltan campos obligatorios (codigo_equipo, estado_verificacion)' 
+      })
+    }
+
+    // Solo instructores pueden verificar
+    if (userRole !== 'Instructor') {
+      return res.status(403).json({ 
+        error: 'Solo los instructores pueden registrar verificaciones' 
+      })
+    }
+
+    // Validar que el equipo existe y obtener su ambiente
+    const [[equipo]] = await defaultDb.execute(
+      `SELECT e.codigo_equipo, e.id_ambiente, a.nombre_ambiente
+       FROM Elementos e
+       INNER JOIN Ambientes a ON e.id_ambiente = a.id_ambiente
+       WHERE e.codigo_equipo = ?`,
+      [codigo_equipo]
+    )
+
+    if (!equipo) {
+      return res.status(404).json({ error: 'Equipo no encontrado' })
+    }
+
+    // Determinar jornada actual
+    const horaActual = new Date().getHours();
+    let jornadaActual = 'Mañana';
+    if (horaActual >= 6 && horaActual < 12) {
+      jornadaActual = 'Mañana';
+    } else if (horaActual >= 12 && horaActual < 18) {
+      jornadaActual = 'Tarde';
+    } else {
+      jornadaActual = 'Noche';
+    }
+
+    // Validar que el instructor tiene responsabilidad activa en ese ambiente
+    // Incluye tanto asignaciones permanentes como temporales
+    // Para permanentes, valida que sea de la jornada actual
+    // Obtener información completa de la responsabilidad para el historial
+    const [[responsabilidad]] = await defaultDb.execute(
+      `SELECT 
+        ra.id_responsabilidad_ambiente,
+        ra.id_clase,
+        ra.jornada,
+        c.fecha_clase,
+        c.hora_inicio,
+        c.hora_fin,
+        c.nombre_clase,
+        c.codigo_ficha
+       FROM Responsabilidades_Ambiente ra
+       LEFT JOIN Clases c ON ra.id_clase = c.id_clase
+       WHERE ra.id_ambiente = ?
+         AND ra.id_usuario = ?
+         AND ra.estado_responsabilidad = 'Activa'
+         AND ra.fecha_inicio <= NOW()
+         AND (ra.fecha_fin IS NULL OR ra.fecha_fin >= NOW())
+         AND (
+           ra.id_clase IS NOT NULL 
+           OR (ra.id_clase IS NULL AND ra.jornada = ?)
+         )
+       ORDER BY ra.fecha_inicio DESC
+       LIMIT 1`,
+      [equipo.id_ambiente, userId, jornadaActual]
+    )
+
+    if (!responsabilidad) {
+      return res.status(403).json({ 
+        error: 'No tienes responsabilidad activa en el ambiente de este equipo' 
+      })
+    }
+
+    // Validar estado_verificacion
+    const estadosValidos = ['Verificado', 'Con Novedad', 'No Verificado']
+    if (!estadosValidos.includes(estado_verificacion)) {
+      return res.status(400).json({ 
+        error: `Estado inválido. Debe ser uno de: ${estadosValidos.join(', ')}` 
+      })
+    }
+
+    // Siempre crear un nuevo registro en el historial (no actualizar)
+    // Esto permite rastrear todas las verificaciones a lo largo del tiempo
+    const [result] = await defaultDb.execute(
+      `INSERT INTO Verificaciones_Inventario 
+       (codigo_equipo, id_ambiente, id_clase, id_responsabilidad_ambiente, jornada, id_usuario, estado_verificacion, observaciones, fecha_verificacion)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
+      [
+        codigo_equipo,
+        equipo.id_ambiente,
+        responsabilidad.id_clase || null,
+        responsabilidad.id_responsabilidad_ambiente,
+        responsabilidad.jornada || null,
+        userId,
+        estado_verificacion,
+        observaciones || null
+      ]
+    )
+
+    return res.json({
+      ok: true,
+      id_verificacion: result.insertId,
+      message: 'Verificación registrada correctamente en el historial',
+      equipo: {
+        codigo: equipo.codigo_equipo,
+        ambiente: equipo.nombre_ambiente
+      },
+      contexto: {
+        ambiente: equipo.nombre_ambiente,
+        clase: responsabilidad.nombre_clase || null,
+        horario: responsabilidad.id_clase 
+          ? `${responsabilidad.fecha_clase} ${responsabilidad.hora_inicio} - ${responsabilidad.hora_fin}`
+          : null,
+        jornada: responsabilidad.jornada || null,
+        ficha: responsabilidad.codigo_ficha || null
+      }
+    })
+  } catch (err) {
+    console.error('Error al registrar verificación:', err)
+    return res.status(500).json({ 
+      error: 'Error al registrar verificación', 
+      details: err.message 
+    })
+  }
+}
+
+/**
+ * Consultar historial de verificaciones de inventario
+ * Permite filtrar por equipo, ambiente, instructor, fecha, etc.
+ */
+export async function consultarHistorialVerificaciones(req, res) {
+  try {
+    const { 
+      codigo_equipo, 
+      id_ambiente, 
+      id_instructor, 
+      fecha_desde, 
+      fecha_hasta,
+      estado_verificacion,
+      id_clase
+    } = req.query
+
+    const userId = req.user?.id
+    const userRole = req.user?.rol
+
+    let query = `
+      SELECT 
+        vi.id_verificacion,
+        vi.codigo_equipo,
+        e.codigo_inventario,
+        e.tipo AS equipo_tipo,
+        e.marca AS equipo_marca,
+        e.modelo AS equipo_modelo,
+        vi.id_ambiente,
+        a.nombre_ambiente,
+        a.codigo_ambiente,
+        vi.id_clase,
+        c.nombre_clase,
+        c.codigo_ficha,
+        c.fecha_clase,
+        c.hora_inicio,
+        c.hora_fin,
+        vi.id_responsabilidad_ambiente,
+        vi.jornada,
+        vi.id_usuario,
+        u.nombre_usuario AS instructor_nombre,
+        u.cedula AS instructor_cedula,
+        vi.estado_verificacion,
+        vi.observaciones,
+        vi.fecha_verificacion
+      FROM Verificaciones_Inventario vi
+      INNER JOIN Elementos e ON vi.codigo_equipo = e.codigo_equipo
+      LEFT JOIN Ambientes a ON vi.id_ambiente = a.id_ambiente
+      LEFT JOIN Clases c ON vi.id_clase = c.id_clase
+      INNER JOIN Usuarios u ON vi.id_usuario = u.id_usuario
+      WHERE 1=1
+    `
+
+    const params = []
+
+    // Si es instructor, solo puede ver sus propias verificaciones
+    if (userRole === 'Instructor') {
+      query += ' AND vi.id_usuario = ?'
+      params.push(userId)
+    }
+
+    // Filtros opcionales
+    if (codigo_equipo) {
+      query += ' AND vi.codigo_equipo = ?'
+      params.push(codigo_equipo)
+    }
+
+    if (id_ambiente) {
+      query += ' AND vi.id_ambiente = ?'
+      params.push(id_ambiente)
+    }
+
+    if (id_instructor && userRole === 'Administrador') {
+      query += ' AND vi.id_usuario = ?'
+      params.push(id_instructor)
+    }
+
+    if (id_clase) {
+      query += ' AND vi.id_clase = ?'
+      params.push(id_clase)
+    }
+
+    if (estado_verificacion) {
+      query += ' AND vi.estado_verificacion = ?'
+      params.push(estado_verificacion)
+    }
+
+    if (fecha_desde) {
+      query += ' AND DATE(vi.fecha_verificacion) >= ?'
+      params.push(fecha_desde)
+    }
+
+    if (fecha_hasta) {
+      query += ' AND DATE(vi.fecha_verificacion) <= ?'
+      params.push(fecha_hasta)
+    }
+
+    query += ' ORDER BY vi.fecha_verificacion DESC LIMIT 1000'
+
+    const [verificaciones] = await defaultDb.execute(query, params)
+
+    return res.json({
+      verificaciones,
+      total: verificaciones.length
+    })
+  } catch (err) {
+    console.error('Error al consultar historial de verificaciones:', err)
+    return res.status(500).json({
+      error: 'Error al consultar historial',
+      details: err.message
+    })
+  }
+}
+
+/**
+ * Obtener historial de verificaciones de un equipo específico
+ * Útil para rastrear qué instructor estaba a cargo cuando ocurrió un incidente
+ */
+export async function obtenerHistorialEquipo(req, res) {
+  try {
+    const { codigo } = req.params
+    const { fecha_desde, fecha_hasta } = req.query
+
+    let query = `
+      SELECT 
+        vi.id_verificacion,
+        vi.fecha_verificacion,
+        vi.estado_verificacion,
+        vi.observaciones,
+        vi.id_ambiente,
+        a.nombre_ambiente,
+        a.codigo_ambiente,
+        vi.id_clase,
+        c.nombre_clase,
+        c.codigo_ficha,
+        c.fecha_clase,
+        c.hora_inicio,
+        c.hora_fin,
+        vi.jornada,
+        vi.id_usuario,
+        u.nombre_usuario AS instructor_nombre,
+        u.cedula AS instructor_cedula,
+        u.correo AS instructor_correo
+      FROM Verificaciones_Inventario vi
+      INNER JOIN Elementos e ON vi.codigo_equipo = e.codigo_equipo
+      LEFT JOIN Ambientes a ON vi.id_ambiente = a.id_ambiente
+      LEFT JOIN Clases c ON vi.id_clase = c.id_clase
+      INNER JOIN Usuarios u ON vi.id_usuario = u.id_usuario
+      WHERE vi.codigo_equipo = ?
+    `
+
+    const params = [codigo]
+
+    if (fecha_desde) {
+      query += ' AND DATE(vi.fecha_verificacion) >= ?'
+      params.push(fecha_desde)
+    }
+
+    if (fecha_hasta) {
+      query += ' AND DATE(vi.fecha_verificacion) <= ?'
+      params.push(fecha_hasta)
+    }
+
+    query += ' ORDER BY vi.fecha_verificacion DESC'
+
+    const [historial] = await defaultDb.execute(query, params)
+
+    // Obtener información del equipo
+    const [[equipo]] = await defaultDb.execute(
+      `SELECT codigo_equipo, codigo_inventario, tipo, marca, modelo, numero_serie
+       FROM Elementos
+       WHERE codigo_equipo = ?`,
+      [codigo]
+    )
+
+    return res.json({
+      equipo,
+      historial,
+      total: historial.length
+    })
+  } catch (err) {
+    console.error('Error al obtener historial del equipo:', err)
+    return res.status(500).json({
+      error: 'Error al obtener historial del equipo',
+      details: err.message
+    })
+  }
+}

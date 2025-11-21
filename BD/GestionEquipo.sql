@@ -451,6 +451,43 @@ CREATE TABLE IF NOT EXISTS Preferencias_Usuario (
 
 ALTER TABLE Preferencias_Usuario COMMENT = 'Preferencias de configuración de usuario (notificaciones, idioma, zona horaria)';
 
+-- ============================================
+-- TABLA DE VERIFICACIONES DE INVENTARIO
+-- ============================================
+-- Esta tabla permite a los instructores registrar verificaciones físicas
+-- de los equipos en los ambientes bajo su responsabilidad
+
+CREATE TABLE IF NOT EXISTS Verificaciones_Inventario (
+  id_verificacion INT PRIMARY KEY AUTO_INCREMENT,
+  codigo_equipo INT NOT NULL,
+  id_usuario INT NOT NULL COMMENT 'Instructor que realiza la verificación',
+  estado_verificacion ENUM('Verificado', 'Con Novedad', 'No Verificado') NOT NULL,
+  observaciones TEXT,
+  fecha_verificacion DATETIME NOT NULL DEFAULT NOW(),
+  FOREIGN KEY (codigo_equipo) REFERENCES Elementos(codigo_equipo) ON DELETE CASCADE,
+  FOREIGN KEY (id_usuario) REFERENCES Usuarios(id_usuario) ON DELETE CASCADE,
+  INDEX idx_equipo (codigo_equipo),
+  INDEX idx_usuario (id_usuario),
+  INDEX idx_fecha (fecha_verificacion),
+  INDEX idx_estado (estado_verificacion),
+  INDEX idx_equipo_usuario_fecha (codigo_equipo, id_usuario, fecha_verificacion)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================
+-- AGREGAR CAMPO JORNADA A RESPONSABILIDADES_AMBIENTE
+-- ============================================
+-- Permite que un ambiente tenga múltiples instructores en diferentes jornadas
+
+ALTER TABLE Responsabilidades_Ambiente 
+ADD COLUMN jornada ENUM('Mañana', 'Tarde', 'Noche') NULL 
+COMMENT 'Jornada de la asignación. NULL para asignaciones temporales de clases' 
+AFTER id_clase;
+
+-- Actualizar índices para incluir jornada en las búsquedas
+ALTER TABLE Responsabilidades_Ambiente 
+ADD INDEX idx_ambiente_jornada (id_ambiente, jornada, estado_responsabilidad);
+
+
 -- =========
 -- TRIGGERS
 -- =========
@@ -1302,3 +1339,122 @@ ALTER TABLE Historial_Equipos COMMENT = 'Registro histórico de eventos de equip
 ALTER TABLE Clases COMMENT = 'Programación de clases en ambientes con horarios específicos';
 ALTER TABLE Participantes_Clase COMMENT = 'Registro de aprendices que participan en cada clase';
 ALTER TABLE Responsabilidades_Ambiente COMMENT = 'Responsabilidades temporales sobre el inventario de un ambiente durante clases';
+ALTER TABLE Clases 
+ADD COLUMN codigo_ficha VARCHAR(50) NULL 
+COMMENT 'Código de la ficha o grupo de aprendices' 
+AFTER nombre_clase;
+
+-- Agregar índice para búsquedas por ficha
+ALTER TABLE Clases 
+ADD INDEX idx_ficha (codigo_ficha);
+
+-- Mejorar índices para consultas de conflictos de horario
+ALTER TABLE Clases 
+ADD INDEX idx_ambiente_fecha_hora (id_ambiente, fecha_clase, hora_inicio, hora_fin, estado_clase);
+
+-- Agregar campo para registrar si la responsabilidad fue asignada automáticamente
+ALTER TABLE Responsabilidades_Ambiente 
+ADD COLUMN asignacion_automatica BOOLEAN DEFAULT FALSE 
+COMMENT 'Indica si la responsabilidad fue asignada automáticamente por horario' 
+AFTER estado_responsabilidad;
+
+-- Índice para consultas de responsables en tiempo real
+ALTER TABLE Responsabilidades_Ambiente 
+ADD INDEX idx_ambiente_fecha_activa (id_ambiente, fecha_inicio, fecha_fin, estado_responsabilidad);
+
+-- Vista para consultar responsables actuales de un ambiente
+CREATE OR REPLACE VIEW Vista_Responsables_Actuales AS
+SELECT 
+    ra.id_responsabilidad_ambiente,
+    ra.id_ambiente,
+    a.nombre_ambiente,
+    a.codigo_ambiente,
+    ra.id_usuario,
+    u.nombre_usuario,
+    u.cedula,
+    r.nombre_rol,
+    ra.tipo_responsabilidad,
+    ra.fecha_inicio,
+    ra.fecha_fin,
+    ra.id_clase,
+    c.nombre_clase,
+    c.codigo_ficha,
+    c.fecha_clase,
+    c.hora_inicio,
+    c.hora_fin,
+    CASE 
+        WHEN ra.fecha_inicio <= NOW() AND (ra.fecha_fin IS NULL OR ra.fecha_fin >= NOW()) 
+        THEN 'Activo'
+        ELSE 'Inactivo'
+    END AS estado_actual
+FROM Responsabilidades_Ambiente ra
+INNER JOIN Ambientes a ON ra.id_ambiente = a.id_ambiente
+INNER JOIN Usuarios u ON ra.id_usuario = u.id_usuario
+LEFT JOIN Roles r ON u.id_rol = r.id_rol
+LEFT JOIN Clases c ON ra.id_clase = c.id_clase
+WHERE ra.estado_responsabilidad = 'Activa';
+
+
+-- Agregar campos para rastrear el contexto completo de la verificación
+ALTER TABLE Verificaciones_Inventario 
+ADD COLUMN id_ambiente INT NULL 
+COMMENT 'Ambiente donde se verificó el equipo' 
+AFTER codigo_equipo;
+
+ALTER TABLE Verificaciones_Inventario 
+ADD COLUMN id_clase INT NULL 
+COMMENT 'Clase/horario activo cuando se verificó' 
+AFTER id_ambiente;
+
+ALTER TABLE Verificaciones_Inventario 
+ADD COLUMN id_responsabilidad_ambiente INT NULL 
+COMMENT 'Responsabilidad que estaba activa cuando se verificó' 
+AFTER id_clase;
+
+ALTER TABLE Verificaciones_Inventario 
+ADD COLUMN jornada VARCHAR(20) NULL 
+COMMENT 'Jornada cuando se verificó (para asignaciones permanentes)' 
+AFTER id_responsabilidad_ambiente;
+
+-- Agregar foreign keys
+ALTER TABLE Verificaciones_Inventario 
+ADD FOREIGN KEY (id_ambiente) REFERENCES Ambientes(id_ambiente) ON DELETE SET NULL;
+
+ALTER TABLE Verificaciones_Inventario 
+ADD FOREIGN KEY (id_clase) REFERENCES Clases(id_clase) ON DELETE SET NULL;
+
+ALTER TABLE Verificaciones_Inventario 
+ADD FOREIGN KEY (id_responsabilidad_ambiente) REFERENCES Responsabilidades_Ambiente(id_responsabilidad_ambiente) ON DELETE SET NULL;
+
+-- Agregar índices para búsquedas eficientes
+ALTER TABLE Verificaciones_Inventario 
+ADD INDEX idx_ambiente_fecha (id_ambiente, fecha_verificacion);
+
+ALTER TABLE Verificaciones_Inventario 
+ADD INDEX idx_clase_fecha (id_clase, fecha_verificacion);
+
+ALTER TABLE Verificaciones_Inventario 
+ADD INDEX idx_equipo_fecha (codigo_equipo, fecha_verificacion);
+
+ALTER TABLE Verificaciones_Inventario 
+ADD INDEX idx_instructor_fecha (id_usuario, fecha_verificacion);
+
+-- Actualizar comentario de la tabla
+ALTER TABLE Verificaciones_Inventario 
+COMMENT = 'Historial completo de verificaciones de inventario con contexto de horarios y responsabilidades';
+
+-- ============================================
+-- ACTUALIZAR ENUM DE TIPO_NOVEDAD
+-- ============================================
+-- Agregar nuevos tipos de novedad que se usan en el frontend
+
+ALTER TABLE Novedades 
+MODIFY COLUMN tipo_novedad ENUM(
+  'Daño', 
+  'Pérdida', 
+  'Robo', 
+  'Mal Funcionamiento', 
+  'Daño Físico',
+  'Falta de Componente',
+  'Otro'
+) NOT NULL;

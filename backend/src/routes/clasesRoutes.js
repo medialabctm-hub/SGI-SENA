@@ -8,7 +8,9 @@ import {
   agregarParticipantes,
   obtenerResponsablesAmbiente,
   actualizarClase,
-  cancelarClase
+  cancelarClase,
+  consultarResponsablesTiempoReal,
+  sincronizarResponsabilidadesHorarios
 } from '../controller/clasesController.js';
 import { authenticate } from '../middleware/authMiddleware.js';
 import { requirePermission } from '../middleware/authorization.js';
@@ -80,6 +82,20 @@ router.get(
   '/ambientes/:id_ambiente/responsables',
   requirePermission(PERMISSIONS.AMBIENTES.VIEW),
   obtenerResponsablesAmbiente
+);
+
+// Consultar responsables en tiempo real (fecha y hora específicas)
+router.get(
+  '/ambientes/:id_ambiente/responsables-tiempo-real',
+  requirePermission(PERMISSIONS.AMBIENTES.VIEW),
+  consultarResponsablesTiempoReal
+);
+
+// Sincronizar responsabilidades basándose en horarios (puede ejecutarse automáticamente)
+router.post(
+  '/clases/sincronizar-responsabilidades',
+  requirePermission(PERMISSIONS.CLASES.UPDATE),
+  sincronizarResponsabilidadesHorarios
 );
 
 export default router;

@@ -11,8 +11,32 @@ export async function crearNovedad(req, res) {
     const { codigo_equipo, tipo_novedad, descripcion } = req.body
     const userId = req.user?.id
 
+    console.log('Crear novedad - Datos recibidos:', { codigo_equipo, tipo_novedad, descripcion: descripcion?.substring(0, 50), userId })
+
     if (!codigo_equipo || !tipo_novedad || !descripcion) {
-      return res.status(400).json({ error: 'Faltan campos obligatorios' })
+      return res.status(400).json({ 
+        error: 'Faltan campos obligatorios',
+        recibido: { codigo_equipo: !!codigo_equipo, tipo_novedad: !!tipo_novedad, descripcion: !!descripcion }
+      })
+    }
+
+    // Validar y normalizar tipo_novedad
+    const tiposValidos = ['Daño', 'Pérdida', 'Robo', 'Mal Funcionamiento', 'Daño Físico', 'Falta de Componente', 'Otro']
+    let tipoNovedadNormalizado = tipo_novedad.trim()
+    
+    // Mapear valores antiguos a nuevos si es necesario
+    if (tipoNovedadNormalizado === 'Daño Físico') {
+      tipoNovedadNormalizado = 'Daño Físico'
+    } else if (tipoNovedadNormalizado === 'Falta de Componente') {
+      tipoNovedadNormalizado = 'Falta de Componente'
+    }
+    
+    if (!tiposValidos.includes(tipoNovedadNormalizado)) {
+      return res.status(400).json({ 
+        error: 'Tipo de novedad inválido',
+        tipo_recibido: tipo_novedad,
+        tipos_validos: tiposValidos
+      })
     }
 
     // Validar que el equipo existe
@@ -41,11 +65,26 @@ export async function crearNovedad(req, res) {
     }
 
     // Insertar la novedad
-    const [result] = await defaultDb.execute(
-      `INSERT INTO Novedades (codigo_equipo, tipo_novedad, descripcion, reportado_por) 
-       VALUES (?, ?, ?, ?)`,
-      [codigo_equipo, tipo_novedad, descripcion, userId]
-    )
+    let result
+    try {
+      [result] = await defaultDb.execute(
+        `INSERT INTO Novedades (codigo_equipo, tipo_novedad, descripcion, reportado_por) 
+         VALUES (?, ?, ?, ?)`,
+        [codigo_equipo, tipoNovedadNormalizado, descripcion.trim(), userId]
+      )
+      console.log('Novedad insertada correctamente, ID:', result.insertId)
+    } catch (insertErr) {
+      console.error('Error al insertar novedad en BD:', insertErr)
+      // Si el error es por tipo_novedad, dar un mensaje más claro
+      if (insertErr.message && insertErr.message.includes('tipo_novedad')) {
+        return res.status(400).json({
+          error: 'Tipo de novedad no válido para la base de datos',
+          details: 'Ejecuta el script BD/actualizar_tipo_novedad.sql para actualizar los tipos permitidos',
+          tipo_intentado: tipoNovedadNormalizado
+        })
+      }
+      throw insertErr
+    }
 
     const equipoDesc = `${equipo.tipo} ${equipo.marca} ${equipo.modelo}`.trim()
     const userRole = req.user?.rol
