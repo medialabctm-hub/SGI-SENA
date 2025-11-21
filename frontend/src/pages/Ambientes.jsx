@@ -5,6 +5,10 @@ import Toast from '../components/Toast';
 import ConfirmModal from '../components/ConfirmModal';
 import { parseApiResponse, buildErrorMessage } from '../utils/api';
 import '../styles/equipos.css';
+import '../styles/usuarios.css';
+import '../styles/modal.css';
+import '../styles/sidebar.css';
+import '../styles/ambientes.css';
 
 const TIPOS_AMBIENTE = ['Laboratorio', 'Aula', 'Taller', 'Oficina', 'Bodega'];
 const ESTADOS_AMBIENTE = ['Activo', 'Inactivo', 'En Mantenimiento'];
@@ -17,6 +21,7 @@ export default function Ambientes() {
   const [query, setQuery] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [editingAmbiente, setEditingAmbiente] = useState(null);
+  const [editingRowId, setEditingRowId] = useState(null);
   const [form, setForm] = useState({
     codigo_ambiente: '',
     nombre_ambiente: '',
@@ -101,6 +106,19 @@ export default function Ambientes() {
     return Object.keys(errs).length === 0;
   };
 
+  // Prepare payload converting numeric empty strings to null or numbers
+  const preparePayload = (src) => {
+    const payload = { ...src };
+    // Convert capacidad_personas: if empty string -> null, else number
+    if (payload.capacidad_personas === '' || payload.capacidad_personas === null) {
+      payload.capacidad_personas = null;
+    } else {
+      const n = Number(payload.capacidad_personas);
+      payload.capacidad_personas = Number.isNaN(n) ? null : n;
+    }
+    return payload;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validateForm()) return;
@@ -111,10 +129,12 @@ export default function Ambientes() {
         : '/api/ambientes';
       const method = editingAmbiente ? 'PUT' : 'POST';
 
+      const payload = preparePayload(form);
+
       const res = await fetch(url, {
         method,
         headers: getAuthHeaders(),
-        body: JSON.stringify(form),
+        body: JSON.stringify(payload),
       });
 
       await parseApiResponse(
@@ -155,7 +175,9 @@ export default function Ambientes() {
   };
 
   const handleEdit = (amb) => {
+    // activate inline editing for the row instead of opening top form
     setEditingAmbiente(amb);
+    setEditingRowId(amb.id_ambiente);
     setForm({
       codigo_ambiente: amb.codigo_ambiente || '',
       nombre_ambiente: amb.nombre_ambiente || '',
@@ -166,8 +188,56 @@ export default function Ambientes() {
       descripcion: amb.descripcion || '',
       estado_ambiente: amb.estado_ambiente || 'Activo',
     });
-    setShowForm(true);
+    setShowForm(false);
     setViewAmbiente(null);
+  };
+
+  const handleCancelInline = () => {
+    setEditingRowId(null);
+    setEditingAmbiente(null);
+    setErrores({});
+    setForm({
+      codigo_ambiente: '',
+      nombre_ambiente: '',
+      tipo_ambiente: 'Aula',
+      capacidad_personas: '',
+      piso: '',
+      edificio: '',
+      descripcion: '',
+      estado_ambiente: 'Activo',
+    });
+  };
+
+  const handleInlineSave = async () => {
+    if (!validateForm()) return;
+    try {
+      const id = editingRowId || (editingAmbiente && editingAmbiente.id_ambiente);
+      if (!id) return;
+      const payload = preparePayload(form);
+      const res = await fetch(`/api/ambientes/${id}`, {
+        method: 'PUT',
+        headers: getAuthHeaders(),
+        body: JSON.stringify(payload),
+      });
+      await parseApiResponse(res, 'No se pudo actualizar el ambiente');
+      setToast({ message: 'Ambiente actualizado correctamente', type: 'success' });
+      setEditingRowId(null);
+      setEditingAmbiente(null);
+      setForm({
+        codigo_ambiente: '',
+        nombre_ambiente: '',
+        tipo_ambiente: 'Aula',
+        capacidad_personas: '',
+        piso: '',
+        edificio: '',
+        descripcion: '',
+        estado_ambiente: 'Activo',
+      });
+      setErrores({});
+      fetchAmbientes();
+    } catch (err) {
+      setToast({ message: buildErrorMessage(err, 'Error al actualizar ambiente'), type: 'error' });
+    }
   };
 
   const handleDelete = async () => {
@@ -217,7 +287,7 @@ export default function Ambientes() {
   });
 
   return (
-    <div className="page simple-page">
+    <div className="page simple-page ambientes-page">
       <Header />
       <div className="dashboard-layout">
         <Sidebar user={currentUser} />
@@ -230,67 +300,76 @@ export default function Ambientes() {
             />
           )}
 
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-            <h2>Gestión de Ambientes</h2>
-            {isAdmin && (
-              <button
-                className="btn-primary"
-                onClick={() => {
-                  setShowForm(true);
-                  setEditingAmbiente(null);
-                  setViewAmbiente(null);
-                  setForm({
-                    codigo_ambiente: '',
-                    nombre_ambiente: '',
-                    tipo_ambiente: 'Aula',
-                    capacidad_personas: '',
-                    piso: '',
-                    edificio: '',
-                    descripcion: '',
-                    estado_ambiente: 'Activo',
-                  });
-                  setErrores({});
-                }}
-              >
-                + Nuevo Ambiente
-              </button>
-            )}
-          </div>
+          <div className="users-panel">
+            <div className="users-toolbar">
+              <h2>Gestión de Ambientes</h2>
+              <div className="users-toolbar-actions">
+                <input
+                  className="search-input"
+                  placeholder="Buscar por código, nombre, edificio o piso..."
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                />
+                {isAdmin && (
+                  <button
+                    className="btn-import-users"
+                    onClick={() => {
+                      setShowForm(true);
+                      setEditingAmbiente(null);
+                      setViewAmbiente(null);
+                      setForm({
+                        codigo_ambiente: '',
+                        nombre_ambiente: '',
+                        tipo_ambiente: 'Aula',
+                        capacidad_personas: '',
+                        piso: '',
+                        edificio: '',
+                        descripcion: '',
+                        estado_ambiente: 'Activo',
+                      });
+                      setErrores({});
+                    }}
+                  >
+                    + Nuevo Ambiente
+                  </button>
+                )}
+              </div>
+            </div>
 
-          {/* Filtros */}
-          <div style={{ marginBottom: '1rem', display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-            <input
-              type="text"
-              placeholder="Buscar por código, nombre, edificio o piso..."
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              style={{ flex: '1', minWidth: '250px', padding: '0.5rem' }}
-            />
-            <select
-              value={filtros.estado}
-              onChange={(e) => setFiltros({ ...filtros, estado: e.target.value })}
-              style={{ padding: '0.5rem' }}
-            >
-              <option value="">Todos los estados</option>
-              {ESTADOS_AMBIENTE.map((est) => (
-                <option key={est} value={est}>
-                  {est}
-                </option>
-              ))}
-            </select>
-            <select
-              value={filtros.tipo}
-              onChange={(e) => setFiltros({ ...filtros, tipo: e.target.value })}
-              style={{ padding: '0.5rem' }}
-            >
-              <option value="">Todos los tipos</option>
-              {TIPOS_AMBIENTE.map((tipo) => (
-                <option key={tipo} value={tipo}>
-                  {tipo}
-                </option>
-              ))}
-            </select>
-          </div>
+            <div className="users-content" style={{ marginBottom: '1rem' }}>
+              <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', marginTop: '0.75rem' }}>
+                <select
+                  className="filter-control"
+                  value={filtros.estado}
+                  onChange={(e) => setFiltros({ ...filtros, estado: e.target.value })}
+                >
+                  <option value="">Todos los estados</option>
+                  {ESTADOS_AMBIENTE.map((est) => (
+                    <option key={est} value={est}>
+                      {est}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  className="filter-control"
+                  value={filtros.tipo}
+                  onChange={(e) => setFiltros({ ...filtros, tipo: e.target.value })}
+                >
+                  <option value="">Todos los tipos</option>
+                  {TIPOS_AMBIENTE.map((tipo) => (
+                    <option key={tipo} value={tipo}>
+                      {tipo}
+                    </option>
+                  ))}
+                </select>
+                <input
+                  className="filter-control"
+                  placeholder="Edificio (opcional)"
+                  value={filtros.edificio}
+                  onChange={(e) => setFiltros({ ...filtros, edificio: e.target.value })}
+                />
+              </div>
+            </div>
 
           {/* Formulario */}
           {showForm && (
@@ -301,6 +380,7 @@ export default function Ambientes() {
                   <div className="form-row">
                     <label>Código Ambiente *</label>
                     <input
+                      className="form-control"
                       name="codigo_ambiente"
                       value={form.codigo_ambiente}
                       onChange={handleChange}
@@ -313,6 +393,7 @@ export default function Ambientes() {
                   <div className="form-row">
                     <label>Nombre Ambiente *</label>
                     <input
+                      className="form-control"
                       name="nombre_ambiente"
                       value={form.nombre_ambiente}
                       onChange={handleChange}
@@ -324,6 +405,7 @@ export default function Ambientes() {
                   <div className="form-row">
                     <label>Tipo Ambiente *</label>
                     <select
+                      className="form-control"
                       name="tipo_ambiente"
                       value={form.tipo_ambiente}
                       onChange={handleChange}
@@ -341,6 +423,7 @@ export default function Ambientes() {
                   <div className="form-row">
                     <label>Capacidad de Personas</label>
                     <input
+                      className="form-control"
                       type="number"
                       name="capacidad_personas"
                       value={form.capacidad_personas}
@@ -351,6 +434,7 @@ export default function Ambientes() {
                   <div className="form-row">
                     <label>Piso</label>
                     <input
+                      className="form-control"
                       name="piso"
                       value={form.piso}
                       onChange={handleChange}
@@ -359,6 +443,7 @@ export default function Ambientes() {
                   <div className="form-row">
                     <label>Edificio</label>
                     <input
+                      className="form-control"
                       name="edificio"
                       value={form.edificio}
                       onChange={handleChange}
@@ -367,6 +452,7 @@ export default function Ambientes() {
                   <div className="form-row">
                     <label>Estado</label>
                     <select
+                      className="form-control"
                       name="estado_ambiente"
                       value={form.estado_ambiente}
                       onChange={handleChange}
@@ -381,6 +467,7 @@ export default function Ambientes() {
                   <div className="form-row" style={{ gridColumn: '1 / -1' }}>
                     <label>Descripción</label>
                     <textarea
+                      className="form-control"
                       name="descripcion"
                       value={form.descripcion}
                       onChange={handleChange}
@@ -458,8 +545,8 @@ export default function Ambientes() {
           ) : filteredAmbientes.length === 0 ? (
             <p>No se encontraron ambientes</p>
           ) : (
-            <div className="table-container">
-              <table className="data-table">
+            <div className="users-table-wrapper">
+              <table className="users-table">
                 <thead>
                   <tr>
                     <th>Código</th>
@@ -475,61 +562,89 @@ export default function Ambientes() {
                 <tbody>
                   {filteredAmbientes.map((amb) => (
                     <tr key={amb.id_ambiente}>
-                      <td>{amb.codigo_ambiente}</td>
-                      <td>{amb.nombre_ambiente}</td>
-                      <td>{amb.tipo_ambiente}</td>
-                      <td>{amb.edificio || '-'}</td>
-                      <td>{amb.piso || '-'}</td>
-                      <td>
-                        {amb.total_equipos || 0} ({amb.equipos_disponibles || 0} disponibles)
-                      </td>
-                      <td>
-                        <span
-                          className={`badge ${
-                            amb.estado_ambiente === 'Activo'
-                              ? 'badge-success'
-                              : amb.estado_ambiente === 'En Mantenimiento'
-                              ? 'badge-warning'
-                              : 'badge-error'
-                          }`}
-                        >
-                          {amb.estado_ambiente}
-                        </span>
-                      </td>
-                      <td>
-                        <div style={{ display: 'flex', gap: '0.5rem' }}>
-                          <button
-                            className="btn-small btn-secondary"
-                            onClick={() => handleView(amb.id_ambiente)}
-                          >
-                            Ver
-                          </button>
-                          {isAdmin && (
-                            <>
-                              <button
-                                className="btn-small btn-primary"
-                                onClick={() => handleEdit(amb)}
-                              >
-                                Editar
-                              </button>
-                              <button
-                                className="btn-small btn-danger"
-                                onClick={() =>
-                                  setConfirm({ open: true, id: amb.id_ambiente })
-                                }
-                              >
-                                Eliminar
-                              </button>
-                            </>
-                          )}
-                        </div>
-                      </td>
+                      {editingRowId === amb.id_ambiente ? (
+                        <>
+                          <td>
+                            <input className="cell-input" name="codigo_ambiente" value={form.codigo_ambiente} disabled />
+                          </td>
+                          <td>
+                            <input className="cell-input" name="nombre_ambiente" value={form.nombre_ambiente} onChange={handleChange} />
+                            {errores.nombre_ambiente && <div className="error-text">{errores.nombre_ambiente}</div>}
+                          </td>
+                          <td>
+                            <select className="cell-input" name="tipo_ambiente" value={form.tipo_ambiente} onChange={handleChange}>
+                              {TIPOS_AMBIENTE.map((t) => <option key={t} value={t}>{t}</option>)}
+                            </select>
+                          </td>
+                          <td>
+                            <input className="cell-input" name="edificio" value={form.edificio} onChange={handleChange} />
+                          </td>
+                          <td>
+                            <input className="cell-input" name="piso" value={form.piso} onChange={handleChange} />
+                          </td>
+                          <td>
+                            <span className="equip-count">{amb.total_equipos || 0}</span>
+                            {` `}
+                            <small>({amb.equipos_disponibles || 0} disponibles)</small>
+                          </td>
+                          <td>
+                            <select className="cell-input" name="estado_ambiente" value={form.estado_ambiente} onChange={handleChange}>
+                              {ESTADOS_AMBIENTE.map((e) => <option key={e} value={e}>{e}</option>)}
+                            </select>
+                          </td>
+                          <td>
+                            <div className="row-actions">
+                              <button type="button" className="btn primary" onClick={handleInlineSave}>Guardar</button>
+                              <button type="button" className="btn" onClick={handleCancelInline}>Cancelar</button>
+                            </div>
+                          </td>
+                        </>
+                      ) : (
+                        <>
+                          <td>{amb.codigo_ambiente}</td>
+                          <td>{amb.nombre_ambiente}</td>
+                          <td>{amb.tipo_ambiente}</td>
+                          <td>{amb.edificio || '-'}</td>
+                          <td>{amb.piso || '-'}</td>
+                          <td>
+                            <span className="equip-count">{amb.total_equipos || 0}</span>
+                            {` `}
+                            <small>({amb.equipos_disponibles || 0} disponibles)</small>
+                          </td>
+                          <td>
+                            <span
+                              className={`badge ${
+                                amb.estado_ambiente === 'Activo'
+                                  ? 'badge-success'
+                                  : amb.estado_ambiente === 'En Mantenimiento'
+                                  ? 'badge-warning'
+                                  : 'badge-error'
+                              }`}
+                            >
+                              {amb.estado_ambiente}
+                            </span>
+                          </td>
+                          <td>
+                            <div className="users-actions">
+                              <button className="btn btn-view" onClick={() => handleView(amb.id_ambiente)}>Ver</button>
+                              {isAdmin && (
+                                <>
+                                  <button className="btn btn-edit" onClick={() => handleEdit(amb)}>Editar</button>
+                                  <button className="btn btn-delete" onClick={() => setConfirm({ open: true, id: amb.id_ambiente })}>Eliminar</button>
+                                </>
+                              )}
+                            </div>
+                          </td>
+                        </>
+                      )}
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
           )}
+
+          </div>
 
           <ConfirmModal
             open={confirm.open}

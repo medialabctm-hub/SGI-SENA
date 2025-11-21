@@ -1,0 +1,135 @@
+/* Overrides específicos para la página de Ambientes
+   - Corrige hover de filas (evita fondo verde heredado)
+   - Ajusta padding de celdas para reducir espacio vertical
+   - Asegura que los botones mantengan su efecto de hover visible
+*/
+
+.ambientes-page .users-panel {
+  /* asegurar fondo blanco y padding consistente */
+  background: white !important;
+  padding: 14px 18px 18px 18px !important;
+}
+
+.ambientes-page .users-table {
+  table-layout: fixed;
+  width: 100%;
+}
+
+/* crear espacio entre filas y que cada celda tenga su propio fondo */
+/* keep normal table layout (no extra spacing between rows) */
+.ambientes-page .users-table { border-collapse: collapse; }
+
+.ambientes-page .users-table thead th {
+  padding: 12px 12px !important;
+}
+
+.ambientes-page .users-table tbody td {
+  /* más espacio vertical para que los botones muestren bien su hover */
+  padding: 14px 12px !important;
+  font-size: 0.96rem;
+  white-space: nowrap;
+  overflow: visible; /* allow buttons/shadows to overflow cell */
+  text-overflow: ellipsis;
+  vertical-align: middle;
+}
+
+.ambientes-page .users-table tbody tr:nth-child(even) {
+  background: var(--neutral-50) !important;
+}
+
+.ambientes-page .users-table tbody tr:hover {
+  /* hover clásico en la fila: gris suave */
+  background: var(--neutral-200) !important;
+  transform: none !important; /* avoid creating new stacking context */
+}
+
+/* Cuando la fila está en hover, asegurarse que los botones sigan destacando */
+.ambientes-page .users-table tbody tr:hover .users-actions .btn {
+  /* dejar que los botones mantengan su propio hover: solo dar un leve empuje */
+  transform: translateY(-2px);
+  box-shadow: 0 4px 14px rgba(0,0,0,0.10);
+}
+
+/* asegurar que los botones estén por encima del fondo de celda */
+.ambientes-page .users-actions { overflow: visible !important; position: relative; z-index: 40; }
+.ambientes-page .users-actions .btn, .ambientes-page .users-table .btn { position: relative; z-index: 50; }
+.ambientes-page .users-actions .btn:hover, .ambientes-page .users-table .btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 28px rgba(0,0,0,0.18);
+  border-color: rgba(255,255,255,0.9); /* slight light border for contrast */
+}
+
+/* ensure the actions column has some right padding so buttons never touch table edge */
+.ambientes-page .users-table thead th:nth-child(8), .ambientes-page .users-table tbody td:nth-child(8) {
+  padding-right: 18px !important;
+}
+
+/* distribuir columnas para evitar huecos grandes */
+.ambientes-page .users-table thead th:nth-child(1), .ambientes-page .users-table tbody td:nth-child(1) { width: 8%; }
+.ambientes-page .users-table thead th:nth-child(2), .ambientes-page .users-table tbody td:nth-child(2) { width: 32%; }
+.ambientes-page .users-table thead th:nth-child(3), .ambientes-page .users-table tbody td:nth-child(3) { width: 10%; }
+.ambientes-page .users-table thead th:nth-child(4), .ambientes-page .users-table tbody td:nth-child(4) { width: 10%; }
+.ambientes-page .users-table thead th:nth-child(5), .ambientes-page .users-table tbody td:nth-child(5) { width: 7%; }
+.ambientes-page .users-table thead th:nth-child(6), .ambientes-page .users-table tbody td:nth-child(6) { width: 10%; }
+.ambientes-page .users-table thead th:nth-child(7), .ambientes-page .users-table tbody td:nth-child(7) { width: 10%; }
+.ambientes-page .users-table thead th:nth-child(8), .ambientes-page .users-table tbody td:nth-child(8) { width: 13%; }
+
+/* Ajustes puntuales para el recuento de equipos (pill) */
+.ambientes-page .equip-count {
+  padding: 3px 7px !important;
+  font-size: 0.85rem !important;
+}
+
+/* asegurar que la cabecera y la tarjeta tengan bordes suaves */
+.ambientes-page .users-panel {
+  border-radius: 12px !important;
+  box-shadow: 0 6px 18px rgba(15,23,42,0.06) !important;
+}
+
+/* reducir altura del toolbar para que no se vea tan alto */
+.ambientes-page .users-toolbar { gap: 8px; }
+.ambientes-page .users-toolbar .search-input { min-width: 260px; padding: 8px 12px; }
+
+@media (max-width: 720px) {
+  .ambientes-page .users-table tbody td { padding: 8px 10px !important; }
+  .ambientes-page .users-toolbar .search-input { min-width: 120px; }
+}
+
+/* Estilos para controles de filtro y formulario, coherentes con .search-input */
+.ambientes-page .filter-control,
+.ambientes-page .form-control {
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--neutral-200);
+  background: linear-gradient(180deg, white, var(--neutral-50));
+  box-shadow: 0 2px 6px rgba(2, 6, 23, 0.04);
+  min-height: 36px;
+  font-size: 0.95rem;
+  color: var(--neutral-800);
+}
+
+.ambientes-page .filter-control:focus,
+.ambientes-page .form-control:focus {
+  outline: none;
+  box-shadow: 0 6px 18px rgba(67,160,71,0.12);
+  transform: translateY(-1px);
+}
+
+/* Ajustes específicos para selects y textarea */
+.ambientes-page .filter-control[type="text"],
+.ambientes-page .filter-control[type="number"],
+.ambientes-page .filter-control,
+.ambientes-page .form-control {
+  appearance: none;
+}
+
+.ambientes-page .form-grid .form-row label { display:block; margin-bottom:6px; color:var(--neutral-700); }
+.ambientes-page .form-grid .form-row { margin-bottom:8px; }
+
+/* Asegurar que los filtros ocupen espacio razonable */
+.ambientes-page .users-content .filter-control { min-width: 160px; }
+
+@media (max-width: 720px) {
+  .ambientes-page .filter-control { min-width: 120px; }
+  .ambientes-page .form-control { width: 100%; }
+}
