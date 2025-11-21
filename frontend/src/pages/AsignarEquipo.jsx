@@ -543,9 +543,6 @@ export default function AsignarEquipo() {
                     <div><strong>Nombre:</strong> {usuarioEncontrado.nombre_usuario}</div>
                     <div><strong>Cédula:</strong> {usuarioEncontrado.cedula}</div>
                     <div><strong>Rol:</strong> {usuarioEncontrado.nombre_rol}</div>
-                    {usuarioEncontrado.area && (
-                      <div><strong>Área:</strong> {usuarioEncontrado.area}</div>
-                    )}
                     {usuarioEncontrado.equipos_asignados !== undefined && (
                       <div><strong>Equipos asignados:</strong> {usuarioEncontrado.equipos_asignados}</div>
                     )}

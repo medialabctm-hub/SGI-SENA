@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Toast from '../../components/Toast'
 import { parseApiResponse, buildErrorMessage } from '../../utils/api'
+import '../../styles/usersManagement.css'
 
 export default function UsersManagement() {
   const nav = useNavigate()
@@ -62,7 +63,6 @@ export default function UsersManagement() {
         { key: 'nombre_usuario', label: 'Nombre Completo' },
         { key: 'correo', label: 'Correo Electrónico' },
         { key: 'telefono', label: 'Teléfono' },
-        { key: 'area', label: 'Área' },
         { key: 'nombre_rol', label: 'Rol' },
         { key: 'estado', label: 'Estado' },
         { key: 'fecha_registro', label: 'Fecha de Registro', formatter: formatDate },
@@ -115,29 +115,22 @@ export default function UsersManagement() {
   }
 
   return (
-    <div className="form-equipos" style={{ maxWidth: 900 }}>
+    <div className="form-equipos users-management-container">
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
       
-      <div style={{ marginBottom: '1.5rem' }}>
-        <h3 style={{ margin: 0, fontSize: '1.5rem', color: 'var(--neutral-800)' }}>Gestión de Usuarios</h3>
-        <p style={{ margin: '0.5rem 0 0 0', color: '#666', fontSize: '0.9rem' }}>
+      <div className="users-management-header">
+        <h3 className="users-management-title">Gestión de Usuarios</h3>
+        <p className="users-management-description">
           Administra usuarios del sistema: listado, creación, edición e inactivación de cuentas
         </p>
       </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-        <div
-          style={{
-            padding: '1.5rem',
-            background: '#f9fafb',
-            borderRadius: '8px',
-            border: '1px solid #e5e7eb'
-          }}
-        >
-          <h4 style={{ margin: '0 0 0.5rem 0', fontSize: '1rem', fontWeight: 600 }}>
+      <div className="users-management-actions">
+        <div className="users-management-card">
+          <h4 className="users-management-card-title">
             Acceso a Gestión de Usuarios
           </h4>
-          <p style={{ margin: '0 0 1rem 0', color: '#666', fontSize: '0.9rem' }}>
+          <p className="users-management-card-description">
             Accede al módulo completo de gestión de usuarios donde podrás ver, crear, editar e inactivar cuentas.
           </p>
           <button className="btn-verde" onClick={() => nav('/usuarios')}>
@@ -145,25 +138,17 @@ export default function UsersManagement() {
           </button>
         </div>
 
-        <div
-          style={{
-            padding: '1.5rem',
-            background: '#f9fafb',
-            borderRadius: '8px',
-            border: '1px solid #e5e7eb'
-          }}
-        >
-          <h4 style={{ margin: '0 0 0.5rem 0', fontSize: '1rem', fontWeight: 600 }}>
+        <div className="users-management-card">
+          <h4 className="users-management-card-title">
             Exportar Usuarios
           </h4>
-          <p style={{ margin: '0 0 1rem 0', color: '#666', fontSize: '0.9rem' }}>
+          <p className="users-management-card-description">
             Exporta la lista completa de usuarios a un archivo CSV para análisis o respaldo.
           </p>
           <button
-            className="btn"
+            className="btn users-management-export-btn"
             onClick={handleExportCSV}
             disabled={exporting}
-            style={{ background: '#6366f1', color: 'white' }}
           >
             {exporting ? 'Exportando...' : 'Exportar a CSV'}
           </button>

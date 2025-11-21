@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import Toast from '../../components/Toast'
 import { parseApiResponse, buildErrorMessage } from '../../utils/api'
+import '../../styles/security.css'
 
 export default function Security() {
   const [current, setCurrent] = useState('')
@@ -77,12 +78,12 @@ export default function Security() {
   }
 
   return (
-    <div className="form-equipos" style={{ maxWidth: 700 }}>
+    <div className="form-equipos security-container">
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
       
-      <div style={{ marginBottom: '1.5rem' }}>
-        <h3 style={{ margin: 0, fontSize: '1.5rem', color: 'var(--neutral-800)' }}>Seguridad</h3>
-        <p style={{ margin: '0.5rem 0 0 0', color: '#666', fontSize: '0.9rem' }}>
+      <div className="security-header">
+        <h3 className="security-title">Seguridad</h3>
+        <p className="security-description">
           Cambia tu contraseña para mantener tu cuenta segura
         </p>
       </div>
@@ -109,7 +110,7 @@ export default function Security() {
               minLength={6}
               required
             />
-            <small style={{ color: '#666', fontSize: '0.85rem', marginTop: '4px', display: 'block' }}>
+            <small className="security-help">
               Mínimo 6 caracteres
             </small>
           </div>
@@ -124,16 +125,16 @@ export default function Security() {
             />
           </div>
         </div>
-        <div style={{ marginTop: '1rem', display: 'flex', gap: '0.5rem' }}>
+        <div className="security-submit">
           <button className="btn-verde" type="submit" disabled={loading}>
             {loading ? 'Cambiando...' : 'Cambiar contraseña'}
           </button>
         </div>
       </form>
 
-      <div style={{ marginTop: '2rem', paddingTop: '1.5rem', borderTop: '1px solid #e5e7eb' }}>
-        <h4 style={{ margin: '0 0 0.5rem 0', fontSize: '1rem' }}>Generador de contraseñas</h4>
-        <p style={{ color: '#666', fontSize: '0.9rem', marginBottom: '0.75rem' }}>
+      <div className="security-generator">
+        <h4 className="security-generator-title">Generador de contraseñas</h4>
+        <p className="security-generator-description">
           Genera una contraseña segura aleatoria
         </p>
         <button className="btn" onClick={handleGenerate} disabled={loading}>

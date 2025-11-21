@@ -12,6 +12,7 @@ import Notifications from './config/Notifications'
 import AppSettings from './config/AppSettings'
 import InvitationCodes from './config/InvitationCodes'
 import { useNavigate } from 'react-router-dom'
+import '../styles/config.css'
 
 export default function Config() {
   const nav = useNavigate()
@@ -38,8 +39,7 @@ export default function Config() {
       nombre_usuario: user?.nombre_usuario || user?.nombre || '',
       correo: user?.correo || '',
       telefono: user?.telefono || '',
-      cedula: user?.cedula || '',
-      area: user?.area || ''
+      cedula: user?.cedula || ''
     })
 
     async function fetchMe() {
@@ -55,8 +55,7 @@ export default function Config() {
             nombre_usuario: data.user.nombre_usuario || '',
             correo: data.user.correo || '',
             telefono: data.user.telefono || '',
-            cedula: data.user.cedula || '',
-            area: data.user.area || ''
+            cedula: data.user.cedula || ''
           })
           try { localStorage.setItem('user', JSON.stringify(data.user)) } catch (e) {
             // localStorage puede fallar en modo privado o cuando está lleno; ignorar silenciosamente
@@ -89,7 +88,7 @@ export default function Config() {
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data?.error || data?.message || 'Error al actualizar')
-      const updated = { ...user, nombre_usuario: form.nombre_usuario, correo: form.correo, telefono: form.telefono, cedula: form.cedula, area: form.area }
+      const updated = { ...user, nombre_usuario: form.nombre_usuario, correo: form.correo, telefono: form.telefono, cedula: form.cedula }
       setUser(updated)
       try { localStorage.setItem('user', JSON.stringify(updated)) } catch (e) {
         // localStorage puede fallar en modo privado o cuando está lleno; ignorar silenciosamente
@@ -104,19 +103,19 @@ export default function Config() {
 
   function ProfilePanel() {
     return (
-      <div className="form-equipos" style={{maxWidth:900}}>
-        <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:12}}>
+      <div className="form-equipos config-profile-container">
+        <div className="config-profile-header">
           <div>
-            <div style={{fontSize:18, fontWeight:700}}>Información del usuario</div>
-            <div style={{color:'#666', fontSize:13}}>Aquí puedes revisar y editar tu información de perfil.</div>
+            <div className="config-profile-title">Información del usuario</div>
+            <div className="config-profile-subtitle">Aquí puedes revisar y editar tu información de perfil.</div>
           </div>
-          <div style={{display:'flex', gap:12}}>
+          <div className="config-profile-actions">
             {!editing ? (
-              <button className="btn-verde" onClick={() => setEditing(true)} style={{width:'auto', padding:'0.45rem 1rem'}}>Editar</button>
+              <button className="btn-verde config-profile-edit-btn" onClick={() => setEditing(true)}>Editar</button>
             ) : (
               <>
-                <button className="btn-verde" onClick={handleSave} disabled={loading} style={{padding:'0.45rem 1rem'}}>{loading ? 'Guardando...' : 'Guardar'}</button>
-                <button className="btn" onClick={() => { setEditing(false); setForm({ nombre_usuario: user?.nombre_usuario || '', correo: user?.correo || '', telefono: user?.telefono || '', cedula: user?.cedula || '', area: user?.area || '' }) }} style={{background:'#eee', color:'#222'}}>Cancelar</button>
+                <button className="btn-verde config-profile-save-btn" onClick={handleSave} disabled={loading}>{loading ? 'Guardando...' : 'Guardar'}</button>
+                <button className="btn config-profile-cancel-btn" onClick={() => { setEditing(false); setForm({ nombre_usuario: user?.nombre_usuario || '', correo: user?.correo || '', telefono: user?.telefono || '', cedula: user?.cedula || '' }) }}>Cancelar</button>
               </>
             )}
           </div>
@@ -141,10 +140,6 @@ export default function Config() {
               <input name="cedula" value={form.cedula || ''} onChange={onChange} readOnly={!editing} />
             </div>
             <div className="form-row">
-              <label>Área</label>
-              <input name="area" value={form.area || ''} onChange={onChange} readOnly={!editing} />
-            </div>
-            <div className="form-row">
               <label>Rol</label>
               <input value={user?.nombre_rol || ''} readOnly />
             </div>
@@ -166,7 +161,7 @@ export default function Config() {
       setToast({ message: 'Funcionalidad de cambio de contraseña requiere endpoint en backend.', type: 'info' })
     }
     return (
-      <div className="form-equipos" style={{maxWidth:700}}>
+      <div className="form-equipos config-security-container">
         <h3>Cambiar contraseña</h3>
         <form onSubmit={changePassword}>
           <div className="form-grid">
@@ -174,7 +169,7 @@ export default function Config() {
             <div className="form-row"><label>Nueva contraseña</label><input type="password" value={newPass} onChange={e=>setNewPass(e.target.value)} /></div>
             <div className="form-row"><label>Confirmar nueva</label><input type="password" value={confirm} onChange={e=>setConfirm(e.target.value)} /></div>
           </div>
-          <div style={{marginTop:12}}>
+          <div className="config-security-submit">
             <button className="btn-verde" type="submit">Actualizar contraseña</button>
           </div>
         </form>
@@ -184,10 +179,10 @@ export default function Config() {
 
   function UsersPanel() {
     return (
-      <div className="form-equipos" style={{maxWidth:900}}>
+      <div className="form-equipos config-users-container">
         <h3>Gestión de Usuarios</h3>
-        <p style={{color:'#666'}}>Accede al listado de usuarios para crear, editar o inactivar cuentas.</p>
-        <div style={{marginTop:12}}>
+        <p className="config-users-description">Accede al listado de usuarios para crear, editar o inactivar cuentas.</p>
+        <div className="config-users-button">
           <button className="btn-verde" onClick={() => nav('/usuarios')}>Ir a Usuarios</button>
         </div>
       </div>
@@ -196,9 +191,9 @@ export default function Config() {
 
   function Placeholder({title, children}) {
     return (
-      <div className="form-equipos" style={{maxWidth:900}}>
+      <div className="form-equipos config-placeholder-container">
         <h3>{title}</h3>
-        <div style={{color:'#666'}}>{children}</div>
+        <div className="config-placeholder-content">{children}</div>
       </div>
     )
   }
@@ -210,7 +205,7 @@ export default function Config() {
       <div className="dashboard-layout">
         <Sidebar user={user} />
         <main className="dashboard-main">
-          <h2 style={{textAlign:'center', marginTop: 6, marginBottom: '1.5rem'}}>Configuración</h2>
+          <h2 className="config-page-title">Configuración</h2>
           {selected==='profile' && <Profile />}
           {selected==='security' && <Security />}
           {selected==='users' && <UsersManagement />}

@@ -4,6 +4,7 @@ import Toast from '../../components/Toast';
 import ConfirmModal from '../../components/ConfirmModal';
 import { parseApiResponse, buildErrorMessage } from '../../utils/api';
 import '../../styles/equipos.css';
+import '../../styles/invitationCodes.css';
 
 export default function InvitationCodes() {
   const [codes, setCodes] = useState([]);
@@ -125,11 +126,7 @@ export default function InvitationCodes() {
     };
     const badge = badges[estado] || badges['Inactivo'];
     return (
-      <span style={{
-        padding: '4px 10px',
-        borderRadius: '12px',
-        fontSize: '0.85rem',
-        fontWeight: 600,
+      <span className="invitation-codes-status-badge" style={{
         background: badge.bg,
         color: badge.color
       }}>
@@ -139,7 +136,7 @@ export default function InvitationCodes() {
   }
 
   return (
-    <div className="form-equipos" style={{ maxWidth: 1000 }}>
+    <div className="form-equipos invitation-codes-container">
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
       <ConfirmModal
         open={deleteConfirm.open}
@@ -152,17 +149,16 @@ export default function InvitationCodes() {
         onCancel={() => setDeleteConfirm({ open: false, id: null })}
       />
 
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+      <div className="invitation-codes-header">
         <div>
-          <h3 style={{ margin: 0, fontSize: '1.5rem', color: 'var(--neutral-800)' }}>Códigos de Seguridad</h3>
-          <p style={{ margin: '0.5rem 0 0 0', color: 'var(--muted)', fontSize: '0.9rem' }}>
+          <h3 className="invitation-codes-title">Códigos de Seguridad</h3>
+          <p className="invitation-codes-description">
             Genera códigos para que los instructores se registren en el sistema
           </p>
         </div>
         <button
-          className="btn primary"
+          className="btn primary invitation-codes-new-btn"
           onClick={() => setShowForm(!showForm)}
-          style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
         >
           <FiPlus size={18} />
           {showForm ? 'Cancelar' : 'Nuevo Código'}
@@ -170,14 +166,8 @@ export default function InvitationCodes() {
       </div>
 
       {showForm && (
-        <div style={{
-          background: 'var(--neutral-50)',
-          padding: '1.5rem',
-          borderRadius: '12px',
-          marginBottom: '1.5rem',
-          border: '1px solid var(--neutral-200)'
-        }}>
-          <h4 style={{ marginTop: 0, marginBottom: '1rem' }}>Crear Nuevo Código</h4>
+        <div className="invitation-codes-form">
+          <h4 className="invitation-codes-form-title">Crear Nuevo Código</h4>
           <form onSubmit={handleCreate}>
             <div className="form-grid">
               <div className="form-group">
@@ -201,7 +191,7 @@ export default function InvitationCodes() {
                   onChange={e => setForm({ ...form, max_usos: e.target.value })}
                   required
                 />
-                <small style={{ color: 'var(--muted)', fontSize: '0.85rem' }}>
+                <small className="invitation-codes-form-help">
                   Número de veces que se puede usar el código (0 = ilimitado)
                 </small>
               </div>
@@ -214,7 +204,7 @@ export default function InvitationCodes() {
                 />
               </div>
             </div>
-            <div style={{ marginTop: '1rem', display: 'flex', gap: '0.5rem' }}>
+            <div className="invitation-codes-form-actions">
               <button className="btn primary" type="submit" disabled={loading}>
                 Crear Código
               </button>
@@ -234,9 +224,9 @@ export default function InvitationCodes() {
       )}
 
       {loading && codes.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: '3rem' }}>
+        <div className="invitation-codes-loading">
           <div className="loading-spinner"></div>
-          <p style={{ marginTop: '1rem', color: 'var(--muted)' }}>Cargando códigos...</p>
+          <p className="invitation-codes-loading-text">Cargando códigos...</p>
         </div>
       ) : codes.length === 0 ? (
         <div className="empty-state">
@@ -247,8 +237,8 @@ export default function InvitationCodes() {
           <p>Crea un código para comenzar</p>
         </div>
       ) : (
-        <div style={{ overflowX: 'auto' }}>
-          <table className="consulta-table" style={{ marginTop: '1rem' }}>
+        <div className="invitation-codes-table-wrapper">
+          <table className="consulta-table invitation-codes-table">
             <thead>
               <tr>
                 <th>Código</th>
@@ -265,20 +255,13 @@ export default function InvitationCodes() {
               {codes.map((code) => (
                 <tr key={code.id_codigo}>
                   <td>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                      <strong style={{ fontFamily: 'monospace', fontSize: '0.9rem' }}>
+                    <div className="invitation-codes-code-cell">
+                      <strong className="invitation-codes-code-text">
                         {code.codigo}
                       </strong>
                       <button
                         onClick={() => copyToClipboard(code.codigo)}
-                        style={{
-                          background: 'transparent',
-                          border: 'none',
-                          cursor: 'pointer',
-                          padding: '4px',
-                          display: 'flex',
-                          alignItems: 'center'
-                        }}
+                        className="invitation-codes-copy-btn"
                         title="Copiar código"
                       >
                         {copiedCode === code.codigo ? (
@@ -301,9 +284,8 @@ export default function InvitationCodes() {
                   <td>{formatDate(code.fecha_creacion)}</td>
                   <td>
                     <button
-                      className="btn danger"
+                      className="btn danger invitation-codes-delete-btn"
                       onClick={() => setDeleteConfirm({ open: true, id: code.id_codigo })}
-                      style={{ padding: '6px 12px', fontSize: '0.9rem' }}
                     >
                       <FiTrash2 size={14} />
                     </button>

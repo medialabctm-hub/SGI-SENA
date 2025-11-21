@@ -71,7 +71,7 @@ export class UserRepository extends BaseRepository {
    */
   async findByCedula(cedula) {
     return this.findOne(
-      `SELECT u.*, u.area_usuarios AS area, r.nombre_rol, u.requiere_cambio_contrasena
+      `SELECT u.*, r.nombre_rol, u.requiere_cambio_contrasena
        FROM Usuarios u
        LEFT JOIN Roles r ON r.id_rol = u.id_rol
        WHERE u.cedula = ? AND u.estado = "Activo"`,
@@ -87,7 +87,7 @@ export class UserRepository extends BaseRepository {
   async findById(userId) {
     return this.findOne(
       `SELECT u.id_usuario, u.nombre_usuario, u.correo, u.telefono, u.cedula, 
-              u.area_usuarios AS area, r.nombre_rol, u.requiere_cambio_contrasena
+              r.nombre_rol, u.requiere_cambio_contrasena
        FROM Usuarios u
        LEFT JOIN Roles r ON r.id_rol = u.id_rol
        WHERE u.id_usuario = ? AND u.estado = "Activo"`,
@@ -107,7 +107,6 @@ export class UserRepository extends BaseRepository {
          u.cedula, 
          u.correo, 
          u.telefono,
-         u.area_usuarios AS area, 
          r.nombre_rol,
          u.estado,
          u.fecha_registro,
@@ -137,7 +136,6 @@ export class UserRepository extends BaseRepository {
       cedula,
       correo,
       telefono,
-      area,
       contrasena,
       idRol,
     } = userData;
@@ -145,9 +143,9 @@ export class UserRepository extends BaseRepository {
     try {
       const [result] = await this.db.execute(
         `INSERT INTO Usuarios 
-         (nombre_usuario, cedula, correo, telefono, area_usuarios, contrasena, id_rol, estado) 
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-        [nombre, cedula, correo.toLowerCase().trim(), telefono, area || null, contrasena, idRol, 'Activo']
+         (nombre_usuario, cedula, correo, telefono, contrasena, id_rol, estado) 
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [nombre, cedula, correo.toLowerCase().trim(), telefono, contrasena, idRol, 'Activo']
       );
 
       return { insertId: result.insertId, affectedRows: result.affectedRows };

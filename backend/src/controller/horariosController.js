@@ -2,6 +2,7 @@ import defaultDb from '../config/dbconfig.js';
 import multer from 'multer';
 import xlsx from 'xlsx';
 import { crearClase } from './clasesController.js';
+import { logger } from '../utils/logger.js';
 
 // Configuración de multer para archivos Excel
 const storage = multer.memoryStorage();
@@ -257,7 +258,7 @@ export async function importarHorariosExcel(req, res) {
       resultados
     });
   } catch (err) {
-    console.error('Error al importar horarios:', err);
+    logger.error('Error al importar horarios', { error: err.message, stack: err.stack });
     return res.status(500).json({
       error: 'Error al importar horarios',
       detalle: err.message
@@ -302,7 +303,7 @@ export async function descargarPlantillaHorarios(req, res) {
     res.setHeader('Content-Disposition', 'attachment; filename=plantilla_horarios.xlsx');
     res.send(buffer);
   } catch (err) {
-    console.error('Error al generar plantilla:', err);
+    logger.error('Error al generar plantilla', { error: err.message, stack: err.stack });
     return res.status(500).json({
       error: 'Error al generar plantilla',
       detalle: err.message

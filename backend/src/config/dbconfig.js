@@ -28,23 +28,14 @@ export const dbConfig = {
 };
 
 // Función para crear conexiones individuales usando variables de entorno
+// Reutiliza la configuración de dbConfig para evitar duplicación
 export const createConnection = async () => {
   const connection = await mysql.createConnection({
-    host: process.env.DB_HOST,
-    port: process.env.DB_PORT,
-    user: process.env.DB_USER,
-    password: process.env.DB_PASSWORD,
-    database: process.env.DB_NAME,
-    // Configuraciones adicionales para producción
-    acquireTimeout: 60000,
-    timeout: 60000,
-    reconnect: true,
-    ssl:
-      process.env.NODE_ENV === "production"
-        ? { rejectUnauthorized: false }
-        : false,
-    connectTimeout: 30000,
-    charset: "utf8mb4",
+    ...dbConfig,
+    // Para conexiones individuales, no necesitamos connectionLimit
+    connectionLimit: undefined,
+    waitForConnections: undefined,
+    queueLimit: undefined,
   });
   return connection;
 };
@@ -52,8 +43,8 @@ export const createConnection = async () => {
 // Pool de conexiones reutilizable (mantiene la funcionalidad existente)
 export const pool = mysql.createPool(dbConfig);
 
-// Exportar como default para compatibilidad con healthcheck
-const defaultDb = {
+// Wrapper de base de datos reutilizable (usado por DI container y defaultDb)
+export const dbWrapper = {
   execute: async (query, params) => {
     const connection = await pool.getConnection();
     try {
@@ -63,6 +54,8 @@ const defaultDb = {
       connection.release();
     }
   },
+  pool, // Exponer el pool para transacciones
 };
 
-export default defaultDb;
+// Exportar como default para compatibilidad con healthcheck y controladores legacy
+export default dbWrapper;

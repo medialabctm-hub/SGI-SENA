@@ -243,7 +243,7 @@ export default function Header() {
               <img src={logo} alt="logo" />
             </div>
             <div className="app-title">
-              <div className="name">Gestión de Equipos</div>
+              <div className="name">Gestión de Inventario</div>
               <div className="sub">SENA</div>
             </div>
           </div>

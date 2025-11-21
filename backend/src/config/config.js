@@ -23,10 +23,6 @@ const requiredEnvVars = [
   "EMAIL_PASSWORD",
   "CORS_ORIGIN",
   "FRONTEND_URL",
-];
-
-// Variables de entorno opcionales con valores por defecto
-const optionalEnvVars = [
   "DB_PORT",
   "JWT_EXPIRES_IN",
   "JWT_REFRESH_EXPIRES_IN",
@@ -64,8 +60,8 @@ export const config = {
     secret: process.env.JWT_SECRET,
     expiresIn: process.env.JWT_EXPIRES_IN || "24h",
     refreshExpiresIn: process.env.JWT_REFRESH_EXPIRES_IN || "7d",
-    issuer: process.env.JWT_ISSUER || "sabor-app",
-    audience: process.env.JWT_AUDIENCE || "sabor-users",
+    issuer: process.env.JWT_ISSUER || "gse-app",
+    audience: process.env.JWT_AUDIENCE || "gse-users",
   },
 
   // Configuración de CORS

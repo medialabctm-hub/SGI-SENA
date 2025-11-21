@@ -1,5 +1,5 @@
 # SGE-SENA
-Repositorio en el cual se aloja el software SGE SENA
+Repositorio en el cual se aloja el software SGISENA
 
 ## Descripción
 SGE-SENA es un software de gestion de equipos tecnologicos y mobiliarios que pertenecen a las instalaciones del sena, para facilitar el inventariado de este mismo
@@ -26,7 +26,7 @@ MySQL (versión recomendada: 8.x o superior)
    
 ```bash
 git clone [URL_DEL_REPOSITORIO]
-cd SGE SENA
+cd SGISENA
 ```
 
 2. Instalar dependencias:

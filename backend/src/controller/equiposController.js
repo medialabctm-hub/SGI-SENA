@@ -1,5 +1,7 @@
 import defaultDb from '../config/dbconfig.js';
 import { notifyNuevoEquipo } from '../services/notificationService.js';
+import { logger } from '../utils/logger.js';
+import { obtenerEquipoPorCodigo as obtenerEquipoPorCodigoUtil } from '../utils/sqlQueries.js';
 
 // Esta función se movió a ambientesController.js
 // Se mantiene aquí solo para compatibilidad temporal si hay referencias
@@ -186,10 +188,10 @@ export async function registrarEquipo(req, res) {
         },
       });
       if (notifyResult?.skipped) {
-        console.warn('[notificaciones] Tabla Notificaciones no existe; se omitió la alerta de nuevo equipo.');
+        logger.warn('Tabla Notificaciones no existe; se omitió la alerta de nuevo equipo');
       }
     } catch (notifyErr) {
-      console.error('[notificaciones] Error al generar notificación de nuevo equipo:', notifyErr?.message || notifyErr);
+      logger.error('Error al generar notificación de nuevo equipo', { error: notifyErr?.message || notifyErr });
     }
 
     res.status(201).json({ ok: true, id: result.insertId });
@@ -363,11 +365,8 @@ export async function asignarEquipo(req, res) {
       return res.status(400).json({ error: 'Faltan campos obligatorios (codigo_equipo, id_usuario)' })
     }
 
-    // Validar que el equipo existe
-    const [[equipo]] = await defaultDb.execute(
-      'SELECT codigo_equipo, tipo, marca, modelo FROM Elementos WHERE codigo_equipo = ?',
-      [codigo_equipo]
-    )
+    // Validar que el equipo existe usando utilidad SQL
+    const equipo = await obtenerEquipoPorCodigoUtil(defaultDb, codigo_equipo)
 
     if (!equipo) {
       return res.status(404).json({ error: 'Equipo no encontrado' })
@@ -450,7 +449,7 @@ export async function asignarEquipo(req, res) {
       }
     })
   } catch (err) {
-    console.error('Error al asignar equipo:', err)
+    logger.error('Error al asignar equipo', { error: err.message, stack: err.stack })
     return res.status(500).json({ error: 'Error al asignar el equipo', details: err.message })
   }
 }
@@ -490,7 +489,7 @@ export async function obtenerMisEquipos(req, res) {
 
     return res.json(equipos)
   } catch (err) {
-    console.error('Error al obtener equipos asignados:', err)
+    logger.error('Error al obtener equipos asignados', { error: err.message, stack: err.stack })
     return res.status(500).json({ error: 'Error al obtener equipos asignados', details: err.message })
   }
 }
@@ -547,7 +546,7 @@ export async function listarAsignaciones(req, res) {
 
     return res.json(rows)
   } catch (err) {
-    console.error('Error al listar asignaciones:', err)
+    logger.error('Error al listar asignaciones', { error: err.message, stack: err.stack })
     return res.status(500).json({ error: 'Error al obtener asignaciones', details: err.message })
   }
 }
@@ -602,7 +601,7 @@ export async function eliminarAsignacion(req, res) {
       message: 'Asignación eliminada correctamente' 
     })
   } catch (err) {
-    console.error('Error al eliminar asignación:', err)
+    logger.error('Error al eliminar asignación', { error: err.message, stack: err.stack })
     return res.status(500).json({ error: 'Error al eliminar la asignación', details: err.message })
   }
 }
@@ -672,14 +671,20 @@ export async function obtenerEquiposAmbientesInstructor(req, res) {
     )
 
     // Log para debug
-    console.log(`[Verificación Inventario] Instructor ${userId}, Jornada: ${jornadaActual}, Ambientes encontrados: ${ambientes.length}`)
+    logger.debug('Verificación Inventario', { 
+      instructor: userId, 
+      jornada: jornadaActual, 
+      ambientesEncontrados: ambientes.length 
+    })
     if (ambientes.length > 0) {
-      console.log(`[Verificación Inventario] Ambientes:`, ambientes.map(a => ({
-        ambiente: a.nombre_ambiente,
-        tipo: a.tipo_asignacion,
-        estado_clase: a.estado_clase,
-        id_clase: a.id_clase
-      })))
+      logger.debug('Ambientes encontrados', { 
+        ambientes: ambientes.map(a => ({
+          ambiente: a.nombre_ambiente,
+          tipo: a.tipo_asignacion,
+          estado_clase: a.estado_clase,
+          id_clase: a.id_clase
+        }))
+      })
     }
 
     if (ambientes.length === 0) {
@@ -857,7 +862,7 @@ export async function registrarVerificacionInventario(req, res) {
       }
     })
   } catch (err) {
-    console.error('Error al registrar verificación:', err)
+    logger.error('Error al registrar verificación', { error: err.message, stack: err.stack })
     return res.status(500).json({ 
       error: 'Error al registrar verificación', 
       details: err.message 
@@ -970,7 +975,7 @@ export async function consultarHistorialVerificaciones(req, res) {
       total: verificaciones.length
     })
   } catch (err) {
-    console.error('Error al consultar historial de verificaciones:', err)
+    logger.error('Error al consultar historial de verificaciones', { error: err.message, stack: err.stack })
     return res.status(500).json({
       error: 'Error al consultar historial',
       details: err.message
@@ -1045,7 +1050,7 @@ export async function obtenerHistorialEquipo(req, res) {
       total: historial.length
     })
   } catch (err) {
-    console.error('Error al obtener historial del equipo:', err)
+    logger.error('Error al obtener historial del equipo', { error: err.message, stack: err.stack })
     return res.status(500).json({
       error: 'Error al obtener historial del equipo',
       details: err.message

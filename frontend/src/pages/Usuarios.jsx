@@ -24,7 +24,6 @@ export default function Usuarios() {
     cedula: '',
     correo: '',
     telefono: '',
-    area: '',
     rol: 'Aprendiz',
     contrasena: '',
   });
@@ -113,8 +112,7 @@ export default function Usuarios() {
     return (
       (u.nombre_usuario || '').toLowerCase().includes(q) ||
       (u.cedula || '').toLowerCase().includes(q) ||
-      (u.nombre_rol || '').toLowerCase().includes(q) ||
-      (u.area || '').toLowerCase().includes(q)
+      (u.nombre_rol || '').toLowerCase().includes(q)
     );
   });
 
@@ -132,7 +130,6 @@ export default function Usuarios() {
         cedula: user.cedula || '',
         correo: user.correo || '',
         telefono: user.telefono || '',
-        area: user.area || '',
         rol: user.nombre_rol || 'Aprendiz',
         contrasena: '',
       });
@@ -209,7 +206,7 @@ export default function Usuarios() {
             <div className="users-toolbar-actions">
               <input
                 className="search-input"
-                placeholder="Buscar por nombre, cédula, rol o área..."
+                placeholder="Buscar por nombre, cédula o rol..."
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
               />
@@ -235,7 +232,6 @@ export default function Usuarios() {
                         <th>Nombre</th>
                         <th>Cédula</th>
                         <th>Rol</th>
-                        <th>Área</th>
                         <th>Equipos</th>
                         <th className="users-actions-header">Acciones</th>
                       </tr>
@@ -246,7 +242,6 @@ export default function Usuarios() {
                           <td>{u.nombre_usuario}</td>
                           <td>{u.cedula}</td>
                           <td>{u.nombre_rol}</td>
-                          <td>{u.area}</td>
                           <td>
                             <span className="equip-count">
                               {u.equipos_asignados || 0}
@@ -312,7 +307,6 @@ export default function Usuarios() {
                   <div><strong>Rol:</strong> {viewUser.user.nombre_rol}</div>
                   <div><strong>Correo:</strong> {viewUser.user.correo}</div>
                   <div><strong>Teléfono:</strong> {viewUser.user.telefono}</div>
-                  <div><strong>Área:</strong> {viewUser.user.area}</div>
                 </div>
               </div>
               <hr />
@@ -379,15 +373,6 @@ export default function Usuarios() {
                           ...prev,
                           telefono: e.target.value,
                         }))
-                      }
-                    />
-                  </div>
-                  <div className="form-row">
-                    <label>Área</label>
-                    <input
-                      value={form.area}
-                      onChange={(e) =>
-                        setForm((prev) => ({ ...prev, area: e.target.value }))
                       }
                     />
                   </div>

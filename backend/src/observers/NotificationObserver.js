@@ -62,7 +62,12 @@ export class Subject {
       try {
         observer.update(event, data);
       } catch (error) {
-        console.error('Error al notificar observador:', error);
+        // Usar logger si está disponible, sino console para evitar dependencia circular
+        if (typeof logger !== 'undefined') {
+          logger.error('Error al notificar observador', { error: error.message });
+        } else {
+          console.error('Error al notificar observador:', error);
+        }
       }
     });
   }

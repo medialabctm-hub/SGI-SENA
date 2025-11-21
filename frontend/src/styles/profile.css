@@ -1,0 +1,42 @@
+.profile-container {
+  max-width: 900px;
+}
+
+.profile-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.profile-title {
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.profile-subtitle {
+  color: #666;
+  font-size: 13px;
+}
+
+.profile-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.profile-message {
+  margin-bottom: 12px;
+}
+
+.profile-message.error {
+  color: #c00;
+}
+
+.profile-message.success {
+  color: #138000;
+}
+
+.profile-cancel-btn {
+  margin-left: 8px;
+}
+

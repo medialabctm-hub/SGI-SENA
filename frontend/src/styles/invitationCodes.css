@@ -1,0 +1,103 @@
+.invitation-codes-container {
+  max-width: 1000px;
+}
+
+.invitation-codes-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
+.invitation-codes-title {
+  margin: 0;
+  font-size: 1.5rem;
+  color: var(--neutral-800);
+}
+
+.invitation-codes-description {
+  margin: 0.5rem 0 0 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.invitation-codes-new-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.invitation-codes-form {
+  background: var(--neutral-50);
+  padding: 1.5rem;
+  border-radius: 12px;
+  margin-bottom: 1.5rem;
+  border: 1px solid var(--neutral-200);
+}
+
+.invitation-codes-form-title {
+  margin-top: 0;
+  margin-bottom: 1rem;
+}
+
+.invitation-codes-form-help {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.invitation-codes-form-actions {
+  margin-top: 1rem;
+  display: flex;
+  gap: 0.5rem;
+}
+
+.invitation-codes-loading {
+  text-align: center;
+  padding: 3rem;
+}
+
+.invitation-codes-loading-text {
+  margin-top: 1rem;
+  color: var(--muted);
+}
+
+.invitation-codes-table-wrapper {
+  overflow-x: auto;
+}
+
+.invitation-codes-table {
+  margin-top: 1rem;
+}
+
+.invitation-codes-code-cell {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.invitation-codes-code-text {
+  font-family: monospace;
+  font-size: 0.9rem;
+}
+
+.invitation-codes-copy-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+}
+
+.invitation-codes-status-badge {
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.invitation-codes-delete-btn {
+  padding: 6px 12px;
+  font-size: 0.9rem;
+}
+

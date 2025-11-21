@@ -13,7 +13,6 @@ export const registerSchema = z.object({
   rol: z.enum(['Administrador', 'Instructor', 'Aprendiz'], {
     errorMap: () => ({ message: 'Rol inválido' }),
   }),
-  area: z.string().optional().nullable(),
   codigo_invitacion: z.string().optional().nullable(),
 }).refine((data) => {
   // Si el rol es Instructor, el código de invitación es requerido
@@ -37,7 +36,6 @@ export const updateUserSchema = z.object({
   correo: z.string().email().toLowerCase().optional(),
   telefono: z.string().min(7).max(20).optional(),
   rol: z.enum(['Administrador', 'Instructor', 'Aprendiz']).optional(),
-  area: z.string().optional().nullable(),
 });
 
 /**

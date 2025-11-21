@@ -7,7 +7,7 @@
  * estableciendo las relaciones entre servicios, repositorios y utilidades.
  */
 import { container } from './Container.js';
-import { pool } from '../config/dbconfig.js';
+import { dbWrapper } from '../config/dbconfig.js';
 import { UserRepository } from '../repositories/UserRepository.js';
 import { RoleRepository } from '../repositories/RoleRepository.js';
 import { InvitationCodeRepository } from '../repositories/InvitationCodeRepository.js';
@@ -18,21 +18,7 @@ import { AuthService } from '../services/AuthService.js';
 import { InvitationCodeService } from '../services/invitationCodeService.js';
 import process from 'process';
 
-// Wrapper para la base de datos que incluye el pool
-const dbWrapper = {
-  execute: async (query, params) => {
-    const connection = await pool.getConnection();
-    try {
-      const [rows] = await connection.execute(query, params);
-      return [rows];
-    } finally {
-      connection.release();
-    }
-  },
-  pool, // Exponer el pool para transacciones
-};
-
-// Registrar base de datos (singleton)
+// Registrar base de datos (singleton) - usa el wrapper compartido de dbconfig.js
 container.register('db', dbWrapper, true);
 
 // Registrar repositorios (singleton)

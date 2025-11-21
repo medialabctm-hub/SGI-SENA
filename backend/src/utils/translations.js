@@ -76,7 +76,13 @@ export async function getUserLanguage(userId, db) {
     }
   } catch (error) {
     // Si la tabla no existe o hay error, usar español por defecto
-    console.warn('Error al obtener idioma del usuario:', error.message);
+    // Usar logger si está disponible
+    try {
+      const { logger } = await import('./logger.js');
+      logger.warn('Error al obtener idioma del usuario', { error: error.message });
+    } catch {
+      console.warn('Error al obtener idioma del usuario:', error.message);
+    }
   }
   
   return 'es'; // Idioma por defecto

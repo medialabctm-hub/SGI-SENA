@@ -1,5 +1,7 @@
 import defaultDb from '../config/dbconfig.js'
 import { createForUsers, createForRole } from '../services/notificationService.js'
+import { logger } from '../utils/logger.js'
+import { obtenerEquipoPorCodigo, obtenerUsuarioActivo } from '../utils/sqlQueries.js'
 
 /**
  * Actualiza automáticamente el estado de mantenimientos programados a "En Proceso"
@@ -26,11 +28,11 @@ async function actualizarEstadosAutomaticos() {
         ids
       )
 
-      console.log(`Actualizados ${mantenimientosProgramados.length} mantenimiento(s) a estado "En Proceso"`)
+      logger.info('Mantenimientos actualizados a estado "En Proceso"', { cantidad: mantenimientosProgramados.length })
     }
   } catch (err) {
     // No fallar si hay error, solo loguear
-    console.error('Error al actualizar estados automáticos de mantenimientos:', err)
+    logger.error('Error al actualizar estados automáticos de mantenimientos', { error: err.message, stack: err.stack })
   }
 }
 
@@ -60,11 +62,8 @@ export async function crearMantenimiento(req, res) {
       return res.status(400).json({ error: 'Faltan campos obligatorios: codigo_equipo, tipo_mantenimiento, fecha_mantenimiento' })
     }
 
-    // Validar que el equipo existe
-    const [[equipo]] = await defaultDb.execute(
-      'SELECT codigo_equipo, tipo, marca, modelo FROM Elementos WHERE codigo_equipo = ?',
-      [codigo_equipo]
-    )
+    // Validar que el equipo existe usando utilidad SQL
+    const equipo = await obtenerEquipoPorCodigo(defaultDb, codigo_equipo)
 
     if (!equipo) {
       return res.status(404).json({ error: 'Equipo no encontrado' })
@@ -85,12 +84,9 @@ export async function crearMantenimiento(req, res) {
       }
     }
 
-    // Validar que el técnico existe si se especificó
+    // Validar que el técnico existe si se especificó usando utilidad SQL
     if (id_usuario_tecnico) {
-      const [[tecnico]] = await defaultDb.execute(
-        'SELECT id_usuario FROM Usuarios WHERE id_usuario = ? AND estado = "Activo"',
-        [id_usuario_tecnico]
-      )
+      const tecnico = await obtenerUsuarioActivo(defaultDb, id_usuario_tecnico)
 
       if (!tecnico) {
         return res.status(404).json({ error: 'Técnico no encontrado o inactivo' })
@@ -126,7 +122,7 @@ export async function crearMantenimiento(req, res) {
         )
       } catch (err) {
         // Si la columna no existe, no fallar (se puede agregar después)
-        console.warn('No se pudo actualizar fecha_proximo_mantenimiento en Elementos:', err.message)
+        logger.warn('No se pudo actualizar fecha_proximo_mantenimiento en Elementos', { error: err.message })
       }
     }
 
@@ -185,7 +181,7 @@ export async function crearMantenimiento(req, res) {
         })
       }
     } catch (notifyErr) {
-      console.error('Error al enviar notificaciones de mantenimiento:', notifyErr)
+      logger.error('Error al enviar notificaciones de mantenimiento', { error: notifyErr.message })
     }
 
     // Crear automáticamente un reporte sobre el mantenimiento
@@ -206,7 +202,7 @@ export async function crearMantenimiento(req, res) {
       )
     } catch (reportErr) {
       // Si falla la creación del reporte, no fallar el mantenimiento
-      console.error('Error al crear reporte automático de mantenimiento:', reportErr)
+      logger.error('Error al crear reporte automático de mantenimiento', { error: reportErr.message })
     }
 
     return res.status(201).json({
@@ -219,7 +215,7 @@ export async function crearMantenimiento(req, res) {
       }
     })
   } catch (err) {
-    console.error('Error al crear mantenimiento:', err)
+    logger.error('Error al crear mantenimiento', { error: err.message, stack: err.stack })
     return res.status(500).json({ error: 'Error al registrar el mantenimiento', details: err.message })
   }
 }
@@ -278,7 +274,7 @@ export async function listarMantenimientos(req, res) {
 
     return res.json(rows)
   } catch (err) {
-    console.error('Error al listar mantenimientos:', err)
+    logger.error('Error al listar mantenimientos', { error: err.message, stack: err.stack })
     return res.status(500).json({ error: 'Error al obtener mantenimientos', details: err.message })
   }
 }
@@ -331,7 +327,7 @@ export async function obtenerMantenimientoPorId(req, res) {
 
     return res.json(mantenimiento)
   } catch (err) {
-    console.error('Error al obtener mantenimiento:', err)
+    logger.error('Error al obtener mantenimiento', { error: err.message, stack: err.stack })
     return res.status(500).json({ error: 'Error al obtener detalle del mantenimiento', details: err.message })
   }
 }
@@ -386,7 +382,7 @@ export async function actualizarFechaProximo(req, res) {
     } catch (err) {
       // Si la columna no existe, intentar crearla
       if (err.code === 'ER_BAD_FIELD_ERROR') {
-        console.warn('Columna fecha_proximo_mantenimiento no existe en Elementos. Ejecuta la migración SQL.')
+        logger.warn('Columna fecha_proximo_mantenimiento no existe en Elementos. Ejecuta la migración SQL.')
         return res.status(400).json({ 
           error: 'La columna fecha_proximo_mantenimiento no existe. Ejecuta la migración SQL primero.' 
         })
@@ -400,7 +396,7 @@ export async function actualizarFechaProximo(req, res) {
       fecha_proximo
     })
   } catch (err) {
-    console.error('Error al actualizar fecha_proximo:', err)
+    logger.error('Error al actualizar fecha_proximo', { error: err.message, stack: err.stack })
     return res.status(500).json({ error: 'Error al actualizar la fecha del próximo mantenimiento', details: err.message })
   }
 }
@@ -463,7 +459,7 @@ export async function actualizarEstadoMantenimiento(req, res) {
       estado_mantenimiento
     })
   } catch (err) {
-    console.error('Error al actualizar estado de mantenimiento:', err)
+    logger.error('Error al actualizar estado de mantenimiento', { error: err.message, stack: err.stack })
     return res.status(500).json({ error: 'Error al actualizar el estado del mantenimiento', details: err.message })
   }
 }
@@ -503,7 +499,7 @@ export async function eliminarMantenimiento(req, res) {
       message: 'Mantenimiento eliminado correctamente' 
     })
   } catch (err) {
-    console.error('Error al eliminar mantenimiento:', err)
+    logger.error('Error al eliminar mantenimiento', { error: err.message, stack: err.stack })
     return res.status(500).json({ error: 'Error al eliminar el mantenimiento', details: err.message })
   }
 }

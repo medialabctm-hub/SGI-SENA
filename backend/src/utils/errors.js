@@ -1,6 +1,7 @@
 /**
  * Clases de error personalizadas para el manejo de errores en la aplicación
  */
+import { logger } from './logger.js';
 
 export class AppError extends Error {
   constructor(message, statusCode = 500, isOperational = true) {
@@ -59,9 +60,12 @@ export const errorHandler = (err, req, res, next) => {
   error.message = err.message;
 
   // Log del error
-  if (process.env.NODE_ENV === 'development') {
-    console.error('Error:', err);
-  }
+  logger.error('Error capturado por errorHandler', { 
+    error: err.message, 
+    stack: err.stack,
+    name: err.name,
+    code: err.code
+  });
 
   // Error de validación de Zod
   if (err.name === 'ZodError') {

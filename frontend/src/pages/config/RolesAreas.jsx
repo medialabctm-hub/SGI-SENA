@@ -1,17 +1,13 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import Toast from '../../components/Toast'
 import { parseApiResponse, buildErrorMessage } from '../../utils/api'
+import '../../styles/rolesAreas.css'
 
 export default function RolesAreas() {
   const [roles, setRoles] = useState([])
   const [areas, setAreas] = useState([])
   const [loading, setLoading] = useState(true)
   const [toast, setToast] = useState(null)
-
-  useEffect(() => {
-    fetchRoles()
-    fetchAreas()
-  }, [])
 
   const getAuthHeaders = () => {
     const token = localStorage.getItem('token')
@@ -20,7 +16,7 @@ export default function RolesAreas() {
       : { 'Content-Type': 'application/json' }
   }
 
-  async function fetchRoles() {
+  const fetchRoles = useCallback(async () => {
     try {
       const res = await fetch('/api/permissions/roles', { headers: getAuthHeaders() })
       const data = await parseApiResponse(res, 'No se pudieron cargar los roles')
@@ -31,77 +27,51 @@ export default function RolesAreas() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
 
-  async function fetchAreas() {
-    try {
-      const token = localStorage.getItem('token')
-      if (!token) return
+  const fetchAreas = useCallback(async () => {
+    // La columna Area fue eliminada, por lo que no hay áreas que mostrar
+    setAreas([])
+  }, [])
 
-      const res = await fetch('/api/auth/users', { headers: getAuthHeaders() })
-      const users = await parseApiResponse(res, 'No se pudieron cargar las áreas')
-      
-      // Extraer áreas únicas de los usuarios
-      const areasSet = new Set()
-      if (Array.isArray(users)) {
-        users.forEach(user => {
-          if (user.area_usuarios || user.area) {
-            const area = user.area_usuarios || user.area
-            if (area && area.trim()) {
-              areasSet.add(area.trim())
-            }
-          }
-        })
-      }
-      
-      setAreas(Array.from(areasSet).sort())
-    } catch (err) {
-      setToast({ message: buildErrorMessage(err, 'Error al cargar áreas'), type: 'error' })
-      setAreas([])
-    }
-  }
+  useEffect(() => {
+    fetchRoles()
+    fetchAreas()
+  }, [fetchRoles, fetchAreas])
 
   return (
-    <div className="form-equipos" style={{ maxWidth: 1000 }}>
+    <div className="form-equipos roles-areas-container">
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
       
-      <div style={{ marginBottom: '1.5rem' }}>
-        <h3 style={{ margin: 0, fontSize: '1.5rem', color: 'var(--neutral-800)' }}>Roles y Áreas</h3>
-        <p style={{ margin: '0.5rem 0 0 0', color: '#666', fontSize: '0.9rem' }}>
+      <div className="roles-areas-header">
+        <h3 className="roles-areas-title">Roles y Áreas</h3>
+        <p className="roles-areas-description">
           Visualiza los roles del sistema y las áreas asignadas a los usuarios
         </p>
       </div>
 
       {loading ? (
-        <div style={{ textAlign: 'center', padding: '2rem' }}>
+        <div className="roles-areas-loading">
           <div className="loading-spinner"></div>
-          <p style={{ marginTop: '1rem', color: '#666' }}>Cargando información...</p>
+          <p className="roles-areas-loading-text">Cargando información...</p>
         </div>
       ) : (
-        <div style={{ display: 'flex', gap: '2rem', flexWrap: 'wrap' }}>
-          <div style={{ flex: 1, minWidth: '300px' }}>
-            <h4 style={{ margin: '0 0 1rem 0', fontSize: '1.1rem', fontWeight: 600 }}>Roles del Sistema</h4>
-            <p style={{ color: '#666', fontSize: '0.9rem', marginBottom: '1rem' }}>
+        <div className="roles-areas-content">
+          <div className="roles-areas-section">
+            <h4 className="roles-areas-section-title">Roles del Sistema</h4>
+            <p className="roles-areas-section-description">
               Los roles están definidos en el sistema y no se pueden modificar desde aquí.
             </p>
             {roles.length === 0 ? (
-              <p style={{ color: '#666', fontStyle: 'italic' }}>No hay roles disponibles</p>
+              <p className="roles-areas-empty">No hay roles disponibles</p>
             ) : (
-              <div style={{ display: 'grid', gap: '0.75rem' }}>
+              <div className="roles-list">
                 {roles.map((role, i) => (
-                  <div
-                    key={i}
-                    style={{
-                      padding: '1rem',
-                      background: '#f9fafb',
-                      borderRadius: '8px',
-                      border: '1px solid #e5e7eb'
-                    }}
-                  >
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div key={i} className="role-item">
+                    <div className="role-header">
                       <div>
-                        <strong style={{ fontSize: '1rem', color: '#111827' }}>{role.rol}</strong>
-                        <p style={{ margin: '0.25rem 0 0 0', color: '#666', fontSize: '0.85rem' }}>
+                        <strong className="role-name">{role.rol}</strong>
+                        <p className="role-permissions">
                           {role.totalPermisos} permiso{role.totalPermisos !== 1 ? 's' : ''}
                         </p>
                       </div>
@@ -112,34 +82,24 @@ export default function RolesAreas() {
             )}
           </div>
 
-          <div style={{ flex: 1, minWidth: '300px' }}>
-            <h4 style={{ margin: '0 0 1rem 0', fontSize: '1.1rem', fontWeight: 600 }}>Áreas de Usuarios</h4>
-            <p style={{ color: '#666', fontSize: '0.9rem', marginBottom: '1rem' }}>
+          <div className="roles-areas-section">
+            <h4 className="roles-areas-section-title">Áreas de Usuarios</h4>
+            <p className="roles-areas-section-description">
               Áreas únicas extraídas de los usuarios registrados en el sistema.
             </p>
             {areas.length === 0 ? (
-              <p style={{ color: '#666', fontStyle: 'italic' }}>No hay áreas registradas</p>
+              <p className="roles-areas-empty">No hay áreas registradas</p>
             ) : (
-              <div style={{ display: 'grid', gap: '0.5rem' }}>
+              <div className="areas-list">
                 {areas.map((area, i) => (
-                  <div
-                    key={i}
-                    style={{
-                      padding: '0.75rem 1rem',
-                      background: '#f9fafb',
-                      borderRadius: '8px',
-                      border: '1px solid #e5e7eb',
-                      display: 'flex',
-                      alignItems: 'center'
-                    }}
-                  >
-                    <span style={{ color: '#111827' }}>{area}</span>
+                  <div key={i} className="area-item">
+                    <span className="area-name">{area}</span>
                   </div>
                 ))}
               </div>
             )}
-            <div style={{ marginTop: '1rem' }}>
-              <button className="btn" onClick={fetchAreas} style={{ fontSize: '0.9rem' }}>
+            <div className="roles-areas-update-btn-wrapper">
+              <button className="btn roles-areas-update-btn" onClick={fetchAreas}>
                 Actualizar lista de áreas
               </button>
             </div>

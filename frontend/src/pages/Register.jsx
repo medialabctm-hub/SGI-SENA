@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { FiMail, FiLock, FiEye, FiUser, FiCreditCard, FiPhone } from 'react-icons/fi'
 import { validarRegistro, validarContraseña, validarEmail, validarTelefono, validarCaracteresEspeciales, validarEspaciosInicioFinalNombre } from '../utils/validaciones';
 import Toast from '../components/Toast';
+import AnimatedBackground from '../components/AnimatedBackground';
 import { parseApiResponse, buildErrorMessage } from '../utils/api';
 import '../styles/auth.css';
 
@@ -12,7 +13,6 @@ export default function Register() {
   const [cedula, setCedula] = useState('')
   const [email, setEmail] = useState('')
   const [telefono, setTelefono] = useState('')
-  const [area, setArea] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [rol, setRol] = useState('Aprendiz')
@@ -67,7 +67,6 @@ export default function Register() {
           cedula,
           correo: (email || '').trim().toLowerCase(),
           telefono,
-          area,
           contrasena: password,
           rol,
           codigo_invitacion: rol === 'Instructor' ? codigoInvitacion.trim() : null
@@ -85,36 +84,13 @@ export default function Register() {
     <>
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
       <div className="page login-page animated-bg">
-        <div className="bubbles-container">
-          {[...Array(50)].map((_, i) => {
-            const randomX = (Math.random() * 150 - 75)
-            const randomDelay = Math.random() * 25
-            const randomDuration = 12 + Math.random() * 15
-            const randomSize = 8 + Math.random() * 30
-            const randomOpacity = 0.08 + Math.random() * 0.25
-            return (
-              <div 
-                key={i} 
-                className="bubble" 
-                style={{
-                  left: `${Math.random() * 100}%`,
-                  animationDelay: `${randomDelay}s`,
-                  animationDuration: `${randomDuration}s`,
-                  width: `${randomSize}px`,
-                  height: `${randomSize}px`,
-                  opacity: randomOpacity,
-                  '--move-x': `${randomX}px`
-                }}
-              ></div>
-            )
-          })}
-        </div>
+        <AnimatedBackground />
       <div className="login-card">
         <div className="logo-box">
-          <div className="logo"><img src='/public/images/logoSena.png' alt="Logo SENA" /></div>
+          <div className="logo"><img src='/images/logoSena.png' alt="Logo SENA" /></div>
         </div>
         <h1 className="title">Crear cuenta</h1>
-        <p className="subtitle">SGE SENA</p>
+        <p className="subtitle">SGISENA</p>
 
 
         <form onSubmit={handleSubmit} className="form">
@@ -157,16 +133,7 @@ export default function Register() {
               onChange={e => setTelefono(e.target.value)}
             />
           </label>
-          {errores.telefono_usuario && <div className="error-msg">{errores.telefono_usuario}</div>}
-          <label className="input">
-            <span className="icon"><FiUser /></span>
-            <input
-              type="text"
-              placeholder="Área de trabajo"
-              value={area}
-              onChange={e => setArea(e.target.value)}
-            />
-          </label>
+  
           <label className="input">
             <span className="icon"><FiLock /></span>
             <input

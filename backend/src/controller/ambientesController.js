@@ -1,4 +1,5 @@
 import defaultDb from '../config/dbconfig.js';
+import { logger } from '../utils/logger.js';
 
 /**
  * Listar todos los ambientes con filtros opcionales
@@ -54,7 +55,7 @@ export async function listarAmbientes(req, res) {
     const [rows] = await defaultDb.execute(query, params);
     return res.json(rows);
   } catch (err) {
-    console.error('Error al listar ambientes:', err);
+    logger.error('Error al listar ambientes', { error: err.message, stack: err.stack });
     return res.status(500).json({ error: 'Error al listar ambientes', detalle: err.message });
   }
 }
@@ -133,7 +134,7 @@ export async function obtenerAmbiente(req, res) {
       responsables_actuales: responsables
     });
   } catch (err) {
-    console.error('Error al obtener ambiente:', err);
+    logger.error('Error al obtener ambiente', { error: err.message, stack: err.stack });
     return res.status(500).json({ error: 'Error al obtener el ambiente', detalle: err.message });
   }
 }
@@ -220,7 +221,7 @@ export async function crearAmbiente(req, res) {
       }
     });
   } catch (err) {
-    console.error('Error al crear ambiente:', err);
+    logger.error('Error al crear ambiente', { error: err.message, stack: err.stack });
     if (err.code === 'ER_DUP_ENTRY') {
       return res.status(409).json({ error: 'El código de ambiente ya existe' });
     }
@@ -325,7 +326,7 @@ export async function actualizarAmbiente(req, res) {
 
     return res.json({ ok: true, message: 'Ambiente actualizado correctamente' });
   } catch (err) {
-    console.error('Error al actualizar ambiente:', err);
+    logger.error('Error al actualizar ambiente', { error: err.message, stack: err.stack });
     if (err.code === 'ER_DUP_ENTRY') {
       return res.status(409).json({ error: 'El código de ambiente ya está en uso' });
     }
@@ -393,7 +394,7 @@ export async function eliminarAmbiente(req, res) {
       message: 'Ambiente eliminado correctamente'
     });
   } catch (err) {
-    console.error('Error al eliminar ambiente:', err);
+    logger.error('Error al eliminar ambiente', { error: err.message, stack: err.stack });
     return res.status(500).json({ error: 'Error al eliminar el ambiente', detalle: err.message });
   }
 }
@@ -504,7 +505,7 @@ export async function asignarAmbienteInstructor(req, res) {
       }
     });
   } catch (err) {
-    console.error('Error al asignar ambiente a instructor:', err);
+    logger.error('Error al asignar ambiente a instructor', { error: err.message, stack: err.stack });
     return res.status(500).json({
       error: 'Error al asignar ambiente',
       detalle: err.message
@@ -553,7 +554,7 @@ export async function desasignarAmbienteInstructor(req, res) {
       message: `Asignación del ambiente "${asignacion.nombre_ambiente}" a ${asignacion.instructor_nombre} finalizada correctamente`
     });
   } catch (err) {
-    console.error('Error al desasignar ambiente:', err);
+    logger.error('Error al desasignar ambiente', { error: err.message, stack: err.stack });
     return res.status(500).json({
       error: 'Error al desasignar ambiente',
       detalle: err.message
@@ -614,7 +615,7 @@ export async function listarAsignacionesAmbientes(req, res) {
     const [rows] = await defaultDb.execute(query, params);
     return res.json(rows);
   } catch (err) {
-    console.error('Error al listar asignaciones de ambientes:', err);
+    logger.error('Error al listar asignaciones de ambientes', { error: err.message, stack: err.stack });
     return res.status(500).json({
       error: 'Error al listar asignaciones',
       detalle: err.message

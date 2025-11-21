@@ -66,16 +66,6 @@ export class UserBuilder {
   }
 
   /**
-   * Establece el área del usuario
-   * @param {string} area - Área del usuario
-   * @returns {UserBuilder} Instancia del builder para method chaining
-   */
-  withArea(area) {
-    this.user.area = area ? area.trim() : null;
-    return this;
-  }
-
-  /**
    * Establece la contraseña del usuario
    * @param {string} contrasena - Contraseña del usuario
    * @returns {UserBuilder} Instancia del builder para method chaining

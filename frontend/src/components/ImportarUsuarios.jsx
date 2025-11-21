@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { FiFile, FiDownload, FiAlertCircle } from 'react-icons/fi'
 import * as XLSX from 'xlsx'
 import { parseApiResponse, buildErrorMessage } from '../utils/api'
+import '../styles/importarUsuarios.css'
 
 export default function ImportarUsuarios({ onImportComplete }) {
   const [archivo, setArchivo] = useState(null)
@@ -70,7 +71,6 @@ export default function ImportarUsuarios({ onImportComplete }) {
       'cedula': [],
       'telefono': [],
       'correo': [],
-      'area': [],
       'rol': [],
       'estado': []
     }
@@ -98,26 +98,14 @@ export default function ImportarUsuarios({ onImportComplete }) {
 
   return (
     <div>
-      <p style={{ color: '#666', marginBottom: '1rem', fontSize: '0.9rem' }}>
+      <p className="importar-usuarios-description">
         Sube un archivo Excel con los usuarios a importar. El archivo debe contener las columnas requeridas.
       </p>
 
-      <div style={{ marginBottom: '1rem' }}>
+      <div className="importar-usuarios-download-section">
         <button
           onClick={descargarPlantilla}
-          style={{
-            padding: '0.5rem 1rem',
-            background: '#e3f2fd',
-            color: '#1976d2',
-            border: '1px solid #1976d2',
-            borderRadius: '6px',
-            cursor: 'pointer',
-            fontSize: '0.85rem',
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '0.5rem',
-            fontWeight: 500
-          }}
+          className="importar-usuarios-download-btn"
         >
         <FiDownload size={14} />
         Descargar Plantilla (Excel)
@@ -125,121 +113,81 @@ export default function ImportarUsuarios({ onImportComplete }) {
       </div>
 
       <form onSubmit={handleSubmit}>
-        <div style={{ marginBottom: '1rem' }}>
-          <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600, color: '#1a2a3a', fontSize: '0.9rem' }}>
+        <div className="importar-usuarios-file-section">
+          <label className="importar-usuarios-file-label">
             Seleccionar archivo Excel
           </label>
-          <div style={{
-            border: '2px dashed #b2dfdb',
-            borderRadius: '8px',
-            padding: '1rem',
-            textAlign: 'center',
-            background: archivo ? '#e8f5e9' : '#f5f5f5',
-            transition: 'all 0.2s'
-          }}>
+          <div className={`importar-usuarios-file-dropzone ${archivo ? 'has-file' : ''}`}>
             <input
               type="file"
               accept=".xlsx,.xls"
               onChange={handleFileChange}
-              style={{ display: 'none' }}
+              className="importar-usuarios-file-input"
               id="file-input-usuarios"
             />
             <label
               htmlFor="file-input-usuarios"
-              style={{
-                cursor: 'pointer',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                gap: '0.5rem'
-              }}
+              className="importar-usuarios-file-label-inner"
             >
               <FiFile size={28} color="#40c057" />
               {archivo ? (
-                <span style={{ color: '#40c057', fontWeight: 600, fontSize: '0.9rem' }}>{archivo.name}</span>
+                <span className="importar-usuarios-file-name">{archivo.name}</span>
               ) : (
-                <span style={{ color: '#666', fontSize: '0.9rem' }}>Haz clic para seleccionar un archivo</span>
+                <span className="importar-usuarios-file-placeholder">Haz clic para seleccionar un archivo</span>
               )}
             </label>
           </div>
         </div>
 
         {error && (
-          <div style={{
-            padding: '1rem',
-            background: '#fee2e2',
-            color: '#dc2626',
-            borderRadius: '8px',
-            marginBottom: '1rem',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.5rem'
-          }}>
+          <div className="importar-usuarios-error">
             <FiAlertCircle size={20} />
             {error}
           </div>
         )}
 
-        <div style={{ display: 'flex', justifyContent: 'center', marginTop: '1rem' }}>
+        <div className="importar-usuarios-submit-section">
           <button
             type="submit"
             disabled={!archivo || loading}
-            style={{
-              padding: '0.75rem 1.5rem',
-              background: loading || !archivo ? '#ccc' : '#40c057',
-              color: '#fff',
-              border: 'none',
-              borderRadius: '8px',
-              cursor: loading || !archivo ? 'not-allowed' : 'pointer',
-              fontSize: '0.95rem',
-              fontWeight: 600,
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.5rem'
-            }}
+            className="importar-usuarios-submit-btn"
           >
             {loading ? 'Importando...' : 'Importar Usuarios'}
-            {loading && <div className="loading-spinner" style={{ width: '16px', height: '16px', borderWidth: '2px' }}></div>}
+            {loading && <div className="loading-spinner importar-usuarios-spinner"></div>}
           </button>
         </div>
       </form>
 
       {resultado && (
-        <div style={{
-          marginTop: '1.5rem',
-          padding: '1rem',
-          background: '#f8f9fa',
-          borderRadius: '8px',
-          border: '1px solid #e5e7eb'
-        }}>
-          <h4 style={{ margin: '0 0 0.75rem 0', fontSize: '1rem', color: '#1a2a3a', fontWeight: 600 }}>Resultados de la Importación</h4>
+        <div className="importar-usuarios-resultados">
+          <h4 className="importar-usuarios-resultados-title">Resultados de la Importación</h4>
           
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.75rem', marginBottom: '0.75rem' }}>
-            <div style={{ textAlign: 'center', padding: '0.75rem', background: '#fff', borderRadius: '6px' }}>
-              <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#1a2a3a' }}>{resultado.total}</div>
-              <div style={{ color: '#666', fontSize: '0.85rem' }}>Total</div>
+          <div className="importar-usuarios-stats">
+            <div className="importar-usuarios-stat">
+              <div className="importar-usuarios-stat-value">{resultado.total}</div>
+              <div className="importar-usuarios-stat-label">Total</div>
             </div>
-            <div style={{ textAlign: 'center', padding: '0.75rem', background: '#d1fae5', borderRadius: '6px' }}>
-              <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#10b981' }}>{resultado.exitosos}</div>
-              <div style={{ color: '#059669', fontSize: '0.85rem' }}>Exitosos</div>
+            <div className="importar-usuarios-stat success">
+              <div className="importar-usuarios-stat-value success">{resultado.exitosos}</div>
+              <div className="importar-usuarios-stat-label success">Exitosos</div>
             </div>
-            <div style={{ textAlign: 'center', padding: '0.75rem', background: '#fee2e2', borderRadius: '6px' }}>
-              <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#ef4444' }}>{resultado.fallidos}</div>
-              <div style={{ color: '#dc2626', fontSize: '0.85rem' }}>Fallidos</div>
+            <div className="importar-usuarios-stat error">
+              <div className="importar-usuarios-stat-value error">{resultado.fallidos}</div>
+              <div className="importar-usuarios-stat-label error">Fallidos</div>
             </div>
           </div>
 
           {(resultado.correosEnviados > 0 || resultado.correosFallidos > 0) && (
-            <div style={{ marginBottom: '0.75rem', padding: '0.75rem', background: '#e0f2fe', borderRadius: '6px', border: '1px solid #0ea5e9' }}>
-              <div style={{ fontSize: '0.9rem', fontWeight: 600, color: '#0369a1', marginBottom: '0.5rem' }}>📧 Envío de Correos:</div>
-              <div style={{ display: 'flex', gap: '1rem', fontSize: '0.85rem' }}>
+            <div className="importar-usuarios-emails">
+              <div className="importar-usuarios-emails-title">📧 Envío de Correos:</div>
+              <div className="importar-usuarios-emails-list">
                 {resultado.correosEnviados > 0 && (
-                  <span style={{ color: '#059669' }}>
+                  <span className="importar-usuarios-emails-success">
                     ✓ {resultado.correosEnviados} correo(s) enviado(s) con contraseñas
                   </span>
                 )}
                 {resultado.correosFallidos > 0 && (
-                  <span style={{ color: '#dc2626' }}>
+                  <span className="importar-usuarios-emails-error">
                     ✗ {resultado.correosFallidos} correo(s) no pudo(eron) enviarse
                   </span>
                 )}
@@ -248,18 +196,11 @@ export default function ImportarUsuarios({ onImportComplete }) {
           )}
 
           {resultado.errores && resultado.errores.length > 0 && (
-            <div style={{ marginTop: '0.75rem' }}>
-              <h5 style={{ margin: '0 0 0.5rem 0', fontSize: '0.9rem', color: '#1a2a3a', fontWeight: 600 }}>Errores:</h5>
-              <div style={{ maxHeight: '150px', overflowY: 'auto', background: '#fff', borderRadius: '6px', padding: '0.5rem' }}>
+            <div className="importar-usuarios-errores">
+              <h5 className="importar-usuarios-errores-title">Errores:</h5>
+              <div className="importar-usuarios-errores-list">
                 {resultado.errores.map((error, idx) => (
-                  <div key={idx} style={{
-                    padding: '0.5rem',
-                    marginBottom: '0.25rem',
-                    background: '#fee2e2',
-                    borderRadius: '4px',
-                    fontSize: '0.8rem',
-                    lineHeight: '1.4'
-                  }}>
+                  <div key={idx} className="importar-usuarios-error-item">
                     <strong>Fila {error.fila}</strong> ({error.cedula || 'N/A'}): {error.error}
                   </div>
                 ))}

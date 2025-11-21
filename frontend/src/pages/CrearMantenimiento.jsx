@@ -429,9 +429,6 @@ export default function CrearMantenimiento() {
                     <div><strong>Nombre:</strong> {tecnicoEncontrado.nombre_usuario}</div>
                     <div><strong>Cédula:</strong> {tecnicoEncontrado.cedula}</div>
                     <div><strong>Rol:</strong> {tecnicoEncontrado.nombre_rol}</div>
-                    {tecnicoEncontrado.area && (
-                      <div><strong>Área:</strong> {tecnicoEncontrado.area}</div>
-                    )}
                   </div>
                   <button
                     type="button"

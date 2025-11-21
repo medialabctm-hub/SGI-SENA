@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import Toast from '../../components/Toast'
 import { parseApiResponse, buildErrorMessage } from '../../utils/api'
 import { useLanguage } from '../../contexts/LanguageContext'
+import '../../styles/appSettings.css'
 
 export default function AppSettings() {
   const { language, updateLanguage } = useLanguage()
@@ -98,38 +99,38 @@ export default function AppSettings() {
 
   if (loading) {
     return (
-      <div className="form-equipos" style={{ maxWidth: 900 }}>
-        <div style={{ textAlign: 'center', padding: '2rem' }}>
+      <div className="form-equipos app-settings-container">
+        <div className="app-settings-loading">
           <div className="loading-spinner"></div>
-          <p style={{ marginTop: '1rem', color: '#666' }}>Cargando ajustes...</p>
+          <p className="app-settings-loading-text">Cargando ajustes...</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="form-equipos" style={{ maxWidth: 900 }}>
+    <div className="form-equipos app-settings-container">
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
       
-      <div style={{ marginBottom: '1.5rem' }}>
-        <h3 style={{ margin: 0, fontSize: '1.5rem', color: 'var(--neutral-800)' }}>Ajustes de la Aplicación</h3>
-        <p style={{ margin: '0.5rem 0 0 0', color: '#666', fontSize: '0.9rem' }}>
+      <div className="app-settings-header">
+        <h3 className="app-settings-title">Ajustes de la Aplicación</h3>
+        <p className="app-settings-description">
           Configura preferencias globales: idioma y zona horaria
         </p>
       </div>
 
-      <div style={{ display: 'grid', gap: '1.5rem', maxWidth: 600 }}>
+      <div className="app-settings-form">
         <div className="form-row">
           <label>Idioma</label>
           <select
             value={lang}
             onChange={e => setLang(e.target.value)}
-            style={{ display: 'block', marginTop: '6px', width: '100%', padding: '0.5rem' }}
+            className="app-settings-select"
           >
             <option value="es">Español</option>
             <option value="en">English</option>
           </select>
-          <small style={{ color: '#666', fontSize: '0.85rem', marginTop: '4px', display: 'block' }}>
+          <small className="app-settings-help">
             Selecciona el idioma de la interfaz
           </small>
         </div>
@@ -139,7 +140,7 @@ export default function AppSettings() {
           <select
             value={tz}
             onChange={e => setTz(e.target.value)}
-            style={{ display: 'block', marginTop: '6px', width: '100%', padding: '0.5rem' }}
+            className="app-settings-select"
           >
             {timeZones.map(tzOption => (
               <option key={tzOption} value={tzOption}>
@@ -147,12 +148,12 @@ export default function AppSettings() {
               </option>
             ))}
           </select>
-          <small style={{ color: '#666', fontSize: '0.85rem', marginTop: '4px', display: 'block' }}>
+          <small className="app-settings-help">
             Zona horaria para mostrar fechas y horas
           </small>
         </div>
 
-        <div style={{ marginTop: '0.5rem' }}>
+        <div className="app-settings-save">
           <button className="btn-verde" onClick={save} disabled={saving}>
             {saving ? 'Guardando...' : 'Guardar ajustes'}
           </button>

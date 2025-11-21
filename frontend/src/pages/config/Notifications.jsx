@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import Toast from '../../components/Toast'
 import { parseApiResponse, buildErrorMessage } from '../../utils/api'
+import '../../styles/notifications.css'
 
 export default function Notifications() {
   const [email, setEmail] = useState(true)
@@ -19,6 +20,7 @@ export default function Notifications() {
 
   useEffect(() => {
     fetchPreferences()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   async function fetchPreferences() {
@@ -78,199 +80,90 @@ export default function Notifications() {
 
   if (loading) {
     return (
-      <div className="form-equipos" style={{ maxWidth: 700 }}>
-        <div style={{ textAlign: 'center', padding: '2rem' }}>
+      <div className="form-equipos notifications-container">
+        <div className="notifications-loading">
           <div className="loading-spinner"></div>
-          <p style={{ marginTop: '1rem', color: '#666' }}>Cargando preferencias...</p>
+          <p className="notifications-loading-text">Cargando preferencias...</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="form-equipos" style={{ maxWidth: 700 }}>
+    <div className="form-equipos notifications-container">
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
       
-      <div style={{ marginBottom: '1.5rem' }}>
-        <h3 style={{ margin: 0, fontSize: '1.5rem', color: 'var(--neutral-800)' }}>Notificaciones</h3>
-        <p style={{ margin: '0.5rem 0 0 0', color: '#666', fontSize: '0.9rem' }}>
+      <div className="notifications-header">
+        <h3 className="notifications-title">Notificaciones</h3>
+        <p className="notifications-description">
           Configura cómo recibir notificaciones del sistema
         </p>
       </div>
 
-      <div style={{ display: 'grid', gap: '1rem', marginBottom: '1.5rem' }}>
-        <div
-          style={{
-            padding: '1rem',
-            background: '#f9fafb',
-            borderRadius: '8px',
-            border: '1px solid #e5e7eb',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between'
-          }}
-        >
-          <div>
-            <label style={{ fontWeight: 500, color: '#111827', cursor: 'pointer', display: 'block' }}>
+      <div className="notifications-list">
+        <div className="notification-item">
+          <div className="notification-content">
+            <label className="notification-label">
               Correo electrónico
             </label>
-            <p style={{ margin: '0.25rem 0 0 0', color: '#666', fontSize: '0.85rem' }}>
+            <p className="notification-description-text">
               Recibe notificaciones por correo electrónico
             </p>
           </div>
-          <label style={{ position: 'relative', display: 'inline-block', width: '44px', height: '24px' }}>
+          <label className="notification-toggle-wrapper">
             <input
               type="checkbox"
               checked={email}
               onChange={e => setEmail(e.target.checked)}
-              style={{ opacity: 0, width: 0, height: 0 }}
+              className="notification-toggle-input"
             />
-            <span
-              style={{
-                position: 'absolute',
-                cursor: 'pointer',
-                top: 0,
-                left: 0,
-                right: 0,
-                bottom: 0,
-                backgroundColor: email ? '#10b981' : '#ccc',
-                transition: '0.3s',
-                borderRadius: '24px'
-              }}
-            >
-              <span
-                style={{
-                  position: 'absolute',
-                  content: '""',
-                  height: '18px',
-                  width: '18px',
-                  left: email ? '22px' : '3px',
-                  bottom: '3px',
-                  backgroundColor: 'white',
-                  transition: '0.3s',
-                  borderRadius: '50%'
-                }}
-              />
-            </span>
+            <span className={`notification-toggle-slider ${email ? 'active' : ''}`} />
           </label>
         </div>
 
-        <div
-          style={{
-            padding: '1rem',
-            background: '#f9fafb',
-            borderRadius: '8px',
-            border: '1px solid #e5e7eb',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            opacity: 0.6
-          }}
-        >
-          <div>
-            <label style={{ fontWeight: 500, color: '#111827', display: 'block' }}>
+        <div className="notification-item disabled">
+          <div className="notification-content">
+            <label className="notification-label disabled">
               SMS
             </label>
-            <p style={{ margin: '0.25rem 0 0 0', color: '#666', fontSize: '0.85rem' }}>
+            <p className="notification-description-text">
               Recibe notificaciones por SMS (pendiente de integración)
             </p>
           </div>
-          <label style={{ position: 'relative', display: 'inline-block', width: '44px', height: '24px' }}>
+          <label className="notification-toggle-wrapper">
             <input
               type="checkbox"
               checked={sms}
               onChange={e => setSms(e.target.checked)}
               disabled
-              style={{ opacity: 0, width: 0, height: 0 }}
+              className="notification-toggle-input"
             />
-            <span
-              style={{
-                position: 'absolute',
-                cursor: 'not-allowed',
-                top: 0,
-                left: 0,
-                right: 0,
-                bottom: 0,
-                backgroundColor: sms ? '#10b981' : '#ccc',
-                transition: '0.3s',
-                borderRadius: '24px'
-              }}
-            >
-              <span
-                style={{
-                  position: 'absolute',
-                  content: '""',
-                  height: '18px',
-                  width: '18px',
-                  left: sms ? '22px' : '3px',
-                  bottom: '3px',
-                  backgroundColor: 'white',
-                  transition: '0.3s',
-                  borderRadius: '50%'
-                }}
-              />
-            </span>
+            <span className={`notification-toggle-slider disabled ${sms ? 'active' : ''}`} />
           </label>
         </div>
 
-        <div
-          style={{
-            padding: '1rem',
-            background: '#f9fafb',
-            borderRadius: '8px',
-            border: '1px solid #e5e7eb',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between'
-          }}
-        >
-          <div>
-            <label style={{ fontWeight: 500, color: '#111827', cursor: 'pointer', display: 'block' }}>
+        <div className="notification-item">
+          <div className="notification-content">
+            <label className="notification-label">
               Notificaciones en la app
             </label>
-            <p style={{ margin: '0.25rem 0 0 0', color: '#666', fontSize: '0.85rem' }}>
+            <p className="notification-description-text">
               Recibe notificaciones dentro de la aplicación
             </p>
           </div>
-          <label style={{ position: 'relative', display: 'inline-block', width: '44px', height: '24px' }}>
+          <label className="notification-toggle-wrapper">
             <input
               type="checkbox"
               checked={inApp}
               onChange={e => setInApp(e.target.checked)}
-              style={{ opacity: 0, width: 0, height: 0 }}
+              className="notification-toggle-input"
             />
-            <span
-              style={{
-                position: 'absolute',
-                cursor: 'pointer',
-                top: 0,
-                left: 0,
-                right: 0,
-                bottom: 0,
-                backgroundColor: inApp ? '#10b981' : '#ccc',
-                transition: '0.3s',
-                borderRadius: '24px'
-              }}
-            >
-              <span
-                style={{
-                  position: 'absolute',
-                  content: '""',
-                  height: '18px',
-                  width: '18px',
-                  left: inApp ? '22px' : '3px',
-                  bottom: '3px',
-                  backgroundColor: 'white',
-                  transition: '0.3s',
-                  borderRadius: '50%'
-                }}
-              />
-            </span>
+            <span className={`notification-toggle-slider ${inApp ? 'active' : ''}`} />
           </label>
         </div>
       </div>
 
-      <div style={{ marginTop: '1.5rem' }}>
+      <div className="notifications-save">
         <button className="btn-verde" onClick={save} disabled={saving}>
           {saving ? 'Guardando...' : 'Guardar preferencias'}
         </button>

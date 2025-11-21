@@ -128,7 +128,7 @@ export default function Sidebar({ user }) {
     horarios: [
       { title: 'Mis Horarios', path: '/horarios', icon: <FiCalendar />, roles: ['Instructor'] },
       { title: 'Gestión de Horarios', path: '/horarios', icon: <FiCalendar />, roles: ['Administrador'] },
-      { title: 'Consultar Responsables', path: '/horarios/responsables', icon: <FiClock />, roles: ['all'] }
+      /*{ title: 'Consultar Responsables', path: '/horarios/responsables', icon: <FiClock />, roles: ['all'] }*/
     ],
     config: [
       { title: 'Personal Registrado', path: '/usuarios', icon: <FiUsers />, roles: ['Administrador', 'Instructor'] },

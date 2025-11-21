@@ -2,6 +2,7 @@ import defaultDb from '../config/dbconfig.js';
 import XLSX from 'xlsx';
 import bcrypt from 'bcrypt';
 import emailService from '../services/emailService.js';
+import { logger } from '../utils/logger.js';
 
 /**
  * Importar equipos desde archivo Excel
@@ -214,7 +215,7 @@ export async function importarEquipos(req, res) {
       resultados
     });
   } catch (error) {
-    console.error('Error en importarEquipos:', error);
+    logger.error('Error en importarEquipos', { error: error.message, stack: error.stack });
     return res.status(500).json({ error: 'Error al procesar el archivo Excel', detalle: error.message });
   }
 }
@@ -260,7 +261,6 @@ export async function importarUsuarios(req, res) {
         const cedula = String(row['cedula'] || row['Cédula'] || row['CEDULA'] || '').trim();
         const telefono = row['telefono'] || row['Teléfono'] || row['TELEFONO'] || null;
         const correo = row['correo'] || row['Correo'] || row['CORREO'] || row['email'] || row['Email'] || null;
-        const area = row['area'] || row['Área'] || row['AREA'] || row['area_usuarios'] || row['Área Usuarios'] || null;
         const rol = String(row['rol'] || row['Rol'] || row['ROL'] || 'Aprendiz').trim();
         const contrasena = row['contrasena'] || row['Contraseña'] || row['CONTRASENA'] || row['password'] || null;
         const estado = String(row['estado'] || row['Estado'] || row['ESTADO'] || 'Activo').trim();
@@ -346,15 +346,14 @@ export async function importarUsuarios(req, res) {
 
         // Insertar usuario
         const query = `INSERT INTO Usuarios
-          (nombre_usuario, cedula, telefono, correo, area_usuarios, contrasena, id_rol, estado, requiere_cambio_contrasena, creado_por)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+          (nombre_usuario, cedula, telefono, correo, contrasena, id_rol, estado, requiere_cambio_contrasena, creado_por)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`;
 
         await defaultDb.execute(query, [
           nombreUsuario,
           cedula,
           telefono || null,
           correo || null,
-          area || null,
           contrasenaHash,
           rolRow.id_rol,
           estadoValido,
@@ -414,7 +413,7 @@ export async function importarUsuarios(req, res) {
       resultados
     });
   } catch (error) {
-    console.error('Error en importarUsuarios:', error);
+    logger.error('Error en importarUsuarios', { error: error.message, stack: error.stack });
     return res.status(500).json({ error: 'Error al procesar el archivo Excel', detalle: error.message });
   }
 }

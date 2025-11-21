@@ -1,4 +1,5 @@
 import defaultDb from '../config/dbconfig.js';
+import { logger } from '../utils/logger.js';
 
 /**
  * Crear una nueva clase/programación
@@ -138,7 +139,7 @@ export async function crearClase(req, res) {
 
       if (idsInvalidos.length > 0) {
         // Continuar con los válidos, pero registrar el warning
-        console.warn(`Algunos participantes no son aprendices válidos: ${idsInvalidos.join(', ')}`);
+        logger.warn('Algunos participantes no son aprendices válidos', { idsInvalidos });
       }
 
       // Insertar participantes válidos
@@ -169,7 +170,7 @@ export async function crearClase(req, res) {
       }
     });
   } catch (err) {
-    console.error('Error al crear clase:', err);
+    logger.error('Error al crear clase', { error: err.message, stack: err.stack });
     return res.status(500).json({ error: 'Error al crear la clase', detalle: err.message });
   }
 }
@@ -243,7 +244,7 @@ export async function listarClases(req, res) {
     const [rows] = await defaultDb.execute(query, params);
     return res.json(rows);
   } catch (err) {
-    console.error('Error al listar clases:', err);
+    logger.error('Error al listar clases', { error: err.message, stack: err.stack });
     return res.status(500).json({ error: 'Error al listar clases', detalle: err.message });
   }
 }
@@ -313,7 +314,7 @@ export async function obtenerClase(req, res) {
       responsabilidades
     });
   } catch (err) {
-    console.error('Error al obtener clase:', err);
+    logger.error('Error al obtener clase', { error: err.message, stack: err.stack });
     return res.status(500).json({ error: 'Error al obtener la clase', detalle: err.message });
   }
 }
@@ -360,7 +361,7 @@ export async function iniciarClase(req, res) {
       fecha_inicio: fechaInicio
     });
   } catch (err) {
-    console.error('Error al iniciar clase:', err);
+    logger.error('Error al iniciar clase', { error: err.message, stack: err.stack });
     return res.status(500).json({ error: 'Error al iniciar la clase', detalle: err.message });
   }
 }
@@ -407,7 +408,7 @@ export async function finalizarClase(req, res) {
       fecha_fin: fechaFin
     });
   } catch (err) {
-    console.error('Error al finalizar clase:', err);
+    logger.error('Error al finalizar clase', { error: err.message, stack: err.stack });
     return res.status(500).json({ error: 'Error al finalizar la clase', detalle: err.message });
   }
 }
@@ -482,7 +483,7 @@ export async function agregarParticipantes(req, res) {
       duplicados: idsExistentes.length
     });
   } catch (err) {
-    console.error('Error al agregar participantes:', err);
+    logger.error('Error al agregar participantes', { error: err.message, stack: err.stack });
     return res.status(500).json({ error: 'Error al agregar participantes', detalle: err.message });
   }
 }
@@ -509,7 +510,7 @@ export async function obtenerResponsablesAmbiente(req, res) {
 
     return res.json(responsables);
   } catch (err) {
-    console.error('Error al obtener responsables:', err);
+    logger.error('Error al obtener responsables', { error: err.message, stack: err.stack });
     return res.status(500).json({ error: 'Error al obtener responsables del ambiente', detalle: err.message });
   }
 }
@@ -605,7 +606,7 @@ export async function actualizarClase(req, res) {
 
     return res.json({ ok: true, message: 'Clase actualizada correctamente' });
   } catch (err) {
-    console.error('Error al actualizar clase:', err);
+    logger.error('Error al actualizar clase', { error: err.message, stack: err.stack });
     return res.status(500).json({ error: 'Error al actualizar la clase', detalle: err.message });
   }
 }
@@ -657,7 +658,7 @@ export async function cancelarClase(req, res) {
 
     return res.json({ ok: true, message: 'Clase cancelada correctamente' });
   } catch (err) {
-    console.error('Error al cancelar clase:', err);
+    logger.error('Error al cancelar clase', { error: err.message, stack: err.stack });
     return res.status(500).json({ error: 'Error al cancelar la clase', detalle: err.message });
   }
 }
@@ -793,7 +794,7 @@ export async function consultarResponsablesTiempoReal(req, res) {
       tipo: 'Temporal'
     });
   } catch (err) {
-    console.error('Error al consultar responsables en tiempo real:', err);
+    logger.error('Error al consultar responsables en tiempo real', { error: err.message, stack: err.stack });
     return res.status(500).json({
       error: 'Error al consultar responsables',
       detalle: err.message
@@ -907,7 +908,7 @@ export async function sincronizarResponsabilidadesHorarios(req, res) {
 
         asignadas++;
       } catch (err) {
-        console.error(`Error al asignar responsabilidades para clase ${clase.id_clase}:`, err);
+        logger.error('Error al asignar responsabilidades para clase', { id_clase: clase.id_clase, error: err.message });
         errores.push({ id_clase: clase.id_clase, error: err.message });
       }
     }
@@ -945,7 +946,7 @@ export async function sincronizarResponsabilidadesHorarios(req, res) {
 
         finalizadas++;
       } catch (err) {
-        console.error(`Error al finalizar clase ${clase.id_clase}:`, err);
+        logger.error('Error al finalizar clase', { id_clase: clase.id_clase, error: err.message });
         errores.push({ id_clase: clase.id_clase, error: err.message });
       }
     }
@@ -958,7 +959,7 @@ export async function sincronizarResponsabilidadesHorarios(req, res) {
       errores: errores.length > 0 ? errores : undefined
     });
   } catch (err) {
-    console.error('Error al sincronizar responsabilidades:', err);
+    logger.error('Error al sincronizar responsabilidades', { error: err.message, stack: err.stack });
     return res.status(500).json({
       error: 'Error al sincronizar responsabilidades',
       detalle: err.message

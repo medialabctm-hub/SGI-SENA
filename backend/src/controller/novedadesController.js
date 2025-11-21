@@ -1,5 +1,7 @@
 import defaultDb from '../config/dbconfig.js'
 import { createForUsers, createForRole } from '../services/notificationService.js'
+import { logger } from '../utils/logger.js'
+import { obtenerEquipoPorCodigo } from '../utils/sqlQueries.js'
 
 /**
  * Crear una nueva novedad
@@ -11,7 +13,7 @@ export async function crearNovedad(req, res) {
     const { codigo_equipo, tipo_novedad, descripcion } = req.body
     const userId = req.user?.id
 
-    console.log('Crear novedad - Datos recibidos:', { codigo_equipo, tipo_novedad, descripcion: descripcion?.substring(0, 50), userId })
+    logger.debug('Crear novedad - Datos recibidos', { codigo_equipo, tipo_novedad, descripcion: descripcion?.substring(0, 50), userId })
 
     if (!codigo_equipo || !tipo_novedad || !descripcion) {
       return res.status(400).json({ 
@@ -24,12 +26,7 @@ export async function crearNovedad(req, res) {
     const tiposValidos = ['Daño', 'Pérdida', 'Robo', 'Mal Funcionamiento', 'Daño Físico', 'Falta de Componente', 'Otro']
     let tipoNovedadNormalizado = tipo_novedad.trim()
     
-    // Mapear valores antiguos a nuevos si es necesario
-    if (tipoNovedadNormalizado === 'Daño Físico') {
-      tipoNovedadNormalizado = 'Daño Físico'
-    } else if (tipoNovedadNormalizado === 'Falta de Componente') {
-      tipoNovedadNormalizado = 'Falta de Componente'
-    }
+    // Validar tipo de novedad (las asignaciones redundantes fueron eliminadas)
     
     if (!tiposValidos.includes(tipoNovedadNormalizado)) {
       return res.status(400).json({ 
@@ -39,11 +36,8 @@ export async function crearNovedad(req, res) {
       })
     }
 
-    // Validar que el equipo existe
-    const [[equipo]] = await defaultDb.execute(
-      'SELECT codigo_equipo, tipo, marca, modelo FROM Elementos WHERE codigo_equipo = ?',
-      [codigo_equipo]
-    )
+    // Validar que el equipo existe usando utilidad SQL
+    const equipo = await obtenerEquipoPorCodigo(defaultDb, codigo_equipo)
 
     if (!equipo) {
       return res.status(404).json({ error: 'Equipo no encontrado' })
@@ -72,9 +66,9 @@ export async function crearNovedad(req, res) {
          VALUES (?, ?, ?, ?)`,
         [codigo_equipo, tipoNovedadNormalizado, descripcion.trim(), userId]
       )
-      console.log('Novedad insertada correctamente, ID:', result.insertId)
+      logger.info('Novedad insertada correctamente', { id: result.insertId })
     } catch (insertErr) {
-      console.error('Error al insertar novedad en BD:', insertErr)
+      logger.error('Error al insertar novedad en BD', { error: insertErr.message, stack: insertErr.stack })
       // Si el error es por tipo_novedad, dar un mensaje más claro
       if (insertErr.message && insertErr.message.includes('tipo_novedad')) {
         return res.status(400).json({
@@ -118,7 +112,7 @@ export async function crearNovedad(req, res) {
           creadoPor: userId
         })
       } catch (notifyErr) {
-        console.error('Error al notificar a administradores:', notifyErr)
+        logger.error('Error al notificar a administradores', { error: notifyErr.message })
       }
     }
 
@@ -157,7 +151,7 @@ export async function crearNovedad(req, res) {
         })
       }
     } catch (notifyErr) {
-      console.error('Error al notificar a responsables:', notifyErr)
+      logger.error('Error al notificar a responsables', { error: notifyErr.message })
     }
 
     return res.status(201).json({ 
@@ -170,7 +164,7 @@ export async function crearNovedad(req, res) {
       }
     })
   } catch (err) {
-    console.error('Error al crear novedad:', err)
+    logger.error('Error al crear novedad', { error: err.message, stack: err.stack })
     return res.status(500).json({ error: 'Error al registrar la novedad', details: err.message })
   }
 }
@@ -225,7 +219,7 @@ export async function listarNovedades(req, res) {
 
     return res.json(rows)
   } catch (err) {
-    console.error('Error al listar novedades:', err)
+    logger.error('Error al listar novedades', { error: err.message, stack: err.stack })
     return res.status(500).json({ error: 'Error al obtener novedades', details: err.message })
   }
 }
@@ -275,7 +269,7 @@ export async function obtenerNovedadPorId(req, res) {
 
     return res.json(novedad)
   } catch (err) {
-    console.error('Error al obtener novedad:', err)
+    logger.error('Error al obtener novedad', { error: err.message, stack: err.stack })
     return res.status(500).json({ error: 'Error al obtener detalle de la novedad', details: err.message })
   }
 }
@@ -348,7 +342,7 @@ export async function actualizarEstadoNovedad(req, res) {
       fecha_resolucion: fechaResolucion
     })
   } catch (err) {
-    console.error('Error al actualizar estado de novedad:', err)
+    logger.error('Error al actualizar estado de novedad', { error: err.message, stack: err.stack })
     return res.status(500).json({ error: 'Error al actualizar el estado de la novedad', details: err.message })
   }
 }

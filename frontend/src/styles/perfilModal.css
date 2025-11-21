@@ -1,0 +1,22 @@
+.perfil-modal-overlay {
+  z-index: 10000;
+}
+
+.perfil-modal-sheet {
+  max-width: 400px;
+  border-radius: 16px;
+  padding: 28px;
+}
+
+.perfil-modal-title {
+  margin-bottom: 16px;
+}
+
+.perfil-modal-field {
+  margin-bottom: 10px;
+}
+
+.perfil-modal-close {
+  margin-top: 18px;
+}
+

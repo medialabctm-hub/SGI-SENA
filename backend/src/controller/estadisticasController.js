@@ -1,4 +1,5 @@
 import defaultDb from '../config/dbconfig.js';
+import { logger } from '../utils/logger.js';
 
 /**
  * Obtener estadísticas generales del sistema
@@ -95,7 +96,7 @@ export async function obtenerEstadisticas(req, res) {
           mantenimientosProximos = Number(mantenimientos?.total) || 0;
         } catch (e) {
           // Tabla Mantenimiento no existe o error en la query
-          console.error('Error al obtener mantenimientos próximos:', e);
+          logger.error('Error al obtener mantenimientos próximos', { error: e.message });
         }
         
         stats = {
@@ -125,14 +126,14 @@ export async function obtenerEstadisticas(req, res) {
     }
 
     // Log para debug
-    console.log('[DEBUG] Estadísticas generadas:', JSON.stringify(stats, null, 2));
+    logger.debug('Estadísticas generadas', { stats });
 
     return res.json({
       stats,
       generatedAt: new Date().toISOString(),
     });
   } catch (err) {
-    console.error('Error al obtener estadísticas:', err);
+    logger.error('Error al obtener estadísticas', { error: err.message, stack: err.stack });
     return res.status(500).json({ 
       error: 'Error al obtener estadísticas', 
       details: err.message 

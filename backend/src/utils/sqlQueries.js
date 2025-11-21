@@ -24,7 +24,7 @@
 export async function obtenerUsuarioActivo(db, userId) {
   const [[user]] = await db.execute(
     `SELECT u.id_usuario, u.nombre_usuario, u.cedula, u.correo, u.telefono, 
-            u.area_usuarios AS area, r.nombre_rol, r.id_rol
+            r.nombre_rol, r.id_rol
      FROM Usuarios u
      LEFT JOIN Roles r ON r.id_rol = u.id_rol
      WHERE u.id_usuario = ? AND u.estado = 'Activo'`,
@@ -42,7 +42,7 @@ export async function obtenerUsuarioActivo(db, userId) {
 export async function obtenerUsuarioPorCedula(db, cedula) {
   const [[user]] = await db.execute(
     `SELECT u.id_usuario, u.nombre_usuario, u.cedula, u.correo, u.telefono,
-            u.area_usuarios AS area, r.nombre_rol, r.id_rol
+            r.nombre_rol, r.id_rol
      FROM Usuarios u
      LEFT JOIN Roles r ON r.id_rol = u.id_rol
      WHERE u.cedula = ? AND u.estado = 'Activo'`,

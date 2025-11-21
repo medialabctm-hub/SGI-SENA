@@ -1,5 +1,7 @@
 import defaultDb from '../config/dbconfig.js'
 import { createForUsers } from '../services/notificationService.js'
+import { logger } from '../utils/logger.js'
+import { obtenerEquipoPorCodigo } from '../utils/sqlQueries.js'
 
 /**
  * Crear un nuevo reporte
@@ -14,12 +16,9 @@ export async function crearReporte(req, res) {
       return res.status(400).json({ error: 'Faltan campos obligatorios (tipo_reporte, titulo, descripcion)' })
     }
 
-    // Si se especifica un equipo, validar que existe
+    // Si se especifica un equipo, validar que existe usando utilidad SQL
     if (codigo_equipo) {
-      const [[equipo]] = await defaultDb.execute(
-        'SELECT codigo_equipo FROM Elementos WHERE codigo_equipo = ?',
-        [codigo_equipo]
-      )
+      const equipo = await obtenerEquipoPorCodigo(defaultDb, codigo_equipo)
 
       if (!equipo) {
         return res.status(404).json({ error: 'Equipo no encontrado' })
@@ -75,10 +74,7 @@ export async function crearReporte(req, res) {
 
     // Si se especificó un equipo, notificar a los responsables
     if (codigo_equipo) {
-      const [[equipoInfo]] = await defaultDb.execute(
-        'SELECT tipo, marca, modelo FROM Elementos WHERE codigo_equipo = ?',
-        [codigo_equipo]
-      )
+      const equipoInfo = await obtenerEquipoPorCodigo(defaultDb, codigo_equipo)
 
       if (equipoInfo) {
         const [responsables] = await defaultDb.execute(
@@ -124,7 +120,7 @@ export async function crearReporte(req, res) {
       message: 'Reporte creado correctamente'
     })
   } catch (err) {
-    console.error('Error al crear reporte:', err)
+    logger.error('Error al crear reporte', { error: err.message, stack: err.stack })
     return res.status(500).json({ error: 'Error al crear el reporte', details: err.message })
   }
 }
@@ -182,7 +178,7 @@ export async function listarReportes(req, res) {
 
     return res.json(rows)
   } catch (err) {
-    console.error('Error al listar reportes:', err)
+    logger.error('Error al listar reportes', { error: err.message, stack: err.stack })
     return res.status(500).json({ error: 'Error al obtener reportes', details: err.message })
   }
 }
@@ -245,7 +241,7 @@ export async function obtenerReportePorId(req, res) {
 
     return res.json(reporte)
   } catch (err) {
-    console.error('Error al obtener reporte:', err)
+    logger.error('Error al obtener reporte', { error: err.message, stack: err.stack })
     return res.status(500).json({ error: 'Error al obtener detalle del reporte', details: err.message })
   }
 }
@@ -284,12 +280,9 @@ export async function actualizarReporte(req, res) {
       return res.status(404).json({ error: 'Reporte no encontrado' })
     }
 
-    // Si se especifica un equipo, validar que existe
+    // Si se especifica un equipo, validar que existe usando utilidad SQL
     if (codigo_equipo) {
-      const [[equipo]] = await defaultDb.execute(
-        'SELECT codigo_equipo FROM Elementos WHERE codigo_equipo = ?',
-        [codigo_equipo]
-      )
+      const equipo = await obtenerEquipoPorCodigo(defaultDb, codigo_equipo)
 
       if (!equipo) {
         return res.status(404).json({ error: 'Equipo no encontrado' })
@@ -314,7 +307,7 @@ export async function actualizarReporte(req, res) {
       message: 'Reporte actualizado correctamente' 
     })
   } catch (err) {
-    console.error('Error al actualizar reporte:', err)
+    logger.error('Error al actualizar reporte', { error: err.message, stack: err.stack })
     return res.status(500).json({ error: 'Error al actualizar el reporte', details: err.message })
   }
 }
@@ -364,7 +357,7 @@ export async function eliminarReporte(req, res) {
       message: 'Reporte eliminado correctamente' 
     })
   } catch (err) {
-    console.error('Error al eliminar reporte:', err)
+    logger.error('Error al eliminar reporte', { error: err.message, stack: err.stack })
     return res.status(500).json({ error: 'Error al eliminar el reporte', details: err.message })
   }
 }

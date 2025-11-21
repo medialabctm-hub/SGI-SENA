@@ -10,7 +10,7 @@ CREATE TABLE Roles (
   nombre_rol ENUM('Administrador', 'Instructor', 'Aprendiz') UNIQUE NOT NULL,
   descripcion VARCHAR(200),
   fecha_creacion DATETIME DEFAULT NOW()
-);
+) COMMENT = 'Roles del sistema de gestión de equipos';
 
 -- =================
 -- TABLA DE USUARIOS
@@ -21,7 +21,6 @@ CREATE TABLE Usuarios (
   cedula VARCHAR(20) UNIQUE NOT NULL,
   telefono VARCHAR(20),
   correo VARCHAR(100) UNIQUE,
-  area_usuarios VARCHAR(150),
   contrasena VARCHAR(255) NOT NULL,
   id_rol INT NOT NULL,
   estado ENUM('Activo', 'Inactivo') DEFAULT 'Activo',
@@ -34,7 +33,7 @@ CREATE TABLE Usuarios (
   INDEX idx_cedula (cedula),
   INDEX idx_estado (estado),
   INDEX idx_rol (id_rol)
-);
+) COMMENT = 'Usuarios del sistema con sus credenciales y datos personales';
 
 -- ============================================
 -- TABLA DE TOKENS DE RECUPERACIÓN DE CONTRASEÑA
@@ -51,7 +50,7 @@ CREATE TABLE Tokens_Recuperacion_Contrasena (
   INDEX idx_token (token),
   INDEX idx_usuario (id_usuario),
   INDEX idx_expiracion (fecha_expiracion, usado)
-);
+) COMMENT = 'Tokens para recuperación de contraseñas de usuarios';
 
 -- ========================
 -- TABLA DE NOTIFICACIONES
@@ -71,7 +70,7 @@ CREATE TABLE Notificaciones (
   FOREIGN KEY (creado_por) REFERENCES Usuarios(id_usuario) ON DELETE SET NULL,
   INDEX idx_usuario_leida (id_usuario, leida),
   INDEX idx_fecha_notificacion (fecha_creacion)
-);
+) COMMENT = 'Notificaciones del sistema para usuarios';
 
 -- =================
 -- TABLA DE AMBIENTES
@@ -89,7 +88,7 @@ CREATE TABLE Ambientes (
   fecha_creacion DATETIME DEFAULT NOW(),
   INDEX idx_codigo (codigo_ambiente),
   INDEX idx_tipo (tipo_ambiente)
-);
+) COMMENT = 'Ubicaciones físicas donde se encuentran los equipos';
 
 -- ============================
 -- TABLA DE IMÁGENES AMBIENTES
@@ -108,7 +107,7 @@ CREATE TABLE Imagenes_Ambiente (
   FOREIGN KEY (subida_por) REFERENCES Usuarios(id_usuario),
   INDEX idx_ambiente (id_ambiente),
   INDEX idx_principal (id_ambiente, es_principal)
-);
+) COMMENT = 'Almacenamiento de rutas de imágenes de ambientes';
 
 -- ====================
 -- TABLA DE CATEGORÍAS
@@ -118,12 +117,7 @@ CREATE TABLE Categorias_Equipo (
   nombre_categoria VARCHAR(50) UNIQUE NOT NULL,
   descripcion VARCHAR(200),
   es_componente BOOLEAN DEFAULT FALSE
-);
-
--- =========================
--- TABLA DE TIPOS DE EQUIPO
--- =========================
--- Eliminado: Tipos_Equipo (redundante). El tipo se deriva de Categorias_Equipo.es_componente
+) COMMENT = 'Categorías de equipos (completos o componentes)';
 
 -- ===================
 -- TABLA DE ELEMENTOS
@@ -155,7 +149,7 @@ CREATE TABLE Elementos (
   INDEX idx_tipo (tipo),
   INDEX idx_numero_serie (numero_serie),
   INDEX idx_ambiente (id_ambiente)
-);
+) COMMENT = 'Tabla principal de equipos y componentes tecnológicos';
 
 -- ==========================
 -- TABLA DE IMÁGENES EQUIPOS
@@ -174,7 +168,7 @@ CREATE TABLE Imagenes_Equipo (
   FOREIGN KEY (subida_por) REFERENCES Usuarios(id_usuario),
   INDEX idx_equipo (codigo_equipo),
   INDEX idx_principal (codigo_equipo, es_principal)
-);
+) COMMENT = 'Almacenamiento de rutas de imágenes de equipos';
 
 -- ===============================
 -- TABLA DE COMPONENTES ASOCIADOS
@@ -193,7 +187,7 @@ CREATE TABLE Componentes_Asociados (
   INDEX idx_equipo_completo (codigo_equipo_completo),
   INDEX idx_componente (codigo_componente),
   UNIQUE KEY uk_componente_activo (codigo_componente, estado_asociacion)
-);
+) COMMENT = 'Asociación de componentes a equipos completos';
 
 -- =======================
 -- TABLA DE ESTADO ACTUAL
@@ -207,7 +201,7 @@ CREATE TABLE Estado_Equipo (
   FOREIGN KEY (codigo_equipo) REFERENCES Elementos(codigo_equipo) ON DELETE CASCADE,
   FOREIGN KEY (actualizado_por) REFERENCES Usuarios(id_usuario),
   INDEX idx_estado (estado_operativo)
-);
+) COMMENT = 'Estado operativo actual de cada equipo';
 
 -- ================================
 -- TABLA DE RESPONSABLES DE EQUIPO
@@ -225,11 +219,10 @@ CREATE TABLE Responsables_Equipo (
   FOREIGN KEY (codigo_equipo) REFERENCES Elementos(codigo_equipo) ON DELETE CASCADE,
   FOREIGN KEY (id_usuario) REFERENCES Usuarios(id_usuario) ON DELETE CASCADE,
   FOREIGN KEY (asignado_por) REFERENCES Usuarios(id_usuario),
-  INDEX idx_equipo (codigo_equipo),
+  INDEX idx_equipo_activo (codigo_equipo, estado_responsabilidad),
   INDEX idx_usuario (id_usuario),
-  INDEX idx_estado (estado_responsabilidad),
-  INDEX idx_equipo_activo (codigo_equipo, estado_responsabilidad)
-);
+  INDEX idx_responsables_activos (estado_responsabilidad, fecha_asignacion)
+) COMMENT = 'Gestión de múltiples responsables por equipo';
 
 -- ================================
 -- TABLA DE CLASES/PROGRAMACIONES
@@ -239,6 +232,7 @@ CREATE TABLE Clases (
   id_ambiente INT NOT NULL,
   id_instructor INT NOT NULL,
   nombre_clase VARCHAR(200),
+  codigo_ficha VARCHAR(50) NULL COMMENT 'Código de la ficha o grupo de aprendices',
   descripcion TEXT,
   fecha_clase DATE NOT NULL,
   hora_inicio TIME NOT NULL,
@@ -252,12 +246,10 @@ CREATE TABLE Clases (
   FOREIGN KEY (id_ambiente) REFERENCES Ambientes(id_ambiente) ON DELETE RESTRICT,
   FOREIGN KEY (id_instructor) REFERENCES Usuarios(id_usuario) ON DELETE RESTRICT,
   FOREIGN KEY (creado_por) REFERENCES Usuarios(id_usuario),
-  INDEX idx_ambiente (id_ambiente),
+  INDEX idx_ambiente_fecha_hora (id_ambiente, fecha_clase, hora_inicio, hora_fin, estado_clase),
   INDEX idx_instructor (id_instructor),
-  INDEX idx_fecha_hora (fecha_clase, hora_inicio, hora_fin),
-  INDEX idx_estado (estado_clase),
-  INDEX idx_ambiente_fecha (id_ambiente, fecha_clase, hora_inicio)
-);
+  INDEX idx_ficha (codigo_ficha)
+) COMMENT = 'Programación de clases en ambientes con horarios específicos';
 
 -- ================================
 -- TABLA DE PARTICIPANTES DE CLASE
@@ -274,7 +266,7 @@ CREATE TABLE Participantes_Clase (
   INDEX idx_clase (id_clase),
   INDEX idx_aprendiz (id_aprendiz),
   UNIQUE KEY uk_clase_aprendiz (id_clase, id_aprendiz)
-);
+) COMMENT = 'Registro de aprendices que participan en cada clase';
 
 -- ================================
 -- TABLA DE RESPONSABILIDADES AMBIENTE
@@ -283,11 +275,13 @@ CREATE TABLE Responsabilidades_Ambiente (
   id_responsabilidad_ambiente INT PRIMARY KEY AUTO_INCREMENT,
   id_ambiente INT NOT NULL,
   id_clase INT,
+  jornada ENUM('Mañana', 'Tarde', 'Noche') NULL COMMENT 'Jornada de la asignación. NULL para asignaciones temporales de clases',
   id_usuario INT NOT NULL,
   tipo_responsabilidad ENUM('Principal', 'Secundario') NOT NULL,
   fecha_inicio DATETIME NOT NULL,
   fecha_fin DATETIME,
   estado_responsabilidad ENUM('Activa', 'Finalizada') DEFAULT 'Activa',
+  asignacion_automatica BOOLEAN DEFAULT FALSE COMMENT 'Indica si la responsabilidad fue asignada automáticamente por horario',
   observaciones TEXT,
   creado_por INT,
   fecha_creacion DATETIME DEFAULT NOW(),
@@ -295,13 +289,11 @@ CREATE TABLE Responsabilidades_Ambiente (
   FOREIGN KEY (id_clase) REFERENCES Clases(id_clase) ON DELETE SET NULL,
   FOREIGN KEY (id_usuario) REFERENCES Usuarios(id_usuario) ON DELETE CASCADE,
   FOREIGN KEY (creado_por) REFERENCES Usuarios(id_usuario),
-  INDEX idx_ambiente (id_ambiente),
+  INDEX idx_ambiente_fecha_activa (id_ambiente, fecha_inicio, fecha_fin, estado_responsabilidad),
   INDEX idx_clase (id_clase),
   INDEX idx_usuario (id_usuario),
-  INDEX idx_estado (estado_responsabilidad),
-  INDEX idx_fechas (fecha_inicio, fecha_fin),
-  INDEX idx_ambiente_activa (id_ambiente, estado_responsabilidad, fecha_inicio, fecha_fin)
-);
+  INDEX idx_ambiente_jornada (id_ambiente, jornada, estado_responsabilidad)
+) COMMENT = 'Responsabilidades temporales sobre el inventario de un ambiente durante clases';
 
 -- =======================
 -- TABLA DE MANTENIMIENTO
@@ -321,11 +313,10 @@ CREATE TABLE Mantenimiento (
   FOREIGN KEY (codigo_equipo) REFERENCES Elementos(codigo_equipo) ON DELETE CASCADE,
   FOREIGN KEY (realizado_por) REFERENCES Usuarios(id_usuario),
   FOREIGN KEY (id_usuario_tecnico) REFERENCES Usuarios(id_usuario),
-  INDEX idx_fecha (fecha_mantenimiento),
-  INDEX idx_proximo (fecha_proximo),
   INDEX idx_equipo (codigo_equipo),
-  INDEX idx_estado (estado_mantenimiento)
-);
+  INDEX idx_mantenimiento_pendiente (estado_mantenimiento, fecha_proximo),
+  INDEX idx_fecha (fecha_mantenimiento)
+) COMMENT = 'Registro de mantenimientos realizados y programados';
 
 -- ===================
 -- TABLA DE NOVEDADES
@@ -333,7 +324,7 @@ CREATE TABLE Mantenimiento (
 CREATE TABLE Novedades (
   id_novedad INT PRIMARY KEY AUTO_INCREMENT,
   codigo_equipo INT NOT NULL,
-  tipo_novedad ENUM('Daño', 'Pérdida', 'Robo', 'Mal Funcionamiento', 'Otro') NOT NULL,
+  tipo_novedad ENUM('Daño', 'Pérdida', 'Robo', 'Mal Funcionamiento', 'Daño Físico', 'Falta de Componente', 'Otro') NOT NULL,
   descripcion TEXT NOT NULL,
   fecha_novedad DATETIME DEFAULT NOW(),
   reportado_por INT NOT NULL,
@@ -344,9 +335,8 @@ CREATE TABLE Novedades (
   FOREIGN KEY (codigo_equipo) REFERENCES Elementos(codigo_equipo) ON DELETE CASCADE,
   FOREIGN KEY (reportado_por) REFERENCES Usuarios(id_usuario),
   FOREIGN KEY (resuelto_por) REFERENCES Usuarios(id_usuario),
-  INDEX idx_estado (estado_resolucion),
-  INDEX idx_fecha (fecha_novedad)
-);
+  INDEX idx_novedades_pendientes (estado_resolucion, fecha_novedad)
+) COMMENT = 'Registro de novedades reportadas sobre equipos';
 
 -- =======================================
 -- TABLA DE HISTORIAL (Reemplazo Rastreo)
@@ -366,10 +356,9 @@ CREATE TABLE Historial_Equipos (
   FOREIGN KEY (id_ambiente_anterior) REFERENCES Ambientes(id_ambiente) ON DELETE SET NULL,
   FOREIGN KEY (id_ambiente_nuevo) REFERENCES Ambientes(id_ambiente) ON DELETE SET NULL,
   FOREIGN KEY (registrado_por) REFERENCES Usuarios(id_usuario),
-  INDEX idx_equipo (codigo_equipo),
-  INDEX idx_fecha (fecha_evento),
+  INDEX idx_historial_fecha (codigo_equipo, fecha_evento),
   INDEX idx_tipo (tipo_evento)
-);
+) COMMENT = 'Registro histórico de eventos de equipos (reemplaza rastreo temporal)';
 
 -- ===================
 -- TABLA DE AUDITORÍA
@@ -387,7 +376,7 @@ CREATE TABLE Auditoria (
   FOREIGN KEY (usuario_accion) REFERENCES Usuarios(id_usuario),
   INDEX idx_tabla (tabla_afectada),
   INDEX idx_fecha (fecha_accion)
-);
+) COMMENT = 'Registro de auditoría de cambios en el sistema';
 
 -- ==========================================
 -- TABLA DE CRITERIOS ASIGNACIÓN AUTOMÁTICA
@@ -400,12 +389,12 @@ CREATE TABLE Criterios_Asignacion (
   descripcion TEXT,
   parametros JSON,
   fecha_creacion DATETIME DEFAULT NOW()
-);
+) COMMENT = 'Criterios para asignación automática de equipos';
 
 -- ============================================
 -- TABLA DE CÓDIGOS DE SEGURIDAD
 -- ============================================
-CREATE TABLE IF NOT EXISTS Invitation_Codes (
+CREATE TABLE Invitation_Codes (
   id_codigo INT PRIMARY KEY AUTO_INCREMENT,
   codigo VARCHAR(50) UNIQUE NOT NULL,
   rol_destinado ENUM('Administrador', 'Instructor', 'Aprendiz') NOT NULL,
@@ -420,73 +409,51 @@ CREATE TABLE IF NOT EXISTS Invitation_Codes (
   INDEX idx_rol (rol_destinado),
   INDEX idx_estado (estado),
   INDEX idx_expiracion (fecha_expiracion)
-);
+) COMMENT = 'Códigos de invitación para registro de usuarios';
 
 -- ============================================
 -- TABLA DE PREFERENCIAS DE USUARIO
 -- ============================================
--- Almacena las preferencias de configuración de cada usuario
--- como notificaciones, idioma, zona horaria, etc.
-
-CREATE TABLE IF NOT EXISTS Preferencias_Usuario (
+CREATE TABLE Preferencias_Usuario (
   id_preferencia INT PRIMARY KEY AUTO_INCREMENT,
   id_usuario INT NOT NULL UNIQUE,
-  
-  -- Preferencias de notificaciones
   notificaciones_email TINYINT(1) DEFAULT 1 COMMENT 'Recibir notificaciones por correo electrónico',
   notificaciones_sms TINYINT(1) DEFAULT 0 COMMENT 'Recibir notificaciones por SMS',
   notificaciones_app TINYINT(1) DEFAULT 1 COMMENT 'Recibir notificaciones en la aplicación',
-  
-  -- Preferencias de aplicación
   idioma VARCHAR(10) DEFAULT 'es' COMMENT 'Idioma de la interfaz (es, en, etc.)',
   zona_horaria VARCHAR(50) DEFAULT 'America/Bogota' COMMENT 'Zona horaria del usuario',
-  
-  -- Metadatos
   fecha_creacion DATETIME DEFAULT NOW(),
   fecha_actualizacion DATETIME DEFAULT NOW() ON UPDATE NOW(),
-  
   FOREIGN KEY (id_usuario) REFERENCES Usuarios(id_usuario) ON DELETE CASCADE,
   INDEX idx_usuario (id_usuario)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-ALTER TABLE Preferencias_Usuario COMMENT = 'Preferencias de configuración de usuario (notificaciones, idioma, zona horaria)';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+COMMENT = 'Preferencias de configuración de usuario (notificaciones, idioma, zona horaria)';
 
 -- ============================================
 -- TABLA DE VERIFICACIONES DE INVENTARIO
 -- ============================================
--- Esta tabla permite a los instructores registrar verificaciones físicas
--- de los equipos en los ambientes bajo su responsabilidad
-
-CREATE TABLE IF NOT EXISTS Verificaciones_Inventario (
+CREATE TABLE Verificaciones_Inventario (
   id_verificacion INT PRIMARY KEY AUTO_INCREMENT,
   codigo_equipo INT NOT NULL,
+  id_ambiente INT NULL COMMENT 'Ambiente donde se verificó el equipo',
+  id_clase INT NULL COMMENT 'Clase/horario activo cuando se verificó',
+  id_responsabilidad_ambiente INT NULL COMMENT 'Responsabilidad que estaba activa cuando se verificó',
+  jornada VARCHAR(20) NULL COMMENT 'Jornada cuando se verificó (para asignaciones permanentes)',
   id_usuario INT NOT NULL COMMENT 'Instructor que realiza la verificación',
   estado_verificacion ENUM('Verificado', 'Con Novedad', 'No Verificado') NOT NULL,
   observaciones TEXT,
   fecha_verificacion DATETIME NOT NULL DEFAULT NOW(),
   FOREIGN KEY (codigo_equipo) REFERENCES Elementos(codigo_equipo) ON DELETE CASCADE,
+  FOREIGN KEY (id_ambiente) REFERENCES Ambientes(id_ambiente) ON DELETE SET NULL,
+  FOREIGN KEY (id_clase) REFERENCES Clases(id_clase) ON DELETE SET NULL,
+  FOREIGN KEY (id_responsabilidad_ambiente) REFERENCES Responsabilidades_Ambiente(id_responsabilidad_ambiente) ON DELETE SET NULL,
   FOREIGN KEY (id_usuario) REFERENCES Usuarios(id_usuario) ON DELETE CASCADE,
-  INDEX idx_equipo (codigo_equipo),
-  INDEX idx_usuario (id_usuario),
-  INDEX idx_fecha (fecha_verificacion),
-  INDEX idx_estado (estado_verificacion),
-  INDEX idx_equipo_usuario_fecha (codigo_equipo, id_usuario, fecha_verificacion)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- ============================================
--- AGREGAR CAMPO JORNADA A RESPONSABILIDADES_AMBIENTE
--- ============================================
--- Permite que un ambiente tenga múltiples instructores en diferentes jornadas
-
-ALTER TABLE Responsabilidades_Ambiente 
-ADD COLUMN jornada ENUM('Mañana', 'Tarde', 'Noche') NULL 
-COMMENT 'Jornada de la asignación. NULL para asignaciones temporales de clases' 
-AFTER id_clase;
-
--- Actualizar índices para incluir jornada en las búsquedas
-ALTER TABLE Responsabilidades_Ambiente 
-ADD INDEX idx_ambiente_jornada (id_ambiente, jornada, estado_responsabilidad);
-
+  INDEX idx_equipo_usuario_fecha (codigo_equipo, id_usuario, fecha_verificacion),
+  INDEX idx_ambiente_fecha (id_ambiente, fecha_verificacion),
+  INDEX idx_clase_fecha (id_clase, fecha_verificacion),
+  INDEX idx_estado (estado_verificacion)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+COMMENT = 'Historial completo de verificaciones de inventario con contexto de horarios y responsabilidades';
 
 -- =========
 -- TRIGGERS
@@ -500,20 +467,10 @@ AFTER INSERT ON Estado_Equipo
 FOR EACH ROW
 BEGIN
     INSERT INTO Historial_Equipos (
-        codigo_equipo,
-        tipo_evento,
-        descripcion,
-        estado_nuevo,
-        fecha_evento,
-        registrado_por
-    )
-    VALUES (
-        NEW.codigo_equipo,
-        'Cambio Estado',
-        'Registro inicial del equipo',
-        NEW.estado_operativo,
-        NOW(),
-        NEW.actualizado_por
+        codigo_equipo, tipo_evento, descripcion, estado_nuevo, fecha_evento, registrado_por
+    ) VALUES (
+        NEW.codigo_equipo, 'Cambio Estado', 'Registro inicial del equipo', 
+        NEW.estado_operativo, NOW(), NEW.actualizado_por
     );
 END;
 //
@@ -525,22 +482,12 @@ FOR EACH ROW
 BEGIN
     IF OLD.estado_operativo <> NEW.estado_operativo THEN
         INSERT INTO Historial_Equipos (
-            codigo_equipo,
-            tipo_evento,
-            descripcion,
-            estado_anterior,
-            estado_nuevo,
-            fecha_evento,
-            registrado_por
-        )
-        VALUES (
-            NEW.codigo_equipo,
-            'Cambio Estado',
+            codigo_equipo, tipo_evento, descripcion, estado_anterior, estado_nuevo, 
+            fecha_evento, registrado_por
+        ) VALUES (
+            NEW.codigo_equipo, 'Cambio Estado',
             CONCAT('Estado cambiado de ', OLD.estado_operativo, ' a ', NEW.estado_operativo),
-            OLD.estado_operativo,
-            NEW.estado_operativo,
-            NOW(),
-            NEW.actualizado_por
+            OLD.estado_operativo, NEW.estado_operativo, NOW(), NEW.actualizado_por
         );
     END IF;
 END;
@@ -553,25 +500,15 @@ FOR EACH ROW
 BEGIN
     IF IFNULL(OLD.id_ambiente, 0) <> IFNULL(NEW.id_ambiente, 0) THEN
         INSERT INTO Historial_Equipos (
-            codigo_equipo,
-            tipo_evento,
-            descripcion,
-            id_ambiente_anterior,
-            id_ambiente_nuevo,
-            fecha_evento,
-            registrado_por
-        )
-        VALUES (
-            NEW.codigo_equipo,
-            'Movimiento Ambiente',
+            codigo_equipo, tipo_evento, descripcion, id_ambiente_anterior, 
+            id_ambiente_nuevo, fecha_evento, registrado_por
+        ) VALUES (
+            NEW.codigo_equipo, 'Movimiento Ambiente',
             CONCAT('Equipo movido de ambiente ', 
                    IFNULL((SELECT nombre_ambiente FROM Ambientes WHERE id_ambiente = OLD.id_ambiente), 'Sin ambiente'),
                    ' a ',
                    IFNULL((SELECT nombre_ambiente FROM Ambientes WHERE id_ambiente = NEW.id_ambiente), 'Sin ambiente')),
-            OLD.id_ambiente,
-            NEW.id_ambiente,
-            NOW(),
-            NEW.registrado_por
+            OLD.id_ambiente, NEW.id_ambiente, NOW(), NEW.registrado_por
         );
     END IF;
 END;
@@ -584,8 +521,7 @@ FOR EACH ROW
 BEGIN
     IF NEW.estado_mantenimiento = 'En Proceso' THEN
         UPDATE Estado_Equipo
-        SET estado_operativo = 'En Mantenimiento',
-            fecha_actualizacion = NOW()
+        SET estado_operativo = 'En Mantenimiento', fecha_actualizacion = NOW()
         WHERE codigo_equipo = NEW.codigo_equipo;
     END IF;
 END;
@@ -597,10 +533,8 @@ BEFORE DELETE ON Elementos
 FOR EACH ROW
 BEGIN
     UPDATE Responsables_Equipo
-    SET estado_responsabilidad = 'Finalizado',
-        fecha_desvinculacion = NOW()
-    WHERE codigo_equipo = OLD.codigo_equipo
-    AND estado_responsabilidad = 'Activo';
+    SET estado_responsabilidad = 'Finalizado', fecha_desvinculacion = NOW()
+    WHERE codigo_equipo = OLD.codigo_equipo AND estado_responsabilidad = 'Activo';
 END;
 //
 
@@ -635,23 +569,18 @@ CREATE TRIGGER trg_finalizar_responsabilidades_ambiente_anterior
 BEFORE UPDATE ON Clases
 FOR EACH ROW
 BEGIN
-    -- Si la clase cambia a "En Curso", finalizar responsabilidades activas del mismo ambiente
     IF OLD.estado_clase <> 'En Curso' AND NEW.estado_clase = 'En Curso' THEN
         UPDATE Responsabilidades_Ambiente
-        SET estado_responsabilidad = 'Finalizada',
-            fecha_fin = NOW()
+        SET estado_responsabilidad = 'Finalizada', fecha_fin = NOW()
         WHERE id_ambiente = NEW.id_ambiente
         AND estado_responsabilidad = 'Activa'
         AND (fecha_fin IS NULL OR fecha_fin > NOW());
     END IF;
     
-    -- Si la clase finaliza, finalizar sus responsabilidades
     IF OLD.estado_clase <> 'Finalizada' AND NEW.estado_clase = 'Finalizada' THEN
         UPDATE Responsabilidades_Ambiente
-        SET estado_responsabilidad = 'Finalizada',
-            fecha_fin = COALESCE(NEW.fecha_fin_real, NOW())
-        WHERE id_clase = NEW.id_clase
-        AND estado_responsabilidad = 'Activa';
+        SET estado_responsabilidad = 'Finalizada', fecha_fin = COALESCE(NEW.fecha_fin_real, NOW())
+        WHERE id_clase = NEW.id_clase AND estado_responsabilidad = 'Activa';
     END IF;
 END;
 //
@@ -664,26 +593,15 @@ DELIMITER ;
 
 CREATE VIEW Vista_Equipos_Con_Responsables AS
 SELECT 
-    e.codigo_equipo,
-    e.numero_serie,
-    e.tipo,
-    e.marca,
-    e.modelo,
-    a.nombre_ambiente,
-    a.codigo_ambiente,
-    ee.estado_operativo,
-    e.estado_fisico,
-    GROUP_CONCAT(
-        CONCAT(u.nombre_usuario, ' (', r.nombre_rol, ')')
-        ORDER BY re.tipo_responsabilidad, u.nombre_usuario
-        SEPARATOR ', '
-    ) AS responsables,
+    e.codigo_equipo, e.numero_serie, e.tipo, e.marca, e.modelo,
+    a.nombre_ambiente, a.codigo_ambiente, ee.estado_operativo, e.estado_fisico,
+    GROUP_CONCAT(CONCAT(u.nombre_usuario, ' (', r.nombre_rol, ')')
+        ORDER BY re.tipo_responsabilidad, u.nombre_usuario SEPARATOR ', ') AS responsables,
     COUNT(re.id_responsable) AS total_responsables
 FROM Elementos e
 LEFT JOIN Ambientes a ON e.id_ambiente = a.id_ambiente
 LEFT JOIN Estado_Equipo ee ON e.codigo_equipo = ee.codigo_equipo
-LEFT JOIN Responsables_Equipo re ON e.codigo_equipo = re.codigo_equipo 
-    AND re.estado_responsabilidad = 'Activo'
+LEFT JOIN Responsables_Equipo re ON e.codigo_equipo = re.codigo_equipo AND re.estado_responsabilidad = 'Activo'
 LEFT JOIN Usuarios u ON re.id_usuario = u.id_usuario
 LEFT JOIN Roles r ON u.id_rol = r.id_rol
 GROUP BY e.codigo_equipo, e.numero_serie, e.tipo, e.marca, e.modelo, 
@@ -691,35 +609,20 @@ GROUP BY e.codigo_equipo, e.numero_serie, e.tipo, e.marca, e.modelo,
 
 CREATE VIEW Vista_Equipos_Disponibles AS
 SELECT 
-    e.codigo_equipo,
-    e.numero_serie,
-    e.tipo,
-    e.marca,
-    e.modelo,
+    e.codigo_equipo, e.numero_serie, e.tipo, e.marca, e.modelo,
     CASE WHEN c.es_componente = TRUE THEN 'Componente Individual' ELSE 'Equipo Completo' END AS nombre_tipo,
-    a.nombre_ambiente,
-    a.codigo_ambiente,
-    a.tipo_ambiente,
-    e.estado_fisico,
-    e.fecha_adquisicion
+    a.nombre_ambiente, a.codigo_ambiente, a.tipo_ambiente, e.estado_fisico, e.fecha_adquisicion
 FROM Elementos e
 INNER JOIN Categorias_Equipo c ON e.id_categoria = c.id_categoria
 LEFT JOIN Ambientes a ON e.id_ambiente = a.id_ambiente
 INNER JOIN Estado_Equipo ee ON e.codigo_equipo = ee.codigo_equipo
-WHERE ee.estado_operativo = 'Disponible'
-AND e.estado_fisico IN ('Nuevo', 'Bueno', 'Regular');
+WHERE ee.estado_operativo = 'Disponible' AND e.estado_fisico IN ('Nuevo', 'Bueno', 'Regular');
 
 CREATE VIEW Vista_Mantenimientos_Proximos AS
 SELECT 
-    m.id_mantenimiento,
-    e.codigo_equipo,
-    e.numero_serie,
-    e.tipo,
-    m.tipo_mantenimiento,
-    m.fecha_proximo,
-    DATEDIFF(m.fecha_proximo, CURDATE()) AS dias_restantes,
-    a.nombre_ambiente,
-    a.codigo_ambiente,
+    m.id_mantenimiento, e.codigo_equipo, e.numero_serie, e.tipo, m.tipo_mantenimiento,
+    m.fecha_proximo, DATEDIFF(m.fecha_proximo, CURDATE()) AS dias_restantes,
+    a.nombre_ambiente, a.codigo_ambiente,
     CASE 
         WHEN DATEDIFF(m.fecha_proximo, CURDATE()) <= 7 THEN 'Urgente'
         WHEN DATEDIFF(m.fecha_proximo, CURDATE()) <= 30 THEN 'Próximo'
@@ -728,19 +631,14 @@ SELECT
 FROM Mantenimiento m
 INNER JOIN Elementos e ON m.codigo_equipo = e.codigo_equipo
 LEFT JOIN Ambientes a ON e.id_ambiente = a.id_ambiente
-WHERE m.fecha_proximo IS NOT NULL
-AND m.fecha_proximo >= CURDATE()
+WHERE m.fecha_proximo IS NOT NULL AND m.fecha_proximo >= CURDATE()
 AND m.estado_mantenimiento IN ('Programado', 'En Proceso')
 ORDER BY m.fecha_proximo;
 
 CREATE VIEW Vista_Ambientes_Con_Equipos AS
 SELECT 
-    a.id_ambiente,
-    a.codigo_ambiente,
-    a.nombre_ambiente,
-    a.tipo_ambiente,
-    a.capacidad_personas,
-    a.estado_ambiente,
+    a.id_ambiente, a.codigo_ambiente, a.nombre_ambiente, a.tipo_ambiente, 
+    a.capacidad_personas, a.estado_ambiente,
     COUNT(DISTINCT e.codigo_equipo) AS total_equipos,
     COUNT(DISTINCT CASE WHEN ee.estado_operativo = 'Disponible' THEN e.codigo_equipo END) AS equipos_disponibles,
     COUNT(DISTINCT CASE WHEN ee.estado_operativo = 'En Uso' THEN e.codigo_equipo END) AS equipos_en_uso,
@@ -754,24 +652,33 @@ GROUP BY a.id_ambiente, a.codigo_ambiente, a.nombre_ambiente,
 
 CREATE VIEW Vista_Equipos_Por_Usuario AS
 SELECT 
-    u.id_usuario,
-    u.nombre_usuario,
-    u.cedula,
-    r.nombre_rol,
-    u.area_usuarios,
+    u.id_usuario, u.nombre_usuario, u.cedula, r.nombre_rol, 
     COUNT(DISTINCT re.codigo_equipo) AS equipos_asignados,
-    GROUP_CONCAT(
-        CONCAT(e.tipo, ' - ', e.numero_serie)
-        ORDER BY re.fecha_asignacion DESC
-        SEPARATOR ' | '
-    ) AS detalle_equipos
+    GROUP_CONCAT(CONCAT(e.tipo, ' - ', e.numero_serie)
+        ORDER BY re.fecha_asignacion DESC SEPARATOR ' | ') AS detalle_equipos
 FROM Usuarios u
 INNER JOIN Roles r ON u.id_rol = r.id_rol
-LEFT JOIN Responsables_Equipo re ON u.id_usuario = re.id_usuario 
-    AND re.estado_responsabilidad = 'Activo'
+LEFT JOIN Responsables_Equipo re ON u.id_usuario = re.id_usuario AND re.estado_responsabilidad = 'Activo'
 LEFT JOIN Elementos e ON re.codigo_equipo = e.codigo_equipo
 WHERE u.estado = 'Activo'
-GROUP BY u.id_usuario, u.nombre_usuario, u.cedula, r.nombre_rol, u.area_usuarios;
+GROUP BY u.id_usuario, u.nombre_usuario, u.cedula, r.nombre_rol;
+
+CREATE VIEW Vista_Responsables_Actuales AS
+SELECT 
+    ra.id_responsabilidad_ambiente, ra.id_ambiente, a.nombre_ambiente, a.codigo_ambiente,
+    ra.id_usuario, u.nombre_usuario, u.cedula, r.nombre_rol, ra.tipo_responsabilidad,
+    ra.fecha_inicio, ra.fecha_fin, ra.id_clase, c.nombre_clase, c.codigo_ficha,
+    c.fecha_clase, c.hora_inicio, c.hora_fin,
+    CASE 
+        WHEN ra.fecha_inicio <= NOW() AND (ra.fecha_fin IS NULL OR ra.fecha_fin >= NOW()) 
+        THEN 'Activo' ELSE 'Inactivo'
+    END AS estado_actual
+FROM Responsabilidades_Ambiente ra
+INNER JOIN Ambientes a ON ra.id_ambiente = a.id_ambiente
+INNER JOIN Usuarios u ON ra.id_usuario = u.id_usuario
+LEFT JOIN Roles r ON u.id_rol = r.id_rol
+LEFT JOIN Clases c ON ra.id_clase = c.id_clase
+WHERE ra.estado_responsabilidad = 'Activa';
 
 -- ===========================
 -- PROCEDIMIENTOS ALMACENADOS
@@ -793,99 +700,48 @@ BEGIN
     
     SET total = JSON_LENGTH(p_usuarios_json);
     
-    -- Actualizar estado del equipo a "En Uso"
     UPDATE Estado_Equipo
-    SET estado_operativo = 'En Uso',
-        fecha_actualizacion = NOW(),
-        actualizado_por = p_asignado_por
+    SET estado_operativo = 'En Uso', fecha_actualizacion = NOW(), actualizado_por = p_asignado_por
     WHERE codigo_equipo = p_codigo_equipo;
     
-    -- Insertar responsables
     WHILE i < total DO
         SET id_usuario_actual = JSON_EXTRACT(p_usuarios_json, CONCAT('$[', i, '].id_usuario'));
         SET tipo_resp = JSON_UNQUOTE(JSON_EXTRACT(p_usuarios_json, CONCAT('$[', i, '].tipo')));
         
-        INSERT INTO Responsables_Equipo (
-            codigo_equipo,
-            id_usuario,
-            tipo_responsabilidad,
-            asignado_por
-        ) VALUES (
-            p_codigo_equipo,
-            id_usuario_actual,
-            IFNULL(tipo_resp, 'Principal'),
-            p_asignado_por
-        );
+        INSERT INTO Responsables_Equipo (codigo_equipo, id_usuario, tipo_responsabilidad, asignado_por)
+        VALUES (p_codigo_equipo, id_usuario_actual, IFNULL(tipo_resp, 'Principal'), p_asignado_por);
         
         SET i = i + 1;
     END WHILE;
     
-    -- Registrar en historial
-    INSERT INTO Historial_Equipos (
-        codigo_equipo,
-        tipo_evento,
-        descripcion,
-        estado_nuevo,
-        registrado_por
-    ) VALUES (
-        p_codigo_equipo,
-        'Asignación',
-        CONCAT('Equipo asignado a ', total, ' responsable(s)'),
-        'En Uso',
-        p_asignado_por
-    );
-    
+    INSERT INTO Historial_Equipos (codigo_equipo, tipo_evento, descripcion, estado_nuevo, registrado_por)
+    VALUES (p_codigo_equipo, 'Asignación', CONCAT('Equipo asignado a ', total, ' responsable(s)'), 'En Uso', p_asignado_por);
 END;
 //
 
 -- Procedimiento para devolver equipo y finalizar responsabilidades
-CREATE PROCEDURE sp_devolver_equipo(
-    IN p_codigo_equipo INT,
-    IN p_actualizado_por INT
-)
+CREATE PROCEDURE sp_devolver_equipo(IN p_codigo_equipo INT, IN p_actualizado_por INT)
 BEGIN
-    -- Finalizar todas las responsabilidades activas
     UPDATE Responsables_Equipo
-    SET estado_responsabilidad = 'Finalizado',
-        fecha_desvinculacion = NOW()
-    WHERE codigo_equipo = p_codigo_equipo
-    AND estado_responsabilidad = 'Activo';
+    SET estado_responsabilidad = 'Finalizado', fecha_desvinculacion = NOW()
+    WHERE codigo_equipo = p_codigo_equipo AND estado_responsabilidad = 'Activo';
     
-    -- Actualizar estado del equipo
     UPDATE Estado_Equipo
-    SET estado_operativo = 'Disponible',
-        fecha_actualizacion = NOW(),
-        actualizado_por = p_actualizado_por
+    SET estado_operativo = 'Disponible', fecha_actualizacion = NOW(), actualizado_por = p_actualizado_por
     WHERE codigo_equipo = p_codigo_equipo;
     
-    -- Registrar en historial
-    INSERT INTO Historial_Equipos (
-        codigo_equipo,
-        tipo_evento,
-        descripcion,
-        estado_nuevo,
-        registrado_por
-    ) VALUES (
-        p_codigo_equipo,
-        'Devolución',
-        'Equipo devuelto y disponible',
-        'Disponible',
-        p_actualizado_por
-    );
+    INSERT INTO Historial_Equipos (codigo_equipo, tipo_evento, descripcion, estado_nuevo, registrado_por)
+    VALUES (p_codigo_equipo, 'Devolución', 'Equipo devuelto y disponible', 'Disponible', p_actualizado_por);
 END;
 //
 
 -- Procedimiento para asignación automática de equipos
 CREATE PROCEDURE sp_asignar_automatico(
-    IN p_id_usuario INT,
-    IN p_id_ambiente INT,
-    IN p_tipo_equipo VARCHAR(100),
-    IN p_asignado_por INT
+    IN p_id_usuario INT, IN p_id_ambiente INT, IN p_tipo_equipo VARCHAR(100), IN p_asignado_por INT
 )
 BEGIN
     DECLARE v_codigo_equipo INT;
     
-    -- Buscar equipo disponible que cumpla criterios
     SELECT e.codigo_equipo INTO v_codigo_equipo
     FROM Elementos e
     INNER JOIN Estado_Equipo ee ON e.codigo_equipo = ee.codigo_equipo
@@ -894,50 +750,20 @@ BEGIN
     AND (p_id_ambiente IS NULL OR e.id_ambiente = p_id_ambiente)
     AND (p_tipo_equipo IS NULL OR e.tipo = p_tipo_equipo)
     ORDER BY 
-        CASE e.estado_fisico
-            WHEN 'Nuevo' THEN 1
-            WHEN 'Bueno' THEN 2
-            ELSE 3
-        END,
+        CASE e.estado_fisico WHEN 'Nuevo' THEN 1 WHEN 'Bueno' THEN 2 ELSE 3 END,
         e.fecha_adquisicion DESC
     LIMIT 1;
     
-    -- Si se encontró equipo disponible, asignarlo
     IF v_codigo_equipo IS NOT NULL THEN
-        -- Asignar equipo
         UPDATE Estado_Equipo
-        SET estado_operativo = 'En Uso',
-            fecha_actualizacion = NOW(),
-            actualizado_por = p_asignado_por
+        SET estado_operativo = 'En Uso', fecha_actualizacion = NOW(), actualizado_por = p_asignado_por
         WHERE codigo_equipo = v_codigo_equipo;
         
-        -- Crear responsable
-        INSERT INTO Responsables_Equipo (
-            codigo_equipo,
-            id_usuario,
-            tipo_responsabilidad,
-            asignado_por
-        ) VALUES (
-            v_codigo_equipo,
-            p_id_usuario,
-            'Principal',
-            p_asignado_por
-        );
+        INSERT INTO Responsables_Equipo (codigo_equipo, id_usuario, tipo_responsabilidad, asignado_por)
+        VALUES (v_codigo_equipo, p_id_usuario, 'Principal', p_asignado_por);
         
-        -- Registrar en historial
-        INSERT INTO Historial_Equipos (
-            codigo_equipo,
-            tipo_evento,
-            descripcion,
-            estado_nuevo,
-            registrado_por
-        ) VALUES (
-            v_codigo_equipo,
-            'Asignación',
-            'Asignación automática de equipo',
-            'En Uso',
-            p_asignado_por
-        );
+        INSERT INTO Historial_Equipos (codigo_equipo, tipo_evento, descripcion, estado_nuevo, registrado_por)
+        VALUES (v_codigo_equipo, 'Asignación', 'Asignación automática de equipo', 'En Uso', p_asignado_por);
         
         SELECT v_codigo_equipo AS codigo_equipo_asignado, 'Asignación exitosa' AS mensaje;
     ELSE
@@ -947,19 +773,12 @@ END;
 //
 
 -- Procedimiento para obtener historial completo de un equipo
-CREATE PROCEDURE sp_historial_equipo(
-    IN p_codigo_equipo INT
-)
+CREATE PROCEDURE sp_historial_equipo(IN p_codigo_equipo INT)
 BEGIN
     SELECT 
-        h.tipo_evento,
-        h.descripcion,
-        h.fecha_evento,
-        a1.nombre_ambiente AS ambiente_anterior,
-        a2.nombre_ambiente AS ambiente_nuevo,
-        h.estado_anterior,
-        h.estado_nuevo,
-        u.nombre_usuario AS registrado_por
+        h.tipo_evento, h.descripcion, h.fecha_evento,
+        a1.nombre_ambiente AS ambiente_anterior, a2.nombre_ambiente AS ambiente_nuevo,
+        h.estado_anterior, h.estado_nuevo, u.nombre_usuario AS registrado_por
     FROM Historial_Equipos h
     LEFT JOIN Ambientes a1 ON h.id_ambiente_anterior = a1.id_ambiente
     LEFT JOIN Ambientes a2 ON h.id_ambiente_nuevo = a2.id_ambiente
@@ -970,115 +789,56 @@ END;
 //
 
 -- Procedimiento para obtener equipos por usuario
-CREATE PROCEDURE sp_equipos_por_usuario(
-    IN p_id_usuario INT
-)
+CREATE PROCEDURE sp_equipos_por_usuario(IN p_id_usuario INT)
 BEGIN
     SELECT 
-        e.codigo_equipo,
-        e.numero_serie,
-        e.tipo,
-        e.marca,
-        e.modelo,
-        ee.estado_operativo,
-        a.nombre_ambiente,
-        a.codigo_ambiente,
-        re.fecha_asignacion,
-        re.tipo_responsabilidad,
+        e.codigo_equipo, e.numero_serie, e.tipo, e.marca, e.modelo, ee.estado_operativo,
+        a.nombre_ambiente, a.codigo_ambiente, re.fecha_asignacion, re.tipo_responsabilidad,
         DATEDIFF(NOW(), re.fecha_asignacion) AS dias_asignado
     FROM Responsables_Equipo re
     INNER JOIN Elementos e ON re.codigo_equipo = e.codigo_equipo
     LEFT JOIN Estado_Equipo ee ON e.codigo_equipo = ee.codigo_equipo
     LEFT JOIN Ambientes a ON e.id_ambiente = a.id_ambiente
-    WHERE re.id_usuario = p_id_usuario
-    AND re.estado_responsabilidad = 'Activo'
+    WHERE re.id_usuario = p_id_usuario AND re.estado_responsabilidad = 'Activo'
     ORDER BY re.fecha_asignacion DESC;
 END;
 //
 
 -- Procedimiento para mover equipo a otro ambiente
 CREATE PROCEDURE sp_mover_equipo_ambiente(
-    IN p_codigo_equipo INT,
-    IN p_id_ambiente_nuevo INT,
-    IN p_observaciones TEXT,
-    IN p_actualizado_por INT
+    IN p_codigo_equipo INT, IN p_id_ambiente_nuevo INT, IN p_observaciones TEXT, IN p_actualizado_por INT
 )
 BEGIN
     DECLARE v_id_ambiente_anterior INT;
     
-    -- Obtener ambiente anterior
-    SELECT id_ambiente INTO v_id_ambiente_anterior
-    FROM Elementos
-    WHERE codigo_equipo = p_codigo_equipo;
+    SELECT id_ambiente INTO v_id_ambiente_anterior FROM Elementos WHERE codigo_equipo = p_codigo_equipo;
     
-    -- Actualizar ambiente del equipo
-    UPDATE Elementos
-    SET id_ambiente = p_id_ambiente_nuevo
-    WHERE codigo_equipo = p_codigo_equipo;
+    UPDATE Elementos SET id_ambiente = p_id_ambiente_nuevo WHERE codigo_equipo = p_codigo_equipo;
     
-    -- Registrar en historial (el trigger ya lo hace, pero agregamos observaciones)
-    INSERT INTO Historial_Equipos (
-        codigo_equipo,
-        tipo_evento,
-        descripcion,
-        id_ambiente_anterior,
-        id_ambiente_nuevo,
-        registrado_por
-    ) VALUES (
-        p_codigo_equipo,
-        'Movimiento Ambiente',
-        CONCAT('Equipo movido de ambiente. ', IFNULL(p_observaciones, '')),
-        v_id_ambiente_anterior,
-        p_id_ambiente_nuevo,
-        p_actualizado_por
-    );
+    -- El trigger ya registra el movimiento, pero agregamos observaciones adicionales
+    INSERT INTO Historial_Equipos (codigo_equipo, tipo_evento, descripcion, id_ambiente_anterior, id_ambiente_nuevo, registrado_por)
+    VALUES (p_codigo_equipo, 'Movimiento Ambiente', CONCAT('Equipo movido de ambiente. ', IFNULL(p_observaciones, '')),
+            v_id_ambiente_anterior, p_id_ambiente_nuevo, p_actualizado_por);
 END;
 //
 
 -- Procedimiento para reportar novedad con actualización de estado
 CREATE PROCEDURE sp_reportar_novedad(
     IN p_codigo_equipo INT,
-    IN p_tipo_novedad ENUM('Daño', 'Pérdida', 'Robo', 'Mal Funcionamiento', 'Otro'),
-    IN p_descripcion TEXT,
-    IN p_reportado_por INT,
-    IN p_actualizar_estado BOOLEAN
+    IN p_tipo_novedad ENUM('Daño', 'Pérdida', 'Robo', 'Mal Funcionamiento', 'Daño Físico', 'Falta de Componente', 'Otro'),
+    IN p_descripcion TEXT, IN p_reportado_por INT, IN p_actualizar_estado BOOLEAN
 )
 BEGIN
-    -- Insertar novedad
-    INSERT INTO Novedades (
-        codigo_equipo,
-        tipo_novedad,
-        descripcion,
-        reportado_por
-    ) VALUES (
-        p_codigo_equipo,
-        p_tipo_novedad,
-        p_descripcion,
-        p_reportado_por
-    );
+    INSERT INTO Novedades (codigo_equipo, tipo_novedad, descripcion, reportado_por)
+    VALUES (p_codigo_equipo, p_tipo_novedad, p_descripcion, p_reportado_por);
     
-    -- Si se debe actualizar el estado, cambiar a "Dañado"
     IF p_actualizar_estado = TRUE THEN
         UPDATE Estado_Equipo
-        SET estado_operativo = 'Dañado',
-            fecha_actualizacion = NOW(),
-            actualizado_por = p_reportado_por
+        SET estado_operativo = 'Dañado', fecha_actualizacion = NOW(), actualizado_por = p_reportado_por
         WHERE codigo_equipo = p_codigo_equipo;
         
-        -- Registrar en historial
-        INSERT INTO Historial_Equipos (
-            codigo_equipo,
-            tipo_evento,
-            descripcion,
-            estado_nuevo,
-            registrado_por
-        ) VALUES (
-            p_codigo_equipo,
-            'Cambio Estado',
-            CONCAT('Estado cambiado por novedad: ', p_tipo_novedad),
-            'Dañado',
-            p_reportado_por
-        );
+        INSERT INTO Historial_Equipos (codigo_equipo, tipo_evento, descripcion, estado_nuevo, registrado_por)
+        VALUES (p_codigo_equipo, 'Cambio Estado', CONCAT('Estado cambiado por novedad: ', p_tipo_novedad), 'Dañado', p_reportado_por);
     END IF;
 END;
 //
@@ -1088,33 +848,25 @@ CREATE PROCEDURE sp_estadisticas_sistema()
 BEGIN
     SELECT 
         (SELECT COUNT(*) FROM Elementos) AS total_equipos,
-        (SELECT COUNT(*) FROM Elementos e 
-         INNER JOIN Estado_Equipo ee ON e.codigo_equipo = ee.codigo_equipo 
+        (SELECT COUNT(*) FROM Elementos e INNER JOIN Estado_Equipo ee ON e.codigo_equipo = ee.codigo_equipo 
          WHERE ee.estado_operativo = 'Disponible') AS equipos_disponibles,
-        (SELECT COUNT(*) FROM Elementos e 
-         INNER JOIN Estado_Equipo ee ON e.codigo_equipo = ee.codigo_equipo 
+        (SELECT COUNT(*) FROM Elementos e INNER JOIN Estado_Equipo ee ON e.codigo_equipo = ee.codigo_equipo 
          WHERE ee.estado_operativo = 'En Uso') AS equipos_en_uso,
-        (SELECT COUNT(*) FROM Elementos e 
-         INNER JOIN Estado_Equipo ee ON e.codigo_equipo = ee.codigo_equipo 
+        (SELECT COUNT(*) FROM Elementos e INNER JOIN Estado_Equipo ee ON e.codigo_equipo = ee.codigo_equipo 
          WHERE ee.estado_operativo = 'En Mantenimiento') AS equipos_en_mantenimiento,
-        (SELECT COUNT(*) FROM Elementos e 
-         INNER JOIN Estado_Equipo ee ON e.codigo_equipo = ee.codigo_equipo 
+        (SELECT COUNT(*) FROM Elementos e INNER JOIN Estado_Equipo ee ON e.codigo_equipo = ee.codigo_equipo 
          WHERE ee.estado_operativo = 'Dañado') AS equipos_danados,
         (SELECT COUNT(*) FROM Usuarios WHERE estado = 'Activo') AS usuarios_activos,
         (SELECT COUNT(*) FROM Ambientes WHERE estado_ambiente = 'Activo') AS ambientes_activos,
         (SELECT COUNT(*) FROM Novedades WHERE estado_resolucion = 'Pendiente') AS novedades_pendientes,
         (SELECT COUNT(*) FROM Mantenimiento 
-         WHERE fecha_proximo IS NOT NULL 
-         AND fecha_proximo >= CURDATE()
+         WHERE fecha_proximo IS NOT NULL AND fecha_proximo >= CURDATE()
          AND DATEDIFF(fecha_proximo, CURDATE()) <= 30) AS mantenimientos_proximos_30dias;
 END;
 //
 
 -- Procedimiento para iniciar una clase y asignar responsabilidades
-CREATE PROCEDURE sp_iniciar_clase(
-    IN p_id_clase INT,
-    IN p_fecha_inicio_real DATETIME
-)
+CREATE PROCEDURE sp_iniciar_clase(IN p_id_clase INT, IN p_fecha_inicio_real DATETIME)
 BEGIN
     DECLARE v_id_ambiente INT;
     DECLARE v_id_instructor INT;
@@ -1127,109 +879,57 @@ BEGIN
         SELECT id_aprendiz FROM Participantes_Clase WHERE id_clase = p_id_clase AND presente = TRUE;
     DECLARE CONTINUE HANDLER FOR NOT FOUND SET v_done = TRUE;
     
-    -- Obtener información de la clase
-    SELECT id_ambiente, id_instructor, hora_fin, fecha_clase INTO v_id_ambiente, v_id_instructor, v_hora_fin, v_fecha_clase
-    FROM Clases
-    WHERE id_clase = p_id_clase;
+    SELECT id_ambiente, id_instructor, hora_fin, fecha_clase 
+    INTO v_id_ambiente, v_id_instructor, v_hora_fin, v_fecha_clase
+    FROM Clases WHERE id_clase = p_id_clase;
     
     IF v_id_ambiente IS NULL THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Clase no encontrada';
     END IF;
     
-    -- Calcular fecha fin estimada: combinar fecha_clase con hora_fin
     SET v_fecha_fin_estimada = CONCAT(v_fecha_clase, ' ', v_hora_fin);
     
-    -- Finalizar responsabilidades activas anteriores del mismo ambiente
-    UPDATE Responsabilidades_Ambiente
-    SET estado_responsabilidad = 'Finalizada',
-        fecha_fin = p_fecha_inicio_real
-    WHERE id_ambiente = v_id_ambiente
-    AND estado_responsabilidad = 'Activa'
-    AND (fecha_fin IS NULL OR fecha_fin > p_fecha_inicio_real);
+    -- El trigger finaliza responsabilidades anteriores automáticamente
+    INSERT INTO Responsabilidades_Ambiente (id_ambiente, id_clase, id_usuario, tipo_responsabilidad, fecha_inicio, fecha_fin, estado_responsabilidad, creado_por)
+    VALUES (v_id_ambiente, p_id_clase, v_id_instructor, 'Principal', p_fecha_inicio_real, v_fecha_fin_estimada, 'Activa', v_id_instructor);
     
-    -- Asignar responsabilidad principal al instructor
-    INSERT INTO Responsabilidades_Ambiente (
-        id_ambiente, id_clase, id_usuario, tipo_responsabilidad,
-        fecha_inicio, fecha_fin, estado_responsabilidad, creado_por
-    ) VALUES (
-        v_id_ambiente, p_id_clase, v_id_instructor, 'Principal',
-        p_fecha_inicio_real, v_fecha_fin_estimada, 'Activa', v_id_instructor
-    );
-    
-    -- Asignar responsabilidades secundarias a los aprendices presentes
     OPEN cur_aprendices;
     read_loop: LOOP
         FETCH cur_aprendices INTO v_id_aprendiz;
-        IF v_done THEN
-            LEAVE read_loop;
-        END IF;
+        IF v_done THEN LEAVE read_loop; END IF;
         
-        INSERT INTO Responsabilidades_Ambiente (
-            id_ambiente, id_clase, id_usuario, tipo_responsabilidad,
-            fecha_inicio, fecha_fin, estado_responsabilidad, creado_por
-        ) VALUES (
-            v_id_ambiente, p_id_clase, v_id_aprendiz, 'Secundario',
-            p_fecha_inicio_real, v_fecha_fin_estimada, 'Activa', v_id_instructor
-        );
+        INSERT INTO Responsabilidades_Ambiente (id_ambiente, id_clase, id_usuario, tipo_responsabilidad, fecha_inicio, fecha_fin, estado_responsabilidad, creado_por)
+        VALUES (v_id_ambiente, p_id_clase, v_id_aprendiz, 'Secundario', p_fecha_inicio_real, v_fecha_fin_estimada, 'Activa', v_id_instructor);
     END LOOP;
     CLOSE cur_aprendices;
     
-    -- Actualizar estado de la clase
-    UPDATE Clases
-    SET estado_clase = 'En Curso',
-        fecha_inicio_real = p_fecha_inicio_real
-    WHERE id_clase = p_id_clase;
+    UPDATE Clases SET estado_clase = 'En Curso', fecha_inicio_real = p_fecha_inicio_real WHERE id_clase = p_id_clase;
     
     SELECT 'Clase iniciada y responsabilidades asignadas correctamente' AS mensaje;
 END;
 //
 
 -- Procedimiento para finalizar una clase y finalizar responsabilidades
-CREATE PROCEDURE sp_finalizar_clase(
-    IN p_id_clase INT,
-    IN p_fecha_fin_real DATETIME
-)
+CREATE PROCEDURE sp_finalizar_clase(IN p_id_clase INT, IN p_fecha_fin_real DATETIME)
 BEGIN
     DECLARE v_fecha_fin DATETIME;
-    
     SET v_fecha_fin = COALESCE(p_fecha_fin_real, NOW());
     
-    -- Finalizar todas las responsabilidades de esta clase
-    UPDATE Responsabilidades_Ambiente
-    SET estado_responsabilidad = 'Finalizada',
-        fecha_fin = v_fecha_fin
-    WHERE id_clase = p_id_clase
-    AND estado_responsabilidad = 'Activa';
-    
-    -- Actualizar estado de la clase
-    UPDATE Clases
-    SET estado_clase = 'Finalizada',
-        fecha_fin_real = v_fecha_fin
-    WHERE id_clase = p_id_clase;
+    -- El trigger finaliza responsabilidades automáticamente
+    UPDATE Clases SET estado_clase = 'Finalizada', fecha_fin_real = v_fecha_fin WHERE id_clase = p_id_clase;
     
     SELECT 'Clase finalizada y responsabilidades cerradas correctamente' AS mensaje;
 END;
 //
 
 -- Procedimiento para obtener responsables actuales de un ambiente
-CREATE PROCEDURE sp_responsables_ambiente_actual(
-    IN p_id_ambiente INT,
-    IN p_fecha_consulta DATETIME
-)
+CREATE PROCEDURE sp_responsables_ambiente_actual(IN p_id_ambiente INT, IN p_fecha_consulta DATETIME)
 BEGIN
     SET p_fecha_consulta = COALESCE(p_fecha_consulta, NOW());
     
     SELECT 
-        ra.id_responsabilidad_ambiente,
-        ra.id_usuario,
-        u.nombre_usuario,
-        r.nombre_rol,
-        ra.tipo_responsabilidad,
-        ra.fecha_inicio,
-        ra.fecha_fin,
-        c.nombre_clase,
-        c.id_clase,
-        c.estado_clase
+        ra.id_responsabilidad_ambiente, ra.id_usuario, u.nombre_usuario, r.nombre_rol,
+        ra.tipo_responsabilidad, ra.fecha_inicio, ra.fecha_fin, c.nombre_clase, c.id_clase, c.estado_clase
     FROM Responsabilidades_Ambiente ra
     INNER JOIN Usuarios u ON ra.id_usuario = u.id_usuario
     LEFT JOIN Roles r ON u.id_rol = r.id_rol
@@ -1248,13 +948,11 @@ DELIMITER ;
 -- DATOS INICIALES
 -- ======================
 
--- Insertar roles
 INSERT INTO Roles (nombre_rol, descripcion) VALUES
 ('Administrador', 'Acceso total al sistema'),
 ('Instructor', 'Gestión de equipos y asignaciones'),
 ('Aprendiz', 'Consulta y uso de equipos asignados');
 
--- Insertar categorías de ejemplo
 INSERT INTO Categorias_Equipo (nombre_categoria, descripcion, es_componente) VALUES
 ('Computador de Escritorio', 'Equipos de escritorio completos', FALSE),
 ('Portátil', 'Computadores portátiles', FALSE),
@@ -1265,196 +963,21 @@ INSERT INTO Categorias_Equipo (nombre_categoria, descripcion, es_componente) VAL
 ('Proyector', 'Equipos de proyección', FALSE),
 ('Router', 'Equipos de red', FALSE);
 
--- Insertar ambientes de ejemplo
 INSERT INTO Ambientes (codigo_ambiente, nombre_ambiente, tipo_ambiente) VALUES
-('101','Ambiente 101','Aula'),
-('102','Ambiente 102','Aula'),
-('103','Ambiente 103','Aula'),
-('104','Ambiente 104','Aula'),
-('105','Ambiente 105','Aula'),
-('106','Ambiente 106','Aula'),
-('107','Ambiente 107','Aula'),
-('201','Ambiente 201','Aula'),
-('202','Ambiente 202','Aula'),
-('203','Ambiente 203','Aula'),
-('204','Ambiente 204','Aula'),
-('205','Ambiente 205','Aula'),
-('301','Ambiente 301','Aula'),
-('302','Ambiente 302','Aula'),
-('401','Ambiente 401','Aula'),
-('402','Ambiente 402','Aula'),
-('403','Ambiente 403','Aula'),
-('501','Ambiente 501','Aula'),
-('502','Ambiente 502','Aula'),
-('503','Ambiente 503','Aula'),
-('504','Ambiente 504','Aula'),
-('505','Ambiente 505','Aula'),
-('506','Ambiente 506','Aula');
+('101','Ambiente 101','Aula'), ('102','Ambiente 102','Aula'), ('103','Ambiente 103','Aula'),
+('104','Ambiente 104','Aula'), ('105','Ambiente 105','Aula'), ('106','Ambiente 106','Aula'),
+('107','Ambiente 107','Aula'), ('201','Ambiente 201','Aula'), ('202','Ambiente 202','Aula'),
+('203','Ambiente 203','Aula'), ('204','Ambiente 204','Aula'), ('205','Ambiente 205','Aula'),
+('301','Ambiente 301','Aula'), ('302','Ambiente 302','Aula'), ('401','Ambiente 401','Aula'),
+('402','Ambiente 402','Aula'), ('403','Ambiente 403','Aula'), ('501','Ambiente 501','Aula'),
+('502','Ambiente 502','Aula'), ('503','Ambiente 503','Aula'), ('504','Ambiente 504','Aula'),
+('505','Ambiente 505','Aula'), ('506','Ambiente 506','Aula');
 
--- Insertar criterios de asignación automática
 INSERT INTO Criterios_Asignacion (nombre_criterio, prioridad, descripcion, parametros) VALUES
 ('Estado Físico', 1, 'Prioriza equipos en mejor estado físico', '{"orden": ["Nuevo", "Bueno", "Regular"]}'),
 ('Fecha Adquisición', 2, 'Prioriza equipos más recientes', '{"orden": "DESC"}'),
 ('Mismo Ambiente', 3, 'Prioriza equipos del mismo ambiente solicitado', '{"peso": 0.8}');
 
--- Crear usuario administrador inicial (contraseña: Admin123!)
-INSERT INTO Usuarios (
-    nombre_usuario, 
-    cedula, 
-    telefono, 
-    correo, 
-    area_usuarios, 
-    contrasena, 
-    id_rol,
-    estado
-) VALUES (
-    'Administrador Sistema',
-    '1000000000',
-    '3001234567',
-    'admin@sena.edu.co',
-    'Sistemas',
-    '$2a$12$zz2nWS1PBuSGeX4gNQS5..Jk8Juo5gb8r8ZYDNZreGcND1jrHlVzq',
-    1,
-    'Activo'
-);
-
--- ========
--- ÍNDICES ADICIONALES PARA OPTIMIZACIÓN
--- ========
-
-CREATE INDEX idx_responsables_activos ON Responsables_Equipo(estado_responsabilidad, fecha_asignacion);
-CREATE INDEX idx_mantenimiento_pendiente ON Mantenimiento(estado_mantenimiento, fecha_proximo);
-CREATE INDEX idx_novedades_pendientes ON Novedades(estado_resolucion, fecha_novedad);
-CREATE INDEX idx_historial_fecha ON Historial_Equipos(codigo_equipo, fecha_evento);
-CREATE INDEX idx_clases_activas ON Clases(estado_clase, fecha_clase, hora_inicio);
-CREATE INDEX idx_responsabilidades_activas_ambiente ON Responsabilidades_Ambiente(id_ambiente, estado_responsabilidad, fecha_inicio, fecha_fin);
-
--- Comentarios de documentación
-ALTER TABLE Elementos COMMENT = 'Tabla principal de equipos y componentes tecnológicos';
-ALTER TABLE Ambientes COMMENT = 'Ubicaciones físicas donde se encuentran los equipos';
-ALTER TABLE Responsables_Equipo COMMENT = 'Gestión de múltiples responsables por equipo';
-ALTER TABLE Imagenes_Equipo COMMENT = 'Almacenamiento de rutas de imágenes de equipos';
-ALTER TABLE Imagenes_Ambiente COMMENT = 'Almacenamiento de rutas de imágenes de ambientes';
-ALTER TABLE Historial_Equipos COMMENT = 'Registro histórico de eventos de equipos (reemplaza rastreo temporal)';
-ALTER TABLE Clases COMMENT = 'Programación de clases en ambientes con horarios específicos';
-ALTER TABLE Participantes_Clase COMMENT = 'Registro de aprendices que participan en cada clase';
-ALTER TABLE Responsabilidades_Ambiente COMMENT = 'Responsabilidades temporales sobre el inventario de un ambiente durante clases';
-ALTER TABLE Clases 
-ADD COLUMN codigo_ficha VARCHAR(50) NULL 
-COMMENT 'Código de la ficha o grupo de aprendices' 
-AFTER nombre_clase;
-
--- Agregar índice para búsquedas por ficha
-ALTER TABLE Clases 
-ADD INDEX idx_ficha (codigo_ficha);
-
--- Mejorar índices para consultas de conflictos de horario
-ALTER TABLE Clases 
-ADD INDEX idx_ambiente_fecha_hora (id_ambiente, fecha_clase, hora_inicio, hora_fin, estado_clase);
-
--- Agregar campo para registrar si la responsabilidad fue asignada automáticamente
-ALTER TABLE Responsabilidades_Ambiente 
-ADD COLUMN asignacion_automatica BOOLEAN DEFAULT FALSE 
-COMMENT 'Indica si la responsabilidad fue asignada automáticamente por horario' 
-AFTER estado_responsabilidad;
-
--- Índice para consultas de responsables en tiempo real
-ALTER TABLE Responsabilidades_Ambiente 
-ADD INDEX idx_ambiente_fecha_activa (id_ambiente, fecha_inicio, fecha_fin, estado_responsabilidad);
-
--- Vista para consultar responsables actuales de un ambiente
-CREATE OR REPLACE VIEW Vista_Responsables_Actuales AS
-SELECT 
-    ra.id_responsabilidad_ambiente,
-    ra.id_ambiente,
-    a.nombre_ambiente,
-    a.codigo_ambiente,
-    ra.id_usuario,
-    u.nombre_usuario,
-    u.cedula,
-    r.nombre_rol,
-    ra.tipo_responsabilidad,
-    ra.fecha_inicio,
-    ra.fecha_fin,
-    ra.id_clase,
-    c.nombre_clase,
-    c.codigo_ficha,
-    c.fecha_clase,
-    c.hora_inicio,
-    c.hora_fin,
-    CASE 
-        WHEN ra.fecha_inicio <= NOW() AND (ra.fecha_fin IS NULL OR ra.fecha_fin >= NOW()) 
-        THEN 'Activo'
-        ELSE 'Inactivo'
-    END AS estado_actual
-FROM Responsabilidades_Ambiente ra
-INNER JOIN Ambientes a ON ra.id_ambiente = a.id_ambiente
-INNER JOIN Usuarios u ON ra.id_usuario = u.id_usuario
-LEFT JOIN Roles r ON u.id_rol = r.id_rol
-LEFT JOIN Clases c ON ra.id_clase = c.id_clase
-WHERE ra.estado_responsabilidad = 'Activa';
-
-
--- Agregar campos para rastrear el contexto completo de la verificación
-ALTER TABLE Verificaciones_Inventario 
-ADD COLUMN id_ambiente INT NULL 
-COMMENT 'Ambiente donde se verificó el equipo' 
-AFTER codigo_equipo;
-
-ALTER TABLE Verificaciones_Inventario 
-ADD COLUMN id_clase INT NULL 
-COMMENT 'Clase/horario activo cuando se verificó' 
-AFTER id_ambiente;
-
-ALTER TABLE Verificaciones_Inventario 
-ADD COLUMN id_responsabilidad_ambiente INT NULL 
-COMMENT 'Responsabilidad que estaba activa cuando se verificó' 
-AFTER id_clase;
-
-ALTER TABLE Verificaciones_Inventario 
-ADD COLUMN jornada VARCHAR(20) NULL 
-COMMENT 'Jornada cuando se verificó (para asignaciones permanentes)' 
-AFTER id_responsabilidad_ambiente;
-
--- Agregar foreign keys
-ALTER TABLE Verificaciones_Inventario 
-ADD FOREIGN KEY (id_ambiente) REFERENCES Ambientes(id_ambiente) ON DELETE SET NULL;
-
-ALTER TABLE Verificaciones_Inventario 
-ADD FOREIGN KEY (id_clase) REFERENCES Clases(id_clase) ON DELETE SET NULL;
-
-ALTER TABLE Verificaciones_Inventario 
-ADD FOREIGN KEY (id_responsabilidad_ambiente) REFERENCES Responsabilidades_Ambiente(id_responsabilidad_ambiente) ON DELETE SET NULL;
-
--- Agregar índices para búsquedas eficientes
-ALTER TABLE Verificaciones_Inventario 
-ADD INDEX idx_ambiente_fecha (id_ambiente, fecha_verificacion);
-
-ALTER TABLE Verificaciones_Inventario 
-ADD INDEX idx_clase_fecha (id_clase, fecha_verificacion);
-
-ALTER TABLE Verificaciones_Inventario 
-ADD INDEX idx_equipo_fecha (codigo_equipo, fecha_verificacion);
-
-ALTER TABLE Verificaciones_Inventario 
-ADD INDEX idx_instructor_fecha (id_usuario, fecha_verificacion);
-
--- Actualizar comentario de la tabla
-ALTER TABLE Verificaciones_Inventario 
-COMMENT = 'Historial completo de verificaciones de inventario con contexto de horarios y responsabilidades';
-
--- ============================================
--- ACTUALIZAR ENUM DE TIPO_NOVEDAD
--- ============================================
--- Agregar nuevos tipos de novedad que se usan en el frontend
-
-ALTER TABLE Novedades 
-MODIFY COLUMN tipo_novedad ENUM(
-  'Daño', 
-  'Pérdida', 
-  'Robo', 
-  'Mal Funcionamiento', 
-  'Daño Físico',
-  'Falta de Componente',
-  'Otro'
-) NOT NULL;
+INSERT INTO Usuarios (nombre_usuario, cedula, telefono, correo, contrasena, id_rol, estado) VALUES 
+('Administrador Sistema', '1000000000', '3001234567', 'admin@sena.edu.co',
+ '$2a$12$zz2nWS1PBuSGeX4gNQS5..Jk8Juo5gb8r8ZYDNZreGcND1jrHlVzq', 1, 'Activo');

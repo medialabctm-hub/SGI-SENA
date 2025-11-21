@@ -72,7 +72,7 @@ export class AuthService {
    * @returns {Promise<Object>} Resultado del registro
    */
   async registerUser(userData) {
-    const { nombre, cedula, correo, telefono, contrasena, rol, area, codigo_invitacion } = userData;
+    const { nombre, cedula, correo, telefono, contrasena, rol, codigo_invitacion } = userData;
 
     // Validar datos usando estrategias
     this.validateUserData({ correo, contrasena, cedula });
@@ -130,7 +130,6 @@ export class AuthService {
       .withCedula(cedula)
       .withCorreo(correo)
       .withTelefono(telefono)
-      .withArea(area)
       .withContrasena(contrasena)
       .withIdRol(rolRow.id_rol)
       .build();
@@ -198,7 +197,6 @@ export class AuthService {
         telefono: usuario.telefono,
         cedula: usuario.cedula,
         nombre_rol: usuario.nombre_rol,
-        area: usuario.area,
       },
     };
   }
@@ -221,7 +219,6 @@ export class AuthService {
       correo: user.correo,
       telefono: user.telefono,
       cedula: user.cedula,
-      area: user.area,
       nombre_rol: user.nombre_rol,
       requiere_cambio_contrasena: user.requiere_cambio_contrasena === 1 || user.requiere_cambio_contrasena === true,
     };
@@ -256,7 +253,6 @@ export class AuthService {
         cedula: user.cedula,
         correo: user.correo,
         telefono: user.telefono,
-        area: user.area,
         nombre_rol: user.nombre_rol,
       },
       equipos,
