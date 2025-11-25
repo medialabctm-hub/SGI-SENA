@@ -80,7 +80,7 @@ export async function crearNovedad(req, res) {
       throw insertErr
     }
 
-    const equipoDesc = `${equipo.tipo} ${equipo.marca} ${equipo.modelo}`.trim()
+    const equipoDesc = `${equipo.tipo} ${equipo.placa || ''} ${equipo.modelo}`.trim()
     const userRole = req.user?.rol
 
     // Si es Instructor o Aprendiz, notificar al Administrador
@@ -160,7 +160,7 @@ export async function crearNovedad(req, res) {
       message: 'Novedad registrada correctamente',
       equipo: {
         codigo: equipo.codigo_equipo,
-        descripcion: `${equipo.tipo} ${equipo.marca} ${equipo.modelo}`.trim()
+        descripcion: `${equipo.tipo} ${equipo.placa || ''} ${equipo.modelo}`.trim()
       }
     })
   } catch (err) {
@@ -190,9 +190,10 @@ export async function listarNovedades(req, res) {
         n.fecha_resolucion,
         n.observaciones_resolucion,
         e.tipo AS equipo_tipo,
-        e.marca AS equipo_marca,
+        e.placa AS equipo_placa,
         e.modelo AS equipo_modelo,
-        e.numero_serie,
+        e.consecutivo,
+        e.r_centro,
         u.nombre_usuario AS reportado_por_nombre,
         r.nombre_usuario AS resuelto_por_nombre
       FROM Novedades n
@@ -237,9 +238,10 @@ export async function obtenerNovedadPorId(req, res) {
       `SELECT 
         n.*,
         e.tipo AS equipo_tipo,
-        e.marca AS equipo_marca,
+        e.placa AS equipo_placa,
         e.modelo AS equipo_modelo,
-        e.numero_serie,
+        e.consecutivo,
+        e.r_centro,
         u.nombre_usuario AS reportado_por_nombre,
         r.nombre_usuario AS resuelto_por_nombre
       FROM Novedades n

@@ -8,27 +8,22 @@ import { parseApiResponse, buildErrorMessage } from '../utils/api'
 import '../styles/equipos.css'
 
 const ESTADOS_FISICOS = ['Nuevo', 'Bueno', 'Regular', 'Malo', 'Dañado']
-const TIPOS = ['Computador de Escritorio', 'Portátil', 'Monitor', 'Mouse', 'Teclado', 'Impresora', 'Proyector', 'Router']
 
 export default function Equipos() {
   const [activeTab, setActiveTab] = useState('registrar') // 'registrar' o 'importar'
   const [form, setForm] = useState({
-    codigo_inventario: '',
-    tipo: '',
-    marca: '',
+    r_centro: '',
     modelo: '',
-    numero_serie: '',
+    consecutivo: '',
     descripcion: '',
+    descripcion_actual: '',
+    tipo: '',
+    placa: '',
+    atributos: '',
     fecha_adquisicion: '',
-    costo: '',
-    vida_util_meses: '',
-    estado_fisico: 'Bueno',
+    valor_ingreso: '',
     ambiente: '',
-    incluye_mouse: false,
-    incluye_teclado: false,
-    incluye_monitor: false,
-    incluye_torre: false,
-    specs_completas: '',
+    estado_fisico: 'Bueno',
   })
 
   const [errores, setErrores] = useState({})
@@ -59,11 +54,10 @@ export default function Equipos() {
   const handleSubmit = async e => {
     e.preventDefault()
     const errs = {}
-    if (!form.codigo_inventario) errs.codigo_inventario = 'El código de inventario es obligatorio'
-    if (!form.tipo) errs.tipo = 'El tipo es obligatorio'
-    if (!form.marca) errs.marca = 'La marca es obligatoria'
+    if (!form.r_centro) errs.r_centro = 'R Centro es obligatorio'
     if (!form.modelo) errs.modelo = 'El modelo es obligatorio'
-    if (!form.numero_serie) errs.numero_serie = 'El número de serie es obligatorio'
+    if (!form.consecutivo) errs.consecutivo = 'El consecutivo es obligatorio'
+    if (!form.tipo) errs.tipo = 'El tipo es obligatorio'
     if (!form.estado_fisico) errs.estado_fisico = 'El estado físico es obligatorio'
     if (!form.fecha_adquisicion) errs.fecha_adquisicion = 'La fecha de adquisición es obligatoria'
     if (!form.ambiente) errs.ambiente = 'El ambiente es obligatorio'
@@ -73,16 +67,31 @@ export default function Equipos() {
     if (Object.keys(errs).length > 0) return
     try {
       const token = localStorage.getItem('token')
+      // Mapear campos del formulario a los campos que espera el backend
+      const payload = {
+        tipo: form.tipo,
+        modelo: form.modelo,
+        consecutivo: form.consecutivo,
+        descripcion: form.descripcion || null,
+        fecha_adquisicion: form.fecha_adquisicion,
+        costo: form.valor_ingreso || null,
+        estado_fisico: form.estado_fisico,
+        ambiente: form.ambiente,
+        specs_completas: form.atributos || null,
+        // Nuevos campos
+        r_centro: form.r_centro,
+        descripcion_actual: form.descripcion_actual || null,
+        placa: form.placa || null,
+        atributos: form.atributos || null,
+        valor_ingreso: form.valor_ingreso || null
+      }
       const resp = await fetch('/api/equipos', {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`
         },
-        body: JSON.stringify({
-          ...form,
-          codigo_inventario: form.codigo_inventario
-        })
+        body: JSON.stringify(payload)
       })
       const data = await parseApiResponse(resp, 'No se pudo registrar el equipo')
       setToast({
@@ -90,7 +99,7 @@ export default function Equipos() {
         type: 'success'
       })
       setForm({
-        codigo_inventario: '', tipo: '', marca: '', modelo: '', numero_serie: '', descripcion: '', fecha_adquisicion: '', costo: '', vida_util_meses: '', estado_fisico: 'Bueno', ambiente: '', incluye_mouse: false, incluye_teclado: false, incluye_monitor: false, incluye_torre: false, specs_completas: ''
+        r_centro: '', modelo: '', consecutivo: '', descripcion: '', descripcion_actual: '', tipo: '', placa: '', atributos: '', fecha_adquisicion: '', valor_ingreso: '', ambiente: '', estado_fisico: 'Bueno'
       })
     } catch (err) {
       setToast({
@@ -145,27 +154,9 @@ export default function Equipos() {
               <form className="form-equipos" onSubmit={handleSubmit}>
         <div className="form-grid">
           <div className="form-row">
-            <label>Código de Inventario *</label>
-            <input name="codigo_inventario" value={form.codigo_inventario} onChange={handleChange} />
-            {errores.codigo_inventario && <span className="error-text">{errores.codigo_inventario}</span>}
-          </div>
-          <div className="form-row">
-            <label>Ambiente *</label>
-            <input name="ambiente" value={form.ambiente} onChange={handleChange} placeholder="ID, código o nombre del ambiente" />
-            {errores.ambiente && <span className="error-text">{errores.ambiente}</span>}
-          </div>
-          <div className="form-row">
-            <label>Tipo *</label>
-            <select name="tipo" value={form.tipo} onChange={handleChange}>
-              <option value="">Seleccione...</option>
-              {TIPOS.map(t => <option key={t} value={t}>{t}</option>)}
-            </select>
-            {errores.tipo && <span className="error-text">{errores.tipo}</span>}
-          </div>
-          <div className="form-row">
-            <label>Marca *</label>
-            <input name="marca" value={form.marca} onChange={handleChange} />
-            {errores.marca && <span className="error-text">{errores.marca}</span>}
+            <label>R Centro *</label>
+            <input name="r_centro" value={form.r_centro} onChange={handleChange} />
+            {errores.r_centro && <span className="error-text">{errores.r_centro}</span>}
           </div>
           <div className="form-row">
             <label>Modelo *</label>
@@ -173,22 +164,44 @@ export default function Equipos() {
             {errores.modelo && <span className="error-text">{errores.modelo}</span>}
           </div>
           <div className="form-row">
-            <label>Número de Serie *</label>
-            <input name="numero_serie" value={form.numero_serie} onChange={handleChange} />
-            {errores.numero_serie && <span className="error-text">{errores.numero_serie}</span>}
+            <label>Consecutivo *</label>
+            <input name="consecutivo" value={form.consecutivo} onChange={handleChange} />
+            {errores.consecutivo && <span className="error-text">{errores.consecutivo}</span>}
           </div>
           <div className="form-row">
-            <label>Fecha de Adquisición *</label>
+            <label>Descripción</label>
+            <textarea name="descripcion" value={form.descripcion} onChange={handleChange} />
+          </div>
+          <div className="form-row">
+            <label>Descripción Actual</label>
+            <textarea name="descripcion_actual" value={form.descripcion_actual} onChange={handleChange} />
+          </div>
+          <div className="form-row">
+            <label>Tipo *</label>
+            <input name="tipo" value={form.tipo} onChange={handleChange} placeholder="Ej: Computador de Escritorio, Portátil, Monitor..." />
+            {errores.tipo && <span className="error-text">{errores.tipo}</span>}
+          </div>
+          <div className="form-row">
+            <label>Placa</label>
+            <input name="placa" value={form.placa} onChange={handleChange} />
+          </div>
+          <div className="form-row">
+            <label>Atributos</label>
+            <textarea name="atributos" value={form.atributos} onChange={handleChange} />
+          </div>
+          <div className="form-row">
+            <label>Fecha Adquisición *</label>
             <input type="date" name="fecha_adquisicion" value={form.fecha_adquisicion} onChange={handleChange} />
             {errores.fecha_adquisicion && <span className="error-text">{errores.fecha_adquisicion}</span>}
           </div>
           <div className="form-row">
-            <label>Costo</label>
-            <input type="number" name="costo" value={form.costo} onChange={handleChange} min="0" step="0.01" />
+            <label>Valor Ingreso</label>
+            <input type="number" name="valor_ingreso" value={form.valor_ingreso} onChange={handleChange} min="0" step="0.01" />
           </div>
           <div className="form-row">
-            <label>Vida útil (meses)</label>
-            <input type="number" name="vida_util_meses" value={form.vida_util_meses} onChange={handleChange} min="0" />
+            <label>Ambiente *</label>
+            <input name="ambiente" value={form.ambiente} onChange={handleChange} placeholder="ID, código o nombre del ambiente" />
+            {errores.ambiente && <span className="error-text">{errores.ambiente}</span>}
           </div>
           <div className="form-row">
             <label>Estado Físico *</label>
@@ -197,20 +210,6 @@ export default function Equipos() {
             </select>
             {errores.estado_fisico && <span className="error-text">{errores.estado_fisico}</span>}
           </div>
-        </div>
-        <div className="form-row">
-          <label>Descripción</label>
-          <textarea name="descripcion" value={form.descripcion} onChange={handleChange} />
-        </div>
-        <div className="form-row form-row-checkboxes">
-          <label><input type="checkbox" name="incluye_mouse" checked={form.incluye_mouse} onChange={handleChange} /> Incluye Mouse</label>
-          <label><input type="checkbox" name="incluye_teclado" checked={form.incluye_teclado} onChange={handleChange} /> Incluye Teclado</label>
-          <label><input type="checkbox" name="incluye_monitor" checked={form.incluye_monitor} onChange={handleChange} /> Incluye Monitor</label>
-          <label><input type="checkbox" name="incluye_torre" checked={form.incluye_torre} onChange={handleChange} /> Incluye Torre</label>
-        </div>
-        <div className="form-row">
-          <label>Especificaciones completas</label>
-          <textarea name="specs_completas" value={form.specs_completas} onChange={handleChange} />
         </div>
         <div className="form-row">
           <button type="submit" className="btn-verde">Registrar Equipo</button>
@@ -232,3 +231,6 @@ export default function Equipos() {
     </div>
   )
 }
+
+
+

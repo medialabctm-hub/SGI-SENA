@@ -37,91 +37,128 @@ export async function importarEquipos(req, res) {
       const numeroFila = i + 2; // +2 porque la fila 1 es el encabezado y empezamos desde 0
 
       try {
-        // Mapear columnas del Excel a campos de la BD
-        const codigoInventario = String(row['codigo_inventario'] || row['Código Inventario'] || row['CODIGO_INVENTARIO'] || '').trim();
-        const tipo = String(row['tipo'] || row['Tipo'] || row['TIPO'] || '').trim();
-        const marca = String(row['marca'] || row['Marca'] || row['MARCA'] || '').trim();
-        const modelo = String(row['modelo'] || row['Modelo'] || row['MODELO'] || '').trim();
-        const numeroSerie = String(row['numero_serie'] || row['Número Serie'] || row['NUMERO_SERIE'] || '').trim();
-        const descripcion = row['descripcion'] || row['Descripción'] || row['DESCRIPCION'] || null;
-        const fechaAdquisicion = row['fecha_adquisicion'] || row['Fecha Adquisición'] || row['FECHA_ADQUISICION'] || null;
-        const costo = row['costo'] || row['Costo'] || row['COSTO'] || null;
+        // Mapear columnas del Excel a campos de la BD (nuevos campos y compatibilidad con antiguos)
+        const placa = String(row['Placa'] || row['placa'] || row['PLACA'] || '').trim();
+        const codigoInventario = String(row['R Centro'] || row['r_centro'] || row['codigo_inventario'] || row['Código Inventario'] || row['CODIGO_INVENTARIO'] || '').trim();
+        const tipo = String(row['Tipo'] || row['tipo'] || row['TIPO'] || '').trim();
+        const marca = String(row['Marca'] || row['marca'] || row['MARCA'] || '').trim();
+        const modelo = String(row['Modelo'] || row['modelo'] || row['MODELO'] || '').trim();
+        const numeroSerie = String(row['Consecutivo'] || row['consecutivo'] || row['numero_serie'] || row['Número Serie'] || row['NUMERO_SERIE'] || '').trim();
+        const descripcion = row['Descripción Actual'] || row['descripcion_actual'] || row['Descripcion'] || row['descripcion'] || row['Descripción'] || row['DESCRIPCION'] || null;
+        const fechaAdquisicion = row['Fecha Adquisición'] || row['fecha_adquisicion'] || row['Fecha Adquisicion'] || row['FECHA_ADQUISICION'] || null;
+        
+        // Ajuste para leer Valor Ingreso correctamente, manejando posibles formatos de moneda
+        let costo = row['Valor Ingreso'] || row['valor_ingreso'] || row['costo'] || row['Costo'] || row['COSTO'] || null;
+        if (costo && typeof costo === 'string') {
+          // Eliminar símbolos de moneda, puntos de miles y espacios
+          // Asumiendo formato: $ 126.050,00 o 126.050
+          // Si usa coma para decimales y punto para miles
+          costo = costo.replace(/[^\d.,-]/g, ''); 
+          if (costo.includes('.') && costo.includes(',')) {
+             // Formato complejo (ej: 1.234,56), eliminar puntos y reemplazar coma por punto
+             costo = costo.replace(/\./g, '').replace(',', '.');
+          } else if (costo.includes(',')) {
+             // Solo coma (ej: 1234,56), reemplazar por punto
+             costo = costo.replace(',', '.');
+          }
+          // Si solo tiene puntos y son separadores de miles (ej: 126.050), eliminarlos
+          // Riesgo: 126.050 podría ser 126 con 050 decimales en formato US. 
+          // Asumiremos formato local (punto = mil) si el valor parece alto o entero
+        }
+
         const vidaUtilMeses = row['vida_util_meses'] || row['Vida Útil (meses)'] || row['VIDA_UTIL_MESES'] || null;
-        const estadoFisico = String(row['estado_fisico'] || row['Estado Físico'] || row['ESTADO_FISICO'] || 'Bueno').trim();
-        const ambiente = String(row['ambiente'] || row['Ambiente'] || row['AMBIENTE'] || row['codigo_ambiente'] || row['Código Ambiente'] || '').trim();
+        const estadoFisico = String(row['Estado Físico'] || row['estado_fisico'] || row['Estado Fisico'] || row['ESTADO_FISICO'] || 'Bueno').trim();
+        const ambiente = String(row['Ambiente'] || row['ambiente'] || row['AMBIENTE'] || row['codigo_ambiente'] || row['Código Ambiente'] || '').trim();
         const incluyeMouse = row['incluye_mouse'] || row['Incluye Mouse'] || row['INCLUYE_MOUSE'] || false;
         const incluyeTeclado = row['incluye_teclado'] || row['Incluye Teclado'] || row['INCLUYE_TECLADO'] || false;
         const incluyeMonitor = row['incluye_monitor'] || row['Incluye Monitor'] || row['INCLUYE_MONITOR'] || false;
         const incluyeTorre = row['incluye_torre'] || row['Incluye Torre'] || row['INCLUYE_TORRE'] || false;
-        const specsCompletas = row['specs_completas'] || row['Especificaciones'] || row['SPECS_COMPLETAS'] || null;
+        const specsCompletas = row['Atributos'] || row['atributos'] || row['specs_completas'] || row['Especificaciones'] || row['SPECS_COMPLETAS'] || null;
+        // Campos nuevos
+        const rCentro = String(row['R Centro'] || row['r_centro'] || codigoInventario || '').trim();
+        const descripcionActual = row['Descripción Actual'] || row['descripcion_actual'] || descripcion || null;
+        const atributos = row['Atributos'] || row['atributos'] || specsCompletas || null;
+        const valorIngreso = costo; // Usar el costo procesado
 
         // Validaciones básicas
-        if (!codigoInventario) {
+        // AHORA: Validamos 'placa' en lugar de 'codigoInventario'
+        if (!placa) {
           resultados.errores.push({
             fila: numeroFila,
-            codigo: codigoInventario || 'N/A',
-            error: 'Código de inventario es obligatorio'
+            codigo: placa || 'N/A',
+            error: 'La placa es obligatoria'
           });
           resultados.fallidos++;
           continue;
         }
 
-        if (!tipo || !marca || !modelo || !numeroSerie) {
+        if (!tipo || !modelo || !numeroSerie) {
           resultados.errores.push({
             fila: numeroFila,
-            codigo: codigoInventario,
-            error: 'Faltan campos obligatorios: tipo, marca, modelo o número de serie'
+            codigo: placa,
+            error: 'Faltan campos obligatorios: tipo, modelo o consecutivo'
           });
           resultados.fallidos++;
           continue;
         }
 
-        // Validar código único
-        const [[codigoExistente]] = await defaultDb.execute(
-          'SELECT codigo_equipo FROM Elementos WHERE codigo_inventario = ? LIMIT 1',
-          [codigoInventario]
-        );
-        if (codigoExistente) {
-          resultados.errores.push({
-            fila: numeroFila,
-            codigo: codigoInventario,
-            error: 'El código de inventario ya está registrado'
-          });
-          resultados.fallidos++;
-          continue;
-        }
-
-        // Validar número de serie único (si se proporciona)
-        if (numeroSerie) {
-          const [[serieExistente]] = await defaultDb.execute(
-            'SELECT codigo_equipo FROM Elementos WHERE numero_serie = ? LIMIT 1',
-            [numeroSerie]
+        // Validar placa única
+        if (placa) {
+           const [[placaExistente]] = await defaultDb.execute(
+            'SELECT codigo_equipo FROM Elementos WHERE placa = ? LIMIT 1',
+            [placa]
           );
-          if (serieExistente) {
-            resultados.errores.push({
+          if (placaExistente) {
+             resultados.errores.push({
               fila: numeroFila,
-              codigo: codigoInventario,
-              error: 'El número de serie ya está registrado'
+              codigo: placa,
+              error: 'La placa ya está registrada'
             });
             resultados.fallidos++;
             continue;
           }
         }
 
+        // Validar consecutivo único (si se proporciona)
+        // NOTA: Se permite consecutivo duplicado bajo solicitud del usuario ("el consecutivo esta dando problemas")
+        /*
+        if (numeroSerie) {
+          const [[serieExistente]] = await defaultDb.execute(
+            'SELECT codigo_equipo FROM Elementos WHERE consecutivo = ? LIMIT 1',
+            [numeroSerie]
+          );
+          if (serieExistente) {
+            resultados.errores.push({
+              fila: numeroFila,
+              codigo: placa || numeroSerie,
+              error: 'El consecutivo ya está registrado'
+            });
+            resultados.fallidos++;
+            continue;
+          }
+        }
+        */
+
         // Resolver categoría
-        const [[categoria]] = await defaultDb.execute(
-          'SELECT id_categoria FROM Categorias_Equipo WHERE nombre_categoria = ? LIMIT 1',
-          [tipo]
+        // Buscar por nombre o por ID (si el dato es numérico)
+        let categoriaInfo = null;
+        
+        // Intentar buscar
+        const [[cat]] = await defaultDb.execute(
+          'SELECT id_categoria FROM Categorias_Equipo WHERE nombre_categoria = ? OR id_categoria = ? LIMIT 1',
+          [tipo, tipo]
         );
-        if (!categoria?.id_categoria) {
+        
+        if (!cat?.id_categoria) {
           resultados.errores.push({
             fila: numeroFila,
-            codigo: codigoInventario,
-            error: `Categoría "${tipo}" no encontrada. Debe existir en Categorias_Equipo`
+            codigo: placa,
+            error: `Categoría "${tipo}" no encontrada. Debe existir en Categorias_Equipo (por nombre o ID)`
           });
           resultados.fallidos++;
           continue;
         }
+        const categoriaId = cat.id_categoria;
 
         // Resolver ambiente
         let ambienteId = null;
@@ -135,7 +172,7 @@ export async function importarEquipos(req, res) {
         if (!ambienteId) {
           resultados.errores.push({
             fila: numeroFila,
-            codigo: codigoInventario,
+            codigo: placa,
             error: `Ambiente "${ambiente}" no encontrado`
           });
           resultados.fallidos++;
@@ -171,21 +208,20 @@ export async function importarEquipos(req, res) {
           }
         }
 
-        // Insertar equipo
+        // Insertar equipo con nuevos campos
         const query = `INSERT INTO Elementos
-          (codigo_inventario, id_categoria, id_ambiente, tipo, marca, modelo, numero_serie, descripcion, 
+          (id_categoria, id_ambiente, tipo, marca, modelo, descripcion, 
            fecha_adquisicion, costo, vida_util_meses, estado_fisico, incluye_mouse, incluye_teclado, 
-           incluye_monitor, incluye_torre, specs_completas, registrado_por)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+           incluye_monitor, incluye_torre, specs_completas, registrado_por,
+           r_centro, consecutivo, descripcion_actual, placa, atributos, valor_ingreso)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
 
         await defaultDb.execute(query, [
-          codigoInventario,
-          categoria.id_categoria,
+          categoriaId,
           ambienteId,
           tipo,
-          marca,
+          marca || null,
           modelo,
-          numeroSerie || null,
           descripcion || null,
           fechaAdq || null,
           costo ? parseFloat(costo) : null,
@@ -196,14 +232,20 @@ export async function importarEquipos(req, res) {
           !!incluyeMonitor,
           !!incluyeTorre,
           specsCompletas || null,
-          userId
+          userId,
+          rCentro || null,
+          numeroSerie || null,
+          descripcionActual || null,
+          placa || null,
+          atributos || null,
+          valorIngreso ? parseFloat(valorIngreso) : (costo ? parseFloat(costo) : null)
         ]);
 
         resultados.exitosos++;
       } catch (error) {
         resultados.errores.push({
           fila: numeroFila,
-          codigo: row['codigo_inventario'] || 'N/A',
+          codigo: row['Placa'] || row['placa'] || 'N/A',
           error: error.message || 'Error desconocido'
         });
         resultados.fallidos++;

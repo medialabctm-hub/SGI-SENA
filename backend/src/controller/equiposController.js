@@ -10,8 +10,8 @@ import { obtenerEquipoPorCodigo as obtenerEquipoPorCodigoUtil } from '../utils/s
 export async function listarEquipos(req, res) {
   try {
     const query = `
-      SELECT e.codigo_equipo, e.codigo_inventario, e.tipo, e.marca, e.modelo, e.numero_serie, e.descripcion,
-             e.fecha_adquisicion, e.costo, e.vida_util_meses, e.estado_fisico,
+      SELECT e.codigo_equipo, e.placa AS codigo_inventario, e.tipo, e.marca, e.modelo, e.numero_serie, e.consecutivo, e.descripcion,
+             e.fecha_adquisicion, e.valor_ingreso AS costo, e.vida_util_meses, e.estado_fisico,
              e.incluye_mouse, e.incluye_teclado, e.incluye_monitor, e.incluye_torre,
              e.specs_completas,
              a.id_ambiente, a.nombre_ambiente, a.codigo_ambiente
@@ -31,6 +31,9 @@ export async function registrarEquipo(req, res) {
   try {
     const {
       codigo_inventario,
+      placa,
+      r_centro,
+      consecutivo,
       tipo,
       marca,
       modelo,
@@ -38,6 +41,7 @@ export async function registrarEquipo(req, res) {
       descripcion,
       fecha_adquisicion,
       costo,
+      valor_ingreso,
       vida_util_meses,
       estado_fisico,
       incluye_mouse,
@@ -49,23 +53,30 @@ export async function registrarEquipo(req, res) {
       ambiente
     } = req.body;
 
-    const codigoInventario = (codigo_inventario ?? req.body.codigo_equipo ?? '').toString().trim();
+    // La placa es el código de inventario (compatibilidad con frontend que puede enviar codigo_inventario)
+    const placaValue = (placa || codigo_inventario || '').toString().trim();
+    const rCentroValue = (r_centro || placaValue || '').toString().trim();
+    const consecutivoValue = (consecutivo || numero_serie || '').toString().trim();
+    const valorIngreso = valor_ingreso || costo || null;
 
     // Validación básica
-    if (!codigoInventario) {
-      return res.status(400).json({ error: 'El código de inventario es obligatorio' });
+    if (!placaValue) {
+      return res.status(400).json({ error: 'La placa (código de inventario) es obligatoria' });
     }
-    if (!tipo || !marca || !modelo || !numero_serie || !estado_fisico || !fecha_adquisicion) {
-      return res.status(400).json({ error: 'Faltan campos obligatorios' });
+    if (!rCentroValue) {
+      return res.status(400).json({ error: 'El R Centro es obligatorio' });
+    }
+    if (!tipo || !modelo || !estado_fisico || !fecha_adquisicion) {
+      return res.status(400).json({ error: 'Faltan campos obligatorios: tipo, modelo, estado_fisico o fecha_adquisicion' });
     }
 
-    // Validar código de inventario único
-    const [[codigoExistente]] = await defaultDb.execute(
-      'SELECT codigo_equipo FROM Elementos WHERE codigo_inventario = ? LIMIT 1',
-      [codigoInventario]
+    // Validar placa única
+    const [[placaExistente]] = await defaultDb.execute(
+      'SELECT codigo_equipo FROM Elementos WHERE placa = ? LIMIT 1',
+      [placaValue]
     );
-    if (codigoExistente) {
-      return res.status(409).json({ error: 'El código de inventario ya está registrado' });
+    if (placaExistente) {
+      return res.status(409).json({ error: 'La placa ya está registrada' });
     }
 
     // Resolver id_categoria a partir del nombre de categoria (tipo)
@@ -125,50 +136,56 @@ export async function registrarEquipo(req, res) {
     let params;
     if (usaIdTipo) {
       query = `INSERT INTO Elementos
-        (codigo_inventario, id_categoria, id_tipo, id_ambiente, tipo, marca, modelo, numero_serie, descripcion, fecha_adquisicion, costo, vida_util_meses, estado_fisico, incluye_mouse, incluye_teclado, incluye_monitor, incluye_torre, specs_completas)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+        (id_categoria, id_tipo, id_ambiente, tipo, marca, modelo, numero_serie, descripcion, fecha_adquisicion, valor_ingreso, vida_util_meses, estado_fisico, incluye_mouse, incluye_teclado, incluye_monitor, incluye_torre, specs_completas, r_centro, consecutivo, placa, registrado_por)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
       params = [
-        codigoInventario,
         categoria.id_categoria,
         idTipo,
         ambienteId,
         tipo,
-        marca,
+        marca || null,
         modelo,
-        numero_serie,
+        numero_serie || null,
         descripcion || null,
         fecha_adquisicion,
-        costo || null,
+        valorIngreso ? parseFloat(valorIngreso) : null,
         vida_util_meses || null,
         estado_fisico,
         !!incluye_mouse,
         !!incluye_teclado,
         !!incluye_monitor,
         !!incluye_torre,
-        specs_completas || null
+        specs_completas || null,
+        rCentroValue,
+        consecutivoValue || null,
+        placaValue,
+        req.user?.id || null
       ];
     } else {
       query = `INSERT INTO Elementos
-        (codigo_inventario, id_categoria, id_ambiente, tipo, marca, modelo, numero_serie, descripcion, fecha_adquisicion, costo, vida_util_meses, estado_fisico, incluye_mouse, incluye_teclado, incluye_monitor, incluye_torre, specs_completas)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+        (id_categoria, id_ambiente, tipo, marca, modelo, numero_serie, descripcion, fecha_adquisicion, valor_ingreso, vida_util_meses, estado_fisico, incluye_mouse, incluye_teclado, incluye_monitor, incluye_torre, specs_completas, r_centro, consecutivo, placa, registrado_por)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
       params = [
-        codigoInventario,
         categoria.id_categoria,
         ambienteId,
         tipo,
-        marca,
+        marca || null,
         modelo,
-        numero_serie,
+        numero_serie || null,
         descripcion || null,
         fecha_adquisicion,
-        costo || null,
+        valorIngreso ? parseFloat(valorIngreso) : null,
         vida_util_meses || null,
         estado_fisico,
         !!incluye_mouse,
         !!incluye_teclado,
         !!incluye_monitor,
         !!incluye_torre,
-        specs_completas || null
+        specs_completas || null,
+        rCentroValue,
+        consecutivoValue || null,
+        placaValue,
+        req.user?.id || null
       ];
     }
     const [result] = await defaultDb.execute(query, params);
@@ -182,7 +199,8 @@ export async function registrarEquipo(req, res) {
         ambiente: ambienteInfo?.nombre_ambiente || ambienteInfo?.codigo_ambiente || null,
         creadoPor: req.user?.id ?? null,
         metadataExtra: {
-          codigo_inventario: codigoInventario,
+          placa: placaValue,
+          r_centro: rCentroValue,
           ambiente_id: ambienteInfo?.id_ambiente ?? ambienteId,
           ambiente_codigo: ambienteInfo?.codigo_ambiente || null,
         },
@@ -211,8 +229,8 @@ export async function obtenerEquipoPorCodigo(req, res) {
     if (!codigo) return res.status(400).json({ error: 'codigo requerido' });
 
     const queryBase = `
-      SELECT e.codigo_equipo, e.codigo_inventario, e.tipo, e.marca, e.modelo, e.numero_serie, e.descripcion,
-             e.fecha_adquisicion, e.costo, e.vida_util_meses, e.estado_fisico,
+      SELECT e.codigo_equipo, e.placa AS codigo_inventario, e.tipo, e.marca, e.modelo, e.numero_serie, e.consecutivo, e.descripcion,
+             e.fecha_adquisicion, e.valor_ingreso AS costo, e.vida_util_meses, e.estado_fisico,
              e.incluye_mouse, e.incluye_teclado, e.incluye_monitor, e.incluye_torre,
              e.specs_completas,
              a.id_ambiente, a.nombre_ambiente, a.codigo_ambiente,
@@ -227,7 +245,7 @@ export async function obtenerEquipoPorCodigo(req, res) {
     `;
 
     const [[rowInventario]] = await defaultDb.execute(
-      `${queryBase} WHERE e.codigo_inventario = ?`,
+      `${queryBase} WHERE e.placa = ?`,
       [codigo]
     );
 
@@ -261,7 +279,7 @@ export async function actualizarEquipo(req, res) {
       codigoEquipo = codigoNumerico;
     } else {
       const [[row]] = await defaultDb.execute(
-        'SELECT codigo_equipo FROM Elementos WHERE codigo_inventario = ? LIMIT 1',
+        'SELECT codigo_equipo FROM Elementos WHERE r_centro = ? LIMIT 1',
         [codigo]
       );
       if (row?.codigo_equipo) {
@@ -330,7 +348,7 @@ export async function eliminarEquipo(req, res) {
       codigoEquipo = codigoNumerico;
     } else {
       const [[row]] = await defaultDb.execute(
-        'SELECT codigo_equipo FROM Elementos WHERE codigo_inventario = ? LIMIT 1',
+        'SELECT codigo_equipo FROM Elementos WHERE r_centro = ? LIMIT 1',
         [codigo]
       );
       if (row?.codigo_equipo) {
@@ -464,11 +482,12 @@ export async function obtenerMisEquipos(req, res) {
     const [equipos] = await defaultDb.execute(
       `SELECT 
         e.codigo_equipo,
-        e.codigo_inventario,
+        e.placa AS codigo_inventario,
         e.tipo,
         e.marca,
         e.modelo,
         e.numero_serie,
+        e.consecutivo,
         e.estado_fisico,
         e.descripcion,
         a.nombre_ambiente,
@@ -513,11 +532,12 @@ export async function listarAsignaciones(req, res) {
         re.estado_responsabilidad,
         re.tipo_responsabilidad,
         re.observaciones,
-        e.codigo_inventario,
+        e.placa AS codigo_inventario,
         e.tipo AS equipo_tipo,
         e.marca AS equipo_marca,
         e.modelo AS equipo_modelo,
         e.numero_serie,
+        e.consecutivo,
         u.nombre_usuario AS usuario_nombre,
         u.cedula AS usuario_cedula,
         r.nombre_rol AS usuario_rol,
@@ -700,11 +720,12 @@ export async function obtenerEquiposAmbientesInstructor(req, res) {
     const [equipos] = await defaultDb.execute(
       `SELECT 
         e.codigo_equipo,
-        e.codigo_inventario,
+        e.placa AS codigo_inventario,
         e.tipo,
         e.marca,
         e.modelo,
         e.numero_serie,
+        e.consecutivo,
         e.estado_fisico,
         e.descripcion,
         e.id_ambiente,
@@ -717,7 +738,7 @@ export async function obtenerEquiposAmbientesInstructor(req, res) {
       FROM Elementos e
       INNER JOIN Ambientes a ON e.id_ambiente = a.id_ambiente
       WHERE e.id_ambiente IN (${ambienteIds.map(() => '?').join(',')})
-      ORDER BY a.nombre_ambiente, e.codigo_inventario`,
+      ORDER BY a.nombre_ambiente, e.placa`,
       [userId, ...ambienteIds]
     )
 
@@ -893,10 +914,11 @@ export async function consultarHistorialVerificaciones(req, res) {
       SELECT 
         vi.id_verificacion,
         vi.codigo_equipo,
-        e.codigo_inventario,
+        e.placa AS codigo_inventario,
         e.tipo AS equipo_tipo,
         e.marca AS equipo_marca,
         e.modelo AS equipo_modelo,
+        e.consecutivo,
         vi.id_ambiente,
         a.nombre_ambiente,
         a.codigo_ambiente,
@@ -1038,7 +1060,7 @@ export async function obtenerHistorialEquipo(req, res) {
 
     // Obtener información del equipo
     const [[equipo]] = await defaultDb.execute(
-      `SELECT codigo_equipo, codigo_inventario, tipo, marca, modelo, numero_serie
+      `SELECT codigo_equipo, placa AS codigo_inventario, tipo, marca, modelo, numero_serie, consecutivo
        FROM Elementos
        WHERE codigo_equipo = ?`,
       [codigo]

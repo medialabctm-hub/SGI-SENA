@@ -69,7 +69,7 @@ export default function Register() {
           telefono,
           contrasena: password,
           rol,
-          codigo_invitacion: rol === 'Instructor' ? codigoInvitacion.trim() : null
+          codigo_invitacion: (rol === 'Instructor' || rol === 'Administrador') ? codigoInvitacion.trim() : null
         })
       })
       const data = await parseApiResponse(res, 'No se pudo completar el registro')
@@ -160,7 +160,7 @@ export default function Register() {
             <span className="icon"></span>
             <select value={rol} onChange={e => {
               setRol(e.target.value);
-              if (e.target.value !== 'Instructor') {
+              if (e.target.value === 'Aprendiz') {
                 setCodigoInvitacion('');
               }
             }} style={{ width: '100%', border: 'none', outline: 'none', background: 'transparent' }}>
@@ -169,13 +169,13 @@ export default function Register() {
               <option value="Administrador">Administrador</option>
             </select>
           </label>
-          {rol === 'Instructor' && (
+          {(rol === 'Instructor' || rol === 'Administrador') && (
             <>
               <label className="input">
                 <span className="icon"><FiLock /></span>
                 <input
                   type="text"
-                  placeholder="Código de Seguridad (requerido para Instructores)"
+                  placeholder={`Código de Seguridad (requerido para ${rol === 'Instructor' ? 'Instructores' : 'Administradores'})`}
                   value={codigoInvitacion}
                   onChange={e => setCodigoInvitacion(e.target.value)}
                   style={{ textTransform: 'uppercase' }}
@@ -183,7 +183,7 @@ export default function Register() {
               </label>
               {errores.codigo_invitacion && <div className="error-msg">{errores.codigo_invitacion}</div>}
               <p style={{ fontSize: '0.85rem', color: '#666', marginTop: '-0.5rem', marginBottom: '1rem' }}>
-                Necesitas un código de invitación válido para registrarte como Instructor
+                Necesitas un código de invitación válido para registrarte como {rol}
               </p>
             </>
           )}

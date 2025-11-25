@@ -15,13 +15,13 @@ export const registerSchema = z.object({
   }),
   codigo_invitacion: z.string().optional().nullable(),
 }).refine((data) => {
-  // Si el rol es Instructor, el código de invitación es requerido
-  if (data.rol === 'Instructor' && !data.codigo_invitacion) {
+  // Si el rol es Instructor o Administrador, el código de invitación es requerido
+  if ((data.rol === 'Instructor' || data.rol === 'Administrador') && !data.codigo_invitacion) {
     return false;
   }
   return true;
 }, {
-  message: 'El código de invitación es requerido para registrarse como Instructor',
+  message: 'El código de invitación es requerido para registrarse como Instructor o Administrador',
   path: ['codigo_invitacion'],
 });
 
@@ -41,25 +41,23 @@ export const updateUserSchema = z.object({
 /**
  * Middleware de validación genérico
  */
-export const validate = (schema) => {
-  return (req, res, next) => {
-    try {
-      const validated = schema.parse(req.body);
-      req.body = validated;
-      next();
-    } catch (error) {
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({
-          success: false,
-          error: 'Error de validación',
-          details: error.errors.map((e) => ({
-            path: e.path.join('.'),
-            message: e.message,
-          })),
-        });
-      }
-      next(error);
+export const validate = (schema) => (req, res, next) => {
+  try {
+    const validated = schema.parse(req.body);
+    req.body = validated;
+    next();
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({
+        success: false,
+        error: 'Error de validación',
+        details: error.errors.map((e) => ({
+          path: e.path.join('.'),
+          message: e.message,
+        })),
+      });
     }
-  };
+    next(error);
+  }
 };
 

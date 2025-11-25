@@ -439,7 +439,7 @@ export default function VerificarInventario() {
                                   <td><strong>{equipo.codigo_inventario || equipo.codigo_equipo}</strong></td>
                                   <td>{equipo.tipo}</td>
                                   <td>{equipo.marca} {equipo.modelo}</td>
-                                  <td>{equipo.numero_serie || '-'}</td>
+                                  <td>{equipo.consecutivo || '-'}</td>
                                   <td>
                                     <span style={{
                                       padding: '4px 10px',

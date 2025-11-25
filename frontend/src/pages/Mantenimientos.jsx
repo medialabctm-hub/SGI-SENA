@@ -274,7 +274,7 @@ export default function Mantenimientos() {
                       <td>
                         <div>
                           <strong>{mant.equipo_tipo} {mant.equipo_marca} {mant.equipo_modelo}</strong>
-                          {mant.numero_serie && <div style={{ fontSize: '0.85rem', color: '#666' }}>S/N: {mant.numero_serie}</div>}
+                          {mant.consecutivo && <div style={{ fontSize: '0.85rem', color: '#666' }}>Consecutivo: {mant.consecutivo}</div>}
                         </div>
                       </td>
                       <td>{getTipoBadge(mant.tipo_mantenimiento)}</td>
@@ -374,7 +374,7 @@ export default function Mantenimientos() {
               </div>
               <div>
                 <strong>Equipo:</strong> {selectedMantenimiento.equipo_tipo} {selectedMantenimiento.equipo_marca} {selectedMantenimiento.equipo_modelo}
-                {selectedMantenimiento.numero_serie && <span> (S/N: {selectedMantenimiento.numero_serie})</span>}
+                {selectedMantenimiento.consecutivo && <span> (Consecutivo: {selectedMantenimiento.consecutivo})</span>}
               </div>
               <div>
                 <strong>Tipo:</strong> {getTipoBadge(selectedMantenimiento.tipo_mantenimiento)}

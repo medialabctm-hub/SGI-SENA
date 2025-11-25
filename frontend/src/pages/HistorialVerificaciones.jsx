@@ -119,11 +119,12 @@ export default function HistorialVerificaciones() {
   if (!user) return null
 
   return (
-    <div className="dashboard-layout">
-      <Sidebar user={user} />
-      <main className="dashboard-main">
-        <Header user={user} />
-        {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+    <div className="page">
+      <Header user={user} />
+      <div className="dashboard-layout">
+        <Sidebar user={user} />
+        <main className="dashboard-main">
+          {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
 
         <div className="users-panel">
           <div className="users-toolbar">
@@ -295,7 +296,8 @@ export default function HistorialVerificaciones() {
             </div>
           )}
         </div>
-      </main>
+        </main>
+      </div>
     </div>
   )
 }

@@ -665,7 +665,7 @@ export default function AsignarEquipo() {
                               <strong>{asig.equipo_tipo} {asig.equipo_marca} {asig.equipo_modelo}</strong>
                               <div style={{ fontSize: '0.85rem', color: '#666', marginTop: '4px' }}>
                                 Código: {asig.codigo_inventario || asig.codigo_equipo}
-                                {asig.numero_serie && <span> | S/N: {asig.numero_serie}</span>}
+                                {asig.consecutivo && <span> | Consecutivo: {asig.consecutivo}</span>}
                               </div>
                             </div>
                           </td>

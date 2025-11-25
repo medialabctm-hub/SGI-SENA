@@ -156,7 +156,7 @@ export async function crearMantenimiento(req, res) {
 
       if (responsables.length > 0) {
         const userIds = responsables.map(r => r.id_usuario)
-        const equipoDesc = `${equipo.tipo} ${equipo.marca} ${equipo.modelo}`.trim()
+        const equipoDesc = `${equipo.tipo} ${equipo.placa || ''} ${equipo.modelo}`.trim()
         const fechaFormateada = new Date(fechaMantenimientoFormatted).toLocaleDateString('es-ES', {
           year: 'numeric',
           month: 'long',
@@ -185,7 +185,7 @@ export async function crearMantenimiento(req, res) {
     }
 
     // Crear automáticamente un reporte sobre el mantenimiento
-    const equipoDescReporte = `${equipo.tipo} ${equipo.marca} ${equipo.modelo}`.trim()
+    const equipoDescReporte = `${equipo.tipo} ${equipo.placa || ''} ${equipo.modelo}`.trim()
     const tituloReporte = `Mantenimiento ${tipo_mantenimiento} - ${equipoDescReporte}`
     const descripcionReporte = `Se ha registrado un mantenimiento de tipo "${tipo_mantenimiento}" para el equipo ${equipoDescReporte}.\n\n` +
       `Fecha: ${fechaMantenimientoFormatted}\n` +
@@ -245,9 +245,10 @@ export async function listarMantenimientos(req, res) {
         m.estado_mantenimiento,
         m.observaciones,
         e.tipo AS equipo_tipo,
-        e.marca AS equipo_marca,
+        e.placa AS equipo_placa,
         e.modelo AS equipo_modelo,
-        e.numero_serie,
+        e.consecutivo,
+        e.r_centro,
         u.nombre_usuario AS realizado_por_nombre,
         t.nombre_usuario AS tecnico_nombre
       FROM Mantenimiento m
@@ -295,9 +296,10 @@ export async function obtenerMantenimientoPorId(req, res) {
       `SELECT 
         m.*,
         e.tipo AS equipo_tipo,
-        e.marca AS equipo_marca,
+        e.placa AS equipo_placa,
         e.modelo AS equipo_modelo,
-        e.numero_serie,
+        e.consecutivo,
+        e.r_centro,
         u.nombre_usuario AS realizado_por_nombre,
         t.nombre_usuario AS tecnico_nombre
       FROM Mantenimiento m

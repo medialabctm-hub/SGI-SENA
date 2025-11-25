@@ -66,24 +66,20 @@ export default function ImportarEquipos({ onImportComplete }) {
   }
 
   const descargarPlantilla = () => {
-    // Crear plantilla Excel básica
+    // Crear plantilla Excel básica con los nuevos campos
     const plantilla = {
-      'codigo_inventario': [],
-      'tipo': [],
-      'marca': [],
-      'modelo': [],
-      'numero_serie': [],
-      'descripcion': [],
-      'fecha_adquisicion': [],
-      'costo': [],
-      'vida_util_meses': [],
-      'estado_fisico': [],
-      'ambiente': [],
-      'incluye_mouse': [],
-      'incluye_teclado': [],
-      'incluye_monitor': [],
-      'incluye_torre': [],
-      'specs_completas': []
+      'R Centro': [],
+      'Modelo': [],
+      'Consecutivo': [],
+      'Descripcion': [],
+      'Descripción Actual': [],
+      'Tipo': [],
+      'Placa': [],
+      'Atributos': [],
+      'Fecha Adquisición': [],
+      'Valor Ingreso': [],
+      'Ambiente': [],
+      'Estado Físico': []
     }
 
     // Crear workbook y worksheet

@@ -86,7 +86,7 @@ export async function crearReporte(req, res) {
 
         if (responsables.length > 0) {
           const userIds = responsables.map(r => r.id_usuario)
-          const equipoDesc = `${equipoInfo.tipo} ${equipoInfo.marca} ${equipoInfo.modelo}`.trim()
+          const equipoDesc = `${equipoInfo.tipo} ${equipoInfo.placa || ''} ${equipoInfo.modelo}`.trim()
           await createForUsers({
             userIds,
             titulo: {
@@ -145,8 +145,10 @@ export async function listarReportes(req, res) {
         r.fecha_generacion,
         u.nombre_usuario AS generado_por_nombre,
         e.tipo AS equipo_tipo,
-        e.marca AS equipo_marca,
-        e.modelo AS equipo_modelo
+        e.placa AS equipo_placa,
+        e.modelo AS equipo_modelo,
+        e.r_centro,
+        e.consecutivo
       FROM Reportes r
       INNER JOIN Usuarios u ON r.generado_por = u.id_usuario
       LEFT JOIN Elementos e ON r.codigo_equipo = e.codigo_equipo
@@ -197,8 +199,10 @@ export async function obtenerReportePorId(req, res) {
         r.*,
         u.nombre_usuario AS generado_por_nombre,
         e.tipo AS equipo_tipo,
-        e.marca AS equipo_marca,
-        e.modelo AS equipo_modelo
+        e.placa AS equipo_placa,
+        e.modelo AS equipo_modelo,
+        e.r_centro,
+        e.consecutivo
       FROM Reportes r
       INNER JOIN Usuarios u ON r.generado_por = u.id_usuario
       LEFT JOIN Elementos e ON r.codigo_equipo = e.codigo_equipo

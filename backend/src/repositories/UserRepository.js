@@ -87,7 +87,7 @@ export class UserRepository extends BaseRepository {
   async findById(userId) {
     return this.findOne(
       `SELECT u.id_usuario, u.nombre_usuario, u.correo, u.telefono, u.cedula, 
-              r.nombre_rol, u.requiere_cambio_contrasena
+              u.id_rol, r.nombre_rol, u.requiere_cambio_contrasena
        FROM Usuarios u
        LEFT JOIN Roles r ON r.id_rol = u.id_rol
        WHERE u.id_usuario = ? AND u.estado = "Activo"`,
@@ -250,7 +250,7 @@ export class UserRepository extends BaseRepository {
    */
   async getAssignedEquipos(userId) {
     return this.execute(
-      `SELECT e.codigo_equipo, e.numero_serie, e.tipo, e.marca, e.modelo, 
+      `SELECT e.codigo_equipo, e.r_centro, e.consecutivo, e.tipo, e.placa, e.modelo, 
               ee.estado_operativo, a.nombre_ambiente, a.codigo_ambiente, 
               re.fecha_asignacion, re.tipo_responsabilidad, 
               DATEDIFF(NOW(), re.fecha_asignacion) AS dias_asignado

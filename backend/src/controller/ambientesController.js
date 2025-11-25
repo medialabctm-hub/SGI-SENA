@@ -90,17 +90,17 @@ export async function obtenerAmbiente(req, res) {
     const [equipos] = await defaultDb.execute(
       `SELECT 
         e.codigo_equipo,
-        e.codigo_inventario,
+        e.r_centro,
         e.tipo,
-        e.marca,
+        e.placa,
         e.modelo,
-        e.numero_serie,
+        e.consecutivo,
         ee.estado_operativo,
         e.estado_fisico
        FROM Elementos e
        LEFT JOIN Estado_Equipo ee ON e.codigo_equipo = ee.codigo_equipo
        WHERE e.id_ambiente = ?
-       ORDER BY e.tipo, e.marca, e.modelo`,
+       ORDER BY e.tipo, e.placa, e.modelo`,
       [id]
     );
 

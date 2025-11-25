@@ -60,8 +60,8 @@ export async function obtenerUsuarioPorCedula(db, cedula) {
 export async function obtenerEquiposAsignados(db, userId) {
   const [equipos] = await db.execute(
     `SELECT 
-       e.codigo_equipo, e.codigo_inventario, e.tipo, e.marca, e.modelo, 
-       e.numero_serie, e.estado_fisico, e.descripcion,
+       e.codigo_equipo, e.r_centro, e.consecutivo, e.tipo, e.placa, e.modelo, 
+       e.estado_fisico, e.descripcion, e.descripcion_actual,
        a.nombre_ambiente, a.codigo_ambiente,
        re.fecha_asignacion, re.tipo_responsabilidad, re.observaciones,
        DATEDIFF(NOW(), re.fecha_asignacion) AS dias_asignado,
@@ -85,24 +85,34 @@ export async function obtenerEquiposAsignados(db, userId) {
  */
 export async function obtenerEquipoPorCodigo(db, codigo) {
   const queryBase = `
-    SELECT e.codigo_equipo, e.codigo_inventario, e.tipo, e.marca, e.modelo, 
-           e.numero_serie, e.descripcion, e.fecha_adquisicion, e.costo, 
+    SELECT e.codigo_equipo, e.r_centro, e.consecutivo, e.tipo, e.placa, e.modelo, 
+           e.descripcion, e.descripcion_actual, e.fecha_adquisicion, e.costo, e.valor_ingreso,
            e.vida_util_meses, e.estado_fisico,
            e.incluye_mouse, e.incluye_teclado, e.incluye_monitor, e.incluye_torre,
-           e.specs_completas,
+           e.specs_completas, e.atributos,
            a.id_ambiente, a.nombre_ambiente, a.codigo_ambiente
     FROM Elementos e
     LEFT JOIN Ambientes a ON a.id_ambiente = e.id_ambiente
   `;
 
-  // Intentar buscar por código de inventario primero
-  const [[rowInventario]] = await db.execute(
-    `${queryBase} WHERE e.codigo_inventario = ?`,
+  // Intentar buscar por r_centro primero
+  const [[rowRCentro]] = await db.execute(
+    `${queryBase} WHERE e.r_centro = ?`,
     [codigo]
   );
 
-  if (rowInventario) {
-    return rowInventario;
+  if (rowRCentro) {
+    return rowRCentro;
+  }
+
+  // Intentar buscar por consecutivo
+  const [[rowConsecutivo]] = await db.execute(
+    `${queryBase} WHERE e.consecutivo = ?`,
+    [codigo]
+  );
+
+  if (rowConsecutivo) {
+    return rowConsecutivo;
   }
 
   // Si no se encuentra, intentar por ID numérico

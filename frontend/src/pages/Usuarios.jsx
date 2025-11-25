@@ -313,10 +313,10 @@ export default function Usuarios() {
               <h4>Equipos asignados</h4>
               {viewUser.equipos && viewUser.equipos.length ? (
                 <table className="users-table">
-                  <thead><tr><th>Equipo</th><th>Serie</th><th>Ambiente</th><th>Asignado (días)</th></tr></thead>
+                  <thead><tr><th>Equipo</th><th>Consecutivo</th><th>Ambiente</th><th>Asignado (días)</th></tr></thead>
                   <tbody>
                     {viewUser.equipos.map(eq => (
-                      <tr key={eq.codigo_equipo}><td className="equipo-detail-cell">{eq.tipo} {eq.marca} {eq.modelo}</td><td>{eq.numero_serie}</td><td>{eq.nombre_ambiente}</td><td>{eq.dias_asignado}</td></tr>
+                      <tr key={eq.codigo_equipo}><td className="equipo-detail-cell">{eq.tipo} {eq.marca} {eq.modelo}</td><td>{eq.consecutivo}</td><td>{eq.nombre_ambiente}</td><td>{eq.dias_asignado}</td></tr>
                     ))}
                   </tbody>
                 </table>

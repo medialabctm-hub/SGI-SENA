@@ -185,21 +185,30 @@ export default function ConsultarEquipo() {
   }
 
   function formatCurrency(value) {
-    if (!value) return '-'
-    return new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(value)
+    if (!value && value !== 0) return '-'
+    try {
+      const numValue = typeof value === 'string' ? parseFloat(value) : value
+      if (isNaN(numValue)) return '-'
+      return new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(numValue)
+    } catch (err) {
+      console.error('Error formateando moneda:', err, value)
+      return String(value || '-')
+    }
   }
 
   function formatDate(dateString) {
     if (!dateString) return '-'
     try {
       const date = new Date(dateString)
+      if (isNaN(date.getTime())) return String(dateString)
       return date.toLocaleDateString('es-ES', {
         year: 'numeric',
         month: 'short',
         day: 'numeric'
       })
-    } catch {
-      return dateString
+    } catch (err) {
+      console.error('Error formateando fecha:', err, dateString)
+      return String(dateString || '-')
     }
   }
 
@@ -232,6 +241,11 @@ export default function ConsultarEquipo() {
     }
 
     try {
+      // Validar que jsPDF esté disponible
+      if (typeof jsPDF === 'undefined') {
+        throw new Error('jsPDF no está disponible. Por favor, recarga la página.')
+      }
+
       // Crear nuevo documento PDF
       const doc = new jsPDF('landscape', 'mm', 'a4')
       
@@ -243,53 +257,83 @@ export default function ConsultarEquipo() {
       // Fecha de generación
       doc.setFontSize(10)
       doc.setTextColor(100, 100, 100)
-      const fechaGeneracion = new Date().toLocaleDateString('es-ES', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-      })
-      doc.text(`Generado el: ${fechaGeneracion}`, 14, 22)
+      try {
+        const fechaGeneracion = new Date().toLocaleDateString('es-ES', {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        })
+        doc.text(`Generado el: ${fechaGeneracion}`, 14, 22)
+      } catch (dateErr) {
+        doc.text(`Generado el: ${new Date().toISOString().split('T')[0]}`, 14, 22)
+      }
       
       // Preparar datos para la tabla
-      const tableData = equiposParaPDF.map(eq => [
-        eq.codigo_inventario || '-',
-        eq.codigo_equipo || '-',
-        eq.tipo || '-',
-        eq.marca || '-',
-        eq.modelo || '-',
-        eq.numero_serie || '-',
-        eq.estado_fisico || '-',
-        eq.fecha_adquisicion ? formatDate(eq.fecha_adquisicion) : '-',
-        eq.costo ? formatCurrency(eq.costo) : '-',
-        eq.nombre_ambiente || '-',
-        eq.codigo_ambiente || '-',
-        eq.vida_util_meses ?? '-',
-        eq.incluye_mouse ? 'Sí' : 'No',
-        eq.incluye_teclado ? 'Sí' : 'No',
-        eq.incluye_monitor ? 'Sí' : 'No',
-        eq.incluye_torre ? 'Sí' : 'No',
-        (eq.descripcion || '-').substring(0, 30) + (eq.descripcion && eq.descripcion.length > 30 ? '...' : ''),
-        (eq.specs_completas || '-').substring(0, 30) + (eq.specs_completas && eq.specs_completas.length > 30 ? '...' : '')
-      ])
+      const tableData = equiposParaPDF.map(eq => {
+        // Función auxiliar para truncar texto de forma segura
+        const truncateText = (text, maxLength = 30) => {
+          if (!text) return '-'
+          const textStr = String(text)
+          if (textStr.length <= maxLength) return textStr
+          return textStr.substring(0, maxLength) + '...'
+        }
+
+        return [
+          eq.codigo_inventario || '-',
+          eq.codigo_equipo || '-',
+          eq.tipo || '-',
+          // eq.marca || '-', // Eliminado
+          eq.modelo || '-',
+          eq.consecutivo || '-',
+          eq.estado_fisico || '-',
+          eq.fecha_adquisicion ? formatDate(eq.fecha_adquisicion) : '-',
+          eq.costo ? formatCurrency(eq.costo) : '-',
+          eq.nombre_ambiente || '-',
+          eq.codigo_ambiente || '-',
+          eq.incluye_mouse ? 'Sí' : 'No',
+          eq.incluye_teclado ? 'Sí' : 'No',
+          eq.incluye_monitor ? 'Sí' : 'No',
+          eq.incluye_torre ? 'Sí' : 'No',
+          truncateText(eq.descripcion, 30),
+          truncateText(eq.specs_completas, 30)
+        ]
+      })
 
       // Configurar la tabla
+      // jspdf-autotable extiende automáticamente jsPDF con el método autoTable
+      // Si no está disponible, puede ser un problema de carga de módulos
+      if (typeof doc.autoTable !== 'function') {
+        // Intentar cargar dinámicamente como último recurso
+        try {
+          await import('jspdf-autotable')
+          // Esperar un momento para que el módulo se registre
+          await new Promise(resolve => setTimeout(resolve, 100))
+        } catch (err) {
+          console.error('Error al cargar autoTable:', err)
+        }
+        
+        // Verificar nuevamente después de la importación dinámica
+        if (typeof doc.autoTable !== 'function') {
+          throw new Error('La librería autoTable no se cargó correctamente. Por favor, recarga la página completamente (Ctrl+F5) e intenta nuevamente.')
+        }
+      }
+
       doc.autoTable({
         startY: 28,
         head: [[
           'Código Inventario',
           'ID Interno',
           'Tipo',
-          'Marca',
+          // 'Marca', // Eliminado
           'Modelo',
-          'N° Serie',
+          'Consecutivo',
           'Estado',
           'Fecha Adquisición',
           'Costo',
           'Ambiente',
           'Código Ambiente',
-          'Vida útil (meses)',
           'Mouse',
           'Teclado',
           'Monitor',
@@ -323,7 +367,7 @@ export default function ConsultarEquipo() {
       })
 
       // Pie de página con total de equipos
-      const finalY = doc.lastAutoTable.finalY || 28
+      const finalY = (doc.lastAutoTable && doc.lastAutoTable.finalY) ? doc.lastAutoTable.finalY : 28
       doc.setFontSize(10)
       doc.setTextColor(0, 0, 0)
       doc.text(`Total de equipos: ${equiposParaPDF.length}`, 14, finalY + 10)
@@ -395,15 +439,14 @@ export default function ConsultarEquipo() {
                       <th>Código Inventario</th>
                       <th>ID Interno</th>
                       <th>Tipo</th>
-                      <th>Marca</th>
+                      {/* <th>Marca</th> -- Eliminado por solicitud */}
                       <th>Modelo</th>
-                      <th>N° Serie</th>
+                      <th>Consecutivo</th>
                       <th>Estado</th>
                       <th>Fecha Adquisición</th>
                       <th>Costo</th>
                       <th>Ambiente</th>
                       <th>Código Ambiente</th>
-                      <th>Vida útil (meses)</th>
                       <th>Mouse</th>
                       <th>Teclado</th>
                       <th>Monitor</th>
@@ -423,11 +466,12 @@ export default function ConsultarEquipo() {
                             <input value={draft.tipo || ''} onChange={e=>onDraft('tipo', e.target.value)} className="cell-input" />
                           ) : (eq.tipo)}
                         </td>
-                        <td>
+                        {/* Eliminado Marca */}
+                        {/* <td>
                           {editingCodigo === eq.codigo_equipo ? (
                             <input value={draft.marca || ''} onChange={e=>onDraft('marca', e.target.value)} className="cell-input" />
                           ) : (eq.marca || '-')}
-                        </td>
+                        </td> */}
                         <td>
                           {editingCodigo === eq.codigo_equipo ? (
                             <input value={draft.modelo || ''} onChange={e=>onDraft('modelo', e.target.value)} className="cell-input" />
@@ -435,8 +479,8 @@ export default function ConsultarEquipo() {
                         </td>
                         <td>
                           {editingCodigo === eq.codigo_equipo ? (
-                            <input value={draft.numero_serie || ''} onChange={e=>onDraft('numero_serie', e.target.value)} className="cell-input" />
-                          ) : (eq.numero_serie || '-')}
+                            <input value={draft.consecutivo || ''} onChange={e=>onDraft('consecutivo', e.target.value)} className="cell-input" />
+                          ) : (eq.consecutivo || '-')}
                         </td>
                         <td>
                           {editingCodigo === eq.codigo_equipo ? (
@@ -462,11 +506,6 @@ export default function ConsultarEquipo() {
                           {editingCodigo === eq.codigo_equipo ? (
                             <input value={draft.ambiente || eq.codigo_ambiente || ''} onChange={e=>onDraft('ambiente', e.target.value)} className="cell-input" placeholder="ID/ Código/ Nombre" />
                           ) : (eq.codigo_ambiente || '-')}
-                        </td>
-                        <td>
-                          {editingCodigo === eq.codigo_equipo ? (
-                            <input type="number" value={draft.vida_util_meses ?? ''} onChange={e=>onDraft('vida_util_meses', e.target.value === '' ? null : Number(e.target.value))} className="cell-input" />
-                          ) : (eq.vida_util_meses ?? '-')}
                         </td>
                         <td>
                           {editingCodigo === eq.codigo_equipo ? (

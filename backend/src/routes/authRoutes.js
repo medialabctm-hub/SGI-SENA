@@ -15,7 +15,7 @@ import {
 import express from 'express';
 import rateLimit from 'express-rate-limit';
 import { authenticate } from '../middleware/authMiddleware.js';
-import { requirePermission, requireRole, requireOwnership } from '../middleware/authorization.js';
+import { requirePermission, requireOwnership } from '../middleware/authorization.js';
 import { PERMISSIONS } from '../config/permissions.js';
 import { validate, registerSchema, loginSchema, updateUserSchema } from '../validators/authValidator.js';
 

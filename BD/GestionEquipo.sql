@@ -124,13 +124,12 @@ CREATE TABLE Categorias_Equipo (
 -- ===================
 CREATE TABLE Elementos (
   codigo_equipo INT PRIMARY KEY AUTO_INCREMENT,
-  codigo_inventario VARCHAR(50) NOT NULL UNIQUE,
   id_categoria INT NOT NULL,
   id_ambiente INT NOT NULL,
   tipo VARCHAR(100) NOT NULL,
   marca VARCHAR(100),
   modelo VARCHAR(100),
-  numero_serie VARCHAR(100) UNIQUE,
+  numero_serie VARCHAR(100),
   descripcion TEXT,
   fecha_adquisicion DATE,
   costo DECIMAL(10,2),
@@ -143,11 +142,19 @@ CREATE TABLE Elementos (
   incluye_monitor BOOLEAN DEFAULT FALSE,
   incluye_torre BOOLEAN DEFAULT FALSE,
   specs_completas TEXT,
+  r_centro VARCHAR(50) NOT NULL,
+  consecutivo VARCHAR(100),
+  descripcion_actual TEXT,
+  placa VARCHAR(100),
+  atributos TEXT,
+  valor_ingreso DECIMAL(10,2),
   FOREIGN KEY (id_categoria) REFERENCES Categorias_Equipo(id_categoria),
   FOREIGN KEY (id_ambiente) REFERENCES Ambientes(id_ambiente) ON DELETE RESTRICT,
   FOREIGN KEY (registrado_por) REFERENCES Usuarios(id_usuario),
   INDEX idx_tipo (tipo),
   INDEX idx_numero_serie (numero_serie),
+  INDEX idx_r_centro (r_centro),
+  INDEX idx_consecutivo (consecutivo),
   INDEX idx_ambiente (id_ambiente)
 ) COMMENT = 'Tabla principal de equipos y componentes tecnológicos';
 
@@ -593,7 +600,7 @@ DELIMITER ;
 
 CREATE VIEW Vista_Equipos_Con_Responsables AS
 SELECT 
-    e.codigo_equipo, e.numero_serie, e.tipo, e.marca, e.modelo,
+    e.codigo_equipo, e.r_centro, e.consecutivo, e.tipo, e.modelo,
     a.nombre_ambiente, a.codigo_ambiente, ee.estado_operativo, e.estado_fisico,
     GROUP_CONCAT(CONCAT(u.nombre_usuario, ' (', r.nombre_rol, ')')
         ORDER BY re.tipo_responsabilidad, u.nombre_usuario SEPARATOR ', ') AS responsables,
@@ -604,12 +611,12 @@ LEFT JOIN Estado_Equipo ee ON e.codigo_equipo = ee.codigo_equipo
 LEFT JOIN Responsables_Equipo re ON e.codigo_equipo = re.codigo_equipo AND re.estado_responsabilidad = 'Activo'
 LEFT JOIN Usuarios u ON re.id_usuario = u.id_usuario
 LEFT JOIN Roles r ON u.id_rol = r.id_rol
-GROUP BY e.codigo_equipo, e.numero_serie, e.tipo, e.marca, e.modelo, 
+GROUP BY e.codigo_equipo, e.r_centro, e.consecutivo, e.tipo, e.modelo, 
          a.nombre_ambiente, a.codigo_ambiente, ee.estado_operativo, e.estado_fisico;
 
 CREATE VIEW Vista_Equipos_Disponibles AS
 SELECT 
-    e.codigo_equipo, e.numero_serie, e.tipo, e.marca, e.modelo,
+    e.codigo_equipo, e.r_centro, e.consecutivo, e.tipo, e.modelo,
     CASE WHEN c.es_componente = TRUE THEN 'Componente Individual' ELSE 'Equipo Completo' END AS nombre_tipo,
     a.nombre_ambiente, a.codigo_ambiente, a.tipo_ambiente, e.estado_fisico, e.fecha_adquisicion
 FROM Elementos e
@@ -620,7 +627,7 @@ WHERE ee.estado_operativo = 'Disponible' AND e.estado_fisico IN ('Nuevo', 'Bueno
 
 CREATE VIEW Vista_Mantenimientos_Proximos AS
 SELECT 
-    m.id_mantenimiento, e.codigo_equipo, e.numero_serie, e.tipo, m.tipo_mantenimiento,
+    m.id_mantenimiento, e.codigo_equipo, e.r_centro, e.consecutivo, e.tipo, m.tipo_mantenimiento,
     m.fecha_proximo, DATEDIFF(m.fecha_proximo, CURDATE()) AS dias_restantes,
     a.nombre_ambiente, a.codigo_ambiente,
     CASE 
@@ -654,7 +661,7 @@ CREATE VIEW Vista_Equipos_Por_Usuario AS
 SELECT 
     u.id_usuario, u.nombre_usuario, u.cedula, r.nombre_rol, 
     COUNT(DISTINCT re.codigo_equipo) AS equipos_asignados,
-    GROUP_CONCAT(CONCAT(e.tipo, ' - ', e.numero_serie)
+    GROUP_CONCAT(CONCAT(e.tipo, ' - ', COALESCE(e.consecutivo, e.r_centro))
         ORDER BY re.fecha_asignacion DESC SEPARATOR ' | ') AS detalle_equipos
 FROM Usuarios u
 INNER JOIN Roles r ON u.id_rol = r.id_rol
@@ -792,7 +799,7 @@ END;
 CREATE PROCEDURE sp_equipos_por_usuario(IN p_id_usuario INT)
 BEGIN
     SELECT 
-        e.codigo_equipo, e.numero_serie, e.tipo, e.marca, e.modelo, ee.estado_operativo,
+        e.codigo_equipo, e.r_centro, e.consecutivo, e.placa, e.tipo, e.modelo, ee.estado_operativo,
         a.nombre_ambiente, a.codigo_ambiente, re.fecha_asignacion, re.tipo_responsabilidad,
         DATEDIFF(NOW(), re.fecha_asignacion) AS dias_asignado
     FROM Responsables_Equipo re

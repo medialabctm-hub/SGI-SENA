@@ -17,6 +17,7 @@ import Novedades from './pages/Novedades';
 import Reportes from './pages/Reportes';
 import Mantenimientos from './pages/Mantenimientos';
 import CrearMantenimiento from './pages/CrearMantenimiento';
+import PaginaNoEncontrada from './pages/PaginaNoEncontrada.jsx';
 import Asignaciones from './pages/Asignaciones';
 import Ambientes from './pages/Ambientes';
 import AsignarAmbientes from './pages/AsignarAmbientes';
@@ -230,6 +231,8 @@ export default function App() {
           </ProtectedRoute>
         }
       />
+      {/* Ruta 404 */}
+      <Route element={<PaginaNoEncontrada />} path="*" />
     </Routes>
   );
 }

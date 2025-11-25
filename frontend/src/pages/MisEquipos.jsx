@@ -109,7 +109,7 @@ export default function MisEquipos() {
                       <td>{eq.tipo}</td>
                       <td>{eq.marca}</td>
                       <td>{eq.modelo}</td>
-                      <td>{eq.numero_serie}</td>
+                      <td>{eq.consecutivo}</td>
                       <td>
                         <span 
                           className="badge" 

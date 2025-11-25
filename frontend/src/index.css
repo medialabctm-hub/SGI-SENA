@@ -240,3 +240,70 @@ body {
   .sidebar{width:100% !important}
   .page.simple-page > h2{font-size:18px}
 }
+
+.cat_404 {
+  width: 15%;
+  height: 35%;
+
+}
+
+.pagina-no-encontrada {
+  min-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: var(--neutral-200);
+  text-align: center;
+  height: 100%;
+}
+
+.pagina-no-encontrada__titulo {
+  font-size: 3.2rem;
+  font-weight: 700;
+  color: var(--success-800);
+  margin-bottom: 1.2rem;
+}
+.pagina-no-encontrada__descripcion {
+  font-size: 1.5rem;
+  color: var(--neutral-900);
+  margin-bottom: 2.5rem;
+}
+.pagina-no-encontrada__boton {
+  background: var(--neutral-50);
+  color: var(--neutral-900);
+  padding: 1rem 2.5rem;
+  border-radius: 0.8rem;
+  border: solid 1px var(--neutral-300);
+  font-size: 1.3rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background 0.2s;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  display: inline-block;
+}
+.pagina-no-encontrada__boton:hover {
+  background: var(--success-800);
+  color: var(--neutral-100);
+}
+
+.carrito-burbuja-cantidad {
+  position: absolute;
+  top: -0.7rem;
+  right: -0.7rem;
+  min-width: 2.5rem;
+  height: 2.5rem;
+  background: var(--secondary-700);
+  color: var(--neutral-100);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  font-weight: 700;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+  z-index: 10;
+  padding: 0 0.4rem;
+  pointer-events: none;
+  transition: background 0.18s;
+}
