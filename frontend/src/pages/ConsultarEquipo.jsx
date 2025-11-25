@@ -6,8 +6,7 @@ import ConfirmModal from '../components/ConfirmModal'
 import { parseApiResponse, buildErrorMessage } from '../utils/api'
 import { FiDownload, FiSearch, FiList, FiClock } from 'react-icons/fi'
 import { useNavigate } from 'react-router-dom'
-import jsPDF from 'jspdf'
-import 'jspdf-autotable'
+import * as XLSX from 'xlsx'
 import '../styles/equipos.css'
 
 export default function ConsultarEquipo() {
@@ -216,7 +215,7 @@ export default function ConsultarEquipo() {
     setToast(null)
     
     // Si no hay equipos cargados, obtener todos primero
-    let equiposParaPDF = equipos
+    let equiposParaExportar = equipos
     if (equipos.length === 0) {
       setLoading(true)
       try {
@@ -224,10 +223,10 @@ export default function ConsultarEquipo() {
         const res = await fetch('/api/equipos', {
           headers: { Authorization: `Bearer ${token}` }
         })
-        const data = await parseApiResponse(res, 'No se pudo obtener los equipos para el PDF')
-        equiposParaPDF = Array.isArray(data) ? data : []
+        const data = await parseApiResponse(res, 'No se pudo obtener los equipos para la exportación')
+        equiposParaExportar = Array.isArray(data) ? data : []
       } catch (err) {
-        setToast({ message: buildErrorMessage(err, 'No se pudo obtener los equipos para el PDF'), type: 'error' })
+        setToast({ message: buildErrorMessage(err, 'No se pudo obtener los equipos para la exportación'), type: 'error' })
         setLoading(false)
         return
       } finally {
@@ -235,151 +234,70 @@ export default function ConsultarEquipo() {
       }
     }
 
-    if (equiposParaPDF.length === 0) {
+    if (equiposParaExportar.length === 0) {
       setToast({ message: 'No hay equipos para descargar', type: 'error' })
       return
     }
 
     try {
-      // Validar que jsPDF esté disponible
-      if (typeof jsPDF === 'undefined') {
-        throw new Error('jsPDF no está disponible. Por favor, recarga la página.')
-      }
+      // Preparar datos para Excel
+      const datosExcel = equiposParaExportar.map(eq => ({
+        'Código Inventario': eq.codigo_inventario || '-',
+        'ID Interno': eq.codigo_equipo || '-',
+        'Tipo': eq.tipo || '-',
+        'Modelo': eq.modelo || '-',
+        'Consecutivo': eq.consecutivo || '-',
+        'Estado': eq.estado_fisico || '-',
+        'Fecha Adquisición': eq.fecha_adquisicion ? formatDate(eq.fecha_adquisicion) : '-',
+        'Costo': eq.costo ? formatCurrency(eq.costo) : '-',
+        'Ambiente': eq.nombre_ambiente || '-',
+        'Código Ambiente': eq.codigo_ambiente || '-',
+        'Mouse': eq.incluye_mouse ? 'Sí' : 'No',
+        'Teclado': eq.incluye_teclado ? 'Sí' : 'No',
+        'Monitor': eq.incluye_monitor ? 'Sí' : 'No',
+        'Torre': eq.incluye_torre ? 'Sí' : 'No',
+        'Descripción': eq.descripcion || '-',
+        'Especificaciones': eq.specs_completas || '-'
+      }))
 
-      // Crear nuevo documento PDF
-      const doc = new jsPDF('landscape', 'mm', 'a4')
+      // Crear workbook
+      const wb = XLSX.utils.book_new()
       
-      // Título
-      doc.setFontSize(18)
-      doc.setTextColor(0, 0, 0)
-      doc.text('Reporte de Equipos - SENA', 14, 15)
+      // Crear worksheet desde los datos
+      const ws = XLSX.utils.json_to_sheet(datosExcel)
       
-      // Fecha de generación
-      doc.setFontSize(10)
-      doc.setTextColor(100, 100, 100)
-      try {
-        const fechaGeneracion = new Date().toLocaleDateString('es-ES', {
-          year: 'numeric',
-          month: 'long',
-          day: 'numeric',
-          hour: '2-digit',
-          minute: '2-digit'
-        })
-        doc.text(`Generado el: ${fechaGeneracion}`, 14, 22)
-      } catch (dateErr) {
-        doc.text(`Generado el: ${new Date().toISOString().split('T')[0]}`, 14, 22)
-      }
+      // Ajustar ancho de columnas
+      const colWidths = [
+        { wch: 18 }, // Código Inventario
+        { wch: 12 }, // ID Interno
+        { wch: 15 }, // Tipo
+        { wch: 20 }, // Modelo
+        { wch: 15 }, // Consecutivo
+        { wch: 15 }, // Estado
+        { wch: 18 }, // Fecha Adquisición
+        { wch: 15 }, // Costo
+        { wch: 20 }, // Ambiente
+        { wch: 18 }, // Código Ambiente
+        { wch: 8 },  // Mouse
+        { wch: 10 }, // Teclado
+        { wch: 10 }, // Monitor
+        { wch: 10 }, // Torre
+        { wch: 30 }, // Descripción
+        { wch: 30 }  // Especificaciones
+      ]
+      ws['!cols'] = colWidths
       
-      // Preparar datos para la tabla
-      const tableData = equiposParaPDF.map(eq => {
-        // Función auxiliar para truncar texto de forma segura
-        const truncateText = (text, maxLength = 30) => {
-          if (!text) return '-'
-          const textStr = String(text)
-          if (textStr.length <= maxLength) return textStr
-          return textStr.substring(0, maxLength) + '...'
-        }
-
-        return [
-          eq.codigo_inventario || '-',
-          eq.codigo_equipo || '-',
-          eq.tipo || '-',
-          // eq.marca || '-', // Eliminado
-          eq.modelo || '-',
-          eq.consecutivo || '-',
-          eq.estado_fisico || '-',
-          eq.fecha_adquisicion ? formatDate(eq.fecha_adquisicion) : '-',
-          eq.costo ? formatCurrency(eq.costo) : '-',
-          eq.nombre_ambiente || '-',
-          eq.codigo_ambiente || '-',
-          eq.incluye_mouse ? 'Sí' : 'No',
-          eq.incluye_teclado ? 'Sí' : 'No',
-          eq.incluye_monitor ? 'Sí' : 'No',
-          eq.incluye_torre ? 'Sí' : 'No',
-          truncateText(eq.descripcion, 30),
-          truncateText(eq.specs_completas, 30)
-        ]
-      })
-
-      // Configurar la tabla
-      // jspdf-autotable extiende automáticamente jsPDF con el método autoTable
-      // Si no está disponible, puede ser un problema de carga de módulos
-      if (typeof doc.autoTable !== 'function') {
-        // Intentar cargar dinámicamente como último recurso
-        try {
-          await import('jspdf-autotable')
-          // Esperar un momento para que el módulo se registre
-          await new Promise(resolve => setTimeout(resolve, 100))
-        } catch (err) {
-          console.error('Error al cargar autoTable:', err)
-        }
-        
-        // Verificar nuevamente después de la importación dinámica
-        if (typeof doc.autoTable !== 'function') {
-          throw new Error('La librería autoTable no se cargó correctamente. Por favor, recarga la página completamente (Ctrl+F5) e intenta nuevamente.')
-        }
-      }
-
-      doc.autoTable({
-        startY: 28,
-        head: [[
-          'Código Inventario',
-          'ID Interno',
-          'Tipo',
-          // 'Marca', // Eliminado
-          'Modelo',
-          'Consecutivo',
-          'Estado',
-          'Fecha Adquisición',
-          'Costo',
-          'Ambiente',
-          'Código Ambiente',
-          'Mouse',
-          'Teclado',
-          'Monitor',
-          'Torre',
-          'Descripción',
-          'Especificaciones'
-        ]],
-        body: tableData,
-        theme: 'striped',
-        headStyles: {
-          fillColor: [34, 139, 34], // Verde SENA
-          textColor: [255, 255, 255],
-          fontStyle: 'bold',
-          fontSize: 7
-        },
-        bodyStyles: {
-          fontSize: 6,
-          textColor: [0, 0, 0]
-        },
-        alternateRowStyles: {
-          fillColor: [245, 245, 245]
-        },
-        styles: {
-          cellPadding: 2,
-          overflow: 'linebreak',
-          cellWidth: 'wrap'
-        },
-        margin: { top: 28, left: 14, right: 14 },
-        pageBreak: 'auto',
-        rowPageBreak: 'avoid'
-      })
-
-      // Pie de página con total de equipos
-      const finalY = (doc.lastAutoTable && doc.lastAutoTable.finalY) ? doc.lastAutoTable.finalY : 28
-      doc.setFontSize(10)
-      doc.setTextColor(0, 0, 0)
-      doc.text(`Total de equipos: ${equiposParaPDF.length}`, 14, finalY + 10)
-
-      // Guardar el PDF
-      const nombreArchivo = `equipos_sena_${new Date().toISOString().split('T')[0]}.pdf`
-      doc.save(nombreArchivo)
+      // Agregar worksheet al workbook
+      XLSX.utils.book_append_sheet(wb, ws, 'Equipos')
       
-      setToast({ message: `PDF descargado exitosamente: ${nombreArchivo}`, type: 'success' })
+      // Generar archivo Excel
+      const nombreArchivo = `equipos_sena_${new Date().toISOString().split('T')[0]}.xlsx`
+      XLSX.writeFile(wb, nombreArchivo)
+      
+      setToast({ message: `Archivo Excel descargado exitosamente: ${nombreArchivo}`, type: 'success' })
     } catch (err) {
-      console.error('Error al generar PDF:', err)
-      setToast({ message: 'Error al generar el PDF. Por favor, intenta nuevamente.', type: 'error' })
+      console.error('Error al generar Excel:', err)
+      setToast({ message: 'Error al generar el archivo Excel. Por favor, intenta nuevamente.', type: 'error' })
     }
   }
 
@@ -423,7 +341,7 @@ export default function ConsultarEquipo() {
               </form>
               <button type="button" className="btn btn-verde" onClick={handleDescargarPDF} disabled={loading}>
                 <FiDownload size={16} />
-                Descargar PDF
+                Descargar Excel
               </button>
             </div>
           </div>
