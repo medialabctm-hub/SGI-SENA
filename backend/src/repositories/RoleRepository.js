@@ -24,7 +24,7 @@ export class RoleRepository extends BaseRepository {
    * @returns {Promise<Array>} Lista de roles
    */
   async findAll() {
-    return this.execute('SELECT * FROM Roles WHERE estado = "Activo"');
+    return this.execute('SELECT id_rol, nombre_rol, descripcion, estado FROM Roles WHERE estado = "Activo"');
   }
 }
 

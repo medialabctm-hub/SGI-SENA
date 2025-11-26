@@ -29,14 +29,6 @@ export async function crearClase(req, res) {
       instructorId = userId;
     }
 
-    // Validaciones
-    if (!id_ambiente || !fecha_clase || !hora_inicio || !hora_fin) {
-      return res.status(400).json({ 
-        error: 'Faltan campos obligatorios',
-        detalle: 'Se requieren: id_ambiente, fecha_clase, hora_inicio, hora_fin'
-      });
-    }
-
     // Si no es instructor, debe proporcionar id_instructor
     if (userRole !== 'Instructor' && !id_instructor) {
       return res.status(400).json({ 
@@ -418,6 +410,7 @@ export async function finalizarClase(req, res) {
  */
 export async function agregarParticipantes(req, res) {
   try {
+    // Los datos ya están validados por el middleware de validación Zod
     const { id } = req.params;
     const { participantes } = req.body; // Array de id_aprendiz
 
@@ -470,11 +463,14 @@ export async function agregarParticipantes(req, res) {
       return res.status(409).json({ error: 'Todos los participantes ya están registrados en esta clase' });
     }
 
-    // Insertar nuevos participantes
-    const values = idsNuevos.map(idAprendiz => `(${id}, ${idAprendiz})`).join(',');
-    await defaultDb.execute(
-      `INSERT INTO Participantes_Clase (id_clase, id_aprendiz) VALUES ${values}`
+    // Insertar nuevos participantes usando prepared statements (seguro)
+    const insertPromises = idsNuevos.map(idAprendiz => 
+      defaultDb.execute(
+        'INSERT INTO Participantes_Clase (id_clase, id_aprendiz) VALUES (?, ?)',
+        [id, idAprendiz]
+      )
     );
+    await Promise.all(insertPromises);
 
     return res.json({
       ok: true,

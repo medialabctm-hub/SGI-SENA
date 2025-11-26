@@ -14,7 +14,9 @@ export class InvitationCodeRepository extends BaseRepository {
    */
   async findByCode(codigo) {
     return this.findOne(
-      `SELECT * FROM Invitation_Codes 
+      `SELECT id_codigo, codigo, rol_destinado, fecha_expiracion, max_usos, 
+              usos_actuales, creado_por, fecha_creacion, estado
+       FROM Invitation_Codes 
        WHERE codigo = ? AND estado = 'Activo'`,
       [codigo]
     );

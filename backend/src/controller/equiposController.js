@@ -3,16 +3,16 @@ import { notifyNuevoEquipo } from '../services/notificationService.js';
 import { logger } from '../utils/logger.js';
 import { obtenerEquipoPorCodigo as obtenerEquipoPorCodigoUtil } from '../utils/sqlQueries.js';
 
-// Esta función se movió a ambientesController.js
-// Se mantiene aquí solo para compatibilidad temporal si hay referencias
-// TODO: Eliminar esta función y usar la de ambientesController
+// Esta función se mantiene para compatibilidad con rutas existentes
+// Nota: La funcionalidad principal está en ambientesController.js
 
 export async function listarEquipos(req, res) {
   try {
+    // Opcional: implementar paginación si hay muchos equipos
+    // Por ahora mantenemos la funcionalidad existente
     const query = `
       SELECT e.codigo_equipo, e.placa AS codigo_inventario, e.tipo, e.marca, e.modelo, e.numero_serie, e.consecutivo, e.descripcion,
              e.fecha_adquisicion, e.valor_ingreso AS costo, e.vida_util_meses, e.estado_fisico,
-             e.incluye_mouse, e.incluye_teclado, e.incluye_monitor, e.incluye_torre,
              e.specs_completas,
              a.id_ambiente, a.nombre_ambiente, a.codigo_ambiente
       FROM Elementos e
@@ -22,6 +22,7 @@ export async function listarEquipos(req, res) {
     const [rows] = await defaultDb.execute(query);
     return res.json(rows);
   } catch (err) {
+    logger.error('Error al listar equipos', { error: err.message });
     return res.status(500).json({ error: 'Error al listar equipos', detalle: err.message });
   }
 }
@@ -44,10 +45,6 @@ export async function registrarEquipo(req, res) {
       valor_ingreso,
       vida_util_meses,
       estado_fisico,
-      incluye_mouse,
-      incluye_teclado,
-      incluye_monitor,
-      incluye_torre,
       specs_completas,
       id_ambiente,
       ambiente
@@ -136,8 +133,8 @@ export async function registrarEquipo(req, res) {
     let params;
     if (usaIdTipo) {
       query = `INSERT INTO Elementos
-        (id_categoria, id_tipo, id_ambiente, tipo, marca, modelo, numero_serie, descripcion, fecha_adquisicion, valor_ingreso, vida_util_meses, estado_fisico, incluye_mouse, incluye_teclado, incluye_monitor, incluye_torre, specs_completas, r_centro, consecutivo, placa, registrado_por)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+        (id_categoria, id_tipo, id_ambiente, tipo, marca, modelo, numero_serie, descripcion, fecha_adquisicion, valor_ingreso, vida_util_meses, estado_fisico, specs_completas, r_centro, consecutivo, placa, registrado_por)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
       params = [
         categoria.id_categoria,
         idTipo,
@@ -151,10 +148,6 @@ export async function registrarEquipo(req, res) {
         valorIngreso ? parseFloat(valorIngreso) : null,
         vida_util_meses || null,
         estado_fisico,
-        !!incluye_mouse,
-        !!incluye_teclado,
-        !!incluye_monitor,
-        !!incluye_torre,
         specs_completas || null,
         rCentroValue,
         consecutivoValue || null,
@@ -163,8 +156,8 @@ export async function registrarEquipo(req, res) {
       ];
     } else {
       query = `INSERT INTO Elementos
-        (id_categoria, id_ambiente, tipo, marca, modelo, numero_serie, descripcion, fecha_adquisicion, valor_ingreso, vida_util_meses, estado_fisico, incluye_mouse, incluye_teclado, incluye_monitor, incluye_torre, specs_completas, r_centro, consecutivo, placa, registrado_por)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+        (id_categoria, id_ambiente, tipo, marca, modelo, numero_serie, descripcion, fecha_adquisicion, valor_ingreso, vida_util_meses, estado_fisico, specs_completas, r_centro, consecutivo, placa, registrado_por)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
       params = [
         categoria.id_categoria,
         ambienteId,
@@ -177,10 +170,6 @@ export async function registrarEquipo(req, res) {
         valorIngreso ? parseFloat(valorIngreso) : null,
         vida_util_meses || null,
         estado_fisico,
-        !!incluye_mouse,
-        !!incluye_teclado,
-        !!incluye_monitor,
-        !!incluye_torre,
         specs_completas || null,
         rCentroValue,
         consecutivoValue || null,
@@ -231,7 +220,6 @@ export async function obtenerEquipoPorCodigo(req, res) {
     const queryBase = `
       SELECT e.codigo_equipo, e.placa AS codigo_inventario, e.tipo, e.marca, e.modelo, e.numero_serie, e.consecutivo, e.descripcion,
              e.fecha_adquisicion, e.valor_ingreso AS costo, e.vida_util_meses, e.estado_fisico,
-             e.incluye_mouse, e.incluye_teclado, e.incluye_monitor, e.incluye_torre,
              e.specs_completas,
              a.id_ambiente, a.nombre_ambiente, a.codigo_ambiente,
              (SELECT estado_mantenimiento FROM Mantenimiento 
@@ -305,8 +293,7 @@ export async function actualizarEquipo(req, res) {
 
     const allowed = [
       'tipo', 'marca', 'modelo', 'numero_serie', 'descripcion', 'fecha_adquisicion',
-      'costo', 'vida_util_meses', 'estado_fisico', 'incluye_mouse', 'incluye_teclado',
-      'incluye_monitor', 'incluye_torre', 'specs_completas'
+      'costo', 'vida_util_meses', 'estado_fisico', 'specs_completas'
     ];
 
     const sets = [];
@@ -747,7 +734,10 @@ export async function obtenerEquiposAmbientesInstructor(req, res) {
       equipos
     })
   } catch (err) {
-    console.error('Error al obtener equipos de ambientes del instructor:', err)
+    logger.error('Error al obtener equipos de ambientes del instructor', {
+      error: err.message,
+      stack: process.env.NODE_ENV === 'development' ? err.stack : undefined,
+    });
     return res.status(500).json({ 
       error: 'Error al obtener equipos de ambientes', 
       details: err.message 

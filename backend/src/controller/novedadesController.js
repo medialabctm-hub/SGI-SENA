@@ -10,31 +10,14 @@ import { obtenerEquipoPorCodigo } from '../utils/sqlQueries.js'
  */
 export async function crearNovedad(req, res) {
   try {
+    // Los datos ya están validados por el middleware de validación Zod
     const { codigo_equipo, tipo_novedad, descripcion } = req.body
     const userId = req.user?.id
 
     logger.debug('Crear novedad - Datos recibidos', { codigo_equipo, tipo_novedad, descripcion: descripcion?.substring(0, 50), userId })
 
-    if (!codigo_equipo || !tipo_novedad || !descripcion) {
-      return res.status(400).json({ 
-        error: 'Faltan campos obligatorios',
-        recibido: { codigo_equipo: !!codigo_equipo, tipo_novedad: !!tipo_novedad, descripcion: !!descripcion }
-      })
-    }
-
-    // Validar y normalizar tipo_novedad
-    const tiposValidos = ['Daño', 'Pérdida', 'Robo', 'Mal Funcionamiento', 'Daño Físico', 'Falta de Componente', 'Otro']
-    let tipoNovedadNormalizado = tipo_novedad.trim()
-    
-    // Validar tipo de novedad (las asignaciones redundantes fueron eliminadas)
-    
-    if (!tiposValidos.includes(tipoNovedadNormalizado)) {
-      return res.status(400).json({ 
-        error: 'Tipo de novedad inválido',
-        tipo_recibido: tipo_novedad,
-        tipos_validos: tiposValidos
-      })
-    }
+    // Normalizar tipo_novedad (ya validado por Zod)
+    const tipoNovedadNormalizado = tipo_novedad.trim()
 
     // Validar que el equipo existe usando utilidad SQL
     const equipo = await obtenerEquipoPorCodigo(defaultDb, codigo_equipo)

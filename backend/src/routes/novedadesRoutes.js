@@ -3,14 +3,18 @@ import { authenticate } from '../middleware/authMiddleware.js'
 import { requireAnyPermission } from '../middleware/authorization.js'
 import { PERMISSIONS } from '../config/permissions.js'
 import { crearNovedad, listarNovedades, obtenerNovedadPorId, actualizarEstadoNovedad } from '../controller/novedadesController.js'
+import { writeLimiter, readLimiter } from '../middleware/rateLimiter.js'
+import { validate, crearNovedadSchema, actualizarEstadoNovedadSchema } from '../validators/novedadesValidator.js'
 
 const router = express.Router()
 
 // Todas las rutas requieren autenticación
 router.use(authenticate)
 
-// Crear novedad - Todos los roles pueden crear (con restricciones en el controlador)
+// Crear novedad - Todos los roles pueden crear (con restricciones en el controlador) - Protegido con rate limiting y validación
 router.post('/', 
+  writeLimiter,
+  validate(crearNovedadSchema),
   requireAnyPermission([
     PERMISSIONS.NOVEDADES.CREATE
   ]),
@@ -37,8 +41,10 @@ router.get('/:id',
   obtenerNovedadPorId
 )
 
-// Actualizar estado de novedad
+// Actualizar estado de novedad - Protegido con validación
 router.put('/:id/estado', 
+  writeLimiter,
+  validate(actualizarEstadoNovedadSchema),
   requireAnyPermission([
     PERMISSIONS.NOVEDADES.UPDATE,
     PERMISSIONS.NOVEDADES.RESOLVE

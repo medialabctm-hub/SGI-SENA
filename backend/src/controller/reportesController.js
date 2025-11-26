@@ -9,12 +9,9 @@ import { obtenerEquipoPorCodigo } from '../utils/sqlQueries.js'
  */
 export async function crearReporte(req, res) {
   try {
+    // Los datos ya están validados por el middleware de validación Zod
     const { tipo_reporte, titulo, descripcion, codigo_equipo } = req.body
     const userId = req.user?.id
-
-    if (!tipo_reporte || !titulo || !descripcion) {
-      return res.status(400).json({ error: 'Faltan campos obligatorios (tipo_reporte, titulo, descripcion)' })
-    }
 
     // Si se especifica un equipo, validar que existe usando utilidad SQL
     if (codigo_equipo) {

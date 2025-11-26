@@ -28,6 +28,7 @@ import horariosRoutes from './src/routes/horariosRoutes.js';
 import importRoutes from './src/routes/importRoutes.js';
 import invitationCodeRoutes from './src/routes/invitationCodeRoutes.js';
 import preferencesRoutes from './src/routes/preferencesRoutes.js';
+import webhookRoutes from './src/routes/webhookRoutes.js';
 import schedulerService from './src/services/schedulerService.js';
 
 const app = express();
@@ -46,7 +47,7 @@ app.use(
     origin: config.cors.origin || 'http://localhost:5173',
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'x-api-key'],
   })
 );
 
@@ -63,11 +64,16 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 // Cookie parser
 app.use(cookieParser());
 
-// Morgan - Logging de requests
+// Morgan - Logging de requests (optimizado)
+// En producción, usar formato más eficiente
 if (process.env.NODE_ENV === 'development') {
   app.use(morgan('dev'));
 } else {
-  app.use(morgan('combined'));
+  // Formato 'combined' es más completo pero más pesado
+  // 'common' es más eficiente para producción
+  app.use(morgan('common', {
+    skip: (req, res) => res.statusCode < 400, // Solo loggear errores en producción
+  }));
 }
 
 // ============================================
@@ -98,6 +104,7 @@ app.use('/api', horariosRoutes);
 app.use('/api/import', importRoutes);
 app.use('/api/invitation-codes', invitationCodeRoutes);
 app.use('/api/preferences', preferencesRoutes);
+app.use('/webhook', webhookRoutes);
 
 // Ruta 404
 app.use((req, res) => {

@@ -97,11 +97,6 @@ export default function ConsultarEquipo() {
     setToast(null)
     try {
       const payload = { ...draft }
-      // normalizar booleanos
-      payload.incluye_mouse = !!payload.incluye_mouse
-      payload.incluye_teclado = !!payload.incluye_teclado
-      payload.incluye_monitor = !!payload.incluye_monitor
-      payload.incluye_torre = !!payload.incluye_torre
       // permitir enviar 'ambiente' como texto/código si el usuario lo edita
       if (payload.ambiente && payload.ambiente.trim() === '') delete payload.ambiente
 
@@ -211,6 +206,33 @@ export default function ConsultarEquipo() {
     }
   }
 
+  // Función para parsear especificaciones del formato "MARCA:valor;SERIAL:valor;MODELO:valor;OBSERVACIONES:valor"
+  function parsearEspecificaciones(specs) {
+    if (!specs || typeof specs !== 'string') {
+      return { marca: '-', serial: '-', modelo: '-', observaciones: '-' }
+    }
+    
+    const resultado = { marca: '-', serial: '-', modelo: '-', observaciones: '-' }
+    
+    // Buscar cada campo en el formato "CAMPO:valor" (puede terminar con ; o al final del string)
+    const campos = {
+      marca: /MARCA:\s*([^;]+?)(?=;|$)/i,
+      serial: /SERIAL:\s*([^;]+?)(?=;|$)/i,
+      modelo: /MODELO:\s*([^;]+?)(?=;|$)/i,
+      observaciones: /OBSERVACIONES:\s*([^;]+?)(?=;|$)/i
+    }
+    
+    Object.keys(campos).forEach(campo => {
+      const match = specs.match(campos[campo])
+      if (match && match[1]) {
+        const valor = match[1].trim()
+        resultado[campo] = valor || '-'
+      }
+    })
+    
+    return resultado
+  }
+
   async function handleDescargarPDF() {
     setToast(null)
     
@@ -240,52 +262,98 @@ export default function ConsultarEquipo() {
     }
 
     try {
-      // Preparar datos para Excel
-      const datosExcel = equiposParaExportar.map(eq => ({
-        'Código Inventario': eq.codigo_inventario || '-',
-        'ID Interno': eq.codigo_equipo || '-',
-        'Tipo': eq.tipo || '-',
-        'Modelo': eq.modelo || '-',
-        'Consecutivo': eq.consecutivo || '-',
-        'Estado': eq.estado_fisico || '-',
-        'Fecha Adquisición': eq.fecha_adquisicion ? formatDate(eq.fecha_adquisicion) : '-',
-        'Costo': eq.costo ? formatCurrency(eq.costo) : '-',
-        'Ambiente': eq.nombre_ambiente || '-',
-        'Código Ambiente': eq.codigo_ambiente || '-',
-        'Mouse': eq.incluye_mouse ? 'Sí' : 'No',
-        'Teclado': eq.incluye_teclado ? 'Sí' : 'No',
-        'Monitor': eq.incluye_monitor ? 'Sí' : 'No',
-        'Torre': eq.incluye_torre ? 'Sí' : 'No',
-        'Descripción': eq.descripcion || '-',
-        'Especificaciones': eq.specs_completas || '-'
-      }))
+      // Preparar datos para Excel con especificaciones separadas
+      const datosExcel = equiposParaExportar.map(eq => {
+        const specs = parsearEspecificaciones(eq.specs_completas)
+        return {
+          'Código Inventario': eq.codigo_inventario || '-',
+          'ID Interno': eq.codigo_equipo || '-',
+          'Tipo': eq.tipo || '-',
+          'Modelo': eq.modelo || '-',
+          'Consecutivo': eq.consecutivo || '-',
+          'Estado': eq.estado_fisico || '-',
+          'Fecha Adquisición': eq.fecha_adquisicion ? formatDate(eq.fecha_adquisicion) : '-',
+          'Costo': eq.costo ? formatCurrency(eq.costo) : '-',
+          'Ambiente': eq.nombre_ambiente || '-',
+          'Código Ambiente': eq.codigo_ambiente || '-',
+          'Descripción': eq.descripcion || '-',
+          'Marca (Especificaciones)': specs.marca,
+          'Serial (Especificaciones)': specs.serial,
+          'Modelo (Especificaciones)': specs.modelo,
+          'Observaciones': specs.observaciones
+        }
+      })
 
       // Crear workbook
       const wb = XLSX.utils.book_new()
       
-      // Crear worksheet desde los datos
-      const ws = XLSX.utils.json_to_sheet(datosExcel)
+      // Preparar fila de título con información
+      const fechaExportacion = new Date().toLocaleDateString('es-ES', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      })
       
-      // Ajustar ancho de columnas
+      const numColumnas = Object.keys(datosExcel[0] || {}).length
+      const filaTitulo = Array(numColumnas).fill('')
+      filaTitulo[0] = `INVENTARIO DE EQUIPOS - SENA - Exportado el ${fechaExportacion} - Total de equipos: ${equiposParaExportar.length}`
+      
+      // Crear array de arrays: título + encabezados + datos
+      const headers = Object.keys(datosExcel[0] || {})
+      const datosArray = [
+        filaTitulo, // Fila 0: Título
+        headers,    // Fila 1: Encabezados
+        ...datosExcel.map(row => headers.map(key => row[key] || '-')) // Filas 2+: Datos
+      ]
+      
+      // Crear worksheet desde array de arrays
+      const ws = XLSX.utils.aoa_to_sheet(datosArray)
+      
+      // Combinar celdas de la fila de título (desde A1 hasta la última columna)
+      if (!ws['!merges']) ws['!merges'] = []
+      ws['!merges'].push({
+        s: { r: 0, c: 0 },
+        e: { r: 0, c: numColumnas - 1 }
+      })
+      
+      // Ajustar altura de la fila de título
+      if (!ws['!rows']) ws['!rows'] = []
+      ws['!rows'][0] = { hpt: 25 }
+      ws['!rows'][1] = { hpt: 20 } // Altura para encabezados
+      
+      // Ajustar ancho de columnas de forma más adecuada
       const colWidths = [
-        { wch: 18 }, // Código Inventario
+        { wch: 20 }, // Código Inventario
         { wch: 12 }, // ID Interno
-        { wch: 15 }, // Tipo
-        { wch: 20 }, // Modelo
-        { wch: 15 }, // Consecutivo
+        { wch: 18 }, // Tipo
+        { wch: 25 }, // Modelo
+        { wch: 18 }, // Consecutivo
         { wch: 15 }, // Estado
-        { wch: 18 }, // Fecha Adquisición
-        { wch: 15 }, // Costo
-        { wch: 20 }, // Ambiente
+        { wch: 20 }, // Fecha Adquisición
+        { wch: 18 }, // Costo
+        { wch: 25 }, // Ambiente
         { wch: 18 }, // Código Ambiente
-        { wch: 8 },  // Mouse
-        { wch: 10 }, // Teclado
-        { wch: 10 }, // Monitor
-        { wch: 10 }, // Torre
-        { wch: 30 }, // Descripción
-        { wch: 30 }  // Especificaciones
+        { wch: 35 }, // Descripción
+        { wch: 20 }, // Marca (Especificaciones)
+        { wch: 20 }, // Serial (Especificaciones)
+        { wch: 25 }, // Modelo (Especificaciones)
+        { wch: 50 }  // Observaciones
       ]
       ws['!cols'] = colWidths
+      
+      // Configurar vista: congelar fila de encabezados (fila 2, índice 1) y primera columna
+      ws['!freeze'] = { xSplit: 0, ySplit: 1, topLeftCell: 'A2', activePane: 'bottomLeft', state: 'frozen' }
+      
+      // Agregar filtros automáticos (autofilter) en la fila de encabezados (fila 2, índice 1)
+      if (ws['!ref']) {
+        const range = XLSX.utils.decode_range(ws['!ref'])
+        // El autofilter debe aplicarse desde la fila de encabezados (índice 1)
+        range.s.r = 1
+        range.e.r = range.e.r // Mantener el final del rango
+        ws['!autofilter'] = { ref: XLSX.utils.encode_range(range) }
+      }
       
       // Agregar worksheet al workbook
       XLSX.utils.book_append_sheet(wb, ws, 'Equipos')
@@ -365,10 +433,6 @@ export default function ConsultarEquipo() {
                       <th>Costo</th>
                       <th>Ambiente</th>
                       <th>Código Ambiente</th>
-                      <th>Mouse</th>
-                      <th>Teclado</th>
-                      <th>Monitor</th>
-                      <th>Torre</th>
                       <th>Descripción</th>
                       <th>Especificaciones</th>
                       <th style={{width: user?.nombre_rol === 'Administrador' ? '280px' : '120px'}}>Acciones</th>
@@ -424,74 +488,6 @@ export default function ConsultarEquipo() {
                           {editingCodigo === eq.codigo_equipo ? (
                             <input value={draft.ambiente || eq.codigo_ambiente || ''} onChange={e=>onDraft('ambiente', e.target.value)} className="cell-input" placeholder="ID/ Código/ Nombre" />
                           ) : (eq.codigo_ambiente || '-')}
-                        </td>
-                        <td>
-                          {editingCodigo === eq.codigo_equipo ? (
-                            <input type="checkbox" checked={!!draft.incluye_mouse} onChange={e=>onDraft('incluye_mouse', e.target.checked)} />
-                          ) : (
-                            <span style={{
-                              padding: '4px 10px',
-                              borderRadius: '12px',
-                              fontSize: '0.85rem',
-                              fontWeight: 600,
-                              color: eq.incluye_mouse ? '#10b981' : '#6b7280',
-                              background: eq.incluye_mouse ? '#d1fae5' : '#f3f4f6',
-                              display: 'inline-block'
-                            }}>
-                              {eq.incluye_mouse ? 'Sí' : 'No'}
-                            </span>
-                          )}
-                        </td>
-                        <td>
-                          {editingCodigo === eq.codigo_equipo ? (
-                            <input type="checkbox" checked={!!draft.incluye_teclado} onChange={e=>onDraft('incluye_teclado', e.target.checked)} />
-                          ) : (
-                            <span style={{
-                              padding: '4px 10px',
-                              borderRadius: '12px',
-                              fontSize: '0.85rem',
-                              fontWeight: 600,
-                              color: eq.incluye_teclado ? '#10b981' : '#6b7280',
-                              background: eq.incluye_teclado ? '#d1fae5' : '#f3f4f6',
-                              display: 'inline-block'
-                            }}>
-                              {eq.incluye_teclado ? 'Sí' : 'No'}
-                            </span>
-                          )}
-                        </td>
-                        <td>
-                          {editingCodigo === eq.codigo_equipo ? (
-                            <input type="checkbox" checked={!!draft.incluye_monitor} onChange={e=>onDraft('incluye_monitor', e.target.checked)} />
-                          ) : (
-                            <span style={{
-                              padding: '4px 10px',
-                              borderRadius: '12px',
-                              fontSize: '0.85rem',
-                              fontWeight: 600,
-                              color: eq.incluye_monitor ? '#10b981' : '#6b7280',
-                              background: eq.incluye_monitor ? '#d1fae5' : '#f3f4f6',
-                              display: 'inline-block'
-                            }}>
-                              {eq.incluye_monitor ? 'Sí' : 'No'}
-                            </span>
-                          )}
-                        </td>
-                        <td>
-                          {editingCodigo === eq.codigo_equipo ? (
-                            <input type="checkbox" checked={!!draft.incluye_torre} onChange={e=>onDraft('incluye_torre', e.target.checked)} />
-                          ) : (
-                            <span style={{
-                              padding: '4px 10px',
-                              borderRadius: '12px',
-                              fontSize: '0.85rem',
-                              fontWeight: 600,
-                              color: eq.incluye_torre ? '#10b981' : '#6b7280',
-                              background: eq.incluye_torre ? '#d1fae5' : '#f3f4f6',
-                              display: 'inline-block'
-                            }}>
-                              {eq.incluye_torre ? 'Sí' : 'No'}
-                            </span>
-                          )}
                         </td>
                         <td>
                           {editingCodigo === eq.codigo_equipo ? (

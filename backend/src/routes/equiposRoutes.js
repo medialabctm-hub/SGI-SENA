@@ -3,6 +3,8 @@ import { registrarEquipo, obtenerEquipoPorCodigo, listarEquipos, actualizarEquip
 import { authenticate } from '../middleware/authMiddleware.js';
 import { requirePermission, requireAnyPermission } from '../middleware/authorization.js';
 import { PERMISSIONS } from '../config/permissions.js';
+import { writeLimiter, readLimiter, strictLimiter } from '../middleware/rateLimiter.js';
+import { validate, registrarEquipoSchema, actualizarEquipoSchema, asignarEquipoSchema, verificarInventarioSchema } from '../validators/equiposValidator.js';
 
 const router = express.Router();
 
@@ -10,9 +12,11 @@ const router = express.Router();
 // RUTAS PROTEGIDAS DE EQUIPOS
 // ============================================
 
-// Registrar nuevo equipo - Solo Admin
+// Registrar nuevo equipo - Solo Admin - Protegido con rate limiting y validación
 router.post('/', 
   authenticate,
+  writeLimiter,
+  validate(registrarEquipoSchema),
   requirePermission(PERMISSIONS.EQUIPOS.CREATE),
   registrarEquipo
 );
@@ -72,25 +76,30 @@ router.get('/:codigo',
   obtenerEquipoPorCodigo
 );
 
-// Actualizar equipo - Solo Admin
+// Actualizar equipo - Solo Admin - Protegido con rate limiting y validación
 router.put('/:codigo', 
   authenticate,
+  writeLimiter,
+  validate(actualizarEquipoSchema),
   requirePermission(PERMISSIONS.EQUIPOS.UPDATE),
   actualizarEquipo
 );
 
-// Eliminar equipo - Solo Admin
+// Eliminar equipo - Solo Admin - Protegido con rate limiting
 router.delete('/:codigo', 
   authenticate,
+  strictLimiter,
   requirePermission(PERMISSIONS.EQUIPOS.DELETE),
   eliminarEquipo
 );
 
-// Asignar equipo a usuario
+// Asignar equipo a usuario - Protegido con validación
 // Admin: puede asignar a cualquier usuario
 // Instructor: solo puede asignar a Aprendices
 router.post('/asignar', 
   authenticate,
+  writeLimiter,
+  validate(asignarEquipoSchema),
   requireAnyPermission([
     PERMISSIONS.EQUIPOS.ASSIGN,
     PERMISSIONS.EQUIPOS.ASSIGN_TO_APRENDIZ
@@ -116,10 +125,12 @@ router.get('/verificacion/ambientes',
   obtenerEquiposAmbientesInstructor
 );
 
-// Registrar verificación física de inventario
+// Registrar verificación física de inventario - Protegido con validación
 // Solo instructores
 router.post('/verificacion', 
   authenticate,
+  writeLimiter,
+  validate(verificarInventarioSchema),
   registrarVerificacionInventario
 );
 

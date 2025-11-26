@@ -62,11 +62,16 @@ export class Subject {
       try {
         observer.update(event, data);
       } catch (error) {
-        // Usar logger si está disponible, sino console para evitar dependencia circular
-        if (typeof logger !== 'undefined') {
-          logger.error('Error al notificar observador', { error: error.message });
-        } else {
-          console.error('Error al notificar observador:', error);
+        // Importar logger dinámicamente para evitar dependencia circular
+        try {
+          const { logger } = await import('../utils/logger.js');
+          logger.error('Error al notificar observador', { 
+            error: error.message,
+            stack: process.env.NODE_ENV === 'development' ? error.stack : undefined,
+          });
+        } catch {
+          // Fallback silencioso si no se puede importar logger
+          // En producción, los errores se manejarán en el nivel superior
         }
       }
     });

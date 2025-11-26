@@ -44,7 +44,7 @@ export async function importarEquipos(req, res) {
         const marca = String(row['Marca'] || row['marca'] || row['MARCA'] || '').trim();
         const modelo = String(row['Modelo'] || row['modelo'] || row['MODELO'] || '').trim();
         const numeroSerie = String(row['Consecutivo'] || row['consecutivo'] || row['numero_serie'] || row['Número Serie'] || row['NUMERO_SERIE'] || '').trim();
-        const descripcion = row['Descripción Actual'] || row['descripcion_actual'] || row['Descripcion'] || row['descripcion'] || row['Descripción'] || row['DESCRIPCION'] || null;
+        const descripcion = row['Descripcion'] || row['descripcion'] || row['Descripción'] || row['DESCRIPCION'] || null;
         const fechaAdquisicion = row['Fecha Adquisición'] || row['fecha_adquisicion'] || row['Fecha Adquisicion'] || row['FECHA_ADQUISICION'] || null;
         
         // Ajuste para leer Valor Ingreso correctamente, manejando posibles formatos de moneda
@@ -69,14 +69,9 @@ export async function importarEquipos(req, res) {
         const vidaUtilMeses = row['vida_util_meses'] || row['Vida Útil (meses)'] || row['VIDA_UTIL_MESES'] || null;
         const estadoFisico = String(row['Estado Físico'] || row['estado_fisico'] || row['Estado Fisico'] || row['ESTADO_FISICO'] || 'Bueno').trim();
         const ambiente = String(row['Ambiente'] || row['ambiente'] || row['AMBIENTE'] || row['codigo_ambiente'] || row['Código Ambiente'] || '').trim();
-        const incluyeMouse = row['incluye_mouse'] || row['Incluye Mouse'] || row['INCLUYE_MOUSE'] || false;
-        const incluyeTeclado = row['incluye_teclado'] || row['Incluye Teclado'] || row['INCLUYE_TECLADO'] || false;
-        const incluyeMonitor = row['incluye_monitor'] || row['Incluye Monitor'] || row['INCLUYE_MONITOR'] || false;
-        const incluyeTorre = row['incluye_torre'] || row['Incluye Torre'] || row['INCLUYE_TORRE'] || false;
         const specsCompletas = row['Atributos'] || row['atributos'] || row['specs_completas'] || row['Especificaciones'] || row['SPECS_COMPLETAS'] || null;
         // Campos nuevos
         const rCentro = String(row['R Centro'] || row['r_centro'] || codigoInventario || '').trim();
-        const descripcionActual = row['Descripción Actual'] || row['descripcion_actual'] || descripcion || null;
         const atributos = row['Atributos'] || row['atributos'] || specsCompletas || null;
         const valorIngreso = costo; // Usar el costo procesado
 
@@ -211,10 +206,9 @@ export async function importarEquipos(req, res) {
         // Insertar equipo con nuevos campos
         const query = `INSERT INTO Elementos
           (id_categoria, id_ambiente, tipo, marca, modelo, descripcion, 
-           fecha_adquisicion, costo, vida_util_meses, estado_fisico, incluye_mouse, incluye_teclado, 
-           incluye_monitor, incluye_torre, specs_completas, registrado_por,
-           r_centro, consecutivo, descripcion_actual, placa, atributos, valor_ingreso)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+           fecha_adquisicion, costo, vida_util_meses, estado_fisico, specs_completas, registrado_por,
+           r_centro, consecutivo, placa, atributos, valor_ingreso)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
 
         await defaultDb.execute(query, [
           categoriaId,
@@ -227,15 +221,10 @@ export async function importarEquipos(req, res) {
           costo ? parseFloat(costo) : null,
           vidaUtilMeses ? parseInt(vidaUtilMeses) : null,
           estadoFisicoValido,
-          !!incluyeMouse,
-          !!incluyeTeclado,
-          !!incluyeMonitor,
-          !!incluyeTorre,
           specsCompletas || null,
           userId,
           rCentro || null,
           numeroSerie || null,
-          descripcionActual || null,
           placa || null,
           atributos || null,
           valorIngreso ? parseFloat(valorIngreso) : (costo ? parseFloat(costo) : null)

@@ -1,5 +1,11 @@
 .profile-container {
   max-width: 900px;
+  margin: 0 auto;
+}
+
+/* Asegurar que form-equipos dentro de profile-container tenga el ancho correcto */
+.profile-container.form-equipos {
+  max-width: 900px !important;
 }
 
 .profile-header {

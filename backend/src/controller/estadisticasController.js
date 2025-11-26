@@ -5,13 +5,16 @@ import { logger } from '../utils/logger.js';
  * Obtener estadísticas generales del sistema
  * Solo disponible para Administradores
  */
+/**
+ * Obtener estadísticas generales del sistema
+ * Solo disponible para Administradores (ya validado por middleware)
+ * 
+ * @param {Object} req - Request object
+ * @param {Object} res - Response object
+ */
 export async function obtenerEstadisticas(req, res) {
   try {
-    // Verificar que el usuario sea administrador
-    if (req.user?.rol !== 'Administrador') {
-      return res.status(403).json({ error: 'Solo los administradores pueden ver estadísticas' });
-    }
-
+    // El rol ya está validado por el middleware requireRole
     // Obtener estadísticas usando queries directas (más confiable que procedimiento almacenado)
     let stats;
     
@@ -53,6 +56,7 @@ export async function obtenerEstadisticas(req, res) {
           });
         } catch (e) {
           // Tabla Estado_Equipo no existe, usar valores por defecto
+          logger.debug('Tabla Estado_Equipo no encontrada, usando valores por defecto', { error: e.message });
         }
         
         // Obtener usuarios activos
@@ -69,6 +73,7 @@ export async function obtenerEstadisticas(req, res) {
           ambientesActivos = Number(ambientes?.total) || 0;
         } catch (e) {
           // Tabla Ambientes no existe o no tiene estado_ambiente
+          logger.debug('Error al obtener ambientes activos', { error: e.message });
         }
         
         // Obtener novedades pendientes
@@ -80,6 +85,7 @@ export async function obtenerEstadisticas(req, res) {
           novedadesPendientes = Number(novedades?.total) || 0;
         } catch (e) {
           // Tabla Novedades no existe
+          logger.debug('Error al obtener novedades pendientes', { error: e.message });
         }
         
         // Obtener mantenimientos próximos (próximos 30 días)

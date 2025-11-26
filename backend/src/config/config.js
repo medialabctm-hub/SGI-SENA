@@ -87,6 +87,11 @@ export const config = {
   logging: {
     level: process.env.LOG_LEVEL || "info",
   },
+
+  // Configuración de webhook
+  webhook: {
+    secret: process.env.WEBHOOK_SECRET,
+  },
 };
 
 // Función para validar configuración según el entorno

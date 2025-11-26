@@ -16,7 +16,6 @@ export default function Equipos() {
     modelo: '',
     consecutivo: '',
     descripcion: '',
-    descripcion_actual: '',
     tipo: '',
     placa: '',
     atributos: '',
@@ -80,7 +79,6 @@ export default function Equipos() {
         specs_completas: form.atributos || null,
         // Nuevos campos
         r_centro: form.r_centro,
-        descripcion_actual: form.descripcion_actual || null,
         placa: form.placa || null,
         atributos: form.atributos || null,
         valor_ingreso: form.valor_ingreso || null
@@ -99,7 +97,7 @@ export default function Equipos() {
         type: 'success'
       })
       setForm({
-        r_centro: '', modelo: '', consecutivo: '', descripcion: '', descripcion_actual: '', tipo: '', placa: '', atributos: '', fecha_adquisicion: '', valor_ingreso: '', ambiente: '', estado_fisico: 'Bueno'
+        r_centro: '', modelo: '', consecutivo: '', descripcion: '', tipo: '', placa: '', atributos: '', fecha_adquisicion: '', valor_ingreso: '', ambiente: '', estado_fisico: 'Bueno'
       })
     } catch (err) {
       setToast({
@@ -171,10 +169,6 @@ export default function Equipos() {
           <div className="form-row">
             <label>Descripción</label>
             <textarea name="descripcion" value={form.descripcion} onChange={handleChange} />
-          </div>
-          <div className="form-row">
-            <label>Descripción Actual</label>
-            <textarea name="descripcion_actual" value={form.descripcion_actual} onChange={handleChange} />
           </div>
           <div className="form-row">
             <label>Tipo *</label>

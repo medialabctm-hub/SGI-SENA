@@ -2,10 +2,19 @@
   text-align: center;
   margin-top: 6px;
   margin-bottom: 1.5rem;
+  max-width: 900px;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .config-profile-container {
   max-width: 900px;
+  margin: 0 auto;
+}
+
+/* Asegurar que form-equipos dentro de config-profile-container tenga el ancho correcto */
+.config-profile-container.form-equipos {
+  max-width: 900px !important;
 }
 
 .config-profile-header {

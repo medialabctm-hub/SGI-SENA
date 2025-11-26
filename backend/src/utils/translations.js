@@ -76,12 +76,15 @@ export async function getUserLanguage(userId, db) {
     }
   } catch (error) {
     // Si la tabla no existe o hay error, usar español por defecto
-    // Usar logger si está disponible
+    // Importar logger dinámicamente para evitar dependencia circular
     try {
       const { logger } = await import('./logger.js');
-      logger.warn('Error al obtener idioma del usuario', { error: error.message });
+      logger.warn('Error al obtener idioma del usuario', { 
+        error: error.message,
+        userId,
+      });
     } catch {
-      console.warn('Error al obtener idioma del usuario:', error.message);
+      // Fallback silencioso - el error no es crítico, se usa idioma por defecto
     }
   }
   

@@ -13,41 +13,32 @@ import {
   restablecerContrasena,
 } from '../controller/authController.js';
 import express from 'express';
-import rateLimit from 'express-rate-limit';
 import { authenticate } from '../middleware/authMiddleware.js';
 import { requirePermission, requireOwnership } from '../middleware/authorization.js';
 import { PERMISSIONS } from '../config/permissions.js';
 import { validate, registerSchema, loginSchema, updateUserSchema } from '../validators/authValidator.js';
+import { authLimiter, registerLimiter, passwordResetLimiter } from '../middleware/rateLimiter.js';
 
-const router = express.Router(); 
-
-// Limitar intentos de login
-const loginLimiter = rateLimit({
-  windowMs: 5 * 60 * 1000, // 5 minutos
-  max: 10, // máx. 10 intentos
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: { error: 'Demasiados intentos de inicio de sesión. Intenta nuevamente más tarde.' }
-});
+const router = express.Router();
 
 // ============================================
 // RUTAS PÚBLICAS (sin autenticación)
 // ============================================
 
-// Registro de usuario (público)
-router.post('/register', validate(registerSchema), registerUser);
+// Registro de usuario (público) - Protegido con rate limiting
+router.post('/register', registerLimiter, validate(registerSchema), registerUser);
 
-// Login de usuario (público)
-router.post('/login', loginLimiter, validate(loginSchema), loginUser);
+// Login de usuario (público) - Protegido con rate limiting
+router.post('/login', authLimiter, validate(loginSchema), loginUser);
 
-// Solicitar recuperación de contraseña (público)
-router.post('/recuperar-contrasena', solicitarRecuperacionContrasena);
+// Solicitar recuperación de contraseña (público) - Protegido con rate limiting
+router.post('/recuperar-contrasena', passwordResetLimiter, solicitarRecuperacionContrasena);
 
-// Validar token de recuperación (público)
-router.get('/validar-token/:token', validarTokenRecuperacion);
+// Validar token de recuperación (público) - Protegido con rate limiting
+router.get('/validar-token/:token', passwordResetLimiter, validarTokenRecuperacion);
 
-// Restablecer contraseña con token (público)
-router.post('/restablecer-contrasena', restablecerContrasena);
+// Restablecer contraseña con token (público) - Protegido con rate limiting
+router.post('/restablecer-contrasena', passwordResetLimiter, restablecerContrasena);
 
 // ============================================
 // RUTAS PROTEGIDAS (requieren autenticación)

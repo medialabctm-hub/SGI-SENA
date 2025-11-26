@@ -27,10 +27,12 @@ import HistorialVerificaciones from './pages/HistorialVerificaciones';
 import HistorialVerificacionesGeneral from './pages/HistorialVerificacionesGeneral';
 import ProtectedRoute from './components/ProtectedRoute';
 import RedirectIfAuth from './components/RedirectIfAuth';
+import ErrorBoundary from './components/ErrorBoundary';
 
 export default function App() {
   return (
-    <Routes>
+    <ErrorBoundary>
+      <Routes>
       <Route
         path="/login"
         element={
@@ -233,6 +235,7 @@ export default function App() {
       />
       {/* Ruta 404 */}
       <Route element={<PaginaNoEncontrada />} path="*" />
-    </Routes>
+      </Routes>
+    </ErrorBoundary>
   );
 }

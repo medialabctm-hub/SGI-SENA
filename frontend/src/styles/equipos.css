@@ -564,7 +564,7 @@
   .page.simple-page.config-page .form-equipos {
     margin-left: auto; 
     margin-right: auto;
-    transform: translateX(-120px);
+    /* Removido transform para centrar correctamente */
     transition: transform 0.12s ease;
   }
 }

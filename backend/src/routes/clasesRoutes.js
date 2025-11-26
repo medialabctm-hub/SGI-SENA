@@ -15,15 +15,19 @@ import {
 import { authenticate } from '../middleware/authMiddleware.js';
 import { requirePermission } from '../middleware/authorization.js';
 import { PERMISSIONS } from '../config/permissions.js';
+import { writeLimiter } from '../middleware/rateLimiter.js';
+import { validate, crearClaseSchema, actualizarClaseSchema, agregarParticipantesSchema } from '../validators/clasesValidator.js';
 
 const router = express.Router();
 
 // Todas las rutas requieren autenticación
 router.use(authenticate);
 
-// Crear clase (Instructor y Admin)
+// Crear clase (Instructor y Admin) - Protegido con rate limiting y validación
 router.post(
   '/clases',
+  writeLimiter,
+  validate(crearClaseSchema),
   requirePermission(PERMISSIONS.CLASES.CREATE),
   crearClase
 );
@@ -42,9 +46,11 @@ router.get(
   obtenerClase
 );
 
-// Actualizar clase (solo programadas)
+// Actualizar clase (solo programadas) - Protegido con validación
 router.put(
   '/clases/:id',
+  writeLimiter,
+  validate(actualizarClaseSchema),
   requirePermission(PERMISSIONS.CLASES.UPDATE),
   actualizarClase
 );
@@ -70,9 +76,11 @@ router.post(
   cancelarClase
 );
 
-// Agregar participantes a una clase
+// Agregar participantes a una clase - Protegido con validación
 router.post(
   '/clases/:id/participantes',
+  writeLimiter,
+  validate(agregarParticipantesSchema),
   requirePermission(PERMISSIONS.CLASES.UPDATE),
   agregarParticipantes
 );

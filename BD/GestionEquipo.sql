@@ -137,14 +137,9 @@ CREATE TABLE Elementos (
   estado_fisico ENUM('Nuevo', 'Bueno', 'Regular', 'Malo', 'Dañado') DEFAULT 'Bueno',
   fecha_registro DATETIME DEFAULT NOW(),
   registrado_por INT,
-  incluye_mouse BOOLEAN DEFAULT FALSE,
-  incluye_teclado BOOLEAN DEFAULT FALSE,
-  incluye_monitor BOOLEAN DEFAULT FALSE,
-  incluye_torre BOOLEAN DEFAULT FALSE,
   specs_completas TEXT,
   r_centro VARCHAR(50) NOT NULL,
   consecutivo VARCHAR(100),
-  descripcion_actual TEXT,
   placa VARCHAR(100),
   atributos TEXT,
   valor_ingreso DECIMAL(10,2),
@@ -445,7 +440,7 @@ CREATE TABLE Verificaciones_Inventario (
   id_ambiente INT NULL COMMENT 'Ambiente donde se verificó el equipo',
   id_clase INT NULL COMMENT 'Clase/horario activo cuando se verificó',
   id_responsabilidad_ambiente INT NULL COMMENT 'Responsabilidad que estaba activa cuando se verificó',
-  jornada VARCHAR(20) NULL COMMENT 'Jornada cuando se verificó (para asignaciones permanentes)',
+  jornada ENUM('Mañana', 'Tarde', 'Noche') NULL COMMENT 'Jornada cuando se verificó (para asignaciones permanentes)',
   id_usuario INT NOT NULL COMMENT 'Instructor que realiza la verificación',
   estado_verificacion ENUM('Verificado', 'Con Novedad', 'No Verificado') NOT NULL,
   observaciones TEXT,
@@ -461,6 +456,21 @@ CREATE TABLE Verificaciones_Inventario (
   INDEX idx_estado (estado_verificacion)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
 COMMENT = 'Historial completo de verificaciones de inventario con contexto de horarios y responsabilidades';
+
+CREATE TABLE IF NOT EXISTS pedidos_externos (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  usuario VARCHAR(255) NOT NULL COMMENT 'Usuario que realiza el pedido (identificador externo)',
+  id_ambiente INT NOT NULL COMMENT 'ID del ambiente donde se realiza el pedido',
+  ficha VARCHAR(255) NOT NULL COMMENT 'Ficha asociada al pedido',
+  estado VARCHAR(255) NOT NULL COMMENT 'Estado del pedido',
+  fecha_recepcion DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Fecha y hora de recepción del webhook',
+  FOREIGN KEY (id_ambiente) REFERENCES Ambientes(id_ambiente) ON DELETE RESTRICT,
+  INDEX idx_usuario (usuario),
+  INDEX idx_ambiente (id_ambiente),
+  INDEX idx_ficha (ficha),
+  INDEX idx_estado (estado),
+  INDEX idx_fecha_recepcion (fecha_recepcion)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Tabla para almacenar pedidos recibidos de sistemas externos';
 
 -- =========
 -- TRIGGERS

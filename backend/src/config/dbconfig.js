@@ -2,7 +2,16 @@
 import mysql from "mysql2/promise";
 import { config } from "./config.js";
 
-// Configuración de conexión mejorada para producción
+// Configuración de conexión optimizada para producción
+// Ajusta connectionLimit según el entorno para mejor rendimiento
+const getConnectionLimit = () => {
+  if (process.env.DB_CONNECTION_LIMIT) {
+    return parseInt(process.env.DB_CONNECTION_LIMIT, 10);
+  }
+  // Límite por defecto optimizado según entorno
+  return process.env.NODE_ENV === 'production' ? 20 : 10;
+};
+
 export const dbConfig = {
   host: config.db.host,
   user: config.db.user,
@@ -10,7 +19,7 @@ export const dbConfig = {
   database: config.db.database,
   port: config.db.port,
   waitForConnections: true,
-  connectionLimit: 10,
+  connectionLimit: getConnectionLimit(),
   queueLimit: 0,
   // Configuraciones adicionales para producción
   acquireTimeout: 60000,
@@ -25,6 +34,9 @@ export const dbConfig = {
   connectTimeout: 30000,
   // Configuración de charset
   charset: "utf8mb4",
+  // Optimizaciones adicionales
+  enableKeepAlive: true,
+  keepAliveInitialDelay: 0,
 };
 
 // Función para crear conexiones individuales usando variables de entorno

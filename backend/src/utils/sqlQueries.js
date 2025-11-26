@@ -61,7 +61,7 @@ export async function obtenerEquiposAsignados(db, userId) {
   const [equipos] = await db.execute(
     `SELECT 
        e.codigo_equipo, e.r_centro, e.consecutivo, e.tipo, e.placa, e.modelo, 
-       e.estado_fisico, e.descripcion, e.descripcion_actual,
+       e.estado_fisico, e.descripcion,
        a.nombre_ambiente, a.codigo_ambiente,
        re.fecha_asignacion, re.tipo_responsabilidad, re.observaciones,
        DATEDIFF(NOW(), re.fecha_asignacion) AS dias_asignado,
@@ -86,46 +86,29 @@ export async function obtenerEquiposAsignados(db, userId) {
 export async function obtenerEquipoPorCodigo(db, codigo) {
   const queryBase = `
     SELECT e.codigo_equipo, e.r_centro, e.consecutivo, e.tipo, e.placa, e.modelo, 
-           e.descripcion, e.descripcion_actual, e.fecha_adquisicion, e.costo, e.valor_ingreso,
+           e.descripcion, e.fecha_adquisicion, e.costo, e.valor_ingreso,
            e.vida_util_meses, e.estado_fisico,
-           e.incluye_mouse, e.incluye_teclado, e.incluye_monitor, e.incluye_torre,
            e.specs_completas, e.atributos,
            a.id_ambiente, a.nombre_ambiente, a.codigo_ambiente
     FROM Elementos e
     LEFT JOIN Ambientes a ON a.id_ambiente = e.id_ambiente
   `;
 
-  // Intentar buscar por r_centro primero
-  const [[rowRCentro]] = await db.execute(
-    `${queryBase} WHERE e.r_centro = ?`,
-    [codigo]
-  );
-
-  if (rowRCentro) {
-    return rowRCentro;
-  }
-
-  // Intentar buscar por consecutivo
-  const [[rowConsecutivo]] = await db.execute(
-    `${queryBase} WHERE e.consecutivo = ?`,
-    [codigo]
-  );
-
-  if (rowConsecutivo) {
-    return rowConsecutivo;
-  }
-
-  // Si no se encuentra, intentar por ID numérico
+  // Optimización: Intentar buscar por ID numérico primero si es posible
   const codigoNumerico = Number.parseInt(codigo, 10);
-  if (Number.isFinite(codigoNumerico)) {
-    const [[rowId]] = await db.execute(
-      `${queryBase} WHERE e.codigo_equipo = ?`,
-      [codigoNumerico]
-    );
-    if (rowId) return rowId;
-  }
+  const esNumero = Number.isFinite(codigoNumerico);
 
-  return null;
+  // Query optimizado: busca en un solo query usando OR
+  // Esto reduce las consultas a la base de datos de 3 a 1 en el peor caso
+  const query = esNumero
+    ? `${queryBase} WHERE e.r_centro = ? OR e.consecutivo = ? OR e.codigo_equipo = ?`
+    : `${queryBase} WHERE e.r_centro = ? OR e.consecutivo = ?`;
+  
+  const params = esNumero ? [codigo, codigo, codigoNumerico] : [codigo, codigo];
+  
+  const [[row]] = await db.execute(query, params);
+  
+  return row || null;
 }
 
 /**
