@@ -29,7 +29,11 @@ import importRoutes from './src/routes/importRoutes.js';
 import invitationCodeRoutes from './src/routes/invitationCodeRoutes.js';
 import preferencesRoutes from './src/routes/preferencesRoutes.js';
 import webhookRoutes from './src/routes/webhookRoutes.js';
+import imagenesEquipoRoutes from './src/routes/imagenesEquipoRoutes.js';
 import schedulerService from './src/services/schedulerService.js';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
 
 const app = express();
 const desiredPort = Number(config.server.PORT) || 3000;
@@ -64,6 +68,11 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 // Cookie parser
 app.use(cookieParser());
 
+// Servir archivos estáticos (imágenes de equipos)
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
 // Morgan - Logging de requests (optimizado)
 // En producción, usar formato más eficiente
 if (process.env.NODE_ENV === 'development') {
@@ -92,6 +101,7 @@ app.get('/health', (req, res) => {
 // API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/equipos', equiposRoutes);
+app.use('/api/equipos', imagenesEquipoRoutes);
 app.use('/api', ambientesRoutes);
 app.use('/api/notifications', notificationsRoutes);
 app.use('/api/permissions', permissionsRoutes);

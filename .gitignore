@@ -32,3 +32,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Uploads (imágenes de equipos)
+backend/uploads/

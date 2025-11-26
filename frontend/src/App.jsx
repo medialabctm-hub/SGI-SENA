@@ -25,6 +25,7 @@ import VerificarInventario from './pages/VerificarInventario';
 import Horarios from './pages/Horarios';
 import HistorialVerificaciones from './pages/HistorialVerificaciones';
 import HistorialVerificacionesGeneral from './pages/HistorialVerificacionesGeneral';
+import DetalleEquipo from './pages/DetalleEquipo';
 import ProtectedRoute from './components/ProtectedRoute';
 import RedirectIfAuth from './components/RedirectIfAuth';
 import ErrorBoundary from './components/ErrorBoundary';
@@ -230,6 +231,14 @@ export default function App() {
         element={
           <ProtectedRoute>
             <HistorialVerificaciones />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/equipos/detalle/:codigoEquipo"
+        element={
+          <ProtectedRoute>
+            <DetalleEquipo />
           </ProtectedRoute>
         }
       />

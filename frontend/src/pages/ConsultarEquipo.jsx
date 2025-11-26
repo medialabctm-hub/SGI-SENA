@@ -4,10 +4,11 @@ import Sidebar from '../components/Sidebar'
 import Toast from '../components/Toast'
 import ConfirmModal from '../components/ConfirmModal'
 import { parseApiResponse, buildErrorMessage } from '../utils/api'
-import { FiDownload, FiSearch, FiList, FiClock } from 'react-icons/fi'
+import { FiDownload, FiSearch, FiList, FiClock, FiEye, FiUpload, FiSettings, FiCheckSquare, FiSquare } from 'react-icons/fi'
 import { useNavigate } from 'react-router-dom'
 import * as XLSX from 'xlsx'
 import '../styles/equipos.css'
+import '../styles/consultarEquipo.css'
 
 export default function ConsultarEquipo() {
   const navigate = useNavigate()
@@ -19,6 +20,41 @@ export default function ConsultarEquipo() {
   const [toast, setToast] = useState(null)
   const [deleteConfirm, setDeleteConfirm] = useState({ open: false, codigo: null })
   const [user, setUser] = useState(null)
+  const [showColumnFilter, setShowColumnFilter] = useState(false)
+  
+  // Definir todas las columnas disponibles
+  const allColumns = [
+    { key: 'codigo_inventario', label: 'Código Inventario', default: true },
+    { key: 'codigo_equipo', label: 'ID Interno', default: false },
+    { key: 'tipo', label: 'Tipo', default: false },
+    { key: 'modelo', label: 'Modelo', default: true },
+    { key: 'consecutivo', label: 'Consecutivo', default: false },
+    { key: 'estado_fisico', label: 'Estado', default: true },
+    { key: 'fecha_adquisicion', label: 'Fecha Adquisición', default: true },
+    { key: 'costo', label: 'Costo', default: true },
+    { key: 'nombre_ambiente', label: 'Ambiente', default: true },
+    { key: 'codigo_ambiente', label: 'Código Ambiente', default: false },
+    { key: 'descripcion', label: 'Descripción', default: true },
+    { key: 'specs_completas', label: 'Especificaciones', default: true },
+  ]
+
+  // Estado para columnas visibles (inicializado con las columnas por defecto)
+  const [visibleColumns, setVisibleColumns] = useState(() => {
+    const saved = localStorage.getItem('equipos_visible_columns')
+    if (saved) {
+      try {
+        return JSON.parse(saved)
+      } catch {
+        return allColumns.filter(col => col.default).map(col => col.key)
+      }
+    }
+    return allColumns.filter(col => col.default).map(col => col.key)
+  })
+
+  // Guardar preferencias de columnas
+  useEffect(() => {
+    localStorage.setItem('equipos_visible_columns', JSON.stringify(visibleColumns))
+  }, [visibleColumns])
 
   useEffect(() => {
     try {
@@ -156,7 +192,7 @@ export default function ConsultarEquipo() {
 
   function getEstadoBadge(estado) {
     const estados = {
-      'Bueno': { color: '#10b981', bg: '#d1fae5' },
+      'Bueno': { color: 'var(--success-800)', bg: 'var(--success-50)' },
       'Regular': { color: '#f59e0b', bg: '#fef3c7' },
       'Malo': { color: '#ef4444', bg: '#fee2e2' },
       'Nuevo': { color: '#3b82f6', bg: '#dbeafe' },
@@ -389,7 +425,7 @@ export default function ConsultarEquipo() {
           <div className="users-panel">
           <div className="users-toolbar">
             <h2 style={{margin:0}}>Consultar Equipo</h2>
-            <div style={{display:'flex', gap:12, alignItems:'center'}}>
+            <div style={{display:'flex', gap:12, alignItems:'center', flexWrap: 'wrap'}}>
               <form onSubmit={handleBuscar} style={{display:'flex', gap:12, alignItems:'center'}}>
                 <input
                   type="text"
@@ -407,12 +443,115 @@ export default function ConsultarEquipo() {
                   {loading ? 'Cargando...' : 'Mostrar todos'}
                 </button>
               </form>
-              <button type="button" className="btn btn-verde" onClick={handleDescargarPDF} disabled={loading}>
-                <FiDownload size={16} />
-                Descargar Excel
-              </button>
+              <div style={{display:'flex', gap:12, alignItems:'center'}}>
+                <button 
+                  type="button" 
+                  className="btn" 
+                  onClick={() => setShowColumnFilter(true)}
+                  title="Configurar columnas visibles"
+                  style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+                >
+                  <FiSettings size={16} />
+                  Columnas
+                </button>
+                <button type="button" className="btn btn-verde" onClick={handleDescargarPDF} disabled={loading}>
+                  <FiDownload size={16} />
+                  Descargar Excel
+                </button>
+              </div>
             </div>
           </div>
+
+          {/* Modal de filtro de columnas */}
+          {showColumnFilter && (
+            <div
+              className="consultar-equipo-column-filter-modal"
+              onClick={() => setShowColumnFilter(false)}
+            >
+              <div
+                className="consultar-equipo-column-filter-content"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="consultar-equipo-column-filter-header">
+                  <h3>Seleccionar Columnas</h3>
+                  <button
+                    type="button"
+                    onClick={() => setShowColumnFilter(false)}
+                    className="consultar-equipo-column-filter-close"
+                  >
+                    ×
+                  </button>
+                </div>
+                
+                <div>
+                  <div className="consultar-equipo-column-filter-actions">
+                    <button
+                      type="button"
+                      className="btn consultar-equipo-column-filter-btn"
+                      onClick={() => setVisibleColumns(allColumns.map(col => col.key))}
+                    >
+                      Seleccionar Todas
+                    </button>
+                    <button
+                      type="button"
+                      className="btn consultar-equipo-column-filter-btn"
+                      onClick={() => setVisibleColumns(allColumns.filter(col => col.default).map(col => col.key))}
+                    >
+                      Restaurar Predeterminadas
+                    </button>
+                  </div>
+                  
+                  <div className="consultar-equipo-column-list">
+                    {allColumns.map((column) => {
+                      const isVisible = visibleColumns.includes(column.key)
+                      return (
+                        <label
+                          key={column.key}
+                          className={`consultar-equipo-column-item ${isVisible ? 'checked' : ''}`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={isVisible}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setVisibleColumns([...visibleColumns, column.key])
+                              } else {
+                                // Asegurar que al menos una columna permanezca visible
+                                if (visibleColumns.length > 1) {
+                                  setVisibleColumns(visibleColumns.filter(key => key !== column.key))
+                                } else {
+                                  setToast({ message: 'Debe haber al menos una columna visible', type: 'warning' })
+                                }
+                              }
+                            }}
+                            className="consultar-equipo-column-checkbox"
+                          />
+                          <span className="consultar-equipo-column-label">
+                            {column.label}
+                          </span>
+                          {isVisible ? (
+                            <FiCheckSquare size={20} color="var(--success-800)" className="consultar-equipo-column-icon" />
+                          ) : (
+                            <FiSquare size={20} color="#9ca3af" className="consultar-equipo-column-icon" />
+                          )}
+                        </label>
+                      )
+                    })}
+                  </div>
+                </div>
+
+                <div className="consultar-equipo-column-filter-footer">
+                  <button
+                    type="button"
+                    className="btn"
+                    onClick={() => setShowColumnFilter(false)}
+                  >
+                    Cerrar
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
 
           <div style={{marginTop:12}}>
             {loading ? (
@@ -422,83 +561,100 @@ export default function ConsultarEquipo() {
                 <table className="users-table" style={{width:'100%'}}>
                   <thead>
                     <tr>
-                      <th>Código Inventario</th>
-                      <th>ID Interno</th>
-                      <th>Tipo</th>
-                      {/* <th>Marca</th> -- Eliminado por solicitud */}
-                      <th>Modelo</th>
-                      <th>Consecutivo</th>
-                      <th>Estado</th>
-                      <th>Fecha Adquisición</th>
-                      <th>Costo</th>
-                      <th>Ambiente</th>
-                      <th>Código Ambiente</th>
-                      <th>Descripción</th>
-                      <th>Especificaciones</th>
+                      {visibleColumns.includes('codigo_inventario') && <th>Código Inventario</th>}
+                      {visibleColumns.includes('codigo_equipo') && <th>ID Interno</th>}
+                      {visibleColumns.includes('tipo') && <th>Tipo</th>}
+                      {visibleColumns.includes('modelo') && <th>Modelo</th>}
+                      {visibleColumns.includes('consecutivo') && <th>Consecutivo</th>}
+                      {visibleColumns.includes('estado_fisico') && <th>Estado</th>}
+                      {visibleColumns.includes('fecha_adquisicion') && <th>Fecha Adquisición</th>}
+                      {visibleColumns.includes('costo') && <th>Costo</th>}
+                      {visibleColumns.includes('nombre_ambiente') && <th>Ambiente</th>}
+                      {visibleColumns.includes('codigo_ambiente') && <th>Código Ambiente</th>}
+                      {visibleColumns.includes('descripcion') && <th>Descripción</th>}
+                      {visibleColumns.includes('specs_completas') && <th>Especificaciones</th>}
                       <th style={{width: user?.nombre_rol === 'Administrador' ? '280px' : '120px'}}>Acciones</th>
                     </tr>
                   </thead>
                   <tbody>
                     {equipos.map((eq) => (
                       <tr key={eq.codigo_equipo}>
-                        <td>{eq.codigo_inventario || '-'}</td>
-                        <td>{eq.codigo_equipo}</td>
-                        <td>
-                          {editingCodigo === eq.codigo_equipo ? (
-                            <input value={draft.tipo || ''} onChange={e=>onDraft('tipo', e.target.value)} className="cell-input" />
-                          ) : (eq.tipo)}
-                        </td>
-                        {/* Eliminado Marca */}
-                        {/* <td>
-                          {editingCodigo === eq.codigo_equipo ? (
-                            <input value={draft.marca || ''} onChange={e=>onDraft('marca', e.target.value)} className="cell-input" />
-                          ) : (eq.marca || '-')}
-                        </td> */}
-                        <td>
-                          {editingCodigo === eq.codigo_equipo ? (
-                            <input value={draft.modelo || ''} onChange={e=>onDraft('modelo', e.target.value)} className="cell-input" />
-                          ) : (eq.modelo || '-')}
-                        </td>
-                        <td>
-                          {editingCodigo === eq.codigo_equipo ? (
-                            <input value={draft.consecutivo || ''} onChange={e=>onDraft('consecutivo', e.target.value)} className="cell-input" />
-                          ) : (eq.consecutivo || '-')}
-                        </td>
-                        <td>
-                          {editingCodigo === eq.codigo_equipo ? (
-                            <input value={draft.estado_fisico || ''} onChange={e=>onDraft('estado_fisico', e.target.value)} className="cell-input" />
-                          ) : getEstadoBadge(eq.estado_fisico)}
-                        </td>
-                        <td>
-                          {editingCodigo === eq.codigo_equipo ? (
-                            <input type="date" value={draft.fecha_adquisicion || ''} onChange={e=>onDraft('fecha_adquisicion', e.target.value)} className="cell-input" />
-                          ) : formatDate(eq.fecha_adquisicion)}
-                        </td>
-                        <td>
-                          {editingCodigo === eq.codigo_equipo ? (
-                            <input type="number" value={draft.costo ?? ''} onChange={e=>onDraft('costo', e.target.value === '' ? null : Number(e.target.value))} className="cell-input" />
-                          ) : formatCurrency(eq.costo)}
-                        </td>
-                        <td>
-                          {editingCodigo === eq.codigo_equipo ? (
-                            <input value={draft.nombre_ambiente || ''} onChange={e=>onDraft('nombre_ambiente', e.target.value)} className="cell-input" placeholder="Nombre ambiente (solo visual)" />
-                          ) : (eq.nombre_ambiente || '-')}
-                        </td>
-                        <td>
-                          {editingCodigo === eq.codigo_equipo ? (
-                            <input value={draft.ambiente || eq.codigo_ambiente || ''} onChange={e=>onDraft('ambiente', e.target.value)} className="cell-input" placeholder="ID/ Código/ Nombre" />
-                          ) : (eq.codigo_ambiente || '-')}
-                        </td>
-                        <td>
-                          {editingCodigo === eq.codigo_equipo ? (
-                            <textarea value={draft.descripcion || ''} onChange={e=>onDraft('descripcion', e.target.value)} className="cell-textarea" />
-                          ) : (eq.descripcion || '-')}
-                        </td>
-                        <td>
-                          {editingCodigo === eq.codigo_equipo ? (
-                            <textarea value={draft.specs_completas || ''} onChange={e=>onDraft('specs_completas', e.target.value)} className="cell-textarea" />
-                          ) : (eq.specs_completas || '-')}
-                        </td>
+                        {visibleColumns.includes('codigo_inventario') && (
+                          <td>{eq.codigo_inventario || '-'}</td>
+                        )}
+                        {visibleColumns.includes('codigo_equipo') && (
+                          <td>{eq.codigo_equipo}</td>
+                        )}
+                        {visibleColumns.includes('tipo') && (
+                          <td>
+                            {editingCodigo === eq.codigo_equipo ? (
+                              <input value={draft.tipo || ''} onChange={e=>onDraft('tipo', e.target.value)} className="cell-input" />
+                            ) : (eq.tipo)}
+                          </td>
+                        )}
+                        {visibleColumns.includes('modelo') && (
+                          <td>
+                            {editingCodigo === eq.codigo_equipo ? (
+                              <input value={draft.modelo || ''} onChange={e=>onDraft('modelo', e.target.value)} className="cell-input" />
+                            ) : (eq.modelo || '-')}
+                          </td>
+                        )}
+                        {visibleColumns.includes('consecutivo') && (
+                          <td>
+                            {editingCodigo === eq.codigo_equipo ? (
+                              <input value={draft.consecutivo || ''} onChange={e=>onDraft('consecutivo', e.target.value)} className="cell-input" />
+                            ) : (eq.consecutivo || '-')}
+                          </td>
+                        )}
+                        {visibleColumns.includes('estado_fisico') && (
+                          <td>
+                            {editingCodigo === eq.codigo_equipo ? (
+                              <input value={draft.estado_fisico || ''} onChange={e=>onDraft('estado_fisico', e.target.value)} className="cell-input" />
+                            ) : getEstadoBadge(eq.estado_fisico)}
+                          </td>
+                        )}
+                        {visibleColumns.includes('fecha_adquisicion') && (
+                          <td>
+                            {editingCodigo === eq.codigo_equipo ? (
+                              <input type="date" value={draft.fecha_adquisicion || ''} onChange={e=>onDraft('fecha_adquisicion', e.target.value)} className="cell-input" />
+                            ) : formatDate(eq.fecha_adquisicion)}
+                          </td>
+                        )}
+                        {visibleColumns.includes('costo') && (
+                          <td>
+                            {editingCodigo === eq.codigo_equipo ? (
+                              <input type="number" value={draft.costo ?? ''} onChange={e=>onDraft('costo', e.target.value === '' ? null : Number(e.target.value))} className="cell-input" />
+                            ) : formatCurrency(eq.costo)}
+                          </td>
+                        )}
+                        {visibleColumns.includes('nombre_ambiente') && (
+                          <td>
+                            {editingCodigo === eq.codigo_equipo ? (
+                              <input value={draft.nombre_ambiente || ''} onChange={e=>onDraft('nombre_ambiente', e.target.value)} className="cell-input" placeholder="Nombre ambiente (solo visual)" />
+                            ) : (eq.nombre_ambiente || '-')}
+                          </td>
+                        )}
+                        {visibleColumns.includes('codigo_ambiente') && (
+                          <td>
+                            {editingCodigo === eq.codigo_equipo ? (
+                              <input value={draft.ambiente || eq.codigo_ambiente || ''} onChange={e=>onDraft('ambiente', e.target.value)} className="cell-input" placeholder="ID/ Código/ Nombre" />
+                            ) : (eq.codigo_ambiente || '-')}
+                          </td>
+                        )}
+                        {visibleColumns.includes('descripcion') && (
+                          <td>
+                            {editingCodigo === eq.codigo_equipo ? (
+                              <textarea value={draft.descripcion || ''} onChange={e=>onDraft('descripcion', e.target.value)} className="cell-textarea" />
+                            ) : (eq.descripcion || '-')}
+                          </td>
+                        )}
+                        {visibleColumns.includes('specs_completas') && (
+                          <td>
+                            {editingCodigo === eq.codigo_equipo ? (
+                              <textarea value={draft.specs_completas || ''} onChange={e=>onDraft('specs_completas', e.target.value)} className="cell-textarea" />
+                            ) : (eq.specs_completas || '-')}
+                          </td>
+                        )}
                         <td className="users-actions">
                           {editingCodigo === eq.codigo_equipo ? (
                             <>
@@ -507,6 +663,17 @@ export default function ConsultarEquipo() {
                             </>
                           ) : (
                             <>
+                              <button 
+                                className="btn btn-view" 
+                                type="button" 
+                                onClick={() => navigate(`/equipos/detalle/${eq.codigo_equipo}`)} 
+                                disabled={loading}
+                                title="Ver detalle completo del equipo"
+                                style={{ fontSize: '0.85rem', padding: '6px 12px', marginRight: '6px' }}
+                              >
+                                <FiEye size={14} />
+                                Ver Detalle
+                              </button>
                               <button 
                                 className="btn btn-view" 
                                 type="button" 
