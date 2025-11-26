@@ -45,11 +45,14 @@ frontend/
 
 ## 2. Estilo de Código
 
+**Este proyecto utiliza el estilo de código de Airbnb/Facebook** mediante ESLint. Las reglas están configuradas en `eslint.config.js` tanto para backend como frontend.
+
 ### Variables y Funciones
 - ✅ Usa `const` y `let`, **nunca** `var`
 - ✅ Usa `camelCase` para variables y funciones
 - ✅ Usa `PascalCase` para clases y componentes
 - ✅ Usa `UPPER_CASE` para constantes globales
+- ✅ Las variables sin usar deben empezar con `_` (ej: `_unusedVar`)
 
 ```javascript
 // ✅ Correcto
@@ -306,7 +309,19 @@ npm run format:check # Verificar formato
 ## Recursos
 
 - [ESLint Rules](https://eslint.org/docs/rules/)
+- [Airbnb JavaScript Style Guide](https://github.com/airbnb/javascript)
+- [Airbnb React/JSX Style Guide](https://github.com/airbnb/javascript/tree/master/react)
 - [Prettier Options](https://prettier.io/docs/en/options.html)
 - [Zod Documentation](https://zod.dev/)
 - [Conventional Commits](https://www.conventionalcommits.org/)
+
+## Notas sobre la Configuración de ESLint
+
+El proyecto utiliza `eslint-config-airbnb` (frontend) y `eslint-config-airbnb-base` (backend) con algunas personalizaciones:
+
+- **Extensiones de archivo en imports**: Se permiten extensiones `.js` y `.jsx` (necesario para ES modules)
+- **Snake_case**: Se permite para variables que provienen de la base de datos
+- **Console**: Solo se permite `console.warn` y `console.error`
+- **Await en loops**: Se permite con advertencia cuando sea necesario
+- **Múltiples clases por archivo**: Permitido hasta 10 clases (útil para archivos de errores, estrategias, etc.)
 
