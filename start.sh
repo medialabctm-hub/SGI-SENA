@@ -6,14 +6,14 @@
 sed -i "s|set \$api_backend.*|set \$api_backend http://localhost:3000;|g" /etc/nginx/conf.d/default.conf
 echo "ℹ Configurado nginx para usar backend local: http://localhost:3000"
 
-# Iniciar backend en segundo plano
+# Iniciar backend en segundo plano pero redirigir logs a stdout
 echo "🚀 Iniciando backend..."
 cd /app/backend
-node server.js &
+node server.js > /proc/1/fd/1 2>&1 &
 BACKEND_PID=$!
 
 # Esperar un momento para que el backend inicie
-sleep 3
+sleep 5
 
 # Verificar que el backend esté corriendo
 if ! kill -0 $BACKEND_PID 2>/dev/null; then
