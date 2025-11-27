@@ -84,33 +84,8 @@ echo "🚀 Iniciando nginx en puerto 80..."
 echo "ℹ Nginx servirá el frontend en / y hará proxy de /api al backend en localhost:3000"
 echo "ℹ Si nginx falla, los logs estarán en /var/log/nginx/error.log"
 
-# Iniciar nginx y capturar errores
-nginx
-NGINX_EXIT_CODE=$?
-
-if [ $NGINX_EXIT_CODE -ne 0 ]; then
-  echo "❌ ERROR: Nginx falló al iniciar (código de salida: $NGINX_EXIT_CODE)"
-  echo "📋 Últimas líneas de error de nginx:"
-  tail -20 /var/log/nginx/error.log 2>/dev/null || echo "No se pudo leer el log de errores"
-  exit 1
-fi
-
-# Si llegamos aquí, nginx debería estar corriendo
-echo "✓ Nginx iniciado correctamente"
-echo "📊 Estado de procesos:"
-ps aux | grep -E "(nginx|node)" | grep -v grep
-
-# Mantener el script vivo
-while true; do
-  sleep 60
-  # Verificar que ambos procesos sigan corriendo
-  if ! kill -0 $BACKEND_PID 2>/dev/null; then
-    echo "❌ Backend se detuvo inesperadamente"
-    exit 1
-  fi
-  if ! pgrep nginx > /dev/null; then
-    echo "❌ Nginx se detuvo inesperadamente"
-    exit 1
-  fi
-done
+# Iniciar nginx en primer plano
+# Usar exec para que nginx reemplace este proceso y Railway pueda monitorearlo
+# Con daemon off en nginx.conf, nginx se quedará en primer plano
+exec nginx
 
