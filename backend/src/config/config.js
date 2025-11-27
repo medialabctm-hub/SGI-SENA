@@ -6,29 +6,48 @@ import { dirname, join } from "path";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-// Cargar variables de entorno
+// Cargar variables de entorno desde .env si existe (solo para desarrollo local)
+// En producción (Docker/Railway), las variables vienen de process.env directamente
 dotenv.config({ path: join(__dirname, "../../.env") });
 
-// Validar variables de entorno requeridas
+// Establecer valores por defecto para variables opcionales
+if (!process.env.NODE_ENV) {
+  process.env.NODE_ENV = 'production';
+}
+if (!process.env.LOG_LEVEL) {
+  process.env.LOG_LEVEL = 'info';
+}
+if (!process.env.DB_PORT) {
+  process.env.DB_PORT = '3306';
+}
+if (!process.env.PORT) {
+  process.env.PORT = '3000';
+}
+if (!process.env.JWT_EXPIRES_IN) {
+  process.env.JWT_EXPIRES_IN = '24h';
+}
+if (!process.env.JWT_REFRESH_EXPIRES_IN) {
+  process.env.JWT_REFRESH_EXPIRES_IN = '7d';
+}
+if (!process.env.JWT_ISSUER) {
+  process.env.JWT_ISSUER = 'gse-app';
+}
+if (!process.env.JWT_AUDIENCE) {
+  process.env.JWT_AUDIENCE = 'gse-users';
+}
+
+// Validar variables de entorno requeridas (solo las críticas)
 const requiredEnvVars = [
   "DB_PASSWORD",
   "DB_HOST",
   "DB_USER",
   "DB_NAME",
-  "PORT",
-  "NODE_ENV",
   "JWT_SECRET",
   "COOKIE_SECRET",
   "EMAIL_USER",
   "EMAIL_PASSWORD",
   "CORS_ORIGIN",
   "FRONTEND_URL",
-  "DB_PORT",
-  "JWT_EXPIRES_IN",
-  "JWT_REFRESH_EXPIRES_IN",
-  "JWT_ISSUER",
-  "JWT_AUDIENCE",
-  "LOG_LEVEL",
 ];
 
 const missingEnvVars = requiredEnvVars.filter((envVar) => !process.env[envVar]);
