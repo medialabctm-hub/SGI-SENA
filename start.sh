@@ -10,6 +10,8 @@ if [ ! -f /usr/share/nginx/html/index.html ]; then
   exit 1
 fi
 echo "✓ Archivos del frontend encontrados"
+echo "📂 Archivos en /usr/share/nginx/html:"
+ls -la /usr/share/nginx/html/ | head -10
 
 # Configurar la URL del backend para nginx
 # Por defecto, el backend corre en localhost:3000 en el mismo contenedor
@@ -23,8 +25,8 @@ cd /app/backend
 node server.js > /proc/1/fd/1 2>&1 &
 BACKEND_PID=$!
 
-# Esperar un momento para que el backend inicie
-sleep 5
+# Esperar un momento para que el backend inicie (reducido de 5 a 2 segundos)
+sleep 2
 
 # Verificar que el backend esté corriendo
 if ! kill -0 $BACKEND_PID 2>/dev/null; then
@@ -44,8 +46,18 @@ cleanup() {
 
 trap cleanup SIGTERM SIGINT
 
+# Verificar configuración de nginx antes de iniciar
+echo "🔍 Verificando configuración de nginx..."
+nginx -t
+if [ $? -ne 0 ]; then
+  echo "❌ ERROR: Configuración de nginx inválida"
+  exit 1
+fi
+echo "✓ Configuración de nginx válida"
+
 # Iniciar nginx en primer plano
 # Nota: daemon off ya está en nginx.conf, NO lo especificamos aquí para evitar duplicación
-echo "🚀 Iniciando nginx..."
+echo "🚀 Iniciando nginx en puerto 80..."
+echo "ℹ Nginx servirá el frontend en / y hará proxy de /api al backend en localhost:3000"
 exec nginx
 
