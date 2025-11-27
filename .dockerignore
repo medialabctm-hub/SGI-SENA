@@ -16,4 +16,9 @@ dist
 build
 docker-compose.yml
 DEPLOYMENT.md
+README_RAILWAY.md
+RAILWAY_CONFIG.md
+BD
+*.md
+!DEPLOYMENT.md
 
