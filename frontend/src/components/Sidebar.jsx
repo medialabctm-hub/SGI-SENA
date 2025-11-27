@@ -189,13 +189,11 @@ export default function Sidebar({ user }) {
 
   return (
     <>
-      {isOpen && (
-        <div 
-          className="sidebar-overlay"
-          onClick={closeSidebar}
-          aria-hidden="true"
-        />
-      )}
+      <div 
+        className={`sidebar-overlay ${isOpen ? 'active' : ''}`}
+        onClick={closeSidebar}
+        aria-hidden="true"
+      />
       <aside className={`app-sidebar ${isOpen ? 'sidebar-open' : 'sidebar-closed'}`}>
         <div className="sidebar-content">
         <button
