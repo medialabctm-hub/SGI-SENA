@@ -21,10 +21,6 @@ export const dbConfig = {
   waitForConnections: true,
   connectionLimit: getConnectionLimit(),
   queueLimit: 0,
-  // Configuraciones adicionales para producción
-  acquireTimeout: 60000,
-  timeout: 60000,
-  reconnect: true,
   // Configuraciones específicas para Railway/Producción
   ssl:
     process.env.NODE_ENV === "production"
