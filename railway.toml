@@ -1,0 +1,24 @@
+# Configuración de Railway para el proyecto SGE-SENA
+# Este archivo permite configurar múltiples servicios
+
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
+
+# Configuración para el servicio backend
+[services.backend]
+build = { dockerfilePath = "backend/Dockerfile", context = "backend" }
+startCommand = "node server.js"
+healthcheckPath = "/health"
+healthcheckTimeout = 100
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 10
+
+# Configuración para el servicio frontend
+[services.frontend]
+build = { dockerfilePath = "frontend/Dockerfile", context = "frontend" }
+healthcheckPath = "/"
+healthcheckTimeout = 10
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 10
+

@@ -8,5 +8,20 @@ export default defineConfig({
       '/api': 'http://localhost:3000',
       '/uploads': 'http://localhost:3000'
     }
-  }
+  },
+  // Configuración para producción
+  define: {
+    'import.meta.env.VITE_API_URL': JSON.stringify(process.env.VITE_API_URL || ''),
+  },
+  build: {
+    outDir: 'dist',
+    sourcemap: false,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vendor: ['react', 'react-dom', 'react-router-dom'],
+        },
+      },
+    },
+  },
 })
