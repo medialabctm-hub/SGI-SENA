@@ -75,3 +75,55 @@
   font-size: 0.9rem;
 }
 
+/* Responsive para móviles */
+@media (max-width: 768px) {
+  .modal-sheet {
+    max-width: 90%;
+    padding: 24px 20px;
+    border-radius: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+  }
+
+  .modal-sheet.form-modal {
+    max-width: 95%;
+    max-height: 95vh;
+  }
+
+  .modal-sheet.form-modal-small {
+    max-width: 95%;
+  }
+
+  .modal-sheet.form-modal-large {
+    max-width: 95%;
+    max-height: 95vh;
+  }
+
+  .modal-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .modal-header h3 {
+    font-size: 1.1rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .modal-sheet {
+    max-width: 95%;
+    padding: 20px 16px;
+    border-radius: 10px;
+  }
+
+  .modal-header h3 {
+    font-size: 1rem;
+  }
+
+  .modal-header .btn {
+    padding: 0.4rem 0.8rem;
+    font-size: 0.85rem;
+  }
+}
+

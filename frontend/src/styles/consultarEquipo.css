@@ -150,3 +150,63 @@
   border-top: 1px solid #e5e7eb;
 }
 
+/* Responsive para móviles */
+@media (max-width: 768px) {
+  .consultar-equipo-column-filter-content {
+    padding: 20px;
+    width: 95%;
+    max-height: 90vh;
+  }
+
+  .consultar-equipo-column-filter-header h3 {
+    font-size: 18px;
+  }
+
+  .consultar-equipo-column-filter-actions {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .consultar-equipo-column-filter-btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .consultar-equipo-column-list {
+    max-height: 50vh;
+  }
+
+  .consultar-equipo-column-item {
+    padding: 10px;
+  }
+
+  .consultar-equipo-column-filter-footer {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .consultar-equipo-column-filter-footer button {
+    width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .consultar-equipo-column-filter-content {
+    padding: 16px;
+    border-radius: 10px;
+  }
+
+  .consultar-equipo-column-filter-header h3 {
+    font-size: 16px;
+  }
+
+  .consultar-equipo-column-item {
+    padding: 8px;
+    gap: 8px;
+  }
+
+  .consultar-equipo-column-label {
+    font-size: 14px;
+  }
+}
+

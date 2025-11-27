@@ -604,19 +604,152 @@
   transform: none;
 }
 
+/* Responsive para móviles */
 @media (max-width: 768px) {
+  .detalle-equipo-container {
+    padding: 12px;
+  }
+
   .detalle-equipo-grid {
     grid-template-columns: 1fr;
+    gap: 16px;
   }
   
   .detalle-equipo-header {
     flex-direction: column;
     align-items: flex-start;
     gap: 16px;
+    padding-bottom: 16px;
   }
-  
+
+  .detalle-equipo-header-left {
+    width: 100%;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .detalle-equipo-back-btn {
+    width: 100%;
+    justify-content: center;
+    padding: 12px;
+  }
+
+  .detalle-equipo-title-section h2 {
+    font-size: 20px;
+  }
+
+  .detalle-equipo-upload-btn {
+    width: 100%;
+    justify-content: center;
+    padding: 12px 16px;
+  }
+
+  .detalle-equipo-card {
+    padding: 16px;
+  }
+
+  .detalle-equipo-card-header h3 {
+    font-size: 16px;
+  }
+
+  .detalle-equipo-info-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 12px;
+  }
+
+  .detalle-equipo-info-item-grid {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .detalle-equipo-image-container {
+    height: 250px;
+  }
+
+  .detalle-equipo-image-placeholder {
+    height: 250px;
+  }
+
+  .detalle-equipo-gallery {
+    padding: 16px;
+  }
+
   .detalle-equipo-gallery-grid {
-    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 12px;
+  }
+
+  .detalle-equipo-gallery-image-wrapper {
+    height: 150px;
+  }
+
+  .detalle-equipo-gallery-item-content {
+    padding: 12px;
+  }
+
+  .detalle-equipo-modal {
+    padding: 20px;
+    width: 95%;
+    max-height: 95vh;
+  }
+
+  .detalle-equipo-modal-header h3 {
+    font-size: 20px;
+  }
+
+  .detalle-equipo-modal-actions {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .detalle-equipo-modal-btn {
+    width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .detalle-equipo-container {
+    padding: 8px;
+  }
+
+  .detalle-equipo-grid {
+    gap: 12px;
+  }
+
+  .detalle-equipo-card {
+    padding: 12px;
+  }
+
+  .detalle-equipo-title-section h2 {
+    font-size: 18px;
+  }
+
+  .detalle-equipo-gallery-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .detalle-equipo-gallery-image-wrapper {
+    height: 200px;
+  }
+
+  .detalle-equipo-image-container {
+    height: 200px;
+  }
+
+  .detalle-equipo-image-placeholder {
+    height: 200px;
+  }
+
+  .detalle-equipo-modal {
+    padding: 16px;
+    border-radius: 12px;
+  }
+
+  .detalle-equipo-modal-header h3 {
+    font-size: 18px;
   }
 }
 

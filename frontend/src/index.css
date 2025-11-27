@@ -241,6 +241,41 @@ body {
   .page.simple-page > h2{font-size:18px}
 }
 
+/* Responsive general para móviles */
+@media (max-width: 768px) {
+  .container {
+    padding: 12px;
+  }
+
+  .page {
+    padding: 12px;
+  }
+
+  .page.simple-page > h2 {
+    font-size: 18px;
+    margin: 12px 0 6px 0;
+  }
+}
+
+@media (max-width: 480px) {
+  .container {
+    padding: 8px;
+  }
+
+  .page {
+    padding: 8px;
+  }
+
+  .page.simple-page > h2 {
+    font-size: 16px;
+    margin: 10px 0 4px 0;
+  }
+
+  body {
+    font-size: 14px;
+  }
+}
+
 .cat_404 {
   width: 15%;
   height: 35%;
@@ -267,6 +302,38 @@ body {
 .pagina-no-encontrada__descripcion {
   font-size: 1.5rem;
   color: var(--neutral-900);
+}
+
+/* Responsive para página 404 */
+@media (max-width: 768px) {
+  .pagina-no-encontrada__titulo {
+    font-size: 2.5rem;
+  }
+
+  .pagina-no-encontrada__descripcion {
+    font-size: 1.2rem;
+  }
+
+  .cat_404 {
+    width: 25%;
+    height: 40%;
+  }
+}
+
+@media (max-width: 480px) {
+  .pagina-no-encontrada__titulo {
+    font-size: 2rem;
+    margin-bottom: 1rem;
+  }
+
+  .pagina-no-encontrada__descripcion {
+    font-size: 1rem;
+  }
+
+  .cat_404 {
+    width: 30%;
+    height: 45%;
+  }
   margin-bottom: 2.5rem;
 }
 .pagina-no-encontrada__boton {

@@ -267,3 +267,91 @@
   margin-bottom: 1rem;
 }
 
+/* Responsive para móviles */
+@media (max-width: 768px) {
+  .login-page {
+    padding: 24px 16px;
+    min-height: 100vh;
+  }
+
+  .login-card {
+    width: 100%;
+    max-width: 100%;
+    padding: 28px 24px;
+    border-radius: 12px;
+  }
+
+  .logo img {
+    width: 100px;
+  }
+
+  .title {
+    font-size: 24px;
+  }
+
+  .subtitle {
+    font-size: 14px;
+  }
+
+  .form {
+    gap: 12px;
+  }
+
+  .input {
+    padding: 12px;
+  }
+
+  .input input {
+    font-size: 16px;
+  }
+
+  .btn {
+    padding: 12px 20px;
+    font-size: 15px;
+  }
+}
+
+@media (max-width: 480px) {
+  .login-page {
+    padding: 16px 12px;
+  }
+
+  .login-card {
+    padding: 24px 20px;
+    border-radius: 10px;
+  }
+
+  .logo img {
+    width: 80px;
+  }
+
+  .title {
+    font-size: 20px;
+  }
+
+  .subtitle {
+    font-size: 13px;
+  }
+
+  .form {
+    gap: 10px;
+  }
+
+  .input {
+    padding: 10px;
+  }
+
+  .input input {
+    font-size: 15px;
+  }
+
+  .btn {
+    padding: 12px 16px;
+    font-size: 14px;
+  }
+
+  .links {
+    font-size: 13px;
+  }
+}
+
