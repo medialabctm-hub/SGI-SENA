@@ -53,8 +53,8 @@ JWT_SECRET=<genera-un-secreto-seguro>
 COOKIE_SECRET=<genera-otro-secreto-seguro>
 EMAIL_USER=tu_email@gmail.com
 EMAIL_PASSWORD=tu_contraseña_de_aplicacion
-CORS_ORIGIN=https://tu-frontend.railway.app
-FRONTEND_URL=https://tu-frontend.railway.app
+CORS_ORIGIN=https://sgi-sena.up.railway.app
+FRONTEND_URL=https://sgi-sena.up.railway.app
 JWT_EXPIRES_IN=24h
 JWT_REFRESH_EXPIRES_IN=7d
 JWT_ISSUER=gse-app
@@ -67,8 +67,10 @@ LOG_LEVEL=info
 #### Frontend
 
 ```
-API_URL=https://tu-backend.railway.app
+API_URL=https://sgi-sena.up.railway.app
 ```
+
+**Nota**: Este es el dominio del backend en Railway. Si el frontend está en un servicio separado, usa este valor.
 
 ### 5. Inicializar Base de Datos
 
@@ -78,8 +80,8 @@ API_URL=https://tu-backend.railway.app
 
 ### 6. Verificar Despliegue
 
-- Backend: `https://tu-backend.railway.app/health`
-- Frontend: `https://tu-frontend.railway.app`
+- Backend: `https://sgi-sena.up.railway.app/health`
+- Frontend: `https://sgi-sena.up.railway.app` (si está en el mismo servicio) o tu dominio de frontend
 
 ## Dominios Personalizados
 

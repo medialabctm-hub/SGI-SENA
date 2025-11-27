@@ -43,8 +43,8 @@ services:
       COOKIE_SECRET: ${COOKIE_SECRET:-your-cookie-secret-change-in-production}
       EMAIL_USER: ${EMAIL_USER}
       EMAIL_PASSWORD: ${EMAIL_PASSWORD}
-      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:80}
-      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:80}
+      CORS_ORIGIN: ${CORS_ORIGIN:-https://sgi-sena.up.railway.app}
+      FRONTEND_URL: ${FRONTEND_URL:-https://sgi-sena.up.railway.app}
       JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-24h}
       JWT_REFRESH_EXPIRES_IN: ${JWT_REFRESH_EXPIRES_IN:-7d}
       JWT_ISSUER: ${JWT_ISSUER:-gse-app}
@@ -76,8 +76,8 @@ services:
     restart: unless-stopped
     environment:
       # API_URL se usa para configurar el proxy de nginx
-      # Si no se proporciona, se usa http://backend:3000 (por defecto)
-      API_URL: ${API_URL:-http://backend:3000}
+      # Si no se proporciona, se usa el dominio de Railway por defecto
+      API_URL: ${API_URL:-https://sgi-sena.up.railway.app}
     ports:
       - "${FRONTEND_PORT:-80}:80"
     depends_on:

@@ -64,8 +64,8 @@ JWT_SECRET=tu-secreto-jwt-super-seguro
 COOKIE_SECRET=tu-secreto-cookie-super-seguro
 EMAIL_USER=tu_email@gmail.com
 EMAIL_PASSWORD=tu_contraseña_de_aplicacion
-CORS_ORIGIN=https://tu-frontend.railway.app
-FRONTEND_URL=https://tu-frontend.railway.app
+CORS_ORIGIN=https://sgi-sena.up.railway.app
+FRONTEND_URL=https://sgi-sena.up.railway.app
 JWT_EXPIRES_IN=24h
 JWT_REFRESH_EXPIRES_IN=7d
 JWT_ISSUER=gse-app
@@ -76,10 +76,10 @@ LOG_LEVEL=info
 ### Frontend
 
 ```env
-API_URL=https://tu-backend.railway.app
+API_URL=https://sgi-sena.up.railway.app
 ```
 
-**Nota**: `API_URL` se usa para configurar el proxy de nginx. Si no se proporciona, se usará la configuración por defecto (`http://backend:3000`) que funciona con docker-compose.
+**Nota**: `API_URL` se usa para configurar el proxy de nginx. Si no se proporciona, se usará el dominio por defecto de Railway (`https://sgi-sena.up.railway.app`).
 
 ## Base de Datos
 
