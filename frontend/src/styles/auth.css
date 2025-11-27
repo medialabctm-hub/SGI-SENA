@@ -154,6 +154,15 @@
 .eye {
   margin-left: 10px;
   cursor: pointer;
+  color: var(--neutral-600);
+  transition: color 0.2s ease;
+  display: flex;
+  align-items: center;
+  user-select: none;
+}
+
+.eye:hover {
+  color: var(--success-800);
 }
 
 .btn {

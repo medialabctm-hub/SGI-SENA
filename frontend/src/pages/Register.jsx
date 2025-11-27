@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { FiMail, FiLock, FiEye, FiUser, FiCreditCard, FiPhone } from 'react-icons/fi'
+import { FiMail, FiLock, FiEye, FiEyeOff, FiUser, FiCreditCard, FiPhone } from 'react-icons/fi'
 import { validarRegistro, validarContraseña, validarEmail, validarTelefono, validarCaracteresEspeciales, validarEspaciosInicioFinalNombre } from '../utils/validaciones';
 import Toast from '../components/Toast';
 import AnimatedBackground from '../components/AnimatedBackground';
@@ -15,6 +15,8 @@ export default function Register() {
   const [telefono, setTelefono] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
+  const [mostrarPassword, setMostrarPassword] = useState(false)
+  const [mostrarConfirmPassword, setMostrarConfirmPassword] = useState(false)
   const [rol, setRol] = useState('Aprendiz')
   const [codigoInvitacion, setCodigoInvitacion] = useState('')
   const [errores, setErrores] = useState({})
@@ -137,23 +139,35 @@ export default function Register() {
           <label className="input">
             <span className="icon"><FiLock /></span>
             <input
-              type="password"
+              type={mostrarPassword ? 'text' : 'password'}
               placeholder="Contraseña"
               value={password}
               onChange={e => setPassword(e.target.value)}
             />
-            <span className="eye"><FiEye /></span>
+            <span 
+              className="eye" 
+              onClick={() => setMostrarPassword(!mostrarPassword)}
+              style={{ cursor: 'pointer' }}
+            >
+              {mostrarPassword ? <FiEyeOff /> : <FiEye />}
+            </span>
           </label>
           {errores.contraseña_usuario && <div className="error-msg">{errores.contraseña_usuario}</div>}
           <label className="input">
             <span className="icon"><FiLock /></span>
             <input
-              type="password"
+              type={mostrarConfirmPassword ? 'text' : 'password'}
               placeholder="Confirmar contraseña"
               value={confirmPassword}
               onChange={e => setConfirmPassword(e.target.value)}
             />
-            <span className="eye"><FiEye /></span>
+            <span 
+              className="eye" 
+              onClick={() => setMostrarConfirmPassword(!mostrarConfirmPassword)}
+              style={{ cursor: 'pointer' }}
+            >
+              {mostrarConfirmPassword ? <FiEyeOff /> : <FiEye />}
+            </span>
           </label>
           {errores.confirmar_contraseña && <div className="error-msg">{errores.confirmar_contraseña}</div>}
           <label className="input">

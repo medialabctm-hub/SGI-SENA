@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FiMail, FiLock, FiEye } from 'react-icons/fi';
+import { FiMail, FiLock, FiEye, FiEyeOff } from 'react-icons/fi';
 import Toast from '../components/Toast';
 import AnimatedBackground from '../components/AnimatedBackground';
 import { buildErrorMessage, parseApiResponse } from '../utils/api';
@@ -9,6 +9,7 @@ import '../styles/auth.css';
 export default function Login() {
   const [cedula, setCedula] = useState('');
   const [contrasena, setContrasena] = useState('');
+  const [mostrarContrasena, setMostrarContrasena] = useState(false);
   const [errores, setErrores] = useState({});
   const [toast, setToast] = useState(null);
   const navigate = useNavigate();
@@ -87,12 +88,18 @@ export default function Login() {
           <label className="input">
             <span className="icon"><FiLock /></span>
             <input
-              type="password"
+              type={mostrarContrasena ? 'text' : 'password'}
               placeholder="Contraseña"
               value={contrasena}
               onChange={(e) => setContrasena(e.target.value)}
             />
-            <span className="eye"><FiEye /></span>
+            <span 
+              className="eye" 
+              onClick={() => setMostrarContrasena(!mostrarContrasena)}
+              style={{ cursor: 'pointer' }}
+            >
+              {mostrarContrasena ? <FiEyeOff /> : <FiEye />}
+            </span>
           </label>
           {errores.contraseña_usuario && <div className="error-msg">{errores.contraseña_usuario}</div>}
           <button className="btn primary" type="submit">Iniciar Sesión</button>
