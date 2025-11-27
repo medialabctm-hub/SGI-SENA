@@ -61,7 +61,9 @@ if (missingEnvVars.length > 0) {
 export const config = {
   // Configuración del servidor
   server: {
-    PORT: process.env.PORT,
+    // En producción con Docker, el backend siempre usa 3000 (interno)
+    // Railway asigna PORT para nginx, no para el backend
+    PORT: process.env.BACKEND_PORT || process.env.PORT || 3000,
     mode: process.env.NODE_ENV,
   },
 
