@@ -44,6 +44,7 @@ cleanup() {
 trap cleanup SIGTERM SIGINT
 
 # Iniciar nginx en primer plano
+# Nota: daemon off ya está en nginx.conf, pero lo especificamos aquí también por seguridad
 echo "🚀 Iniciando nginx..."
 exec nginx -g "daemon off;"
 
