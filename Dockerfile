@@ -47,8 +47,11 @@ COPY --from=frontend-builder /app/frontend/dist /usr/share/nginx/html
 # Copiar backend
 COPY --from=backend-builder /app/backend /app/backend
 
-# Copiar configuración de nginx
-COPY frontend/nginx.conf /etc/nginx/conf.d/default.conf
+# Copiar configuración principal de nginx (reemplaza /etc/nginx/nginx.conf)
+COPY frontend/nginx-main.conf /etc/nginx/nginx.conf
+
+# Copiar configuración del servidor virtual
+COPY frontend/nginx-server.conf /etc/nginx/conf.d/default.conf
 
 # Copiar script de inicio
 COPY start.sh /start.sh

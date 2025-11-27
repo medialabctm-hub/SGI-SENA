@@ -13,6 +13,7 @@ echo "✓ Archivos del frontend encontrados"
 
 # Configurar la URL del backend para nginx
 # Por defecto, el backend corre en localhost:3000 en el mismo contenedor
+# Actualizar la variable api_backend en la configuración del servidor
 sed -i "s|set \$api_backend.*|set \$api_backend http://localhost:3000;|g" /etc/nginx/conf.d/default.conf
 echo "ℹ Configurado nginx para usar backend local: http://localhost:3000"
 
