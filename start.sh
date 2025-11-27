@@ -1,6 +1,16 @@
 #!/bin/sh
 # Script de inicio para ejecutar backend y nginx en la misma instancia
 
+# Verificar que los archivos del frontend existan
+echo "📁 Verificando archivos del frontend..."
+if [ ! -f /usr/share/nginx/html/index.html ]; then
+  echo "❌ ERROR: No se encontró index.html en /usr/share/nginx/html"
+  echo "📂 Contenido de /usr/share/nginx/html:"
+  ls -la /usr/share/nginx/html/ || echo "Directorio no existe"
+  exit 1
+fi
+echo "✓ Archivos del frontend encontrados"
+
 # Configurar la URL del backend para nginx
 # Por defecto, el backend corre en localhost:3000 en el mismo contenedor
 sed -i "s|set \$api_backend.*|set \$api_backend http://localhost:3000;|g" /etc/nginx/conf.d/default.conf
