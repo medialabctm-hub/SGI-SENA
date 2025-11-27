@@ -60,8 +60,10 @@ RUN chmod +x /start.sh
 # Crear directorio para uploads
 RUN mkdir -p /app/backend/uploads/equipos
 
-# Exponer puerto
+# Exponer puerto (Railway asignará un puerto dinámico via variable PORT)
 EXPOSE 80
+# Nota: Railway asignará un puerto (ej: 8080) y lo pasará como variable PORT
+# El script start.sh configurará nginx para escuchar en ese puerto
 
 # Health check - verifica que nginx esté sirviendo y el backend responda
 HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \

@@ -13,11 +13,18 @@ echo "✓ Archivos del frontend encontrados"
 echo "📂 Archivos en /usr/share/nginx/html:"
 ls -la /usr/share/nginx/html/ | head -10
 
+# Configurar el puerto de nginx según la variable PORT de Railway
+# Railway asigna puertos dinámicos (ej: 8080), nginx debe escuchar en ese puerto
+PORT=${PORT:-80}
+echo "🔧 Configurando nginx para escuchar en puerto $PORT"
+sed -i "s|listen 80;|listen $PORT;|g" /etc/nginx/conf.d/default.conf
+
 # Configurar la URL del backend para nginx
 # Por defecto, el backend corre en localhost:3000 en el mismo contenedor
 # Actualizar la variable api_backend en la configuración del servidor
 sed -i "s|set \$api_backend.*|set \$api_backend http://localhost:3000;|g" /etc/nginx/conf.d/default.conf
 echo "ℹ Configurado nginx para usar backend local: http://localhost:3000"
+echo "ℹ Nginx escuchará en puerto $PORT (asignado por Railway)"
 
 # Iniciar backend en segundo plano pero redirigir logs a stdout
 echo "🚀 Iniciando backend..."
@@ -70,17 +77,17 @@ if [ $? -ne 0 ]; then
 fi
 echo "✓ Configuración de nginx válida"
 
-# Verificar que el puerto 80 esté disponible
-echo "🔍 Verificando puerto 80..."
-if netstat -tuln 2>/dev/null | grep -q ":80 "; then
-  echo "⚠️  Advertencia: Puerto 80 ya está en uso"
+# Verificar que el puerto asignado esté disponible
+echo "🔍 Verificando puerto $PORT..."
+if netstat -tuln 2>/dev/null | grep -q ":$PORT "; then
+  echo "⚠️  Advertencia: Puerto $PORT ya está en uso"
 else
-  echo "✓ Puerto 80 disponible"
+  echo "✓ Puerto $PORT disponible"
 fi
 
 # Iniciar nginx en primer plano
 # Nota: daemon off ya está en nginx.conf, NO lo especificamos aquí para evitar duplicación
-echo "🚀 Iniciando nginx en puerto 80..."
+echo "🚀 Iniciando nginx en puerto $PORT..."
 echo "ℹ Nginx servirá el frontend en / y hará proxy de /api al backend en localhost:3000"
 echo "ℹ Si nginx falla, los logs estarán en /var/log/nginx/error.log"
 
