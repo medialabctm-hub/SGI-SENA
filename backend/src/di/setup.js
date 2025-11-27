@@ -14,7 +14,7 @@ import { InvitationCodeRepository } from '../repositories/InvitationCodeReposito
 import { logger } from '../utils/logger.js';
 import { PasswordService } from '../services/PasswordService.js';
 import { JwtService } from '../services/JwtService.js';
-import { AuthService } from '../services/AuthService.js';
+import { AuthService } from '../services/authService.js';
 import { InvitationCodeService } from '../services/invitationCodeService.js';
 import process from 'process';
 
