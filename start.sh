@@ -34,9 +34,10 @@ echo "🔧 Configurando nginx para escuchar en puerto $NGINX_PORT"
 sed -i "s|listen 80;|listen $NGINX_PORT;|g" /etc/nginx/conf.d/default.conf
 
 # Configurar la URL del backend para nginx
-# El backend corre en localhost:3000 en el mismo contenedor
-sed -i "s|set \$api_backend.*|set \$api_backend http://localhost:$BACKEND_PORT;|g" /etc/nginx/conf.d/default.conf
-echo "ℹ Configurado nginx para usar backend local: http://localhost:$BACKEND_PORT"
+# Usar 127.0.0.1 en lugar de localhost para evitar problemas de resolución DNS
+# El backend corre en 127.0.0.1:3000 en el mismo contenedor
+sed -i "s|set \$api_backend.*|set \$api_backend http://127.0.0.1:$BACKEND_PORT;|g" /etc/nginx/conf.d/default.conf
+echo "ℹ Configurado nginx para usar backend local: http://127.0.0.1:$BACKEND_PORT"
 
 # Iniciar backend en segundo plano pero redirigir logs a stdout
 echo "🚀 Iniciando backend..."
@@ -56,9 +57,9 @@ fi
 echo "✓ Backend iniciado (PID: $BACKEND_PID)"
 
 # Verificar que el backend responda antes de iniciar nginx
-echo "🔍 Verificando que el backend responda en localhost:$BACKEND_PORT..."
+echo "🔍 Verificando que el backend responda en 127.0.0.1:$BACKEND_PORT..."
 for i in 1 2 3 4 5; do
-  if wget --quiet --tries=1 --spider http://localhost:$BACKEND_PORT/health 2>/dev/null; then
+  if wget --quiet --tries=1 --spider http://127.0.0.1:$BACKEND_PORT/health 2>/dev/null; then
     echo "✓ Backend respondiendo correctamente en puerto $BACKEND_PORT"
     break
   fi
