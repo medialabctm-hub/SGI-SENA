@@ -98,17 +98,19 @@ class EmailService {
    * @param {string} nombreUsuario - Nombre del usuario
    * @param {string} cedula - Cédula del usuario
    * @param {string} password - Contraseña generada
-   * @returns {Promise<boolean>} true si se envió correctamente
+   * @returns {Promise<{success: boolean, error?: string}>} Resultado del envío
    */
   async enviarContrasena(to, nombreUsuario, cedula, password) {
     if (!this.transporter) {
-      logger.warn('Servicio de email no configurado. No se enviará correo a:', to);
-      return false;
+      const errorMsg = 'Servicio de email no configurado. Verifica las credenciales EMAIL_USER y EMAIL_PASSWORD';
+      logger.warn(errorMsg);
+      return { success: false, error: errorMsg };
     }
 
     if (!to || !to.trim()) {
-      logger.warn('No se proporcionó correo electrónico para enviar contraseña');
-      return false;
+      const errorMsg = 'No se proporcionó correo electrónico para enviar contraseña';
+      logger.warn(errorMsg);
+      return { success: false, error: errorMsg };
     }
 
     try {
@@ -229,10 +231,31 @@ SENA - Sistema de Gestión de Equipos
 
       await this.transporter.sendMail(mailOptions);
       logger.info(`Correo enviado exitosamente a: ${to}`);
-      return true;
+      return { success: true };
     } catch (error) {
-      logger.error(`Error al enviar correo a ${to}:`, error.message);
-      return false;
+      // Capturar mensaje de error más detallado
+      let errorMessage = 'Error al enviar correo';
+      
+      if (error.code === 'EAUTH') {
+        errorMessage = 'Error de autenticación. Verifica las credenciales EMAIL_USER y EMAIL_PASSWORD';
+      } else if (error.code === 'ECONNECTION' || error.code === 'ETIMEDOUT') {
+        errorMessage = 'Error de conexión con el servidor de correo. Verifica EMAIL_HOST y EMAIL_PORT';
+      } else if (error.code === 'EENVELOPE') {
+        errorMessage = 'Error en la dirección de correo. Verifica que el correo sea válido';
+      } else if (error.response) {
+        errorMessage = `Error del servidor de correo: ${error.response}`;
+      } else {
+        errorMessage = error.message || 'Error desconocido al enviar correo';
+      }
+      
+      logger.error(`Error al enviar correo a ${to}:`, {
+        message: error.message,
+        code: error.code,
+        response: error.response,
+        command: error.command
+      });
+      
+      return { success: false, error: errorMessage };
     }
   }
 
@@ -249,21 +272,21 @@ SENA - Sistema de Gestión de Equipos
     };
 
     for (const usuario of usuarios) {
-      const enviado = await this.enviarContrasena(
+      const resultado = await this.enviarContrasena(
         usuario.correo,
         usuario.nombreUsuario,
         usuario.cedula,
         usuario.password
       );
 
-      if (enviado) {
+      if (resultado.success) {
         resultados.exitosos++;
       } else {
         resultados.fallidos++;
         resultados.errores.push({
           correo: usuario.correo,
           nombre: usuario.nombreUsuario,
-          razon: usuario.correo ? 'Error al enviar correo' : 'Correo no proporcionado'
+          razon: resultado.error || (usuario.correo ? 'Error al enviar correo' : 'Correo no proporcionado')
         });
       }
     }
@@ -276,17 +299,19 @@ SENA - Sistema de Gestión de Equipos
    * @param {string} to - Correo destinatario
    * @param {string} nombreUsuario - Nombre del usuario
    * @param {string} urlRecuperacion - URL para restablecer la contraseña
-   * @returns {Promise<boolean>} true si se envió correctamente
+   * @returns {Promise<{success: boolean, error?: string}>} Resultado del envío
    */
   async enviarCorreoRecuperacion(to, nombreUsuario, urlRecuperacion) {
     if (!this.transporter) {
-      logger.warn('Servicio de email no configurado. No se enviará correo a:', to);
-      return false;
+      const errorMsg = 'Servicio de email no configurado. Verifica las credenciales EMAIL_USER y EMAIL_PASSWORD';
+      logger.warn(errorMsg);
+      return { success: false, error: errorMsg };
     }
 
     if (!to || !to.trim()) {
-      logger.warn('No se proporcionó correo electrónico para enviar recuperación');
-      return false;
+      const errorMsg = 'No se proporcionó correo electrónico para enviar recuperación';
+      logger.warn(errorMsg);
+      return { success: false, error: errorMsg };
     }
 
     try {
@@ -407,10 +432,31 @@ SENA - Sistema de Gestión de Equipos
 
       await this.transporter.sendMail(mailOptions);
       logger.info(`Correo de recuperación enviado exitosamente a: ${to}`);
-      return true;
+      return { success: true };
     } catch (error) {
-      logger.error(`Error al enviar correo de recuperación a ${to}:`, error.message);
-      return false;
+      // Capturar mensaje de error más detallado
+      let errorMessage = 'Error al enviar correo';
+      
+      if (error.code === 'EAUTH') {
+        errorMessage = 'Error de autenticación. Verifica las credenciales EMAIL_USER y EMAIL_PASSWORD';
+      } else if (error.code === 'ECONNECTION' || error.code === 'ETIMEDOUT') {
+        errorMessage = 'Error de conexión con el servidor de correo. Verifica EMAIL_HOST y EMAIL_PORT';
+      } else if (error.code === 'EENVELOPE') {
+        errorMessage = 'Error en la dirección de correo. Verifica que el correo sea válido';
+      } else if (error.response) {
+        errorMessage = `Error del servidor de correo: ${error.response}`;
+      } else {
+        errorMessage = error.message || 'Error desconocido al enviar correo';
+      }
+      
+      logger.error(`Error al enviar correo de recuperación a ${to}:`, {
+        message: error.message,
+        code: error.code,
+        response: error.response,
+        command: error.command
+      });
+      
+      return { success: false, error: errorMessage };
     }
   }
 }

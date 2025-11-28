@@ -421,16 +421,24 @@ export class AuthService {
     const emailService = (await import('../services/emailService.js')).default;
     const urlRecuperacion = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/restablecer-contrasena?token=${token}`;
     
-    await emailService.enviarCorreoRecuperacion(
+    const resultadoCorreo = await emailService.enviarCorreoRecuperacion(
       usuario.correo,
       usuario.nombre_usuario,
       urlRecuperacion
     );
 
-    this.logger.info('Solicitud de recuperación de contraseña procesada', { 
-      userId: usuario.id_usuario,
-      cedula 
-    });
+    if (!resultadoCorreo.success) {
+      this.logger.warn('Error al enviar correo de recuperación', { 
+        userId: usuario.id_usuario,
+        cedula,
+        error: resultadoCorreo.error
+      });
+    } else {
+      this.logger.info('Solicitud de recuperación de contraseña procesada', { 
+        userId: usuario.id_usuario,
+        cedula 
+      });
+    }
 
     return { message: 'Si el usuario existe, se enviará un correo con las instrucciones' };
   }
