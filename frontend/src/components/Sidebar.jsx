@@ -111,16 +111,17 @@ export default function Sidebar({ user }) {
 
   const menuItems = {
     equipos: [
-      { title: 'Registrar Equipo', path: '/equipos', icon: <FiPlus />, roles: ['Administrador'] },
+      { title: 'Registrar Equipo', path: '/equipos', icon: <FiPlus />, roles: ['Administrador', 'Cuentadante'] },
       { title: 'Consultar Equipo', path: '/equipos/consultar', icon: <FiSearch />, roles: ['all'] },
       { title: 'Mis Equipos', path: '/mis-equipos', icon: <FiPackage />, roles: ['all'] },
       { title: 'Asignar Equipo', path: '/equipos/asignar', icon: <FiUsers />, roles: ['Administrador', 'Instructor'] },
       { title: 'Verificar Inventario', path: '/equipos/verificar', icon: <FiCheckCircle />, roles: ['Instructor'] },
-      { title: 'Historial de Verificaciones', path: '/equipos/verificacion/historial', icon: <FiClock />, roles: ['all'] }
+      { title: 'Historial de Verificaciones', path: '/equipos/verificacion/historial', icon: <FiClock />, roles: ['all'] },
+      { title: 'Buscar Cuentadante', path: '/equipos/cuentadantes/buscar', icon: <FiSearch />, roles: ['Administrador'] }
     ],
     incidencias: [
-      { title: 'Novedades', path: '/novedades', icon: <FiAlertCircle />, roles: ['Administrador', 'Instructor'] },
-      { title: 'Reportes', path: '/reportes', icon: <FiFileText />, roles: ['Administrador', 'Instructor'] }
+      { title: 'Novedades', path: '/novedades', icon: <FiAlertCircle />, roles: ['Administrador', 'Instructor', 'Cuentadante'] },
+      { title: 'Reportes', path: '/reportes', icon: <FiFileText />, roles: ['Administrador', 'Instructor', 'Cuentadante'] }
     ],
     mantenimiento: [
       { title: 'Historial de Mantenimientos', path: '/mantenimientos', icon: <FiTool />, roles: ['all'] }
@@ -138,7 +139,7 @@ export default function Sidebar({ user }) {
       { title: 'Perfil', path: '/config?section=profile', icon: <FiUser />, roles: ['all'] },
       { title: 'Seguridad', path: '/config?section=security', icon: <FiShield />, roles: ['all'] },
       { title: 'Códigos de Seguridad', path: '/config?section=invitation-codes', icon: <FiKey />, roles: ['Administrador'] },
-      { title: 'Roles y Áreas', path: '/config?section=roles', icon: <FiSettings />, roles: ['all'] },
+      { title: 'Roles y Áreas', path: '/config?section=roles', icon: <FiSettings />, roles: ['Administrador', 'Instructor', 'Aprendiz'] },
       { title: 'Notificaciones', path: '/config?section=notifications', icon: <FiBell />, roles: ['all'] },
       { title: 'Ajustes de la App', path: '/config?section=app', icon: <FiSettings />, roles: ['all'] }
     ]

@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import Header from '../components/Header'
 import Sidebar from '../components/Sidebar'
 import Toast from '../components/Toast'
-import { FiPlus, FiAlertCircle } from 'react-icons/fi'
+import { FiPlus, FiAlertCircle, FiPackage, FiCheckCircle, FiTrendingDown, FiDollarSign } from 'react-icons/fi'
 import { parseApiResponse, buildErrorMessage } from '../utils/api'
 import '../styles/dashboard.css'
 
@@ -26,6 +26,13 @@ export default function Dashboard() {
       console.error('Error al obtener datos del usuario:', error)
     }
   }, [])
+
+  // Calcular roles y permisos
+  const userRole = user?.nombre_rol || ''
+  const isAdmin = userRole === 'Administrador'
+  const isInstructor = userRole === 'Instructor'
+  const isCuentadante = userRole === 'Cuentadante'
+  const shouldShowStats = isAdmin || isInstructor || isCuentadante
 
   // Lazy loading de estadísticas - solo cuando el usuario hace scroll o después de un delay
   const cargarEstadisticas = useCallback(async () => {
@@ -62,18 +69,13 @@ export default function Dashboard() {
 
   // Cargar estadísticas después de un pequeño delay para mejorar rendimiento inicial
   useEffect(() => {
-    const userRole = user?.nombre_rol || ''
-    if (userRole === 'Administrador' && !statsLoaded) {
+    if (shouldShowStats && !statsLoaded) {
       const timer = setTimeout(() => {
         cargarEstadisticas()
       }, 300)
       return () => clearTimeout(timer)
     }
-  }, [user, statsLoaded, cargarEstadisticas])
-
-  const userRole = user?.nombre_rol || ''
-  const isAdmin = userRole === 'Administrador'
-  const isInstructor = userRole === 'Instructor'
+  }, [user, statsLoaded, cargarEstadisticas, shouldShowStats])
 
   return (
     <div className="page dashboard-page">
@@ -90,7 +92,7 @@ export default function Dashboard() {
           <div className="quick-actions">
             <h3 className="section-title">Accesos Rápidos</h3>
             <div className="quick-actions-grid">
-              {isAdmin && (
+              {(isAdmin || isCuentadante) && (
                 <button
                   className="quick-action-card primary"
                   onClick={() => nav('/equipos')}
@@ -104,7 +106,7 @@ export default function Dashboard() {
                   </div>
                 </button>
               )}
-              {(isAdmin || isInstructor) && (
+              {(isAdmin || isInstructor || isCuentadante) && (
                 <button
                   className="quick-action-card secondary"
                   onClick={() => nav('/novedades/crear')}
@@ -121,8 +123,8 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Estadísticas - Solo Administrador */}
-          {isAdmin && (
+          {/* Estadísticas - Administrador, Instructor y Cuentadante */}
+          {shouldShowStats && (
             <div className="stats-card">
               <div className="stats-header">
                 <h3>Estadísticas Rápidas</h3>
@@ -136,28 +138,77 @@ export default function Dashboard() {
                 )}
               </div>
               {loading ? (
-                <div style={{ padding: '20px', textAlign: 'center' }}>Cargando estadísticas...</div>
+                <div className="stats-loading">
+                  <div className="loading-spinner"></div>
+                  <p>Cargando estadísticas...</p>
+                </div>
               ) : stats ? (
-                <div className="stats-row">
-                  <div className="stat-box" style={{ background: '#e6f2ff' }}>
-                    <div className="stat-value">{stats.equipos?.total || 0}</div>
-                    <div className="stat-label">Total Equipos</div>
+                <div className="stats-grid">
+                  {/* Total Equipos */}
+                  <div className="stat-card stat-card-blue">
+                    <div className="stat-icon-wrapper">
+                      <FiPackage size={36} />
+                    </div>
+                    <div className="stat-value-large">
+                      {stats.total_equipos || 0}
+                    </div>
+                    <div className="stat-label-small">Total Equipos</div>
                   </div>
-                  <div className="stat-box" style={{ background: '#e9f7ec' }}>
-                    <div className="stat-value">{stats.usuarios?.activos || 0}</div>
-                    <div className="stat-label">Usuarios Activos</div>
+
+                  {/* Equipos en Buen Estado */}
+                  <div className="stat-card stat-card-green">
+                    <div className="stat-icon-wrapper">
+                      <FiCheckCircle size={36} />
+                    </div>
+                    <div className="stat-value-large">
+                      {stats.equipos_buenos || 0}
+                    </div>
+                    <div className="stat-label-small">Equipos en Buen Estado</div>
                   </div>
-                  <div className="stat-box" style={{ background: 'var(--warning-200)' }}>
-                    <div className="stat-value">{stats.novedades?.pendientes || 0}</div>
-                    <div className="stat-label">Novedades Pendientes</div>
+
+                  {/* Equipos en Estado Regular */}
+                  <div className="stat-card stat-card-yellow">
+                    <div className="stat-icon-wrapper">
+                      <FiAlertCircle size={36} />
+                    </div>
+                    <div className="stat-value-large">
+                      {stats.equipos_regulares || 0}
+                    </div>
+                    <div className="stat-label-small">Equipos en Estado Regular</div>
                   </div>
-                  <div className="stat-box" style={{ background: '#fff3cd' }}>
-                    <div className="stat-value">{stats.mantenimientos?.proximos30Dias || 0}</div>
-                    <div className="stat-label">Mantenimientos Próximos</div>
+
+                  {/* Equipos Dañados */}
+                  <div className="stat-card stat-card-red">
+                    <div className="stat-icon-wrapper">
+                      <FiTrendingDown size={36} />
+                    </div>
+                    <div className="stat-value-large">
+                      {stats.equipos_danados || 0}
+                    </div>
+                    <div className="stat-label-small">Equipos Dañados</div>
+                  </div>
+
+                  {/* Valor Total Inventario */}
+                  <div className="stat-card stat-card-gray">
+                    <div className="stat-icon-wrapper">
+                      <FiDollarSign size={36} />
+                    </div>
+                    <div className="stat-value-large stat-value-currency">
+                      {stats.valor_total_inventario 
+                        ? new Intl.NumberFormat('es-CO', { 
+                            style: 'currency', 
+                            currency: 'COP',
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2,
+                            useGrouping: true
+                          }).format(stats.valor_total_inventario)
+                        : '$ 0,00'}
+                    </div>
+                    <div className="stat-label-small">Valor Total Inventario</div>
                   </div>
                 </div>
               ) : (
-                <div style={{ padding: '20px', textAlign: 'center', color: '#666' }}>
+                <div className="stats-empty">
                   {!statsLoaded && (
                     <button
                       className="load-stats-btn"

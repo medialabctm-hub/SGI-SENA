@@ -77,8 +77,8 @@ export class AuthService {
     // Validar datos usando estrategias
     this.validateUserData({ correo, contrasena, cedula });
 
-    // Si el rol es Instructor o Administrador, validar código de invitación
-    if (rol === 'Instructor' || rol === 'Administrador') {
+    // Si el rol es Instructor, Administrador o Cuentadante, validar código de invitación
+    if (rol === 'Instructor' || rol === 'Administrador' || rol === 'Cuentadante') {
       if (!codigo_invitacion) {
         throw new ValidationError(`El código de invitación es requerido para registrarse como ${rol}`);
       }

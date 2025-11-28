@@ -10,18 +10,18 @@ export const registerSchema = z.object({
   correo: z.string().email('Correo electrónico inválido').toLowerCase(),
   telefono: z.string().min(7, 'El teléfono debe tener al menos 7 caracteres').max(20),
   contrasena: z.string().min(6, 'La contraseña debe tener al menos 6 caracteres'),
-  rol: z.enum(['Administrador', 'Instructor', 'Aprendiz'], {
+  rol: z.enum(['Administrador', 'Instructor', 'Aprendiz', 'Cuentadante'], {
     errorMap: () => ({ message: 'Rol inválido' }),
   }),
   codigo_invitacion: z.string().optional().nullable(),
 }).refine((data) => {
-  // Si el rol es Instructor o Administrador, el código de invitación es requerido
-  if ((data.rol === 'Instructor' || data.rol === 'Administrador') && !data.codigo_invitacion) {
+  // Si el rol es Instructor, Administrador o Cuentadante, el código de invitación es requerido
+  if ((data.rol === 'Instructor' || data.rol === 'Administrador' || data.rol === 'Cuentadante') && !data.codigo_invitacion) {
     return false;
   }
   return true;
 }, {
-  message: 'El código de invitación es requerido para registrarse como Instructor o Administrador',
+  message: 'El código de invitación es requerido para registrarse como Instructor, Administrador o Cuentadante',
   path: ['codigo_invitacion'],
 });
 

@@ -8,18 +8,30 @@ import { obtenerEquipoPorCodigo as obtenerEquipoPorCodigoUtil } from '../utils/s
 
 export async function listarEquipos(req, res) {
   try {
-    // Opcional: implementar paginación si hay muchos equipos
-    // Por ahora mantenemos la funcionalidad existente
-    const query = `
+    const userId = req.user?.id;
+    const userRole = req.user?.rol;
+
+    // Si es Cuentadante, solo puede ver su inventario (equipos donde id_cuentadante = su id_usuario)
+    let query = `
       SELECT e.codigo_equipo, e.placa AS codigo_inventario, e.tipo, e.marca, e.modelo, e.numero_serie, e.consecutivo, e.descripcion,
              e.fecha_adquisicion, e.valor_ingreso AS costo, e.vida_util_meses, e.estado_fisico,
-             e.specs_completas,
+             e.specs_completas, e.id_cuentadante, e.cuentadante_principal,
              a.id_ambiente, a.nombre_ambiente, a.codigo_ambiente
       FROM Elementos e
       LEFT JOIN Ambientes a ON a.id_ambiente = e.id_ambiente
-      ORDER BY e.codigo_equipo ASC
     `;
-    const [rows] = await defaultDb.execute(query);
+
+    const params = [];
+
+    // Si es Cuentadante, filtrar solo su inventario
+    if (userRole === 'Cuentadante') {
+      query += ` WHERE e.id_cuentadante = ?`;
+      params.push(userId);
+    }
+
+    query += ` ORDER BY e.codigo_equipo ASC`;
+
+    const [rows] = await defaultDb.execute(query, params);
     return res.json(rows);
   } catch (err) {
     logger.error('Error al listar equipos', { error: err.message });
@@ -128,17 +140,37 @@ export async function registrarEquipo(req, res) {
       return res.status(400).json({ error: 'Ambiente inválido', detalle: 'El ambiente indicado no existe' });
     }
 
+    // Si es Cuentadante, asignar automáticamente el equipo a su inventario
+    const userRole = req.user?.rol;
+    const userId = req.user?.id;
+    const idCuentadante = userRole === 'Cuentadante' ? userId : null;
+
+    // Verificar si la columna id_cuentadante existe, si no crearla
+    const [[colCuentadante]] = await defaultDb.execute(
+      "SELECT COUNT(*) AS cnt FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'Elementos' AND COLUMN_NAME = 'id_cuentadante'"
+    );
+    if (colCuentadante.cnt === 0) {
+      await defaultDb.execute(
+        `ALTER TABLE Elementos 
+         ADD COLUMN id_cuentadante INT NULL,
+         ADD INDEX idx_cuentadante (id_cuentadante),
+         ADD FOREIGN KEY (id_cuentadante) REFERENCES Usuarios(id_usuario) ON DELETE SET NULL`
+      );
+      logger.info('Columna id_cuentadante creada en la tabla Elementos');
+    }
+
     // Insertar en la tabla Elementos (con o sin id_tipo)
     let query;
     let params;
     if (usaIdTipo) {
       query = `INSERT INTO Elementos
-        (id_categoria, id_tipo, id_ambiente, tipo, marca, modelo, numero_serie, descripcion, fecha_adquisicion, valor_ingreso, vida_util_meses, estado_fisico, specs_completas, r_centro, consecutivo, placa, registrado_por)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+        (id_categoria, id_tipo, id_ambiente, id_cuentadante, tipo, marca, modelo, numero_serie, descripcion, fecha_adquisicion, valor_ingreso, vida_util_meses, estado_fisico, specs_completas, r_centro, consecutivo, placa, registrado_por)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
       params = [
         categoria.id_categoria,
         idTipo,
         ambienteId,
+        idCuentadante,
         tipo,
         marca || null,
         modelo,
@@ -156,11 +188,12 @@ export async function registrarEquipo(req, res) {
       ];
     } else {
       query = `INSERT INTO Elementos
-        (id_categoria, id_ambiente, tipo, marca, modelo, numero_serie, descripcion, fecha_adquisicion, valor_ingreso, vida_util_meses, estado_fisico, specs_completas, r_centro, consecutivo, placa, registrado_por)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+        (id_categoria, id_ambiente, id_cuentadante, tipo, marca, modelo, numero_serie, descripcion, fecha_adquisicion, valor_ingreso, vida_util_meses, estado_fisico, specs_completas, r_centro, consecutivo, placa, registrado_por)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
       params = [
         categoria.id_categoria,
         ambienteId,
+        idCuentadante,
         tipo,
         marca || null,
         modelo,
@@ -215,12 +248,15 @@ export async function registrarEquipo(req, res) {
 export async function obtenerEquipoPorCodigo(req, res) {
   try {
     const { codigo } = req.params;
+    const userId = req.user?.id;
+    const userRole = req.user?.rol;
+    
     if (!codigo) return res.status(400).json({ error: 'codigo requerido' });
 
     const queryBase = `
       SELECT e.codigo_equipo, e.placa AS codigo_inventario, e.tipo, e.marca, e.modelo, e.numero_serie, e.consecutivo, e.descripcion,
              e.fecha_adquisicion, e.valor_ingreso AS costo, e.vida_util_meses, e.estado_fisico,
-             e.specs_completas,
+             e.specs_completas, e.id_cuentadante,
              a.id_ambiente, a.nombre_ambiente, a.codigo_ambiente,
              (SELECT estado_mantenimiento FROM Mantenimiento 
               WHERE codigo_equipo = e.codigo_equipo AND estado_mantenimiento = 'En Proceso' 
@@ -232,9 +268,13 @@ export async function obtenerEquipoPorCodigo(req, res) {
       LEFT JOIN Ambientes a ON a.id_ambiente = e.id_ambiente
     `;
 
+    // Si es Cuentadante, solo puede ver equipos de su inventario
+    const whereClause = userRole === 'Cuentadante' ? ' AND e.id_cuentadante = ?' : '';
+    const params = userRole === 'Cuentadante' ? [codigo, userId] : [codigo];
+
     const [[rowInventario]] = await defaultDb.execute(
-      `${queryBase} WHERE e.placa = ?`,
-      [codigo]
+      `${queryBase} WHERE e.placa = ?${whereClause}`,
+      params
     );
 
     if (rowInventario) {
@@ -243,9 +283,10 @@ export async function obtenerEquipoPorCodigo(req, res) {
 
     const codigoNumerico = Number.parseInt(codigo, 10);
     if (Number.isFinite(codigoNumerico)) {
+      const paramsId = userRole === 'Cuentadante' ? [codigoNumerico, userId] : [codigoNumerico];
       const [[rowId]] = await defaultDb.execute(
-        `${queryBase} WHERE e.codigo_equipo = ?`,
-        [codigoNumerico]
+        `${queryBase} WHERE e.codigo_equipo = ?${whereClause}`,
+        paramsId
       );
       if (rowId) return res.json(rowId);
     }
@@ -293,7 +334,8 @@ export async function actualizarEquipo(req, res) {
 
     const allowed = [
       'tipo', 'marca', 'modelo', 'numero_serie', 'descripcion', 'fecha_adquisicion',
-      'costo', 'vida_util_meses', 'estado_fisico', 'specs_completas'
+      'costo', 'valor_ingreso', 'vida_util_meses', 'estado_fisico', 'specs_completas',
+      'consecutivo', 'placa', 'r_centro'
     ];
 
     const sets = [];
@@ -356,9 +398,12 @@ export async function eliminarEquipo(req, res) {
 }
 
 /**
- * Asignar equipo a un usuario
- * Admin: puede asignar a cualquier usuario
- * Instructor: solo puede asignar a Aprendices
+ * Habilitar equipo para uso de un usuario (aplicación de escritorio)
+ * IMPORTANTE: Esto NO asigna inventario, solo habilita el equipo para que el usuario pueda iniciar sesión
+ * y desbloquear la máquina. El inventario solo se asigna a ambientes.
+ * 
+ * Admin: puede habilitar a cualquier usuario
+ * Instructor: solo puede habilitar a Aprendices
  */
 export async function asignarEquipo(req, res) {
   try {
@@ -390,10 +435,10 @@ export async function asignarEquipo(req, res) {
       return res.status(404).json({ error: 'Usuario no encontrado o inactivo' })
     }
 
-    // Si es Instructor, solo puede asignar a Aprendices
+    // Si es Instructor, solo puede habilitar a Aprendices
     if (userRole === 'Instructor' && usuarioReceptor.nombre_rol !== 'Aprendiz') {
       return res.status(403).json({ 
-        error: 'Los instructores solo pueden asignar equipos a aprendices' 
+        error: 'Los instructores solo pueden habilitar equipos a aprendices' 
       })
     }
 
@@ -409,20 +454,21 @@ export async function asignarEquipo(req, res) {
 
     if (mantenimientoActivo) {
       return res.status(409).json({ 
-        error: `Este equipo está actualmente en mantenimiento (${mantenimientoActivo.tipo_mantenimiento}). No se puede asignar hasta que el mantenimiento finalice.` 
+        error: `Este equipo está actualmente en mantenimiento (${mantenimientoActivo.tipo_mantenimiento}). No se puede habilitar hasta que el mantenimiento finalice.` 
       })
     }
 
-    // Verificar si ya existe una asignación activa para este equipo y usuario
-    const [[asignacionExistente]] = await defaultDb.execute(
+    // Verificar si ya existe una habilitación activa para este equipo y usuario
+    // NOTA: Esta es una habilitación para uso, NO una asignación de inventario
+    const [[habilitacionExistente]] = await defaultDb.execute(
       `SELECT id_responsable FROM Responsables_Equipo 
        WHERE codigo_equipo = ? AND id_usuario = ? AND estado_responsabilidad = 'Activo'`,
       [codigo_equipo, id_usuario]
     )
 
-    if (asignacionExistente) {
+    if (habilitacionExistente) {
       return res.status(409).json({ 
-        error: 'Este equipo ya está asignado a este usuario' 
+        error: 'Este equipo ya está habilitado para este usuario' 
       })
     }
 
@@ -436,7 +482,8 @@ export async function asignarEquipo(req, res) {
       fechaDesvinculacion = fecha.toISOString().slice(0, 19).replace('T', ' ')
     }
 
-    // Insertar la asignación
+    // Insertar la habilitación (NO es asignación de inventario, solo habilitación para uso)
+    // La tabla Responsables_Equipo se usa para habilitaciones de uso, no para asignación de inventario
     const [result] = await defaultDb.execute(
       `INSERT INTO Responsables_Equipo 
        (codigo_equipo, id_usuario, tipo_responsabilidad, observaciones, asignado_por, fecha_asignacion, fecha_desvinculacion) 
@@ -447,15 +494,16 @@ export async function asignarEquipo(req, res) {
     return res.status(201).json({ 
       ok: true, 
       id: result.insertId,
-      message: `Equipo asignado correctamente a ${usuarioReceptor.nombre_usuario}`,
+      message: `Equipo habilitado correctamente para ${usuarioReceptor.nombre_usuario}. El usuario podrá iniciar sesión en la aplicación de escritorio para desbloquear el equipo.`,
       equipo: {
         codigo: equipo.codigo_equipo,
         descripcion: `${equipo.tipo} ${equipo.marca} ${equipo.modelo}`.trim()
-      }
+      },
+      nota: 'Esta habilitación permite el uso del equipo. El inventario permanece asignado al ambiente.'
     })
   } catch (err) {
-    logger.error('Error al asignar equipo', { error: err.message, stack: err.stack })
-    return res.status(500).json({ error: 'Error al asignar el equipo', details: err.message })
+    logger.error('Error al habilitar equipo', { error: err.message, stack: err.stack })
+    return res.status(500).json({ error: 'Error al habilitar el equipo', details: err.message })
   }
 }
 
@@ -501,9 +549,9 @@ export async function obtenerMisEquipos(req, res) {
 }
 
 /**
- * Listar todas las asignaciones de equipos
- * Admin: ve todas las asignaciones
- * Instructor: ve solo asignaciones de aprendices
+ * Listar todas las habilitaciones de equipos (para uso, no asignación de inventario)
+ * Admin: ve todas las habilitaciones
+ * Instructor: ve solo habilitaciones de aprendices
  */
 export async function listarAsignaciones(req, res) {
   try {
@@ -539,11 +587,11 @@ export async function listarAsignaciones(req, res) {
 
     let params = []
 
-    // Si es Instructor, solo ver asignaciones de Aprendices
+    // Si es Instructor, solo ver habilitaciones de Aprendices
     if (userRole === 'Instructor') {
       query += ` WHERE r.nombre_rol = 'Aprendiz' AND re.estado_responsabilidad = 'Activo'`
     } else {
-      // Admin ve todas las asignaciones activas
+      // Admin ve todas las habilitaciones activas
       query += ` WHERE re.estado_responsabilidad = 'Activo'`
     }
 
@@ -553,15 +601,15 @@ export async function listarAsignaciones(req, res) {
 
     return res.json(rows)
   } catch (err) {
-    logger.error('Error al listar asignaciones', { error: err.message, stack: err.stack })
-    return res.status(500).json({ error: 'Error al obtener asignaciones', details: err.message })
+    logger.error('Error al listar habilitaciones', { error: err.message, stack: err.stack })
+    return res.status(500).json({ error: 'Error al obtener habilitaciones', details: err.message })
   }
 }
 
 /**
- * Eliminar/Desactivar una asignación de equipo
- * Solo Administrador e Instructor pueden eliminar asignaciones
- * Instructor solo puede eliminar asignaciones de Aprendices
+ * Eliminar/Desactivar una habilitación de equipo
+ * Solo Administrador e Instructor pueden eliminar habilitaciones
+ * Instructor solo puede eliminar habilitaciones de Aprendices
  */
 export async function eliminarAsignacion(req, res) {
   try {
@@ -584,17 +632,17 @@ export async function eliminarAsignacion(req, res) {
     )
 
     if (!asignacion) {
-      return res.status(404).json({ error: 'Asignación no encontrada o ya está inactiva' })
+      return res.status(404).json({ error: 'Habilitación no encontrada o ya está inactiva' })
     }
 
-    // Si es Instructor, solo puede eliminar asignaciones de Aprendices
+    // Si es Instructor, solo puede eliminar habilitaciones de Aprendices
     if (userRole === 'Instructor' && asignacion.usuario_rol !== 'Aprendiz') {
       return res.status(403).json({ 
-        error: 'Solo puedes eliminar asignaciones de aprendices' 
+        error: 'Solo puedes eliminar habilitaciones de aprendices' 
       })
     }
 
-    // Desactivar la asignación (cambiar estado a 'Finalizado' y establecer fecha_desvinculacion)
+    // Desactivar la habilitación (cambiar estado a 'Finalizado' y establecer fecha_desvinculacion)
     await defaultDb.execute(
       `UPDATE Responsables_Equipo 
        SET estado_responsabilidad = 'Finalizado', 
@@ -605,7 +653,7 @@ export async function eliminarAsignacion(req, res) {
 
     return res.json({ 
       ok: true,
-      message: 'Asignación eliminada correctamente' 
+      message: 'Habilitación eliminada correctamente' 
     })
   } catch (err) {
     logger.error('Error al eliminar asignación', { error: err.message, stack: err.stack })
@@ -1065,6 +1113,234 @@ export async function obtenerHistorialEquipo(req, res) {
     logger.error('Error al obtener historial del equipo', { error: err.message, stack: err.stack })
     return res.status(500).json({
       error: 'Error al obtener historial del equipo',
+      details: err.message
+    })
+  }
+}
+
+/**
+ * Actualizar cuentadante principal de todos los equipos
+ * El cuentadante principal es la persona responsable permanente de todo el inventario
+ * Solo puede haber un cuentadante principal y se ingresa después de importar equipos
+ */
+export async function actualizarCuentadantePrincipal(req, res) {
+  try {
+    const { cuentadante_principal } = req.body
+    const userId = req.user?.id
+    const userRole = req.user?.rol
+
+    // Solo Administrador puede actualizar el cuentadante principal
+    if (userRole !== 'Administrador') {
+      return res.status(403).json({ 
+        error: 'Solo los administradores pueden actualizar el cuentadante principal' 
+      })
+    }
+
+    if (!cuentadante_principal || typeof cuentadante_principal !== 'string' || cuentadante_principal.trim().length === 0) {
+      return res.status(400).json({ 
+        error: 'El cuentadante principal es obligatorio' 
+      })
+    }
+
+    // Verificar si la columna cuentadante_principal existe en la tabla Elementos
+    const [[columnaExiste]] = await defaultDb.execute(
+      `SELECT COUNT(*) AS cnt FROM INFORMATION_SCHEMA.COLUMNS 
+       WHERE TABLE_SCHEMA = DATABASE() 
+       AND TABLE_NAME = 'Elementos' 
+       AND COLUMN_NAME = 'cuentadante_principal'`
+    )
+
+    // Si no existe, crearla
+    if (columnaExiste.cnt === 0) {
+      await defaultDb.execute(
+        `ALTER TABLE Elementos 
+         ADD COLUMN cuentadante_principal VARCHAR(255) NULL 
+         COMMENT 'Cuentadante principal permanente de todo el inventario'`
+      )
+      logger.info('Columna cuentadante_principal creada en la tabla Elementos')
+    }
+
+    // Actualizar el cuentadante principal en todos los equipos
+    const [result] = await defaultDb.execute(
+      `UPDATE Elementos 
+       SET cuentadante_principal = ? 
+       WHERE cuentadante_principal IS NULL OR cuentadante_principal != ?`,
+      [cuentadante_principal.trim(), cuentadante_principal.trim()]
+    )
+
+    return res.json({
+      ok: true,
+      message: `Cuentadante principal actualizado correctamente para ${result.affectedRows} equipo(s)`,
+      cuentadante_principal: cuentadante_principal.trim(),
+      equipos_actualizados: result.affectedRows
+    })
+  } catch (err) {
+    logger.error('Error al actualizar cuentadante principal', { error: err.message, stack: err.stack })
+    return res.status(500).json({
+      error: 'Error al actualizar el cuentadante principal',
+      details: err.message
+    })
+  }
+}
+
+/**
+ * Obtener el cuentadante principal actual
+ */
+export async function obtenerCuentadantePrincipal(req, res) {
+  try {
+    // Verificar si la columna existe
+    const [[columnaExiste]] = await defaultDb.execute(
+      `SELECT COUNT(*) AS cnt FROM INFORMATION_SCHEMA.COLUMNS 
+       WHERE TABLE_SCHEMA = DATABASE() 
+       AND TABLE_NAME = 'Elementos' 
+       AND COLUMN_NAME = 'cuentadante_principal'`
+    )
+
+    if (columnaExiste.cnt === 0) {
+      return res.json({
+        cuentadante_principal: null,
+        existe_columna: false
+      })
+    }
+
+    // Obtener el cuentadante principal (debería ser el mismo para todos los equipos)
+    const [[cuentadante]] = await defaultDb.execute(
+      `SELECT DISTINCT cuentadante_principal 
+       FROM Elementos 
+       WHERE cuentadante_principal IS NOT NULL 
+       LIMIT 1`
+    )
+
+    return res.json({
+      cuentadante_principal: cuentadante?.cuentadante_principal || null,
+      existe_columna: true
+    })
+  } catch (err) {
+    logger.error('Error al obtener cuentadante principal', { error: err.message, stack: err.stack })
+    return res.status(500).json({
+      error: 'Error al obtener el cuentadante principal',
+      details: err.message
+    })
+  }
+}
+
+/**
+ * Buscar cuentadante por número de documento y obtener su información e inventario
+ * Solo Administrador puede acceder
+ */
+export async function buscarCuentadantePorDocumento(req, res) {
+  try {
+    const { documento } = req.params
+    const userRole = req.user?.rol
+
+    // Solo Administrador puede buscar cuentadantes
+    if (userRole !== 'Administrador') {
+      return res.status(403).json({ 
+        error: 'Solo los administradores pueden buscar cuentadantes' 
+      })
+    }
+
+    if (!documento || documento.trim().length === 0) {
+      return res.status(400).json({ 
+        error: 'El número de documento es obligatorio' 
+      })
+    }
+
+    // Buscar usuario con rol Cuentadante por documento
+    const [[cuentadante]] = await defaultDb.execute(
+      `SELECT 
+        u.id_usuario,
+        u.nombre_usuario,
+        u.cedula,
+        u.correo,
+        u.telefono,
+        u.estado,
+        u.fecha_registro,
+        r.nombre_rol
+       FROM Usuarios u
+       INNER JOIN Roles r ON u.id_rol = r.id_rol
+       WHERE u.cedula = ? AND r.nombre_rol = 'Cuentadante' AND u.estado = 'Activo'`,
+      [documento.trim()]
+    )
+
+    if (!cuentadante) {
+      return res.status(404).json({ 
+        error: 'Cuentadante no encontrado',
+        detalle: 'No se encontró un cuentadante activo con ese número de documento'
+      })
+    }
+
+    // Obtener inventario del cuentadante
+    const [inventario] = await defaultDb.execute(
+      `SELECT 
+        e.codigo_equipo,
+        e.placa AS codigo_inventario,
+        e.tipo,
+        e.marca,
+        e.modelo,
+        e.numero_serie,
+        e.consecutivo,
+        e.descripcion,
+        e.fecha_adquisicion,
+        e.valor_ingreso AS costo,
+        e.vida_util_meses,
+        e.estado_fisico,
+        e.specs_completas,
+        e.cuentadante_principal,
+        a.id_ambiente,
+        a.nombre_ambiente,
+        a.codigo_ambiente,
+        COUNT(DISTINCT n.id_novedad) AS total_novedades,
+        COUNT(DISTINCT m.id_mantenimiento) AS total_mantenimientos
+       FROM Elementos e
+       LEFT JOIN Ambientes a ON e.id_ambiente = a.id_ambiente
+       LEFT JOIN Novedades n ON e.codigo_equipo = n.codigo_equipo
+       LEFT JOIN Mantenimiento m ON e.codigo_equipo = m.codigo_equipo
+       WHERE e.id_cuentadante = ?
+       GROUP BY e.codigo_equipo
+       ORDER BY e.codigo_equipo ASC`,
+      [cuentadante.id_usuario]
+    )
+
+    // Obtener estadísticas del inventario
+    const [[estadisticas]] = await defaultDb.execute(
+      `SELECT 
+        COUNT(*) AS total_equipos,
+        COUNT(DISTINCT e.id_ambiente) AS total_ambientes,
+        SUM(CASE WHEN e.estado_fisico = 'Bueno' THEN 1 ELSE 0 END) AS equipos_buenos,
+        SUM(CASE WHEN e.estado_fisico = 'Regular' THEN 1 ELSE 0 END) AS equipos_regulares,
+        SUM(CASE WHEN e.estado_fisico = 'Malo' OR e.estado_fisico = 'Dañado' THEN 1 ELSE 0 END) AS equipos_danados,
+        SUM(e.valor_ingreso) AS valor_total_inventario
+       FROM Elementos e
+       WHERE e.id_cuentadante = ?`,
+      [cuentadante.id_usuario]
+    )
+
+    return res.json({
+      cuentadante: {
+        id_usuario: cuentadante.id_usuario,
+        nombre_usuario: cuentadante.nombre_usuario,
+        cedula: cuentadante.cedula,
+        correo: cuentadante.correo,
+        telefono: cuentadante.telefono,
+        estado: cuentadante.estado,
+        fecha_creacion: cuentadante.fecha_registro,
+        nombre_rol: cuentadante.nombre_rol
+      },
+      inventario,
+      estadisticas: {
+        total_equipos: estadisticas.total_equipos || 0,
+        total_ambientes: estadisticas.total_ambientes || 0,
+        equipos_buenos: estadisticas.equipos_buenos || 0,
+        equipos_regulares: estadisticas.equipos_regulares || 0,
+        equipos_danados: estadisticas.equipos_danados || 0,
+        valor_total_inventario: estadisticas.valor_total_inventario || 0
+      }
+    })
+  } catch (err) {
+    logger.error('Error al buscar cuentadante por documento', { error: err.message, stack: err.stack })
+    return res.status(500).json({
+      error: 'Error al buscar cuentadante',
       details: err.message
     })
   }

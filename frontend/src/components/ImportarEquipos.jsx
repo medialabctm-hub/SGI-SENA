@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { FiUpload, FiFile, FiDownload } from 'react-icons/fi'
+import { useState, useEffect } from 'react'
+import { FiUpload, FiFile, FiDownload, FiUser, FiSave, FiAlertCircle } from 'react-icons/fi'
 import * as XLSX from 'xlsx'
 import { parseApiResponse, buildErrorMessage } from '../utils/api'
 
@@ -8,6 +8,75 @@ export default function ImportarEquipos({ onImportComplete }) {
   const [loading, setLoading] = useState(false)
   const [resultado, setResultado] = useState(null)
   const [error, setError] = useState(null)
+  const [cuentadantePrincipal, setCuentadantePrincipal] = useState('')
+  const [cuentadanteActual, setCuentadanteActual] = useState(null)
+  const [loadingCuentadante, setLoadingCuentadante] = useState(false)
+  const [savingCuentadante, setSavingCuentadante] = useState(false)
+  const [user, setUser] = useState(null)
+
+  useEffect(() => {
+    try {
+      const userData = localStorage.getItem('user')
+      if (userData) {
+        setUser(JSON.parse(userData))
+      }
+    } catch (error) {
+      console.error('Error al obtener datos del usuario:', error)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (user?.nombre_rol === 'Administrador') {
+      fetchCuentadantePrincipal()
+    }
+  }, [user])
+
+  const fetchCuentadantePrincipal = async () => {
+    try {
+      setLoadingCuentadante(true)
+      const token = localStorage.getItem('token')
+      const res = await fetch('/api/equipos/cuentadante-principal', {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      const data = await parseApiResponse(res, 'Error al obtener cuentadante principal')
+      setCuentadanteActual(data.cuentadante_principal || '')
+      setCuentadantePrincipal(data.cuentadante_principal || '')
+    } catch (err) {
+      console.error('Error al obtener cuentadante principal:', err)
+    } finally {
+      setLoadingCuentadante(false)
+    }
+  }
+
+  const handleSaveCuentadante = async () => {
+    if (!cuentadantePrincipal.trim()) {
+      setError('El cuentadante principal es obligatorio')
+      return
+    }
+
+    try {
+      setSavingCuentadante(true)
+      setError(null)
+      const token = localStorage.getItem('token')
+      const res = await fetch('/api/equipos/cuentadante-principal', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ cuentadante_principal: cuentadantePrincipal.trim() })
+      })
+      const data = await parseApiResponse(res, 'Error al actualizar cuentadante principal')
+      setCuentadanteActual(cuentadantePrincipal.trim())
+      setError(null)
+      // Mostrar mensaje de éxito
+      alert(`Cuentadante principal actualizado correctamente para ${data.equipos_actualizados} equipo(s)`)
+    } catch (err) {
+      setError(buildErrorMessage(err, 'Error al guardar el cuentadante principal'))
+    } finally {
+      setSavingCuentadante(false)
+    }
+  }
 
   const handleFileChange = (e) => {
     const file = e.target.files[0]
@@ -216,6 +285,67 @@ export default function ImportarEquipos({ onImportComplete }) {
           {loading && <div className="loading-spinner" style={{ width: '16px', height: '16px', borderWidth: '2px' }}></div>}
         </button>
       </form>
+
+      {/* Sección de Cuentadante Principal - Solo para Administradores */}
+      {user?.nombre_rol === 'Administrador' && (
+        <div style={{
+          marginTop: '2rem',
+          padding: '1.5rem',
+          background: '#fff3cd',
+          borderRadius: '8px',
+          border: '1px solid #ffc107'
+        }}>
+          <h4 style={{ margin: '0 0 1rem 0', fontSize: '1.1rem', color: '#1a2a3a', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <FiUser size={20} />
+            Cuentadante Principal del Inventario
+          </h4>
+          <p style={{ color: '#666', marginBottom: '1rem', fontSize: '0.9rem' }}>
+            El cuentadante principal es la persona responsable permanente de todo el inventario. 
+            Debe ingresarse después de importar los equipos.
+          </p>
+          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-start' }}>
+            <input
+              type="text"
+              value={cuentadantePrincipal}
+              onChange={(e) => setCuentadantePrincipal(e.target.value)}
+              placeholder="Nombre del cuentadante principal"
+              style={{
+                flex: 1,
+                padding: '0.75rem',
+                border: '1px solid #ddd',
+                borderRadius: '6px',
+                fontSize: '0.95rem'
+              }}
+              disabled={loadingCuentadante || savingCuentadante}
+            />
+            <button
+              onClick={handleSaveCuentadante}
+              disabled={!cuentadantePrincipal.trim() || savingCuentadante || loadingCuentadante}
+              style={{
+                padding: '0.75rem 1.5rem',
+                background: savingCuentadante || !cuentadantePrincipal.trim() ? '#ccc' : '#ffc107',
+                color: '#000',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: savingCuentadante || !cuentadantePrincipal.trim() ? 'not-allowed' : 'pointer',
+                fontSize: '0.95rem',
+                fontWeight: 600,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem'
+              }}
+            >
+              <FiSave size={16} />
+              {savingCuentadante ? 'Guardando...' : 'Guardar'}
+            </button>
+          </div>
+          {cuentadanteActual && (
+            <p style={{ marginTop: '0.5rem', fontSize: '0.85rem', color: '#666' }}>
+              Cuentadante actual: <strong>{cuentadanteActual}</strong>
+            </p>
+          )}
+        </div>
+      )}
 
       {resultado && (
         <div style={{

@@ -228,6 +228,73 @@ export const ROLE_PERMISSIONS = {
     // Notificaciones - solo propias
     PERMISSIONS.NOTIFICACIONES.VIEW,
   ],
+
+  Cuentadante: [
+    // Usuarios - NO tiene acceso (no puede ver personal registrado ni gestionar usuarios)
+    // PERMISSIONS.USERS.VIEW, // NO incluido
+    // PERMISSIONS.USERS.VIEW_DETAIL, // NO incluido
+    // PERMISSIONS.USERS.CREATE, // NO incluido
+    // PERMISSIONS.USERS.UPDATE, // NO incluido
+    // PERMISSIONS.USERS.DELETE, // NO incluido
+    // PERMISSIONS.USERS.MANAGE_ROLES, // NO incluido
+
+    // Equipos - solo su inventario (no todos los inventarios del sistema)
+    PERMISSIONS.EQUIPOS.VIEW_OWN, // Solo ve su inventario
+    PERMISSIONS.EQUIPOS.VIEW_DETAIL, // Puede ver detalles de sus equipos
+    PERMISSIONS.EQUIPOS.CREATE, // Puede registrar equipos en su inventario
+    PERMISSIONS.EQUIPOS.UPDATE, // Puede editar sus equipos
+    PERMISSIONS.EQUIPOS.DELETE, // Puede eliminar sus equipos
+    // PERMISSIONS.EQUIPOS.VIEW, // NO incluido - no puede ver todos los inventarios
+    // PERMISSIONS.EQUIPOS.ASSIGN, // NO incluido
+    // PERMISSIONS.EQUIPOS.ASSIGN_TO_APRENDIZ, // NO incluido
+
+    // Novedades - de su inventario
+    PERMISSIONS.NOVEDADES.VIEW_OWN,
+    PERMISSIONS.NOVEDADES.CREATE_OWN,
+    PERMISSIONS.NOVEDADES.UPDATE,
+    PERMISSIONS.NOVEDADES.DELETE,
+    PERMISSIONS.NOVEDADES.RESOLVE,
+    // PERMISSIONS.NOVEDADES.VIEW, // NO incluido - no puede ver todas las novedades
+
+    // Mantenimiento - de su inventario
+    PERMISSIONS.MANTENIMIENTO.VIEW_OWN,
+    PERMISSIONS.MANTENIMIENTO.CREATE,
+    PERMISSIONS.MANTENIMIENTO.UPDATE,
+    PERMISSIONS.MANTENIMIENTO.DELETE,
+    // PERMISSIONS.MANTENIMIENTO.VIEW, // NO incluido - no puede ver todos los mantenimientos
+
+    // Reportes - puede crear y ver sus reportes
+    PERMISSIONS.REPORTES.VIEW,
+    PERMISSIONS.REPORTES.CREATE,
+    PERMISSIONS.REPORTES.UPDATE,
+    PERMISSIONS.REPORTES.DELETE,
+    PERMISSIONS.REPORTES.EXPORT,
+
+    // Ambientes - puede ver ambientes (necesario para asignar equipos)
+    PERMISSIONS.AMBIENTES.VIEW,
+    // PERMISSIONS.AMBIENTES.CREATE, // NO incluido
+    // PERMISSIONS.AMBIENTES.UPDATE, // NO incluido
+    // PERMISSIONS.AMBIENTES.DELETE, // NO incluido
+
+    // Clases - no tiene acceso (no es instructor)
+    // PERMISSIONS.CLASES.VIEW, // NO incluido
+    // PERMISSIONS.CLASES.CREATE, // NO incluido
+    // PERMISSIONS.CLASES.UPDATE, // NO incluido
+    // PERMISSIONS.CLASES.DELETE, // NO incluido
+
+    // Notificaciones - solo propias
+    PERMISSIONS.NOTIFICACIONES.VIEW,
+    // PERMISSIONS.NOTIFICACIONES.CREATE, // NO incluido
+    // PERMISSIONS.NOTIFICACIONES.BROADCAST, // NO incluido
+
+    // Sistema - puede ver su configuración
+    PERMISSIONS.SYSTEM.VIEW_CONFIG,
+    // PERMISSIONS.SYSTEM.UPDATE_CONFIG, // NO incluido
+    // PERMISSIONS.SYSTEM.VIEW_AUDIT, // NO incluido
+
+    // Roles - NO tiene acceso (no puede ver roles y áreas)
+    // PERMISSIONS.ROLES.MANAGE, // NO incluido
+  ],
 }
 
 // ============================================
@@ -309,6 +376,15 @@ export function isAprendiz(roleName) {
   return roleName === 'Aprendiz'
 }
 
+/**
+ * Verifica si un usuario es cuentadante
+ * @param {string} roleName - Nombre del rol
+ * @returns {boolean}
+ */
+export function isCuentadante(roleName) {
+  return roleName === 'Cuentadante'
+}
+
 export default {
   PERMISSIONS,
   ROLE_PERMISSIONS,
@@ -319,5 +395,6 @@ export default {
   isAdmin,
   isInstructor,
   isAprendiz,
+  isCuentadante,
 }
 

@@ -26,6 +26,7 @@ import Horarios from './pages/Horarios';
 import HistorialVerificaciones from './pages/HistorialVerificaciones';
 import HistorialVerificacionesGeneral from './pages/HistorialVerificacionesGeneral';
 import DetalleEquipo from './pages/DetalleEquipo';
+import BuscarCuentadante from './pages/BuscarCuentadante';
 import ProtectedRoute from './components/ProtectedRoute';
 import RedirectIfAuth from './components/RedirectIfAuth';
 import ErrorBoundary from './components/ErrorBoundary';
@@ -239,6 +240,14 @@ export default function App() {
         element={
           <ProtectedRoute>
             <DetalleEquipo />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/equipos/cuentadantes/buscar"
+        element={
+          <ProtectedRoute>
+            <BuscarCuentadante />
           </ProtectedRoute>
         }
       />

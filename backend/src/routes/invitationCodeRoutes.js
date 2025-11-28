@@ -15,7 +15,7 @@ const router = express.Router();
 
 // Validación para crear código
 const createCodeSchema = z.object({
-  rol_destinado: z.enum(['Administrador', 'Instructor', 'Aprendiz']),
+  rol_destinado: z.enum(['Administrador', 'Instructor', 'Aprendiz', 'Cuentadante']),
   fecha_expiracion: z.string().datetime().optional().nullable(),
   max_usos: z.number().int().min(0).optional()
 });
@@ -23,7 +23,7 @@ const createCodeSchema = z.object({
 // Validación para validar código
 const validateCodeSchema = z.object({
   codigo: z.string().min(1),
-  rol: z.enum(['Administrador', 'Instructor', 'Aprendiz'])
+  rol: z.enum(['Administrador', 'Instructor', 'Aprendiz', 'Cuentadante'])
 });
 
 const validate = (schema) => {
