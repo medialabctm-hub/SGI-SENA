@@ -438,12 +438,16 @@ export async function importarUsuarios(req, res) {
 
     // Enviar correos con contraseñas generadas
     if (usuariosParaEnviarCorreo.length > 0) {
+      logger.info(`Iniciando envío de ${usuariosParaEnviarCorreo.length} correo(s) con contraseñas`);
       const correosResultado = await emailService.enviarContrasenasMasivo(usuariosParaEnviarCorreo);
       resultados.correosEnviados = correosResultado.exitosos;
       resultados.correosFallidos = correosResultado.fallidos;
       
+      logger.info(`Resultado de envío de correos: ${correosResultado.exitosos} exitosos, ${correosResultado.fallidos} fallidos`);
+      
       // Agregar errores de correos a los errores generales (solo como información)
       if (correosResultado.errores.length > 0) {
+        logger.warn(`Errores al enviar correos:`, correosResultado.errores);
         correosResultado.errores.forEach(error => {
           resultados.errores.push({
             fila: 'N/A',

@@ -23,6 +23,13 @@ class EmailService {
         return;
       }
 
+      logger.info('Inicializando servicio de email...', {
+        user: config.email.user,
+        hasPassword: !!config.email.password,
+        emailHost: process.env.EMAIL_HOST || 'Gmail (por defecto)',
+        emailPort: process.env.EMAIL_PORT || '587'
+      });
+
       // Configuración flexible para diferentes proveedores
       // Si EMAIL_HOST está configurado, usar configuración SMTP personalizada
       if (process.env.EMAIL_HOST) {
@@ -33,29 +40,61 @@ class EmailService {
           auth: {
             user: config.email.user,
             pass: config.email.password
-          }
+          },
+          // Opciones de conexión para evitar timeouts
+          connectionTimeout: 10000, // 10 segundos
+          greetingTimeout: 5000, // 5 segundos
+          socketTimeout: 10000, // 10 segundos
+          pool: true, // Usar pool de conexiones
+          maxConnections: 1,
+          maxMessages: 3
         });
       } else {
-        // Configuración por defecto para Gmail
+        // Configuración por defecto para Gmail con opciones mejoradas
         this.transporter = nodemailer.createTransport({
           service: 'gmail',
           auth: {
             user: config.email.user,
             pass: config.email.password
+          },
+          // Opciones de conexión para evitar timeouts
+          connectionTimeout: 15000, // 15 segundos para Gmail
+          greetingTimeout: 10000, // 10 segundos
+          socketTimeout: 15000, // 15 segundos
+          pool: true, // Usar pool de conexiones
+          maxConnections: 1,
+          maxMessages: 3,
+          // Configuración adicional para Gmail
+          tls: {
+            rejectUnauthorized: false // Permitir certificados autofirmados en desarrollo
           }
         });
       }
 
-      // Verificar conexión en desarrollo
-      if (process.env.NODE_ENV === 'development') {
+      // Verificar conexión (en desarrollo o si se solicita explícitamente)
+      // NOTA: En producción, Railway puede tener problemas con Gmail debido a restricciones de red
+      // Si experimentas timeouts (ETIMEDOUT), considera:
+      // 1. Usar una "Contraseña de aplicación" de Gmail en lugar de tu contraseña normal
+      // 2. Configurar EMAIL_HOST=smtp.gmail.com y EMAIL_PORT=587 explícitamente
+      // 3. Usar un servicio SMTP alternativo como SendGrid, Mailgun, o AWS SES
+      if (process.env.NODE_ENV === 'development' || process.env.VERIFY_EMAIL === 'true') {
         this.transporter.verify((error, success) => {
           if (error) {
-            logger.warn('Error al verificar configuración de email:', error.message);
+            logger.warn('Error al verificar configuración de email:', {
+              message: error.message,
+              code: error.code,
+              command: error.command
+            });
             logger.warn('El servicio de email puede no funcionar correctamente. Verifica las credenciales.');
+            if (error.code === 'ETIMEDOUT' && !process.env.EMAIL_HOST) {
+              logger.warn('Sugerencia: Configura EMAIL_HOST=smtp.gmail.com y EMAIL_PORT=587 explícitamente');
+            }
           } else {
-            logger.info('Servicio de email configurado correctamente');
+            logger.info('Servicio de email configurado y verificado correctamente');
           }
         });
+      } else {
+        logger.info('Servicio de email configurado (verificación omitida en producción)');
       }
     } catch (error) {
       logger.error('Error al inicializar servicio de email:', error);
@@ -237,9 +276,15 @@ SENA - Sistema de Gestión de Equipos
       let errorMessage = 'Error al enviar correo';
       
       if (error.code === 'EAUTH') {
-        errorMessage = 'Error de autenticación. Verifica las credenciales EMAIL_USER y EMAIL_PASSWORD';
-      } else if (error.code === 'ECONNECTION' || error.code === 'ETIMEDOUT') {
-        errorMessage = 'Error de conexión con el servidor de correo. Verifica EMAIL_HOST y EMAIL_PORT';
+        errorMessage = 'Error de autenticación. Verifica las credenciales EMAIL_USER y EMAIL_PASSWORD. Si usas Gmail, asegúrate de usar una "Contraseña de aplicación" en lugar de tu contraseña normal.';
+      } else if (error.code === 'ECONNECTION') {
+        errorMessage = 'Error de conexión con el servidor de correo. Verifica EMAIL_HOST y EMAIL_PORT, o si usas Gmail, verifica que el servicio esté disponible.';
+      } else if (error.code === 'ETIMEDOUT') {
+        if (error.command === 'CONN') {
+          errorMessage = 'Timeout al conectar con el servidor de correo. Verifica EMAIL_HOST y EMAIL_PORT. Si usas Gmail, puede que esté bloqueando la conexión desde este servidor. Considera usar un servicio SMTP alternativo o configurar EMAIL_HOST explícitamente.';
+        } else {
+          errorMessage = 'Timeout al enviar correo. El servidor de correo no respondió a tiempo. Verifica la configuración de red y firewall.';
+        }
       } else if (error.code === 'EENVELOPE') {
         errorMessage = 'Error en la dirección de correo. Verifica que el correo sea válido';
       } else if (error.response) {
@@ -248,11 +293,13 @@ SENA - Sistema de Gestión de Equipos
         errorMessage = error.message || 'Error desconocido al enviar correo';
       }
       
+      // Log detallado del error
       logger.error(`Error al enviar correo a ${to}:`, {
         message: error.message,
         code: error.code,
+        command: error.command,
         response: error.response,
-        command: error.command
+        stack: error.stack
       });
       
       return { success: false, error: errorMessage };
@@ -438,9 +485,15 @@ SENA - Sistema de Gestión de Equipos
       let errorMessage = 'Error al enviar correo';
       
       if (error.code === 'EAUTH') {
-        errorMessage = 'Error de autenticación. Verifica las credenciales EMAIL_USER y EMAIL_PASSWORD';
-      } else if (error.code === 'ECONNECTION' || error.code === 'ETIMEDOUT') {
-        errorMessage = 'Error de conexión con el servidor de correo. Verifica EMAIL_HOST y EMAIL_PORT';
+        errorMessage = 'Error de autenticación. Verifica las credenciales EMAIL_USER y EMAIL_PASSWORD. Si usas Gmail, asegúrate de usar una "Contraseña de aplicación" en lugar de tu contraseña normal.';
+      } else if (error.code === 'ECONNECTION') {
+        errorMessage = 'Error de conexión con el servidor de correo. Verifica EMAIL_HOST y EMAIL_PORT, o si usas Gmail, verifica que el servicio esté disponible.';
+      } else if (error.code === 'ETIMEDOUT') {
+        if (error.command === 'CONN') {
+          errorMessage = 'Timeout al conectar con el servidor de correo. Verifica EMAIL_HOST y EMAIL_PORT. Si usas Gmail, puede que esté bloqueando la conexión desde este servidor. Considera usar un servicio SMTP alternativo o configurar EMAIL_HOST explícitamente.';
+        } else {
+          errorMessage = 'Timeout al enviar correo. El servidor de correo no respondió a tiempo. Verifica la configuración de red y firewall.';
+        }
       } else if (error.code === 'EENVELOPE') {
         errorMessage = 'Error en la dirección de correo. Verifica que el correo sea válido';
       } else if (error.response) {
@@ -449,11 +502,13 @@ SENA - Sistema de Gestión de Equipos
         errorMessage = error.message || 'Error desconocido al enviar correo';
       }
       
+      // Log detallado del error
       logger.error(`Error al enviar correo de recuperación a ${to}:`, {
         message: error.message,
         code: error.code,
+        command: error.command,
         response: error.response,
-        command: error.command
+        stack: error.stack
       });
       
       return { success: false, error: errorMessage };
