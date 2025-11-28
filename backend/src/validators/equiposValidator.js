@@ -18,7 +18,7 @@ export const registrarEquipoSchema = z.object({
   costo: z.number().min(0).optional().nullable(),
   valor_ingreso: z.number().min(0).optional().nullable(),
   vida_util_meses: z.number().min(1).optional().nullable(),
-  estado_fisico: z.enum(['Bueno', 'Regular', 'Malo', 'En Reparación'], {
+  estado_fisico: z.enum(['Nuevo', 'Bueno', 'Regular', 'Malo', 'Dañado'], {
     errorMap: () => ({ message: 'Estado físico inválido' }),
   }),
   specs_completas: z.string().optional().nullable(),
@@ -27,22 +27,60 @@ export const registrarEquipoSchema = z.object({
 });
 
 export const actualizarEquipoSchema = z.object({
-  placa: z.string().min(1).max(100).optional(),
+  placa: z.string().max(100).optional().nullable(),
   r_centro: z.string().optional().nullable(),
   consecutivo: z.string().optional().nullable(),
-  tipo: z.string().min(1).max(100).optional(),
+  tipo: z.string().max(100).optional().nullable(),
   marca: z.string().max(100).optional().nullable(),
   modelo: z.string().max(100).optional().nullable(),
   numero_serie: z.string().max(100).optional().nullable(),
   descripcion: z.string().optional().nullable(),
   fecha_adquisicion: z.string().optional().nullable(),
-  costo: z.number().min(0).optional().nullable(),
-  valor_ingreso: z.number().min(0).optional().nullable(),
-  vida_util_meses: z.number().min(1).optional().nullable(),
-  estado_fisico: z.enum(['Bueno', 'Regular', 'Malo', 'En Reparación']).optional(),
+  costo: z.union([
+    z.number().min(0),
+    z.string().transform((val) => {
+      if (!val || val === '') return null;
+      const num = parseFloat(val);
+      return isNaN(num) ? null : num;
+    }),
+    z.null()
+  ]).optional().nullable(),
+  valor_ingreso: z.union([
+    z.number().min(0),
+    z.string().transform((val) => {
+      if (!val || val === '') return null;
+      const num = parseFloat(val);
+      return isNaN(num) ? null : num;
+    }),
+    z.null()
+  ]).optional().nullable(),
+  vida_util_meses: z.union([
+    z.number().int().min(1),
+    z.string().transform((val) => {
+      if (!val || val === '') return null;
+      const num = parseInt(val, 10);
+      return isNaN(num) ? null : num;
+    }),
+    z.null()
+  ]).optional().nullable(),
+  estado_fisico: z.enum(['Nuevo', 'Bueno', 'Regular', 'Malo', 'Dañado']).optional().nullable(),
   specs_completas: z.string().optional().nullable(),
-  id_ambiente: z.number().int().positive().optional().nullable(),
-});
+  id_ambiente: z.union([
+    z.number().int().positive(),
+    z.string().transform((val) => {
+      if (!val || val === '') return null;
+      const num = parseInt(val, 10);
+      return isNaN(num) || num <= 0 ? null : num;
+    }),
+    z.null()
+  ]).optional().nullable(),
+  // Permitir campos adicionales que pueden venir del frontend pero no se validan
+  nombre_ambiente: z.string().optional(),
+  codigo_ambiente: z.string().optional(),
+  ambiente: z.string().optional(),
+  codigo_equipo: z.union([z.number(), z.string()]).optional(),
+  codigo_inventario: z.string().optional(),
+}).passthrough(); // Permitir campos adicionales sin validar
 
 export const asignarEquipoSchema = z.object({
   codigo_equipo: z.union([
@@ -78,15 +116,26 @@ export const validate = (schema) => (req, res, next) => {
     next();
   } catch (error) {
     if (error instanceof z.ZodError) {
+      const details = error.errors.map((e) => ({
+        path: e.path.join('.'),
+        message: e.message,
+        code: e.code,
+      }));
+      
+      // Log para debugging
+      console.error('Validation error:', {
+        body: req.body,
+        errors: details
+      });
+      
       return res.status(400).json({
         success: false,
         error: 'Error de validación',
-        details: error.errors.map((e) => ({
-          path: e.path.join('.'),
-          message: e.message,
-        })),
+        details: details.length > 0 ? details : [{ path: 'unknown', message: 'Error de validación desconocido' }],
       });
     }
+    // Si no es un ZodError, loguear y pasar al siguiente middleware
+    console.error('Validation middleware error:', error);
     next(error);
   }
 };

@@ -21,6 +21,9 @@ export default function ConsultarEquipo() {
   const [deleteConfirm, setDeleteConfirm] = useState({ open: false, codigo: null })
   const [user, setUser] = useState(null)
   const [showColumnFilter, setShowColumnFilter] = useState(false)
+  const [ambientes, setAmbientes] = useState([])
+  
+  const ESTADOS_FISICOS = ['Nuevo', 'Bueno', 'Regular', 'Malo', 'Dañado']
   
   // Definir todas las columnas disponibles
   const allColumns = [
@@ -66,6 +69,24 @@ export default function ConsultarEquipo() {
     } catch (error) {
       console.error('Error al obtener datos del usuario:', error)
     }
+  }, [])
+
+  // Cargar ambientes disponibles
+  useEffect(() => {
+    async function cargarAmbientes() {
+      try {
+        const token = localStorage.getItem('token')
+        const res = await fetch('/api/ambientes/activos', {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+        const data = await parseApiResponse(res, 'No se pudieron cargar los ambientes')
+        setAmbientes(Array.isArray(data) ? data : [])
+      } catch (err) {
+        console.error('Error al cargar ambientes:', err)
+        setAmbientes([])
+      }
+    }
+    cargarAmbientes()
   }, [])
 
   async function handleBuscar(e) {
@@ -114,7 +135,8 @@ export default function ConsultarEquipo() {
     setEditingCodigo(eq.codigo_equipo)
     setDraft({
       ...eq,
-      fecha_adquisicion: eq.fecha_adquisicion ? String(eq.fecha_adquisicion).slice(0,10) : ''
+      fecha_adquisicion: eq.fecha_adquisicion ? String(eq.fecha_adquisicion).slice(0,10) : '',
+      id_ambiente: eq.id_ambiente || null
     })
   }
 
@@ -132,9 +154,80 @@ export default function ConsultarEquipo() {
     setLoading(true)
     setToast(null)
     try {
-      const payload = { ...draft }
-      // permitir enviar 'ambiente' como texto/código si el usuario lo edita
-      if (payload.ambiente && payload.ambiente.trim() === '') delete payload.ambiente
+      // Función helper para limpiar valores
+      const cleanValue = (val) => {
+        if (val === undefined || val === '' || val === null) return null;
+        return val;
+      };
+      
+      const cleanNumber = (val) => {
+        if (val === undefined || val === '' || val === null) return null;
+        const num = typeof val === 'string' ? parseFloat(val) : Number(val);
+        return isNaN(num) ? null : num;
+      };
+      
+      // Limpiar el payload para solo enviar campos válidos
+      const payload = {}
+      
+      // Campos de texto - solo incluir si tienen valor
+      if (draft.tipo !== undefined && draft.tipo !== null && draft.tipo !== '') {
+        payload.tipo = String(draft.tipo).trim() || null;
+      }
+      if (draft.modelo !== undefined && draft.modelo !== null && draft.modelo !== '') {
+        payload.modelo = String(draft.modelo).trim() || null;
+      }
+      if (draft.consecutivo !== undefined && draft.consecutivo !== null && draft.consecutivo !== '') {
+        payload.consecutivo = String(draft.consecutivo).trim() || null;
+      }
+      if (draft.descripcion !== undefined && draft.descripcion !== null && draft.descripcion !== '') {
+        payload.descripcion = String(draft.descripcion).trim() || null;
+      }
+      if (draft.specs_completas !== undefined && draft.specs_completas !== null && draft.specs_completas !== '') {
+        payload.specs_completas = String(draft.specs_completas).trim() || null;
+      }
+      if (draft.marca !== undefined && draft.marca !== null && draft.marca !== '') {
+        payload.marca = String(draft.marca).trim() || null;
+      }
+      if (draft.numero_serie !== undefined && draft.numero_serie !== null && draft.numero_serie !== '') {
+        payload.numero_serie = String(draft.numero_serie).trim() || null;
+      }
+      if (draft.placa !== undefined && draft.placa !== null && draft.placa !== '') {
+        payload.placa = String(draft.placa).trim() || null;
+      }
+      if (draft.r_centro !== undefined && draft.r_centro !== null && draft.r_centro !== '') {
+        payload.r_centro = String(draft.r_centro).trim() || null;
+      }
+      
+      // Fecha
+      if (draft.fecha_adquisicion !== undefined && draft.fecha_adquisicion !== null && draft.fecha_adquisicion !== '') {
+        payload.fecha_adquisicion = String(draft.fecha_adquisicion).trim() || null;
+      }
+      
+      // Números
+      if (draft.costo !== undefined) {
+        payload.costo = cleanNumber(draft.costo);
+      }
+      if (draft.valor_ingreso !== undefined) {
+        payload.valor_ingreso = cleanNumber(draft.valor_ingreso);
+      }
+      if (draft.vida_util_meses !== undefined) {
+        payload.vida_util_meses = cleanNumber(draft.vida_util_meses);
+      }
+      
+      // Estado físico
+      if (draft.estado_fisico !== undefined && draft.estado_fisico !== null && draft.estado_fisico !== '') {
+        payload.estado_fisico = String(draft.estado_fisico).trim();
+      }
+      
+      // ID Ambiente
+      if (draft.id_ambiente !== undefined && draft.id_ambiente !== null && draft.id_ambiente !== '') {
+        const idAmb = typeof draft.id_ambiente === 'string' ? parseInt(draft.id_ambiente, 10) : draft.id_ambiente;
+        if (!isNaN(idAmb) && idAmb > 0) {
+          payload.id_ambiente = idAmb;
+        } else {
+          payload.id_ambiente = null;
+        }
+      }
 
       const token = localStorage.getItem('token')
       const res = await fetch(`/api/equipos/${encodeURIComponent(editingCodigo)}`, {
@@ -609,7 +702,16 @@ export default function ConsultarEquipo() {
                         {visibleColumns.includes('estado_fisico') && (
                           <td>
                             {editingCodigo === eq.codigo_equipo ? (
-                              <input value={draft.estado_fisico || ''} onChange={e=>onDraft('estado_fisico', e.target.value)} className="cell-input" />
+                              <select 
+                                value={draft.estado_fisico || ''} 
+                                onChange={e=>onDraft('estado_fisico', e.target.value)} 
+                                className="cell-input"
+                              >
+                                <option value="">Seleccionar estado</option>
+                                {ESTADOS_FISICOS.map(estado => (
+                                  <option key={estado} value={estado}>{estado}</option>
+                                ))}
+                              </select>
                             ) : getEstadoBadge(eq.estado_fisico)}
                           </td>
                         )}
@@ -630,14 +732,36 @@ export default function ConsultarEquipo() {
                         {visibleColumns.includes('nombre_ambiente') && (
                           <td>
                             {editingCodigo === eq.codigo_equipo ? (
-                              <input value={draft.nombre_ambiente || ''} onChange={e=>onDraft('nombre_ambiente', e.target.value)} className="cell-input" placeholder="Nombre ambiente (solo visual)" />
+                              <select 
+                                value={draft.id_ambiente || eq.id_ambiente || ''} 
+                                onChange={e=>onDraft('id_ambiente', e.target.value)} 
+                                className="cell-input"
+                              >
+                                <option value="">Seleccionar ambiente</option>
+                                {(ambientes || []).map(amb => (
+                                  <option key={amb.id_ambiente} value={amb.id_ambiente}>
+                                    {amb.codigo_ambiente} - {amb.nombre_ambiente}
+                                  </option>
+                                ))}
+                              </select>
                             ) : (eq.nombre_ambiente || '-')}
                           </td>
                         )}
                         {visibleColumns.includes('codigo_ambiente') && (
                           <td>
                             {editingCodigo === eq.codigo_equipo ? (
-                              <input value={draft.ambiente || eq.codigo_ambiente || ''} onChange={e=>onDraft('ambiente', e.target.value)} className="cell-input" placeholder="ID/ Código/ Nombre" />
+                              <select 
+                                value={draft.id_ambiente || eq.id_ambiente || ''} 
+                                onChange={e=>onDraft('id_ambiente', e.target.value)} 
+                                className="cell-input"
+                              >
+                                <option value="">Seleccionar ambiente</option>
+                                {(ambientes || []).map(amb => (
+                                  <option key={amb.id_ambiente} value={amb.id_ambiente}>
+                                    {amb.codigo_ambiente} - {amb.nombre_ambiente}
+                                  </option>
+                                ))}
+                              </select>
                             ) : (eq.codigo_ambiente || '-')}
                           </td>
                         )}

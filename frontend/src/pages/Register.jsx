@@ -69,7 +69,7 @@ export default function Register() {
           telefono,
           contrasena: password,
           rol,
-          codigo_invitacion: (rol === 'Instructor' || rol === 'Administrador') ? codigoInvitacion.trim() : null
+          codigo_invitacion: (rol === 'Instructor' || rol === 'Administrador' || rol === 'Cuentadante') ? codigoInvitacion.trim() : null
         })
       })
       const data = await parseApiResponse(res, 'No se pudo completar el registro')
@@ -167,15 +167,16 @@ export default function Register() {
               <option value="Aprendiz">Aprendiz</option>
               <option value="Instructor">Instructor</option>
               <option value="Administrador">Administrador</option>
+              <option value="Cuentadante">Cuentadante</option>
             </select>
           </label>
-          {(rol === 'Instructor' || rol === 'Administrador') && (
+          {(rol === 'Instructor' || rol === 'Administrador' || rol === 'Cuentadante') && (
             <>
               <label className="input">
                 <span className="icon"><FiLock /></span>
                 <input
                   type="text"
-                  placeholder={`Código de Seguridad (requerido para ${rol === 'Instructor' ? 'Instructores' : 'Administradores'})`}
+                  placeholder={`Código de Seguridad (requerido para ${rol === 'Instructor' ? 'Instructores' : rol === 'Administrador' ? 'Administradores' : 'Cuentadantes'})`}
                   value={codigoInvitacion}
                   onChange={e => setCodigoInvitacion(e.target.value)}
                   style={{ textTransform: 'uppercase' }}

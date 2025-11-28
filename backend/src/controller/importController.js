@@ -203,16 +203,39 @@ export async function importarEquipos(req, res) {
           }
         }
 
+        // Verificar si la columna id_cuentadante existe
+        const [[colCuentadante]] = await defaultDb.execute(
+          "SELECT COUNT(*) AS cnt FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'Elementos' AND COLUMN_NAME = 'id_cuentadante'"
+        );
+        if (colCuentadante.cnt === 0) {
+          await defaultDb.execute(
+            `ALTER TABLE Elementos 
+             ADD COLUMN id_cuentadante INT NULL,
+             ADD INDEX idx_cuentadante (id_cuentadante),
+             ADD FOREIGN KEY (id_cuentadante) REFERENCES Usuarios(id_usuario) ON DELETE SET NULL`
+          );
+        }
+
+        // Si el usuario que importa es Cuentadante, asignar automáticamente el equipo a su inventario
+        const [[userRole]] = await defaultDb.execute(
+          `SELECT r.nombre_rol FROM Usuarios u
+           INNER JOIN Roles r ON u.id_rol = r.id_rol
+           WHERE u.id_usuario = ?`,
+          [userId]
+        );
+        const idCuentadante = userRole?.nombre_rol === 'Cuentadante' ? userId : null;
+
         // Insertar equipo con nuevos campos
         const query = `INSERT INTO Elementos
-          (id_categoria, id_ambiente, tipo, marca, modelo, descripcion, 
+          (id_categoria, id_ambiente, id_cuentadante, tipo, marca, modelo, descripcion, 
            fecha_adquisicion, costo, vida_util_meses, estado_fisico, specs_completas, registrado_por,
            r_centro, consecutivo, placa, atributos, valor_ingreso)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
 
         await defaultDb.execute(query, [
           categoriaId,
           ambienteId,
+          idCuentadante,
           tipo,
           marca || null,
           modelo,

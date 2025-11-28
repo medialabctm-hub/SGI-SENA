@@ -416,25 +416,96 @@
 .cell-input,
 .cell-textarea {
   width: 100%;
-  padding: 8px 10px;
-  border: 1.5px solid var(--neutral-300);
-  border-radius: 6px;
+  min-width: 200px;
+  padding: 10px 14px;
+  border: 2px solid #e5e7eb;
+  border-radius: 8px;
   font-size: 14px;
   transition: all 0.2s ease;
-  background: white;
+  background: #ffffff;
+  color: #111827;
+  font-family: inherit;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.cell-input:hover,
+.cell-textarea:hover {
+  border-color: #d1d5db;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
 }
 
 .cell-input:focus,
 .cell-textarea:focus {
   outline: none;
-  border-color: var(--info-500);
-  box-shadow: 0 0 0 3px rgba(59, 139, 255, 0.1);
+  border-color: var(--success-800);
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1), 0 2px 4px rgba(0, 0, 0, 0.1);
+  background: #ffffff;
+}
+
+.cell-input::placeholder {
+  color: #9ca3af;
 }
 
 .cell-textarea {
-  min-height: 60px;
+  min-height: 80px;
   resize: vertical;
   font-family: inherit;
+  line-height: 1.5;
+}
+
+/* Estilos específicos para selects en modo edición */
+.cell-input select {
+  width: 100%;
+  padding: 10px 14px;
+  border: 2px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 14px;
+  background: #ffffff;
+  color: #111827;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236b7280' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 36px;
+}
+
+.cell-input select:hover {
+  border-color: #d1d5db;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+}
+
+.cell-input select:focus {
+  outline: none;
+  border-color: var(--success-800);
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1), 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Mejoras para celdas en modo edición */
+.users-table tbody td:has(.cell-input),
+.users-table tbody td:has(.cell-textarea) {
+  padding: 12px 16px !important;
+  min-width: 200px;
+  vertical-align: middle;
+}
+
+.consulta-table tbody td:has(.cell-input),
+.consulta-table tbody td:has(.cell-textarea) {
+  padding: 12px 16px !important;
+  min-width: 200px;
+  vertical-align: middle;
+}
+
+/* Asegurar que los campos de edición tengan suficiente espacio */
+.users-table tbody tr:has(.cell-input) td,
+.consulta-table tbody tr:has(.cell-input) td {
+  white-space: nowrap;
+}
+
+.users-table tbody tr:has(.cell-textarea) td,
+.consulta-table tbody tr:has(.cell-textarea) td {
+  white-space: normal;
 }
 
 .equipos-header {

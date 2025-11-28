@@ -132,11 +132,11 @@ export default function AsignarEquipo() {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` }
       })
-      const data = await parseApiResponse(res, 'No se pudo eliminar la asignación')
-      setToast({ message: data.message || 'Asignación eliminada correctamente', type: 'success' })
+      const data = await parseApiResponse(res, 'No se pudo eliminar la habilitación')
+      setToast({ message: data.message || 'Habilitación eliminada correctamente', type: 'success' })
       await fetchAsignaciones()
     } catch (err) {
-      setToast({ message: buildErrorMessage(err, 'Error al eliminar la asignación'), type: 'error' })
+      setToast({ message: buildErrorMessage(err, 'Error al eliminar la habilitación'), type: 'error' })
     } finally {
       setLoadingAsignaciones(false)
     }
@@ -261,7 +261,7 @@ export default function AsignarEquipo() {
     // Validar que el equipo no esté en mantenimiento
     if (equipoEncontrado?.estado_mantenimiento_activo === 'En Proceso') {
       setToast({ 
-        message: `Este equipo está en mantenimiento (${equipoEncontrado.tipo_mantenimiento_activo || 'En Proceso'}). No se puede asignar hasta que el mantenimiento finalice.`, 
+        message: `Este equipo está en mantenimiento (${equipoEncontrado.tipo_mantenimiento_activo || 'En Proceso'}). No se puede habilitar hasta que el mantenimiento finalice.`, 
         type: 'error' 
       })
       return
@@ -283,7 +283,7 @@ export default function AsignarEquipo() {
 
       if (res.ok) {
         setToast({ 
-          message: data.message || 'Equipo asignado correctamente', 
+          message: data.message || 'Equipo habilitado correctamente', 
           type: 'success' 
         })
         setForm({
@@ -301,7 +301,7 @@ export default function AsignarEquipo() {
         }
       } else {
         setToast({ 
-          message: data.error || 'Error al asignar el equipo', 
+          message: data.error || 'Error al habilitar el equipo', 
           type: 'error' 
         })
       }
@@ -319,9 +319,9 @@ export default function AsignarEquipo() {
         <Sidebar user={user} />
         <main className="dashboard-main">
           {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
-          <ConfirmModal
+            <ConfirmModal
             open={deleteConfirm.open}
-            title="Eliminar Asignación"
+            title="Eliminar Habilitación"
             message={`¿Estás seguro de que deseas eliminar ${deleteConfirm.info}? Esta acción no se puede deshacer.`}
             confirmText="Eliminar"
             cancelText="Cancelar"
@@ -335,11 +335,11 @@ export default function AsignarEquipo() {
               <FiUserPlus size={28} color="#fff" />
             </div>
             <div style={{ flex: 1 }}>
-              <h2 style={{ margin: 0, fontSize: '28px', fontWeight: 700, color: '#1a2a3a' }}>Asignación de Equipos</h2>
+              <h2 style={{ margin: 0, fontSize: '28px', fontWeight: 700, color: '#1a2a3a' }}>Habilitación de Equipos</h2>
               <p style={{ color: '#666', marginTop: 8, fontSize: '15px' }}>
                 {isInstructor 
-                  ? 'Asigna equipos a aprendices y gestiona las asignaciones'
-                  : 'Asigna equipos a usuarios y gestiona todas las asignaciones'
+                  ? 'Habilita equipos para aprendices. Esto permite que el aprendiz inicie sesión en la aplicación de escritorio para desbloquear el equipo. El inventario permanece asignado al ambiente.'
+                  : 'Habilita equipos para usuarios. Esto permite que el usuario inicie sesión en la aplicación de escritorio para desbloquear el equipo. El inventario permanece asignado al ambiente.'
                 }
               </p>
             </div>
@@ -371,7 +371,7 @@ export default function AsignarEquipo() {
               }}
             >
               <FiUserPlus size={18} />
-              Asignar Equipo
+              Habilitar Equipo
             </button>
             <button
               onClick={() => setActiveTab('ver')}
@@ -391,7 +391,7 @@ export default function AsignarEquipo() {
               }}
             >
               <FiList size={18} />
-              Ver Asignaciones
+              Ver Habilitaciones
             </button>
           </div>
 
@@ -614,7 +614,7 @@ export default function AsignarEquipo() {
                 className="btn-primary btn-modern"
                 disabled={loading}
               >
-                {loading ? 'Asignando...' : 'Asignar Equipo'}
+                {loading ? 'Habilitando...' : 'Habilitar Equipo'}
               </button>
               <button 
                 type="button" 
@@ -637,8 +637,8 @@ export default function AsignarEquipo() {
                   <div className="empty-icon-wrapper">
                     <FiUserCheck size={48} color="#9ca3af" />
                   </div>
-                  <h3>No hay asignaciones activas</h3>
-                  <p>Las asignaciones de equipos aparecerán aquí</p>
+                  <h3>No hay habilitaciones activas</h3>
+                  <p>Las habilitaciones de equipos aparecerán aquí</p>
                 </div>
               ) : (
                 <div style={{ overflowX: 'auto' }}>
@@ -649,9 +649,9 @@ export default function AsignarEquipo() {
                         <th>Equipo</th>
                         <th>Usuario</th>
                         <th>Tipo Responsabilidad</th>
-                        <th>Fecha Asignación</th>
-                        <th>Días Asignado</th>
-                        <th>Asignado Por</th>
+                        <th>Fecha Habilitación</th>
+                        <th>Días Habilitado</th>
+                        <th>Habilitado Por</th>
                         <th>Observaciones</th>
                         <th>Acciones</th>
                       </tr>
@@ -706,7 +706,7 @@ export default function AsignarEquipo() {
                               className="btn danger"
                               onClick={() => confirmDelete(
                                 asig.id_responsable,
-                                `la asignación del equipo "${asig.equipo_tipo} ${asig.equipo_marca} ${asig.equipo_modelo}" a "${asig.usuario_nombre}"`
+                                `la habilitación del equipo "${asig.equipo_tipo} ${asig.equipo_marca} ${asig.equipo_modelo}" a "${asig.usuario_nombre}"`
                               )}
                               style={{ padding: '6px 12px', fontSize: '0.9rem' }}
                               disabled={loadingAsignaciones}

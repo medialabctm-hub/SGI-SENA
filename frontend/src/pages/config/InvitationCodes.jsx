@@ -153,7 +153,7 @@ export default function InvitationCodes() {
         <div>
           <h3 className="invitation-codes-title">Códigos de Seguridad</h3>
           <p className="invitation-codes-description">
-            Genera códigos para que los instructores se registren en el sistema
+            Genera códigos para que los usuarios (Instructores, Administradores, Aprendices o Cuentadantes) se registren en el sistema
           </p>
         </div>
         <button
@@ -180,6 +180,7 @@ export default function InvitationCodes() {
                   <option value="Instructor">Instructor</option>
                   <option value="Administrador">Administrador</option>
                   <option value="Aprendiz">Aprendiz</option>
+                  <option value="Cuentadante">Cuentadante</option>
                 </select>
               </div>
               <div className="form-group">

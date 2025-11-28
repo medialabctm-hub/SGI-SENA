@@ -1,5 +1,5 @@
 import express from 'express';
-import { registrarEquipo, obtenerEquipoPorCodigo, listarEquipos, actualizarEquipo, eliminarEquipo, asignarEquipo, obtenerMisEquipos, listarAsignaciones, eliminarAsignacion, obtenerEquiposAmbientesInstructor, registrarVerificacionInventario, consultarHistorialVerificaciones, obtenerHistorialEquipo } from '../controller/equiposController.js';
+import { registrarEquipo, obtenerEquipoPorCodigo, listarEquipos, actualizarEquipo, eliminarEquipo, asignarEquipo, obtenerMisEquipos, listarAsignaciones, eliminarAsignacion, obtenerEquiposAmbientesInstructor, registrarVerificacionInventario, consultarHistorialVerificaciones, obtenerHistorialEquipo, actualizarCuentadantePrincipal, obtenerCuentadantePrincipal, buscarCuentadantePorDocumento } from '../controller/equiposController.js';
 import { authenticate } from '../middleware/authMiddleware.js';
 import { requirePermission, requireAnyPermission } from '../middleware/authorization.js';
 import { PERMISSIONS } from '../config/permissions.js';
@@ -144,6 +144,29 @@ router.get('/verificacion/historial',
     PERMISSIONS.EQUIPOS.VIEW_OWN
   ]),
   consultarHistorialVerificaciones
+);
+
+// Obtener cuentadante principal - Solo Admin
+router.get('/cuentadante-principal', 
+  authenticate,
+  requirePermission(PERMISSIONS.EQUIPOS.VIEW),
+  obtenerCuentadantePrincipal
+);
+
+// Actualizar cuentadante principal - Solo Admin
+router.put('/cuentadante-principal', 
+  authenticate,
+  writeLimiter,
+  requirePermission(PERMISSIONS.EQUIPOS.UPDATE),
+  actualizarCuentadantePrincipal
+);
+
+// Buscar cuentadante por documento y ver su inventario - Solo Admin
+router.get('/cuentadantes/buscar/:documento', 
+  authenticate,
+  readLimiter,
+  requirePermission(PERMISSIONS.EQUIPOS.VIEW),
+  buscarCuentadantePorDocumento
 );
 
 export default router;

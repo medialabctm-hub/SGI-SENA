@@ -28,6 +28,7 @@ export default function Equipos() {
   const [errores, setErrores] = useState({})
   const [toast, setToast] = useState(null)
   const [user, setUser] = useState(null)
+  const [ambientes, setAmbientes] = useState([])
 
   useEffect(() => {
     try {
@@ -38,6 +39,24 @@ export default function Equipos() {
     } catch (error) {
       console.error('Error al obtener datos del usuario:', error)
     }
+  }, [])
+
+  // Cargar ambientes disponibles
+  useEffect(() => {
+    async function cargarAmbientes() {
+      try {
+        const token = localStorage.getItem('token')
+        const res = await fetch('/api/ambientes/activos', {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+        const data = await parseApiResponse(res, 'No se pudieron cargar los ambientes')
+        setAmbientes(Array.isArray(data) ? data : [])
+      } catch (err) {
+        console.error('Error al cargar ambientes:', err)
+        setAmbientes([])
+      }
+    }
+    cargarAmbientes()
   }, [])
 
   // Handler para cambios en el formulario
@@ -194,7 +213,14 @@ export default function Equipos() {
           </div>
           <div className="form-row">
             <label>Ambiente *</label>
-            <input name="ambiente" value={form.ambiente} onChange={handleChange} placeholder="ID, código o nombre del ambiente" />
+            <select name="ambiente" value={form.ambiente} onChange={handleChange}>
+              <option value="">Seleccionar ambiente</option>
+              {ambientes.map(amb => (
+                <option key={amb.id_ambiente} value={amb.id_ambiente}>
+                  {amb.codigo_ambiente} - {amb.nombre_ambiente}
+                </option>
+              ))}
+            </select>
             {errores.ambiente && <span className="error-text">{errores.ambiente}</span>}
           </div>
           <div className="form-row">
