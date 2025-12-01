@@ -1,9 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
+import { FiCamera, FiX, FiStar, FiImage } from 'react-icons/fi';
 import Header from '../components/Header';
 import Sidebar from '../components/Sidebar';
 import Toast from '../components/Toast';
 import ConfirmModal from '../components/ConfirmModal';
-import { parseApiResponse, buildErrorMessage } from '../utils/api';
+import { parseApiResponse, buildErrorMessage, handleError } from '../utils/api';
 import '../styles/equipos.css';
 import '../styles/usuarios.css';
 import '../styles/modal.css';
@@ -40,6 +41,9 @@ export default function Ambientes() {
     tipo: '',
     edificio: '',
   });
+  const [imagenes, setImagenes] = useState([]);
+  const [uploadingImages, setUploadingImages] = useState(false);
+  const fileInputRef = useRef(null);
 
   // Obtener rol del usuario actual
   useEffect(() => {
@@ -268,12 +272,125 @@ export default function Ambientes() {
       const data = await parseApiResponse(res, 'No se pudo obtener el ambiente');
       setViewAmbiente(data);
       setShowForm(false);
+      // Cargar imágenes del ambiente
+      if (data.imagenes) {
+        setImagenes(data.imagenes);
+      } else {
+        await fetchImagenes(id);
+      }
     } catch (err) {
-      setToast({
-        message: buildErrorMessage(err, 'Error al obtener el ambiente'),
-        type: 'error',
-      });
+      handleError(err, setToast, 'No se pudo obtener el ambiente');
     }
+  };
+
+  const fetchImagenes = async (idAmbiente) => {
+    try {
+      const res = await fetch(`/api/ambientes/${idAmbiente}/imagenes`, { headers: getAuthHeaders() });
+      const data = await parseApiResponse(res, 'No se pudieron cargar las imágenes');
+      setImagenes(data || []);
+    } catch (err) {
+      // Silencioso, solo log
+      console.error('Error al cargar imágenes:', err);
+      setImagenes([]);
+    }
+  };
+
+  const handleImageUpload = async (e) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+
+    const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+    const invalidFiles = files.filter(file => !validTypes.includes(file.type));
+    
+    if (invalidFiles.length > 0) {
+      setToast({ message: 'Algunos archivos no son válidos. Solo se permiten imágenes (JPEG, PNG, GIF, WEBP)', type: 'error' });
+      return;
+    }
+
+    const largeFiles = files.filter(file => file.size > 5 * 1024 * 1024);
+    if (largeFiles.length > 0) {
+      setToast({ message: 'Algunos archivos son demasiado grandes. Tamaño máximo: 5MB', type: 'error' });
+      return;
+    }
+
+    if (!viewAmbiente?.id_ambiente) {
+      setToast({ message: 'No hay un ambiente seleccionado', type: 'error' });
+      return;
+    }
+
+    setUploadingImages(true);
+    setToast(null);
+
+    try {
+      const formData = new FormData();
+      files.forEach(file => {
+        formData.append('imagenes', file);
+      });
+
+      const res = await fetch(`/api/ambientes/${viewAmbiente.id_ambiente}/imagenes`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('token')}`,
+        },
+        body: formData,
+      });
+
+      const data = await parseApiResponse(res, 'Error al subir imágenes');
+      setToast({ message: data.message || 'Imágenes subidas correctamente', type: 'success' });
+      await fetchImagenes(viewAmbiente.id_ambiente);
+    } catch (err) {
+      handleError(err, setToast, 'No se pudieron subir las imágenes');
+    } finally {
+      setUploadingImages(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
+  const handleDeleteImage = async (idImagen) => {
+    if (!confirm('¿Está seguro de que desea eliminar esta imagen?')) return;
+
+    try {
+      const res = await fetch(`/api/ambientes/imagenes/${idImagen}`, {
+        method: 'DELETE',
+        headers: getAuthHeaders(),
+      });
+      await parseApiResponse(res, 'No se pudo eliminar la imagen');
+      setToast({ message: 'Imagen eliminada correctamente', type: 'success' });
+      if (viewAmbiente?.id_ambiente) {
+        await fetchImagenes(viewAmbiente.id_ambiente);
+      }
+    } catch (err) {
+      handleError(err, setToast, 'No se pudo eliminar la imagen');
+    }
+  };
+
+  const handleMarkPrincipal = async (idImagen) => {
+    try {
+      const res = await fetch(`/api/ambientes/imagenes/${idImagen}/principal`, {
+        method: 'PATCH',
+        headers: getAuthHeaders(),
+      });
+      await parseApiResponse(res, 'No se pudo marcar la imagen como principal');
+      setToast({ message: 'Imagen marcada como principal', type: 'success' });
+      if (viewAmbiente?.id_ambiente) {
+        await fetchImagenes(viewAmbiente.id_ambiente);
+      }
+    } catch (err) {
+      handleError(err, setToast, 'No se pudo marcar la imagen como principal');
+    }
+  };
+
+  const getImageUrl = (path) => {
+    if (!path) return null;
+    if (path.startsWith('http://') || path.startsWith('https://')) {
+      return path;
+    }
+    if (path.startsWith('/')) {
+      return path;
+    }
+    return `/${path}`;
   };
 
   const filteredAmbientes = ambientes.filter((amb) => {
@@ -535,6 +652,83 @@ export default function Ambientes() {
                     </ul>
                   </div>
                 )}
+                
+                {/* Sección de imágenes */}
+                <div style={{ marginTop: '2rem', borderTop: '1px solid #e5e7eb', paddingTop: '1rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                    <strong>Imágenes del Ambiente</strong>
+                    <button
+                      className="btn-primary"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={uploadingImages}
+                      style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+                    >
+                      <FiCamera size={16} />
+                      {uploadingImages ? 'Subiendo...' : 'Subir Imágenes'}
+                    </button>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
+                      multiple
+                      onChange={handleImageUpload}
+                      style={{ display: 'none' }}
+                    />
+                  </div>
+                  
+                  {imagenes.length === 0 ? (
+                    <p style={{ color: '#6b7280', fontStyle: 'italic' }}>No hay imágenes para este ambiente</p>
+                  ) : (
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '1rem' }}>
+                      {imagenes.map((img) => (
+                        <div key={img.id_imagen_ambiente} style={{ position: 'relative', border: '1px solid #e5e7eb', borderRadius: '8px', overflow: 'hidden' }}>
+                          <img
+                            src={getImageUrl(img.ruta_imagen)}
+                            alt={img.descripcion || img.nombre_archivo}
+                            style={{ width: '100%', height: '150px', objectFit: 'cover', display: 'block' }}
+                            onError={(e) => {
+                              e.target.style.display = 'none';
+                              e.target.nextSibling.style.display = 'flex';
+                            }}
+                          />
+                          <div style={{ display: 'none', width: '100%', height: '150px', background: '#f3f4f6', alignItems: 'center', justifyContent: 'center', color: '#9ca3af' }}>
+                            <FiImage size={32} />
+                          </div>
+                          {img.es_principal && (
+                            <div style={{ position: 'absolute', top: '8px', right: '8px', background: '#10b981', color: 'white', borderRadius: '50%', width: '24px', height: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                              <FiStar size={14} />
+                            </div>
+                          )}
+                          <div style={{ padding: '8px', background: 'white' }}>
+                            <p style={{ margin: 0, fontSize: '12px', color: '#6b7280', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {img.nombre_archivo}
+                            </p>
+                            <div style={{ display: 'flex', gap: '4px', marginTop: '4px' }}>
+                              {!img.es_principal && (
+                                <button
+                                  className="btn"
+                                  onClick={() => handleMarkPrincipal(img.id_imagen_ambiente)}
+                                  style={{ fontSize: '11px', padding: '4px 8px' }}
+                                  title="Marcar como principal"
+                                >
+                                  <FiStar size={12} />
+                                </button>
+                              )}
+                              <button
+                                className="btn"
+                                onClick={() => handleDeleteImage(img.id_imagen_ambiente)}
+                                style={{ fontSize: '11px', padding: '4px 8px', color: '#ef4444' }}
+                                title="Eliminar imagen"
+                              >
+                                <FiX size={12} />
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           )}

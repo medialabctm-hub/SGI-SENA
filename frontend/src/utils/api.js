@@ -40,6 +40,16 @@ const getUserFriendlyError = (error, status, originalMessage) => {
   // Token expirado o no autorizado
   if (status === 401 || status === 403) {
     if (status === 401) {
+      // Verificar si es un error de credenciales inválidas (login) o sesión expirada
+      const message = (originalMessage || error?.message || '').toLowerCase();
+      if (message.includes('credenciales inválidas') || 
+          message.includes('credenciales invalidas') ||
+          message.includes('usuario o contraseña incorrectos') ||
+          message.includes('contraseña incorrecta') ||
+          message.includes('usuario no encontrado')) {
+        return 'Usuario o contraseña incorrectos';
+      }
+      // Para otros errores 401 (token expirado, etc.)
       return 'Tu sesión expiró. Por favor inicia sesión nuevamente';
     }
     return 'No tienes permiso para realizar esta acción';

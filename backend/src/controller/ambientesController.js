@@ -128,10 +128,27 @@ export async function obtenerAmbiente(req, res) {
       [id]
     );
 
+    // Obtener imágenes del ambiente
+    const [imagenes] = await defaultDb.execute(
+      `SELECT 
+        id_imagen_ambiente,
+        ruta_imagen,
+        nombre_archivo,
+        tipo_imagen,
+        descripcion,
+        es_principal,
+        fecha_subida
+       FROM Imagenes_Ambiente
+       WHERE id_ambiente = ?
+       ORDER BY es_principal DESC, fecha_subida DESC`,
+      [id]
+    );
+
     return res.json({
       ...ambiente,
       equipos,
-      responsables_actuales: responsables
+      responsables_actuales: responsables,
+      imagenes: imagenes || []
     });
   } catch (err) {
     logger.error('Error al obtener ambiente', { error: err.message, stack: err.stack });

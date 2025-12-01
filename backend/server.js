@@ -30,6 +30,7 @@ import invitationCodeRoutes from './src/routes/invitationCodeRoutes.js';
 import preferencesRoutes from './src/routes/preferencesRoutes.js';
 import webhookRoutes from './src/routes/webhookRoutes.js';
 import imagenesEquipoRoutes from './src/routes/imagenesEquipoRoutes.js';
+import imagenesAmbienteRoutes from './src/routes/imagenesAmbienteRoutes.js';
 import schedulerService from './src/services/schedulerService.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -102,6 +103,7 @@ app.get('/health', (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/equipos', equiposRoutes);
 app.use('/api/equipos', imagenesEquipoRoutes);
+app.use('/api', imagenesAmbienteRoutes);
 app.use('/api', ambientesRoutes);
 app.use('/api/notifications', notificationsRoutes);
 app.use('/api/permissions', permissionsRoutes);

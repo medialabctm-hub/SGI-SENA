@@ -37,6 +37,33 @@ export default function Header() {
   const isAdmin = userRole === 'Administrador';
   const isInstructor = userRole === 'Instructor';
 
+  // Funciones helper para foto de perfil
+  const getInitials = (name) => {
+    if (!name) return 'U';
+    const parts = name.trim().split(' ');
+    if (parts.length >= 2) {
+      return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+    }
+    return name.substring(0, 2).toUpperCase();
+  };
+
+  const getImageUrl = (path) => {
+    if (!path) return null;
+    // Si ya es una URL completa, devolverla tal cual
+    if (path.startsWith('http://') || path.startsWith('https://')) {
+      return path;
+    }
+    // Si empieza con /, usar ruta relativa (funciona con el proxy de nginx)
+    if (path.startsWith('/')) {
+      return path;
+    }
+    // Si no tiene /, agregarlo
+    return `/${path}`;
+  };
+
+  const fotoPerfil = user?.foto_perfil;
+  const nombreCompleto = user?.nombre_usuario || user?.nombre || 'Usuario';
+
   const handleLogout = () => {
     setShowConfirm(true);
   };
@@ -192,6 +219,46 @@ export default function Header() {
     fetchNotifications({ silent: true })
   }, [fetchNotifications])
 
+  // Actualizar usuario cuando cambie en localStorage (ej: al actualizar foto de perfil)
+  useEffect(() => {
+    const handleStorageChange = () => {
+      try {
+        const userData = localStorage.getItem('user');
+        if (userData) {
+          const parsedUser = JSON.parse(userData);
+          setUser(parsedUser);
+        }
+      } catch (error) {
+        // Ignorar errores de parsing
+      }
+    };
+
+    // Escuchar cambios en localStorage
+    window.addEventListener('storage', handleStorageChange);
+    
+    // También verificar periódicamente (para cambios en la misma pestaña)
+    const interval = setInterval(() => {
+      try {
+        const userData = localStorage.getItem('user');
+        if (userData) {
+          const parsedUser = JSON.parse(userData);
+          // Solo actualizar si hay cambios en foto_perfil
+          if (parsedUser.foto_perfil !== user?.foto_perfil || 
+              parsedUser.nombre_usuario !== user?.nombre_usuario) {
+            setUser(parsedUser);
+          }
+        }
+      } catch (error) {
+        // Ignorar errores
+      }
+    }, 1000); // Verificar cada segundo
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      clearInterval(interval);
+    };
+  }, [user?.foto_perfil, user?.nombre_usuario])
+
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (!showNotifications) return;
@@ -268,12 +335,31 @@ export default function Header() {
               )}
             </div>
             <button
-              className="header-icon-btn"
+              className="header-icon-btn header-profile-btn"
               onClick={handleOpenPerfil}
               aria-label="perfil"
               type="button"
             >
-              <FiUser />
+              {fotoPerfil ? (
+                <img
+                  src={getImageUrl(fotoPerfil)}
+                  alt={nombreCompleto}
+                  className="header-profile-photo"
+                  onError={(e) => {
+                    e.target.style.display = 'none';
+                    const placeholder = e.target.nextElementSibling;
+                    if (placeholder) {
+                      placeholder.style.display = 'flex';
+                    }
+                  }}
+                />
+              ) : null}
+              <div
+                className="header-profile-placeholder"
+                style={{ display: fotoPerfil ? 'none' : 'flex' }}
+              >
+                {getInitials(nombreCompleto)}
+              </div>
             </button>
             <button
               className="header-icon-btn"
