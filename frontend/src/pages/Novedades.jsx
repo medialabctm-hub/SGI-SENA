@@ -256,38 +256,55 @@ export default function Novedades() {
         <Sidebar user={user} />
         <main className="dashboard-main">
           {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
-          <div className="form-equipos form-modern" style={{ maxWidth: '1200px' }}>
-            <div className="form-header">
-              <div className="form-icon-wrapper novedades-icon-wrapper">
-                <FiAlertCircle size={28} color="#fff" />
-              </div>
-              <div className="novedades-header-content">
-                <h2 className="novedades-title">Novedades</h2>
-                <p className="novedades-subtitle">
-                  Registro de incidencias y problemas con equipos
-                </p>
+          <div className="card">
+            <div className="card-header">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'var(--error-500)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white' }}>
+                  <FiAlertCircle size={24} />
+                </div>
+                <div>
+                  <h2 className="card-title">Novedades</h2>
+                  <p style={{ margin: '4px 0 0 0', color: 'var(--muted)', fontSize: '14px' }}>
+                    Registro de incidencias y problemas con equipos
+                  </p>
+                </div>
               </div>
             </div>
 
-            {/* Pestañas */}
-            <div className="novedades-tabs">
-              <button
-                onClick={() => setActiveTab('ver')}
-                className={`novedades-tab ${activeTab === 'ver' ? 'active' : ''}`}
-              >
-                <FiList size={18} />
-                Ver Novedades
-              </button>
-              <button
-                onClick={() => setActiveTab('crear')}
-                className={`novedades-tab ${activeTab === 'crear' ? 'active' : ''}`}
-              >
-                <FiAlertCircle size={18} />
-                Registrar Novedad
-              </button>
-            </div>
-
-            <div className="form-divider" style={{ marginTop: '0' }}></div>
+            <div className="card-body">
+              {/* Pestañas */}
+              <div style={{ display: 'flex', gap: '8px', marginBottom: '24px', borderBottom: '2px solid var(--neutral-200)', paddingBottom: '0' }}>
+                <button
+                  onClick={() => setActiveTab('ver')}
+                  className={`btn btn-ghost ${activeTab === 'ver' ? '' : ''}`}
+                  style={{ 
+                    borderBottom: activeTab === 'ver' ? '3px solid var(--success-800)' : '3px solid transparent',
+                    borderRadius: '0',
+                    borderTopLeftRadius: '8px',
+                    borderTopRightRadius: '8px',
+                    color: activeTab === 'ver' ? 'var(--success-800)' : 'var(--neutral-600)',
+                    fontWeight: activeTab === 'ver' ? '600' : '400'
+                  }}
+                >
+                  <FiList size={18} />
+                  Ver Novedades
+                </button>
+                <button
+                  onClick={() => setActiveTab('crear')}
+                  className={`btn btn-ghost ${activeTab === 'crear' ? '' : ''}`}
+                  style={{ 
+                    borderBottom: activeTab === 'crear' ? '3px solid var(--success-800)' : '3px solid transparent',
+                    borderRadius: '0',
+                    borderTopLeftRadius: '8px',
+                    borderTopRightRadius: '8px',
+                    color: activeTab === 'crear' ? 'var(--success-800)' : 'var(--neutral-600)',
+                    fontWeight: activeTab === 'crear' ? '600' : '400'
+                  }}
+                >
+                  <FiAlertCircle size={18} />
+                  Registrar Novedad
+                </button>
+              </div>
 
             {activeTab === 'ver' ? (
               <>
@@ -305,8 +322,8 @@ export default function Novedades() {
                     <p>Las novedades reportadas aparecerán aquí</p>
                   </div>
                 ) : (
-                  <div style={{ overflowX: 'auto' }}>
-                    <table className="consulta-table" style={{ marginTop: '1rem' }}>
+                  <div className="table-wrapper" style={{ overflowX: 'auto' }}>
+                    <table className="table">
                       <thead>
                         <tr>
                           <th>ID</th>
@@ -326,12 +343,12 @@ export default function Novedades() {
                             <td>
                               <div>
                                 <strong>{novedad.equipo_tipo} {novedad.equipo_marca} {novedad.equipo_modelo}</strong>
-                                {novedad.consecutivo && <div className="novedades-serie-numero">Consecutivo: {novedad.consecutivo}</div>}
+                                {novedad.consecutivo && <div style={{fontSize: '0.85rem', color: 'var(--muted)', marginTop: '4px'}}>Consecutivo: {novedad.consecutivo}</div>}
                               </div>
                             </td>
                             <td>{novedad.tipo_novedad}</td>
-                            <td className="novedades-descripcion-cell">
-                              <div className="novedades-descripcion-text" title={novedad.descripcion}>
+                            <td>
+                              <div style={{maxWidth: '300px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'}} title={novedad.descripcion}>
                                 {novedad.descripcion}
                               </div>
                             </td>
@@ -339,13 +356,15 @@ export default function Novedades() {
                             <td>{formatDate(novedad.fecha_novedad)}</td>
                             <td>{getEstadoBadge(novedad.estado_resolucion)}</td>
                             <td>
-                              <button
-                                className="btn novedades-ver-btn"
-                                onClick={() => setSelectedNovedad(novedad)}
-                              >
-                                <FiEye size={14} style={{ marginRight: '4px' }} />
-                                Ver
-                              </button>
+                              <div className="table-actions">
+                                <button
+                                  className="table-action-btn"
+                                  onClick={() => setSelectedNovedad(novedad)}
+                                  title="Ver detalles"
+                                >
+                                  <FiEye size={14} />
+                                </button>
+                              </div>
                             </td>
                           </tr>
                         ))}
@@ -355,37 +374,38 @@ export default function Novedades() {
                 )}
               </>
             ) : (
-              <form onSubmit={handleSubmit}>
+              <form className="form" onSubmit={handleSubmit}>
                 {/* Sección: Equipo */}
-                <div className="form-section">
-                  <h3 className="form-section-title">
-                    <FiPackage size={18} style={{ marginRight: 8 }} />
+                <div style={{marginBottom: '24px', paddingBottom: '20px', borderBottom: '1px solid var(--neutral-200)'}}>
+                  <h3 style={{display: 'flex', alignItems: 'center', gap: '8px', fontSize: '16px', fontWeight: '700', color: 'var(--neutral-800)', marginBottom: '16px'}}>
+                    <FiPackage size={18} />
                     Equipo Afectado
                   </h3>
                   
                   <div className="form-group">
-                    <label>
-                      Código de Inventario *
-                    </label>
-                    <div className="search-equipo-wrapper">
-                      <input
-                        type="text"
-                        value={codigoInventario}
-                        onChange={(e) => setCodigoInventario(e.target.value)}
-                        onKeyPress={(e) => {
-                          if (e.key === 'Enter') {
-                            e.preventDefault()
-                            buscarEquipo()
-                          }
-                        }}
-                        placeholder="Ingresa el código de inventario del equipo"
-                        className="search-equipo-input"
-                      />
+                    <label className="form-label">Código de Inventario *</label>
+                    <div className="search-wrapper">
+                      <div className="search-input-wrapper" style={{flex: 1}}>
+                        <input
+                          type="text"
+                          className="search-input"
+                          value={codigoInventario}
+                          onChange={(e) => setCodigoInventario(e.target.value)}
+                          onKeyPress={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault()
+                              buscarEquipo()
+                            }
+                          }}
+                          placeholder="Ingresa el código de inventario del equipo"
+                        />
+                        <span className="search-icon">🔍</span>
+                      </div>
                       <button
                         type="button"
+                        className="btn btn-primary btn-md"
                         onClick={buscarEquipo}
                         disabled={buscandoEquipo || !codigoInventario.trim()}
-                        className="btn-search-equipo"
                       >
                         {buscandoEquipo ? (
                           'Buscando...'
@@ -400,42 +420,43 @@ export default function Novedades() {
                   </div>
 
                   {equipoEncontrado && (
-                    <div className="equipo-found-card">
-                      <div className="equipo-found-header">
-                        <FiCheck size={20} color="#43a047" />
-                        <span>Equipo encontrado</span>
+                    <div className="card" style={{marginTop: '16px', border: '2px solid var(--success-800)', background: 'var(--success-50)'}}>
+                      <div className="card-body">
+                        <div style={{display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px', color: 'var(--success-800)', fontWeight: '600'}}>
+                          <FiCheck size={20} />
+                          <span>Equipo encontrado</span>
+                        </div>
+                        <div style={{display: 'grid', gap: '8px', marginBottom: '12px'}}>
+                          <div><strong>Código:</strong> {equipoEncontrado.codigo_inventario}</div>
+                          <div><strong>Equipo:</strong> {equipoEncontrado.tipo} {equipoEncontrado.marca} {equipoEncontrado.modelo}</div>
+                          {equipoEncontrado.nombre_ambiente && (
+                            <div><strong>Ambiente:</strong> {equipoEncontrado.nombre_ambiente}</div>
+                          )}
+                        </div>
+                        <button
+                          type="button"
+                          className="btn btn-secondary btn-sm"
+                          onClick={limpiarEquipo}
+                        >
+                          <FiX size={14} />
+                          Cambiar equipo
+                        </button>
                       </div>
-                      <div className="equipo-found-info">
-                        <div><strong>Código:</strong> {equipoEncontrado.codigo_inventario}</div>
-                        <div><strong>Equipo:</strong> {equipoEncontrado.tipo} {equipoEncontrado.marca} {equipoEncontrado.modelo}</div>
-                        {equipoEncontrado.nombre_ambiente && (
-                          <div><strong>Ambiente:</strong> {equipoEncontrado.nombre_ambiente}</div>
-                        )}
-                      </div>
-                      <button
-                        type="button"
-                        onClick={limpiarEquipo}
-                        className="btn-clear-equipo"
-                      >
-                        <FiX size={14} />
-                        Cambiar equipo
-                      </button>
                     </div>
                   )}
                 </div>
 
                 {/* Sección: Tipo de Novedad */}
-                <div className="form-section">
-                  <h3 className="form-section-title">
-                    <FiAlertCircle size={18} style={{ marginRight: 8 }} />
+                <div style={{marginBottom: '24px', paddingBottom: '20px', borderBottom: '1px solid var(--neutral-200)'}}>
+                  <h3 style={{display: 'flex', alignItems: 'center', gap: '8px', fontSize: '16px', fontWeight: '700', color: 'var(--neutral-800)', marginBottom: '16px'}}>
+                    <FiAlertCircle size={18} />
                     Tipo de Novedad
                   </h3>
 
                   <div className="form-group">
-                    <label>
-                      Tipo de Novedad *
-                    </label>
+                    <label className="form-label">Tipo de Novedad *</label>
                     <select
+                      className="form-select"
                       value={form.tipo_novedad}
                       onChange={(e) => handleChange('tipo_novedad', e.target.value)}
                       required
@@ -450,17 +471,16 @@ export default function Novedades() {
                 </div>
 
                 {/* Sección: Descripción */}
-                <div className="form-section">
-                  <h3 className="form-section-title">
-                    <FiFileText size={18} style={{ marginRight: 8 }} />
+                <div style={{marginBottom: '24px'}}>
+                  <h3 style={{display: 'flex', alignItems: 'center', gap: '8px', fontSize: '16px', fontWeight: '700', color: 'var(--neutral-800)', marginBottom: '16px'}}>
+                    <FiFileText size={18} />
                     Descripción del Problema
                   </h3>
 
                   <div className="form-group">
-                    <label>
-                      Descripción Detallada *
-                    </label>
+                    <label className="form-label">Descripción Detallada *</label>
                     <textarea
+                      className="form-textarea"
                       value={form.descripcion}
                       onChange={(e) => handleChange('descripcion', e.target.value)}
                       placeholder="Describe detalladamente el problema o situación..."
@@ -473,14 +493,14 @@ export default function Novedades() {
                 <div className="form-actions">
                   <button 
                     type="submit" 
-                    className="btn-primary btn-modern"
+                    className="btn btn-primary btn-md"
                     disabled={loadingCrear}
                   >
                     {loadingCrear ? 'Registrando...' : 'Registrar Novedad'}
                   </button>
                   <button 
                     type="button" 
-                    className="btn-secondary btn-modern"
+                    className="btn btn-secondary btn-md"
                     onClick={() => setActiveTab('ver')}
                   >
                     Cancelar
@@ -491,112 +511,126 @@ export default function Novedades() {
           </div>
 
           {selectedNovedad && (
-            <div className="novedades-modal-overlay" onClick={() => setSelectedNovedad(null)}>
-              <div className="novedades-modal-content" onClick={(e) => e.stopPropagation()}>
-                <div className="novedades-modal-header">
-                  <h3 className="novedades-modal-title">Detalle de Novedad</h3>
+            <div className="modal-overlay" onClick={() => setSelectedNovedad(null)}>
+              <div className="modal" onClick={(e) => e.stopPropagation()}>
+                <div className="modal-header">
+                  <h3 className="modal-title">Detalle de Novedad</h3>
                   <button
+                    className="modal-close"
                     onClick={() => setSelectedNovedad(null)}
-                    className="novedades-modal-close"
                   >
                     ×
                   </button>
                 </div>
 
-                <div className="novedades-modal-grid">
-                  <div>
-                    <strong>ID:</strong> {selectedNovedad.id_novedad}
-                  </div>
-                  <div>
-                    <strong>Equipo:</strong> {selectedNovedad.equipo_tipo} {selectedNovedad.equipo_marca} {selectedNovedad.equipo_modelo}
-                    {selectedNovedad.consecutivo && <span> (Consecutivo: {selectedNovedad.consecutivo})</span>}
-                  </div>
-                  <div>
-                    <strong>Tipo de Novedad:</strong> {selectedNovedad.tipo_novedad}
-                  </div>
-                  <div>
-                    <strong>Descripción:</strong>
-                    <div className="novedades-descripcion-box">
-                      {selectedNovedad.descripcion}
+                <div className="modal-body">
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label className="form-label">ID</label>
+                      <div>{selectedNovedad.id_novedad}</div>
                     </div>
-                  </div>
-                  <div>
-                    <strong>Reportado por:</strong> {selectedNovedad.reportado_por_nombre}
-                  </div>
-                  <div>
-                    <strong>Fecha de reporte:</strong> {formatDate(selectedNovedad.fecha_novedad)}
-                  </div>
-                  <div>
-                    <div className="novedades-estado-header">
-                      <strong>Estado:</strong>
-                      {!editandoEstado && (user?.nombre_rol === 'Administrador' || user?.nombre_rol === 'Instructor') && (
-                        <button
-                          onClick={() => abrirEditarEstado(selectedNovedad)}
-                          className="btn novedades-cambiar-estado-btn"
-                        >
-                          <FiEdit size={14} style={{ marginRight: '4px' }} />
-                          Cambiar Estado
-                        </button>
+                    <div className="form-group">
+                      <label className="form-label">Equipo</label>
+                      <div>
+                        {selectedNovedad.equipo_tipo} {selectedNovedad.equipo_marca} {selectedNovedad.equipo_modelo}
+                        {selectedNovedad.consecutivo && <span> (Consecutivo: {selectedNovedad.consecutivo})</span>}
+                      </div>
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Tipo de Novedad</label>
+                      <div>{selectedNovedad.tipo_novedad}</div>
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Descripción</label>
+                      <div style={{padding: '12px', background: 'var(--neutral-50)', borderRadius: '8px', marginTop: '8px'}}>
+                        {selectedNovedad.descripcion}
+                      </div>
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Reportado por</label>
+                      <div>{selectedNovedad.reportado_por_nombre}</div>
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Fecha de reporte</label>
+                      <div>{formatDate(selectedNovedad.fecha_novedad)}</div>
+                    </div>
+                    <div className="form-group">
+                      <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px'}}>
+                        <label className="form-label">Estado</label>
+                        {!editandoEstado && (user?.nombre_rol === 'Administrador' || user?.nombre_rol === 'Instructor') && (
+                          <button
+                            onClick={() => abrirEditarEstado(selectedNovedad)}
+                            className="btn btn-secondary btn-sm"
+                          >
+                            <FiEdit size={14} />
+                            Cambiar Estado
+                          </button>
+                        )}
+                      </div>
+                      {editandoEstado ? (
+                        <div style={{display: 'grid', gap: '12px', marginTop: '8px'}}>
+                          <select
+                            className="form-select"
+                            value={nuevoEstado}
+                            onChange={(e) => setNuevoEstado(e.target.value)}
+                          >
+                            <option value="Pendiente">Pendiente</option>
+                            <option value="En Proceso">En Proceso</option>
+                            <option value="Resuelto">Resuelto</option>
+                            <option value="No Resuelto">No Resuelto</option>
+                          </select>
+                          <textarea
+                            className="form-textarea"
+                            value={observacionesResolucion}
+                            onChange={(e) => setObservacionesResolucion(e.target.value)}
+                            placeholder="Observaciones de resolución (opcional)..."
+                            rows={3}
+                          />
+                          <div style={{display: 'flex', gap: '8px'}}>
+                            <button
+                              onClick={guardarEstado}
+                              className="btn btn-primary btn-sm"
+                              disabled={loading}
+                            >
+                              {loading ? 'Guardando...' : 'Guardar'}
+                            </button>
+                            <button
+                              onClick={cancelarEditarEstado}
+                              className="btn btn-secondary btn-sm"
+                              disabled={loading}
+                            >
+                              Cancelar
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div style={{marginTop: '8px'}}>{getEstadoBadge(selectedNovedad.estado_resolucion)}</div>
                       )}
                     </div>
-                    {editandoEstado ? (
-                      <div className="novedades-editar-estado-grid">
-                        <select
-                          value={nuevoEstado}
-                          onChange={(e) => setNuevoEstado(e.target.value)}
-                          className="novedades-estado-select"
-                        >
-                          <option value="Pendiente">Pendiente</option>
-                          <option value="En Proceso">En Proceso</option>
-                          <option value="Resuelto">Resuelto</option>
-                          <option value="No Resuelto">No Resuelto</option>
-                        </select>
-                        <textarea
-                          value={observacionesResolucion}
-                          onChange={(e) => setObservacionesResolucion(e.target.value)}
-                          placeholder="Observaciones de resolución (opcional)..."
-                          rows={3}
-                          className="novedades-observaciones-textarea"
-                        />
-                        <div className="novedades-editar-buttons">
-                          <button
-                            onClick={guardarEstado}
-                            className="btn-primary btn-modern novedades-editar-btn"
-                            disabled={loading}
-                          >
-                            {loading ? 'Guardando...' : 'Guardar'}
-                          </button>
-                          <button
-                            onClick={cancelarEditarEstado}
-                            className="btn-secondary btn-modern novedades-editar-btn"
-                            disabled={loading}
-                          >
-                            Cancelar
-                          </button>
+                    {selectedNovedad.fecha_resolucion && (
+                      <div className="form-group">
+                        <label className="form-label">Fecha de resolución</label>
+                        <div>{formatDate(selectedNovedad.fecha_resolucion)}</div>
+                      </div>
+                    )}
+                    {selectedNovedad.resuelto_por_nombre && (
+                      <div className="form-group">
+                        <label className="form-label">Resuelto por</label>
+                        <div>{selectedNovedad.resuelto_por_nombre}</div>
+                      </div>
+                    )}
+                    {selectedNovedad.observaciones_resolucion && (
+                      <div className="form-group">
+                        <label className="form-label">Observaciones de resolución</label>
+                        <div style={{padding: '12px', background: 'var(--neutral-50)', borderRadius: '8px', marginTop: '8px'}}>
+                          {selectedNovedad.observaciones_resolucion}
                         </div>
                       </div>
-                    ) : (
-                      getEstadoBadge(selectedNovedad.estado_resolucion)
                     )}
                   </div>
-                  {selectedNovedad.fecha_resolucion && (
-                    <div>
-                      <strong>Fecha de resolución:</strong> {formatDate(selectedNovedad.fecha_resolucion)}
-                    </div>
-                  )}
-                  {selectedNovedad.resuelto_por_nombre && (
-                    <div>
-                      <strong>Resuelto por:</strong> {selectedNovedad.resuelto_por_nombre}
-                    </div>
-                  )}
-                  {selectedNovedad.observaciones_resolucion && (
-                    <div>
-                      <strong>Observaciones de resolución:</strong>
-                      <div className="novedades-descripcion-box">
-                        {selectedNovedad.observaciones_resolucion}
-                      </div>
-                    </div>
-                  )}
+                </div>
+                <div className="modal-footer">
+                  <button className="btn btn-secondary btn-md" onClick={() => setSelectedNovedad(null)}>Cerrar</button>
                 </div>
               </div>
             </div>
