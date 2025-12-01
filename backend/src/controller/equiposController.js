@@ -1183,20 +1183,57 @@ export async function actualizarCuentadantePrincipal(req, res) {
       logger.info('Columna cuentadante_principal creada en la tabla Elementos')
     }
 
+    // Verificar si la columna id_cuentadante existe
+    const [[colIdCuentadante]] = await defaultDb.execute(
+      `SELECT COUNT(*) AS cnt FROM INFORMATION_SCHEMA.COLUMNS 
+       WHERE TABLE_SCHEMA = DATABASE() 
+       AND TABLE_NAME = 'Elementos' 
+       AND COLUMN_NAME = 'id_cuentadante'`
+    )
+
+    // Si no existe, crearla
+    if (colIdCuentadante.cnt === 0) {
+      await defaultDb.execute(
+        `ALTER TABLE Elementos 
+         ADD COLUMN id_cuentadante INT NULL,
+         ADD INDEX idx_cuentadante (id_cuentadante),
+         ADD FOREIGN KEY (id_cuentadante) REFERENCES Usuarios(id_usuario) ON DELETE SET NULL`
+      )
+      logger.info('Columna id_cuentadante creada en la tabla Elementos')
+    }
+
     // Actualizar el cuentadante principal en todos los equipos
+    // IMPORTANTE: Actualizar tanto cuentadante_principal (nombre) como id_cuentadante (FK)
+    // Actualizar equipos que no tienen cuentadante o que tienen un cuentadante diferente
     const [result] = await defaultDb.execute(
       `UPDATE Elementos 
-       SET cuentadante_principal = ? 
-       WHERE cuentadante_principal IS NULL OR cuentadante_principal != ?`,
-      [nombreCuentadante, nombreCuentadante]
+       SET cuentadante_principal = ?, 
+           id_cuentadante = ?
+       WHERE cuentadante_principal IS NULL 
+          OR cuentadante_principal != ? 
+          OR id_cuentadante IS NULL 
+          OR id_cuentadante != ?`,
+      [nombreCuentadante, usuario.id_usuario, nombreCuentadante, usuario.id_usuario]
     )
+
+    // También sincronizar equipos que tienen cuentadante_principal pero no id_cuentadante
+    // (para equipos importados antes de que se implementara id_cuentadante)
+    const [resultSync] = await defaultDb.execute(
+      `UPDATE Elementos 
+       SET id_cuentadante = ?
+       WHERE cuentadante_principal = ? 
+          AND (id_cuentadante IS NULL OR id_cuentadante != ?)`,
+      [usuario.id_usuario, nombreCuentadante, usuario.id_usuario]
+    )
+
+    const totalActualizados = result.affectedRows + resultSync.affectedRows
 
     return res.json({
       ok: true,
-      message: `Cuentadante principal actualizado correctamente para ${result.affectedRows} equipo(s)`,
+      message: `Cuentadante principal actualizado correctamente para ${totalActualizados} equipo(s)`,
       cuentadante_principal: nombreCuentadante,
       cuentadante_cedula: usuario.cedula,
-      equipos_actualizados: result.affectedRows
+      equipos_actualizados: totalActualizados
     })
   } catch (err) {
     logger.error('Error al actualizar cuentadante principal', { error: err.message, stack: err.stack })
