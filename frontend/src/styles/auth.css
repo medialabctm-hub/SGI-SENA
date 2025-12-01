@@ -198,14 +198,14 @@
 }
 
 .btn.primary {
-  background: (--success-800);
+  background: var(--success-800);
   color: white;
   font-weight: 700;
   box-shadow: 0 4px 16px rgba(16, 185, 129, 0.25);
 }
 
 .btn.primary:hover:not(:disabled) {
-  background: var(--success-800);
+  background: var(--success-900);
   transform: translateY(-2px);
   box-shadow: 0 6px 20px rgba(16, 185, 129, 0.35);
 }
