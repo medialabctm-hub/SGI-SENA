@@ -692,156 +692,58 @@ export default function DetalleEquipo() {
                   {imagenes.map((imagen) => (
                     <div
                       key={imagen.id_imagen_equipo}
-                      style={{
-                        position: 'relative',
-                        background: '#fff',
-                        border: imagen.es_principal ? '3px solid var(--success-800)' : '2px solid #e5e7eb',
-                        borderRadius: '12px',
-                        overflow: 'hidden',
-                        boxShadow: imagen.es_principal 
-                          ? '0 4px 12px rgba(16, 185, 129, 0.2)' 
-                          : '0 2px 8px rgba(0,0,0,0.08)',
-                        transition: 'all 0.3s ease',
-                        cursor: 'pointer'
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.transform = 'translateY(-4px)';
-                        e.currentTarget.style.boxShadow = '0 8px 16px rgba(0,0,0,0.12)';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.transform = 'translateY(0)';
-                        e.currentTarget.style.boxShadow = imagen.es_principal 
-                          ? '0 4px 12px rgba(16, 185, 129, 0.2)' 
-                          : '0 2px 8px rgba(0,0,0,0.08)';
-                      }}
+                      className={`detalle-equipo-gallery-item ${imagen.es_principal ? 'principal' : ''}`}
                     >
-                      {imagen.es_principal && (
-                        <div
-                          style={{
-                            position: 'absolute',
-                            top: '12px',
-                            right: '12px',
-                            background: 'linear-gradient(135deg, var(--success-800) 0%, var(--success-900) 100%)',
-                            color: 'white',
-                            padding: '6px 12px',
-                            borderRadius: '20px',
-                            fontSize: '0.75rem',
-                            fontWeight: 700,
-                            zIndex: 10,
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '6px',
-                            boxShadow: '0 2px 8px rgba(16, 185, 129, 0.4)'
-                          }}
-                        >
-                          <FiStar size={14} style={{ fill: 'white' }} />
-                          Principal
-                        </div>
-                      )}
-                      <div style={{
-                        width: '100%',
-                        height: '220px',
-                        background: '#f9fafb',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        overflow: 'hidden'
-                      }}>
+                      <div className="detalle-equipo-gallery-image-wrapper">
                         <img
                           src={imagen.ruta_imagen}
                           alt={imagen.descripcion || 'Imagen del equipo'}
-                          style={{
-                            width: '100%',
-                            height: '100%',
-                            objectFit: 'cover',
-                            display: 'block',
-                          }}
+                          className="detalle-equipo-gallery-image"
                           onError={(e) => {
                             console.error('Error al cargar imagen:', imagen.ruta_imagen);
-                            e.target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="200" height="200"%3E%3Crect fill="%23e5e7eb" width="200" height="200"/%3E%3Ctext fill="%239ca3af" font-family="sans-serif" font-size="14" x="50%25" y="50%25" text-anchor="middle" dy=".3em"%3EImagen no disponible%3C/text%3E%3C/svg%3E';
+                            e.target.style.display = 'none';
+                            e.target.nextSibling.style.display = 'flex';
                           }}
                         />
-                      </div>
-                      <div style={{ padding: '16px' }}>
-                        <div style={{ 
-                          fontSize: '0.85rem', 
-                          fontWeight: 700, 
-                          marginBottom: '6px',
-                          color: '#111827',
-                          textTransform: 'uppercase',
-                          letterSpacing: '0.5px'
-                        }}>
-                          {imagen.tipo_imagen}
+                        <div className="detalle-equipo-gallery-image-placeholder">
+                          <FiImage size={32} />
                         </div>
-                        {imagen.descripcion && (
-                          <div style={{ 
-                            fontSize: '0.85rem', 
-                            color: '#6b7280', 
-                            marginBottom: '12px',
-                            lineHeight: '1.4',
-                            display: '-webkit-box',
-                            WebkitLineClamp: 2,
-                            WebkitBoxOrient: 'vertical',
-                            overflow: 'hidden'
-                          }}>
-                            {imagen.descripcion}
+                        {imagen.es_principal && (
+                          <div className="detalle-equipo-gallery-badge">
+                            <FiStar size={14} style={{ fill: 'white' }} />
+                            Principal
                           </div>
                         )}
-                        <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
+                        <div className="detalle-equipo-gallery-overlay">
                           {!imagen.es_principal && (
                             <button
-                              className="btn"
-                              style={{ 
-                                flex: 1, 
-                                fontSize: '0.85rem', 
-                                padding: '8px 12px',
-                                borderRadius: '8px',
-                                border: '1px solid #d1d5db',
-                                background: '#fff',
-                                cursor: 'pointer',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                gap: '6px',
-                                transition: 'all 0.2s'
-                              }}
+                              className="detalle-equipo-gallery-btn-overlay"
                               onClick={() => handleMarcarPrincipal(imagen.id_imagen_equipo)}
                               title="Marcar como principal"
-                              onMouseEnter={(e) => { e.target.style.background = '#f9fafb'; e.target.style.borderColor = 'var(--success-800)'; }}
-                              onMouseLeave={(e) => { e.target.style.background = '#fff'; e.target.style.borderColor = '#d1d5db'; }}
                             >
                               <FiStar size={16} />
-                              Principal
                             </button>
                           )}
                           {(user?.nombre_rol === 'Administrador' || user?.nombre_rol === 'Instructor') && (
                             <button
-                              className="btn btn-delete"
-                              style={{ 
-                                flex: 1, 
-                                fontSize: '0.85rem', 
-                                padding: '8px 12px',
-                                borderRadius: '8px',
-                                background: '#fee2e2',
-                                color: '#dc2626',
-                                border: '1px solid #fecaca',
-                                cursor: 'pointer',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                gap: '6px',
-                                transition: 'all 0.2s'
-                              }}
+                              className="detalle-equipo-gallery-btn-overlay detalle-equipo-gallery-btn-overlay-delete"
                               onClick={() => setDeleteConfirm({ open: true, idImagen: imagen.id_imagen_equipo })}
                               title="Eliminar imagen"
-                              onMouseEnter={(e) => { e.target.style.background = '#fecaca'; }}
-                              onMouseLeave={(e) => { e.target.style.background = '#fee2e2'; }}
                             >
-                              <FiTrash2 size={16} />
-                              Eliminar
+                              <FiX size={16} />
                             </button>
                           )}
                         </div>
+                      </div>
+                      <div className="detalle-equipo-gallery-item-content">
+                        <div className="detalle-equipo-gallery-item-type">
+                          {imagen.tipo_imagen}
+                        </div>
+                        {imagen.descripcion && (
+                          <div className="detalle-equipo-gallery-item-description">
+                            {imagen.descripcion}
+                          </div>
+                        )}
                       </div>
                     </div>
                   ))}

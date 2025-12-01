@@ -337,18 +337,22 @@ export default function Usuarios() {
         <Sidebar user={currentUser} />
         <main className="dashboard-main">
           {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
-        <div className="users-panel">
-          <div className="users-toolbar">
-            <h2>Usuarios</h2>
-            <div className="users-toolbar-actions">
-              <input
-                className="search-input"
-                placeholder="Buscar por nombre, cédula o rol..."
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-              />
+        <div className="card">
+          <div className="card-header">
+            <h2 className="card-title">Usuarios</h2>
+            <div className="search-wrapper">
+              <div className="search-input-wrapper">
+                <input
+                  type="text"
+                  className="search-input"
+                  placeholder="Buscar por nombre, cédula o rol..."
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                />
+                <span className="search-icon">🔍</span>
+              </div>
               <button
-                className="btn-import-users"
+                className="btn btn-primary btn-md"
                 onClick={handleExportExcel}
                 disabled={loading}
                 title="Exportar todos los usuarios a Excel"
@@ -358,7 +362,7 @@ export default function Usuarios() {
               </button>
               {isAdmin && (
                 <button
-                  className="btn-import-users"
+                  className="btn btn-primary btn-md"
                   onClick={() => setShowImport(true)}
                 >
                   <FiUpload size={16} />
@@ -368,71 +372,77 @@ export default function Usuarios() {
             </div>
           </div>
 
-          <div className="users-content">
-            {loading ? <div>Cargando usuarios...</div> : (
-              displayedUsers.length ? (
-                <div className="users-table-wrapper">
-                  <table className="users-table">
-                    <thead>
-                      <tr>
-                        <th>Nombre</th>
-                        <th>Cédula</th>
-                        <th>Rol</th>
-                        <th>Equipos</th>
-                        <th className="users-actions-header">Acciones</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {displayedUsers.map((u) => (
-                        <tr key={u.id_usuario}>
-                          <td>{u.nombre_usuario}</td>
-                          <td>{u.cedula}</td>
-                          <td>{u.nombre_rol}</td>
-                          <td>
-                            <span className="equip-count">
-                              {u.equipos_asignados || 0}
-                            </span>
-                          </td>
-                          <td className="users-actions">
+          <div className="card-body">
+            {loading ? (
+              <div className="loading-state">
+                <div className="loading-spinner"></div>
+                <p>Cargando usuarios...</p>
+              </div>
+            ) : displayedUsers.length ? (
+              <div className="table-wrapper">
+                <table className="table">
+                  <thead>
+                    <tr>
+                      <th>Nombre</th>
+                      <th>Cédula</th>
+                      <th>Rol</th>
+                      <th>Equipos</th>
+                      <th>Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {displayedUsers.map((u) => (
+                      <tr key={u.id_usuario}>
+                        <td>{u.nombre_usuario}</td>
+                        <td>{u.cedula}</td>
+                        <td>{u.nombre_rol}</td>
+                        <td>
+                          <span className="badge badge-primary">
+                            {u.equipos_asignados || 0}
+                          </span>
+                        </td>
+                        <td>
+                          <div className="table-actions">
                             <button
-                              className="btn btn-view"
+                              className="table-action-btn"
                               onClick={() => openView(u)}
+                              title="Ver"
                             >
                               Ver
                             </button>
-                            {/* Editar y Eliminar: Solo Administrador */}
                             {isAdmin && (
                               <>
                                 <button
-                                  className="btn btn-edit"
+                                  className="table-action-btn"
                                   onClick={() => openEdit(u)}
+                                  title="Editar"
                                 >
                                   Editar
                                 </button>
                                 <button
-                                  className="btn btn-delete"
+                                  className="table-action-btn table-action-btn-danger"
                                   onClick={() =>
                                     setConfirm({ open: true, id: u.id_usuario })
                                   }
+                                  title="Eliminar"
                                 >
                                   Eliminar
                                 </button>
                               </>
                             )}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              ) : (
-                <div className="users-empty">
-                  <div>
-                    <strong>No hay usuarios para mostrar</strong>
-                    <div className="users-empty-message">No se encontraron registros. Si los usuarios se registraron vía la aplicación, revisa la base de datos o el proceso de registro.</div>
-                  </div>
-                </div>
-              )
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="empty-state">
+                <div className="empty-icon-wrapper">📋</div>
+                <h3>No hay usuarios para mostrar</h3>
+                <p>No se encontraron registros. Si los usuarios se registraron vía la aplicación, revisa la base de datos o el proceso de registro.</p>
+              </div>
             )}
           </div>
         </div>
@@ -441,32 +451,62 @@ export default function Usuarios() {
       {/* View modal */}
       {viewUser && (
         <div className="modal-overlay">
-          <div className="modal-sheet form-modal">
-            <div className="form-equipos">
-              <div className="modal-header">
-                <h3>Detalle: {viewUser.user.nombre_usuario}</h3>
-                <button className="btn" onClick={() => setViewUser(null)}>Cerrar</button>
-              </div>
-              <div className="user-detail-content">
-                <div className="user-detail-grid">
-                  <div><strong>Cédula:</strong> {viewUser.user.cedula}</div>
-                  <div><strong>Rol:</strong> {viewUser.user.nombre_rol}</div>
-                  <div><strong>Correo:</strong> {viewUser.user.correo}</div>
-                  <div><strong>Teléfono:</strong> {viewUser.user.telefono}</div>
+          <div className="modal">
+            <div className="modal-header">
+              <h3 className="modal-title">Detalle: {viewUser.user.nombre_usuario}</h3>
+              <button className="modal-close" onClick={() => setViewUser(null)}>×</button>
+            </div>
+            <div className="modal-body">
+              <div className="form-row">
+                <div className="form-group">
+                  <label className="form-label">Cédula</label>
+                  <div>{viewUser.user.cedula}</div>
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Rol</label>
+                  <div>{viewUser.user.nombre_rol}</div>
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Correo</label>
+                  <div>{viewUser.user.correo}</div>
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Teléfono</label>
+                  <div>{viewUser.user.telefono}</div>
                 </div>
               </div>
-              <hr />
-              <h4>Equipos asignados</h4>
+              <h4 style={{ marginTop: '24px', marginBottom: '12px' }}>Equipos asignados</h4>
               {viewUser.equipos && viewUser.equipos.length ? (
-                <table className="users-table">
-                  <thead><tr><th>Equipo</th><th>Consecutivo</th><th>Ambiente</th><th>Asignado (días)</th></tr></thead>
-                  <tbody>
-                    {viewUser.equipos.map(eq => (
-                      <tr key={eq.codigo_equipo}><td className="equipo-detail-cell">{eq.tipo} {eq.marca} {eq.modelo}</td><td>{eq.consecutivo}</td><td>{eq.nombre_ambiente}</td><td>{eq.dias_asignado}</td></tr>
-                    ))}
-                  </tbody>
-                </table>
-              ) : (<div>No hay equipos asignados</div>)}
+                <div className="table-wrapper">
+                  <table className="table">
+                    <thead>
+                      <tr>
+                        <th>Equipo</th>
+                        <th>Consecutivo</th>
+                        <th>Ambiente</th>
+                        <th>Asignado (días)</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {viewUser.equipos.map(eq => (
+                        <tr key={eq.codigo_equipo}>
+                          <td>{eq.tipo} {eq.marca} {eq.modelo}</td>
+                          <td>{eq.consecutivo}</td>
+                          <td>{eq.nombre_ambiente}</td>
+                          <td>{eq.dias_asignado}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="empty-state" style={{ padding: '2rem' }}>
+                  <p>No hay equipos asignados</p>
+                </div>
+              )}
+            </div>
+            <div className="modal-footer">
+              <button className="btn btn-secondary btn-md" onClick={() => setViewUser(null)}>Cerrar</button>
             </div>
           </div>
         </div>
@@ -475,44 +515,52 @@ export default function Usuarios() {
       {/* Form modal add/edit */}
       {showForm && (
         <div className="modal-overlay">
-          <div className="modal-sheet form-modal-small">
-            <div className="form-equipos">
-              <div className="modal-header">
-                <h3>Editar usuario</h3>
-                <button className="btn" onClick={() => setShowForm(false)}>Cerrar</button>
-              </div>
-              <form onSubmit={submitForm} className="modal-form">
-                <div className="form-grid">
-                  <div className="form-row">
-                    <label>Nombre completo</label>
+          <div className="modal">
+            <div className="modal-header">
+              <h3 className="modal-title">Editar usuario</h3>
+              <button className="modal-close" onClick={() => setShowForm(false)}>×</button>
+            </div>
+            <form onSubmit={submitForm} className="form">
+              <div className="modal-body">
+                <div className="form-row">
+                  <div className="form-group">
+                    <label className="form-label">Nombre completo</label>
                     <input
+                      type="text"
+                      className="form-input"
                       value={form.nombre}
                       onChange={(e) =>
                         setForm((prev) => ({ ...prev, nombre: e.target.value }))
                       }
                     />
                   </div>
-                  <div className="form-row">
-                    <label>Cédula</label>
+                  <div className="form-group">
+                    <label className="form-label">Cédula</label>
                     <input
+                      type="text"
+                      className="form-input"
                       value={form.cedula}
                       onChange={(e) =>
                         setForm((prev) => ({ ...prev, cedula: e.target.value }))
                       }
                     />
                   </div>
-                  <div className="form-row">
-                    <label>Correo</label>
+                  <div className="form-group">
+                    <label className="form-label">Correo</label>
                     <input
+                      type="email"
+                      className="form-input"
                       value={form.correo}
                       onChange={(e) =>
                         setForm((prev) => ({ ...prev, correo: e.target.value }))
                       }
                     />
                   </div>
-                  <div className="form-row">
-                    <label>Teléfono</label>
+                  <div className="form-group">
+                    <label className="form-label">Teléfono</label>
                     <input
+                      type="tel"
+                      className="form-input"
                       value={form.telefono}
                       onChange={(e) =>
                         setForm((prev) => ({
@@ -522,9 +570,10 @@ export default function Usuarios() {
                       }
                     />
                   </div>
-                  <div className="form-row">
-                    <label>Rol</label>
+                  <div className="form-group">
+                    <label className="form-label">Rol</label>
                     <select
+                      className="form-select"
                       value={form.rol}
                       onChange={(e) =>
                         setForm((prev) => ({ ...prev, rol: e.target.value }))
@@ -535,14 +584,13 @@ export default function Usuarios() {
                       <option>Aprendiz</option>
                     </select>
                   </div>
-                  {/* No se permite crear usuarios aquí; edición solamente. */}
                 </div>
-                <div className="modal-form-actions">
-                  <button className="btn" type="button" onClick={() => setShowForm(false)}>Cancelar</button>
-                  <button className="btn-verde" type="submit">Guardar</button>
-                </div>
-              </form>
-            </div>
+              </div>
+              <div className="modal-footer">
+                <button className="btn btn-secondary btn-md" type="button" onClick={() => setShowForm(false)}>Cancelar</button>
+                <button className="btn btn-primary btn-md" type="submit">Guardar</button>
+              </div>
+            </form>
           </div>
         </div>
       )}
@@ -557,22 +605,27 @@ export default function Usuarios() {
       {/* Modal de Importación */}
       {showImport && (
         <div className="modal-overlay">
-          <div className="modal-sheet form-modal-large">
+          <div className="modal" style={{ maxWidth: '800px' }}>
             <div className="modal-header">
-              <h3>Importar Usuarios</h3>
-              <button className="btn" onClick={() => setShowImport(false)}>Cerrar</button>
+              <h3 className="modal-title">Importar Usuarios</h3>
+              <button className="modal-close" onClick={() => setShowImport(false)}>×</button>
             </div>
-            <ImportarUsuarios 
-              onImportComplete={(resultados) => {
-                setToast({
-                  message: `Importación completada: ${resultados.exitosos} exitosos, ${resultados.fallidos} fallidos`,
-                  type: resultados.fallidos === 0 ? 'success' : 'warning'
-                })
-                if (resultados.exitosos > 0) {
-                  fetchUsers() // Actualizar lista
-                }
-              }}
-            />
+            <div className="modal-body">
+              <ImportarUsuarios 
+                onImportComplete={(resultados) => {
+                  setToast({
+                    message: `Importación completada: ${resultados.exitosos} exitosos, ${resultados.fallidos} fallidos`,
+                    type: resultados.fallidos === 0 ? 'success' : 'warning'
+                  })
+                  if (resultados.exitosos > 0) {
+                    fetchUsers() // Actualizar lista
+                  }
+                }}
+              />
+            </div>
+            <div className="modal-footer">
+              <button className="btn btn-secondary btn-md" onClick={() => setShowImport(false)}>Cerrar</button>
+            </div>
           </div>
         </div>
       )}
