@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { FiCamera, FiX, FiStar, FiImage } from 'react-icons/fi';
+import { FiCamera, FiX, FiStar, FiImage, FiPackage, FiCheckCircle, FiAlertCircle, FiTrendingDown, FiDollarSign, FiMapPin, FiUsers, FiInfo, FiEdit2 } from 'react-icons/fi';
 import Header from '../components/Header';
 import Sidebar from '../components/Sidebar';
 import Toast from '../components/Toast';
@@ -614,121 +614,230 @@ export default function Ambientes() {
 
           {/* Vista detallada */}
           {viewAmbiente && (
-            <div className="card" style={{ marginBottom: '1.5rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <h3>Detalles del Ambiente: {viewAmbiente.nombre_ambiente}</h3>
+            <div className="ambiente-detail-card" style={{ marginBottom: '1.5rem' }}>
+              <div className="ambiente-detail-header">
+                <div>
+                  <h3 className="ambiente-detail-title">{viewAmbiente.nombre_ambiente}</h3>
+                  <p className="ambiente-detail-subtitle">Código: {viewAmbiente.codigo_ambiente}</p>
+                </div>
                 <button
-                  className="btn-secondary"
+                  className="btn-close-detail"
                   onClick={() => setViewAmbiente(null)}
+                  title="Cerrar"
                 >
-                  Cerrar
+                  <FiX size={20} />
                 </button>
               </div>
-              <div style={{ marginTop: '1rem' }}>
-                <p><strong>Código:</strong> {viewAmbiente.codigo_ambiente}</p>
-                <p><strong>Tipo:</strong> {viewAmbiente.tipo_ambiente}</p>
-                <p><strong>Estado:</strong> {viewAmbiente.estado_ambiente}</p>
-                {viewAmbiente.capacidad_personas && (
-                  <p><strong>Capacidad:</strong> {viewAmbiente.capacidad_personas} personas</p>
-                )}
-                {viewAmbiente.piso && <p><strong>Piso:</strong> {viewAmbiente.piso}</p>}
-                {viewAmbiente.edificio && <p><strong>Edificio:</strong> {viewAmbiente.edificio}</p>}
-                {viewAmbiente.descripcion && (
-                  <p><strong>Descripción:</strong> {viewAmbiente.descripcion}</p>
-                )}
-                <p><strong>Total Equipos:</strong> {viewAmbiente.total_equipos || 0}</p>
-                <p><strong>Equipos Disponibles:</strong> {viewAmbiente.equipos_disponibles || 0}</p>
-                <p><strong>Equipos en Uso:</strong> {viewAmbiente.equipos_en_uso || 0}</p>
-                {viewAmbiente.responsables_actuales && viewAmbiente.responsables_actuales.length > 0 && (
-                  <div style={{ marginTop: '1rem' }}>
-                    <strong>Responsables Actuales:</strong>
-                    <ul>
-                      {viewAmbiente.responsables_actuales.map((resp) => (
-                        <li key={resp.id_responsabilidad_ambiente}>
-                          {resp.nombre_usuario} ({resp.nombre_rol}) - {resp.tipo_responsabilidad}
-                          {resp.nombre_clase && ` - Clase: ${resp.nombre_clase}`}
-                        </li>
-                      ))}
-                    </ul>
+
+              {/* Estadísticas del ambiente */}
+              <div className="ambiente-stats-grid">
+                <div className="ambiente-stat-card stat-total">
+                  <div className="stat-icon">
+                    <FiPackage size={24} />
                   </div>
-                )}
+                  <div className="stat-content">
+                    <div className="stat-value">{viewAmbiente.total_equipos || 0}</div>
+                    <div className="stat-label">Total Equipos</div>
+                  </div>
+                </div>
+                <div className="ambiente-stat-card stat-disponibles">
+                  <div className="stat-icon">
+                    <FiCheckCircle size={24} />
+                  </div>
+                  <div className="stat-content">
+                    <div className="stat-value">{viewAmbiente.equipos_disponibles || 0}</div>
+                    <div className="stat-label">Equipos Disponibles</div>
+                  </div>
+                </div>
+                <div className="ambiente-stat-card stat-regular">
+                  <div className="stat-icon">
+                    <FiAlertCircle size={24} />
+                  </div>
+                  <div className="stat-content">
+                    <div className="stat-value">{viewAmbiente.equipos_en_uso || 0}</div>
+                    <div className="stat-label">Equipos en Uso</div>
+                  </div>
+                </div>
+                <div className="ambiente-stat-card stat-danados">
+                  <div className="stat-icon">
+                    <FiTrendingDown size={24} />
+                  </div>
+                  <div className="stat-content">
+                    <div className="stat-value">{viewAmbiente.equipos_en_mantenimiento || 0}</div>
+                    <div className="stat-label">En Mantenimiento</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Información del ambiente */}
+              <div className="ambiente-info-grid">
+                <div className="ambiente-info-card">
+                  <div className="info-item">
+                    <div className="info-label">
+                      <FiInfo size={16} />
+                      Tipo
+                    </div>
+                    <div className="info-value">{viewAmbiente.tipo_ambiente}</div>
+                  </div>
+                  <div className="info-item">
+                    <div className="info-label">
+                      <FiCheckCircle size={16} />
+                      Estado
+                    </div>
+                    <div className="info-value">
+                      <span className={`badge ${
+                        viewAmbiente.estado_ambiente === 'Activo'
+                          ? 'badge-success'
+                          : viewAmbiente.estado_ambiente === 'En Mantenimiento'
+                          ? 'badge-warning'
+                          : 'badge-error'
+                      }`}>
+                        {viewAmbiente.estado_ambiente}
+                      </span>
+                    </div>
+                  </div>
+                  {viewAmbiente.capacidad_personas && (
+                    <div className="info-item">
+                      <div className="info-label">
+                        <FiUsers size={16} />
+                        Capacidad
+                      </div>
+                      <div className="info-value">{viewAmbiente.capacidad_personas} personas</div>
+                    </div>
+                  )}
+                </div>
+                <div className="ambiente-info-card">
+                  {viewAmbiente.piso && (
+                    <div className="info-item">
+                      <div className="info-label">
+                        <FiMapPin size={16} />
+                        Piso
+                      </div>
+                      <div className="info-value">{viewAmbiente.piso}</div>
+                    </div>
+                  )}
+                  {viewAmbiente.edificio && (
+                    <div className="info-item">
+                      <div className="info-label">
+                        <FiMapPin size={16} />
+                        Edificio
+                      </div>
+                      <div className="info-value">{viewAmbiente.edificio}</div>
+                    </div>
+                  )}
+                  {viewAmbiente.descripcion && (
+                    <div className="info-item" style={{ gridColumn: '1 / -1' }}>
+                      <div className="info-label">
+                        <FiInfo size={16} />
+                        Descripción
+                      </div>
+                      <div className="info-value" style={{ whiteSpace: 'pre-wrap' }}>{viewAmbiente.descripcion}</div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Responsables actuales */}
+              {viewAmbiente.responsables_actuales && viewAmbiente.responsables_actuales.length > 0 && (
+                <div className="ambiente-responsables">
+                  <h4 className="ambiente-section-title">Responsables Actuales</h4>
+                  <div className="responsables-list">
+                    {viewAmbiente.responsables_actuales.map((resp) => (
+                      <div key={resp.id_responsabilidad_ambiente} className="responsable-item">
+                        <div className="responsable-info">
+                          <strong>{resp.nombre_usuario}</strong>
+                          <span className="responsable-rol">{resp.nombre_rol}</span>
+                        </div>
+                        <div className="responsable-details">
+                          <span className="responsable-tipo">{resp.tipo_responsabilidad}</span>
+                          {resp.nombre_clase && (
+                            <span className="responsable-clase">Clase: {resp.nombre_clase}</span>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
                 
-                {/* Sección de imágenes */}
-                <div style={{ marginTop: '2rem', borderTop: '1px solid #e5e7eb', paddingTop: '1rem' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                    <strong>Imágenes del Ambiente</strong>
-                    <button
-                      className="btn-primary"
-                      onClick={() => fileInputRef.current?.click()}
-                      disabled={uploadingImages}
-                      style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
-                    >
-                      <FiCamera size={16} />
-                      {uploadingImages ? 'Subiendo...' : 'Subir Imágenes'}
-                    </button>
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
-                      multiple
-                      onChange={handleImageUpload}
-                      style={{ display: 'none' }}
-                    />
+              {/* Sección de imágenes */}
+              <div className="ambiente-imagenes-section">
+                <div className="ambiente-imagenes-header">
+                  <h4 className="ambiente-section-title">Imágenes del Ambiente</h4>
+                  <button
+                    className="btn-upload-images"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={uploadingImages}
+                  >
+                    <FiCamera size={16} />
+                    {uploadingImages ? 'Subiendo...' : 'Subir Imágenes'}
+                  </button>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
+                    multiple
+                    onChange={handleImageUpload}
+                    style={{ display: 'none' }}
+                  />
+                </div>
+                
+                {imagenes.length === 0 ? (
+                  <div className="ambiente-no-images">
+                    <FiImage size={48} />
+                    <p>No hay imágenes para este ambiente</p>
                   </div>
-                  
-                  {imagenes.length === 0 ? (
-                    <p style={{ color: '#6b7280', fontStyle: 'italic' }}>No hay imágenes para este ambiente</p>
-                  ) : (
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '1rem' }}>
-                      {imagenes.map((img) => (
-                        <div key={img.id_imagen_ambiente} style={{ position: 'relative', border: '1px solid #e5e7eb', borderRadius: '8px', overflow: 'hidden' }}>
+                ) : (
+                  <div className="ambiente-imagenes-grid">
+                    {imagenes.map((img) => (
+                      <div key={img.id_imagen_ambiente} className="ambiente-imagen-card">
+                        <div className="ambiente-imagen-container">
                           <img
                             src={getImageUrl(img.ruta_imagen)}
                             alt={img.descripcion || img.nombre_archivo}
-                            style={{ width: '100%', height: '150px', objectFit: 'cover', display: 'block' }}
+                            className="ambiente-imagen"
                             onError={(e) => {
                               e.target.style.display = 'none';
                               e.target.nextSibling.style.display = 'flex';
                             }}
                           />
-                          <div style={{ display: 'none', width: '100%', height: '150px', background: '#f3f4f6', alignItems: 'center', justifyContent: 'center', color: '#9ca3af' }}>
+                          <div className="ambiente-imagen-placeholder">
                             <FiImage size={32} />
                           </div>
                           {img.es_principal && (
-                            <div style={{ position: 'absolute', top: '8px', right: '8px', background: '#10b981', color: 'white', borderRadius: '50%', width: '24px', height: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <div className="ambiente-imagen-badge">
                               <FiStar size={14} />
+                              Principal
                             </div>
                           )}
-                          <div style={{ padding: '8px', background: 'white' }}>
-                            <p style={{ margin: 0, fontSize: '12px', color: '#6b7280', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                              {img.nombre_archivo}
-                            </p>
-                            <div style={{ display: 'flex', gap: '4px', marginTop: '4px' }}>
-                              {!img.es_principal && (
-                                <button
-                                  className="btn"
-                                  onClick={() => handleMarkPrincipal(img.id_imagen_ambiente)}
-                                  style={{ fontSize: '11px', padding: '4px 8px' }}
-                                  title="Marcar como principal"
-                                >
-                                  <FiStar size={12} />
-                                </button>
-                              )}
+                          <div className="ambiente-imagen-overlay">
+                            {!img.es_principal && (
                               <button
-                                className="btn"
-                                onClick={() => handleDeleteImage(img.id_imagen_ambiente)}
-                                style={{ fontSize: '11px', padding: '4px 8px', color: '#ef4444' }}
-                                title="Eliminar imagen"
+                                className="ambiente-imagen-btn"
+                                onClick={() => handleMarkPrincipal(img.id_imagen_ambiente)}
+                                title="Marcar como principal"
                               >
-                                <FiX size={12} />
+                                <FiStar size={16} />
                               </button>
-                            </div>
+                            )}
+                            <button
+                              className="ambiente-imagen-btn ambiente-imagen-btn-delete"
+                              onClick={() => handleDeleteImage(img.id_imagen_ambiente)}
+                              title="Eliminar imagen"
+                            >
+                              <FiX size={16} />
+                            </button>
                           </div>
                         </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
+                        <div className="ambiente-imagen-info">
+                          <p className="ambiente-imagen-name" title={img.nombre_archivo}>
+                            {img.nombre_archivo}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -759,22 +868,22 @@ export default function Ambientes() {
                       {editingRowId === amb.id_ambiente ? (
                         <>
                           <td>
-                            <input className="cell-input" name="codigo_ambiente" value={form.codigo_ambiente} disabled />
+                            <input className="cell-input-edit" name="codigo_ambiente" value={form.codigo_ambiente} disabled />
                           </td>
                           <td>
-                            <input className="cell-input" name="nombre_ambiente" value={form.nombre_ambiente} onChange={handleChange} />
-                            {errores.nombre_ambiente && <div className="error-text">{errores.nombre_ambiente}</div>}
+                            <input className="cell-input-edit" name="nombre_ambiente" value={form.nombre_ambiente} onChange={handleChange} />
+                            {errores.nombre_ambiente && <div className="error-text-inline">{errores.nombre_ambiente}</div>}
                           </td>
                           <td>
-                            <select className="cell-input" name="tipo_ambiente" value={form.tipo_ambiente} onChange={handleChange}>
+                            <select className="cell-select-edit" name="tipo_ambiente" value={form.tipo_ambiente} onChange={handleChange}>
                               {TIPOS_AMBIENTE.map((t) => <option key={t} value={t}>{t}</option>)}
                             </select>
                           </td>
                           <td>
-                            <input className="cell-input" name="edificio" value={form.edificio} onChange={handleChange} />
+                            <input className="cell-input-edit" name="edificio" value={form.edificio} onChange={handleChange} placeholder="Edificio" />
                           </td>
                           <td>
-                            <input className="cell-input" name="piso" value={form.piso} onChange={handleChange} />
+                            <input className="cell-input-edit" name="piso" value={form.piso} onChange={handleChange} placeholder="Piso" />
                           </td>
                           <td>
                             <span className="equip-count">{amb.total_equipos || 0}</span>
@@ -782,14 +891,20 @@ export default function Ambientes() {
                             <small>({amb.equipos_disponibles || 0} disponibles)</small>
                           </td>
                           <td>
-                            <select className="cell-input" name="estado_ambiente" value={form.estado_ambiente} onChange={handleChange}>
+                            <select className="cell-select-edit" name="estado_ambiente" value={form.estado_ambiente} onChange={handleChange}>
                               {ESTADOS_AMBIENTE.map((e) => <option key={e} value={e}>{e}</option>)}
                             </select>
                           </td>
                           <td>
-                            <div className="row-actions">
-                              <button type="button" className="btn primary" onClick={handleInlineSave}>Guardar</button>
-                              <button type="button" className="btn" onClick={handleCancelInline}>Cancelar</button>
+                            <div className="row-actions-edit">
+                              <button type="button" className="btn-save-inline" onClick={handleInlineSave}>
+                                <FiEdit2 size={14} />
+                                Guardar
+                              </button>
+                              <button type="button" className="btn-cancel-inline" onClick={handleCancelInline}>
+                                <FiX size={14} />
+                                Cancelar
+                              </button>
                             </div>
                           </td>
                         </>
