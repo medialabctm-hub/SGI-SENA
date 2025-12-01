@@ -99,7 +99,7 @@ export default function Login() {
             </span>
           </label>
           {errores.contraseña_usuario && <div className="error-msg">{errores.contraseña_usuario}</div>}
-          <button className="btn_login" type="submit">Iniciar Sesión</button>
+          <button className="btn primary" type="submit">Iniciar Sesión</button>
         </form>
 
         <div className="links">
