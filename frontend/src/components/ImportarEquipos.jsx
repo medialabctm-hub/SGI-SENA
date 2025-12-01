@@ -40,7 +40,8 @@ export default function ImportarEquipos({ onImportComplete }) {
       })
       const data = await parseApiResponse(res, 'Error al obtener cuentadante principal')
       setCuentadanteActual(data.cuentadante_principal || '')
-      setCuentadantePrincipal(data.cuentadante_principal || '')
+      // Mostrar la cédula si está disponible, sino el nombre
+      setCuentadantePrincipal(data.cuentadante_cedula || data.cuentadante_principal || '')
     } catch (err) {
       console.error('Error al obtener cuentadante principal:', err)
     } finally {
@@ -50,7 +51,7 @@ export default function ImportarEquipos({ onImportComplete }) {
 
   const handleSaveCuentadante = async () => {
     if (!cuentadantePrincipal.trim()) {
-      setError('El cuentadante principal es obligatorio')
+      setError('La cédula del cuentadante es obligatoria')
       return
     }
 
@@ -64,13 +65,14 @@ export default function ImportarEquipos({ onImportComplete }) {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`
         },
-        body: JSON.stringify({ cuentadante_principal: cuentadantePrincipal.trim() })
+        body: JSON.stringify({ cedula: cuentadantePrincipal.trim() })
       })
       const data = await parseApiResponse(res, 'Error al actualizar cuentadante principal')
-      setCuentadanteActual(cuentadantePrincipal.trim())
+      setCuentadanteActual(data.cuentadante_principal || '')
+      setCuentadantePrincipal(data.cuentadante_cedula || cuentadantePrincipal.trim())
       setError(null)
       // Mostrar mensaje de éxito
-      alert(`Cuentadante principal actualizado correctamente para ${data.equipos_actualizados} equipo(s)`)
+      alert(`Cuentadante principal "${data.cuentadante_principal}" actualizado correctamente para ${data.equipos_actualizados} equipo(s)`)
     } catch (err) {
       setError(buildErrorMessage(err, 'Error al guardar el cuentadante principal'))
     } finally {
@@ -301,14 +303,14 @@ export default function ImportarEquipos({ onImportComplete }) {
           </h4>
           <p style={{ color: '#666', marginBottom: '1rem', fontSize: '0.9rem' }}>
             El cuentadante principal es la persona responsable permanente de todo el inventario. 
-            Debe ingresarse después de importar los equipos.
+            Debe ingresarse después de importar los equipos. Ingrese la <strong>cédula</strong> del cuentadante.
           </p>
           <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-start' }}>
             <input
               type="text"
               value={cuentadantePrincipal}
               onChange={(e) => setCuentadantePrincipal(e.target.value)}
-              placeholder="Nombre del cuentadante principal"
+              placeholder="Cédula del cuentadante principal"
               style={{
                 flex: 1,
                 padding: '0.75rem',

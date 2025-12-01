@@ -1125,7 +1125,7 @@ export async function obtenerHistorialEquipo(req, res) {
  */
 export async function actualizarCuentadantePrincipal(req, res) {
   try {
-    const { cuentadante_principal } = req.body
+    const { cedula } = req.body
     const userId = req.user?.id
     const userRole = req.user?.rol
 
@@ -1136,11 +1136,34 @@ export async function actualizarCuentadantePrincipal(req, res) {
       })
     }
 
-    if (!cuentadante_principal || typeof cuentadante_principal !== 'string' || cuentadante_principal.trim().length === 0) {
+    if (!cedula || typeof cedula !== 'string' || cedula.trim().length === 0) {
       return res.status(400).json({ 
-        error: 'El cuentadante principal es obligatorio' 
+        error: 'La cédula del cuentadante es obligatoria' 
       })
     }
+
+    // Buscar el usuario por cédula y verificar que sea Cuentadante
+    const [[usuario]] = await defaultDb.execute(
+      `SELECT u.id_usuario, u.nombre_usuario, u.cedula, r.nombre_rol
+       FROM Usuarios u
+       INNER JOIN Roles r ON u.id_rol = r.id_rol
+       WHERE u.cedula = ? AND u.estado = 'Activo'`,
+      [cedula.trim()]
+    )
+
+    if (!usuario) {
+      return res.status(404).json({ 
+        error: 'No se encontró un usuario activo con esa cédula' 
+      })
+    }
+
+    if (usuario.nombre_rol !== 'Cuentadante') {
+      return res.status(400).json({ 
+        error: 'El usuario debe tener el rol de Cuentadante' 
+      })
+    }
+
+    const nombreCuentadante = usuario.nombre_usuario
 
     // Verificar si la columna cuentadante_principal existe en la tabla Elementos
     const [[columnaExiste]] = await defaultDb.execute(
@@ -1165,13 +1188,14 @@ export async function actualizarCuentadantePrincipal(req, res) {
       `UPDATE Elementos 
        SET cuentadante_principal = ? 
        WHERE cuentadante_principal IS NULL OR cuentadante_principal != ?`,
-      [cuentadante_principal.trim(), cuentadante_principal.trim()]
+      [nombreCuentadante, nombreCuentadante]
     )
 
     return res.json({
       ok: true,
       message: `Cuentadante principal actualizado correctamente para ${result.affectedRows} equipo(s)`,
-      cuentadante_principal: cuentadante_principal.trim(),
+      cuentadante_principal: nombreCuentadante,
+      cuentadante_cedula: usuario.cedula,
       equipos_actualizados: result.affectedRows
     })
   } catch (err) {
@@ -1211,8 +1235,22 @@ export async function obtenerCuentadantePrincipal(req, res) {
        LIMIT 1`
     )
 
+    // También obtener la cédula del cuentadante si existe
+    let cedulaCuentadante = null
+    if (cuentadante?.cuentadante_principal) {
+      const [[usuario]] = await defaultDb.execute(
+        `SELECT u.cedula
+         FROM Usuarios u
+         WHERE u.nombre_usuario = ? AND u.estado = 'Activo'
+         LIMIT 1`,
+        [cuentadante.cuentadante_principal]
+      )
+      cedulaCuentadante = usuario?.cedula || null
+    }
+
     return res.json({
       cuentadante_principal: cuentadante?.cuentadante_principal || null,
+      cuentadante_cedula: cedulaCuentadante,
       existe_columna: true
     })
   } catch (err) {
