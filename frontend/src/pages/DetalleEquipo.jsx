@@ -8,6 +8,7 @@ import { parseApiResponse, buildErrorMessage } from '../utils/api';
 import { FiArrowLeft, FiUpload, FiTrash2, FiStar, FiImage, FiX, FiInfo, FiPackage, FiMapPin, FiCalendar, FiDollarSign } from 'react-icons/fi';
 import '../styles/equipos.css';
 import '../styles/detalleEquipo.css';
+import '../styles/ambientes.css';
 
 export default function DetalleEquipo() {
   const { codigoEquipo } = useParams();
@@ -682,67 +683,74 @@ export default function DetalleEquipo() {
                 </h3>
               </div>
               {imagenes.length > 0 ? (
-                <div
-                  style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',
-                    gap: '20px',
-                  }}
-                >
+                <div className="ambiente-images-grid">
                   {imagenes.map((imagen) => (
                     <div
                       key={imagen.id_imagen_equipo}
-                      className={`detalle-equipo-gallery-item ${imagen.es_principal ? 'principal' : ''}`}
+                      className="ambiente-imagen-card"
+                      style={{
+                        border: imagen.es_principal ? '2px solid var(--success-800)' : '1px solid #e5e7eb',
+                      }}
                     >
-                      <div className="detalle-equipo-gallery-image-wrapper">
+                      <div className="ambiente-imagen-container">
                         <img
                           src={imagen.ruta_imagen}
                           alt={imagen.descripcion || 'Imagen del equipo'}
-                          className="detalle-equipo-gallery-image"
+                          className="ambiente-imagen"
                           onError={(e) => {
                             console.error('Error al cargar imagen:', imagen.ruta_imagen);
                             e.target.style.display = 'none';
-                            e.target.nextSibling.style.display = 'flex';
+                            const placeholder = e.target.nextElementSibling;
+                            if (placeholder) {
+                              placeholder.style.display = 'flex';
+                            }
                           }}
                         />
-                        <div className="detalle-equipo-gallery-image-placeholder">
+                        <div className="ambiente-imagen-placeholder">
                           <FiImage size={32} />
                         </div>
                         {imagen.es_principal && (
-                          <div className="detalle-equipo-gallery-badge">
-                            <FiStar size={14} style={{ fill: 'white' }} />
+                          <div className="ambiente-imagen-badge">
+                            <FiStar size={14} />
                             Principal
                           </div>
                         )}
-                        <div className="detalle-equipo-gallery-overlay">
-                          {!imagen.es_principal && (
+                        {(user?.nombre_rol === 'Administrador' || user?.nombre_rol === 'Instructor') && (
+                          <div className="ambiente-imagen-overlay">
+                            {!imagen.es_principal && (
+                              <button
+                                className="ambiente-imagen-btn"
+                                onClick={() => handleMarcarPrincipal(imagen.id_imagen_equipo)}
+                                title="Marcar como principal"
+                              >
+                                <FiStar size={16} />
+                              </button>
+                            )}
                             <button
-                              className="detalle-equipo-gallery-btn-overlay"
-                              onClick={() => handleMarcarPrincipal(imagen.id_imagen_equipo)}
-                              title="Marcar como principal"
-                            >
-                              <FiStar size={16} />
-                            </button>
-                          )}
-                          {(user?.nombre_rol === 'Administrador' || user?.nombre_rol === 'Instructor') && (
-                            <button
-                              className="detalle-equipo-gallery-btn-overlay detalle-equipo-gallery-btn-overlay-delete"
+                              className="ambiente-imagen-btn ambiente-imagen-btn-delete"
                               onClick={() => setDeleteConfirm({ open: true, idImagen: imagen.id_imagen_equipo })}
                               title="Eliminar imagen"
                             >
                               <FiX size={16} />
                             </button>
-                          )}
-                        </div>
-                      </div>
-                      <div className="detalle-equipo-gallery-item-content">
-                        <div className="detalle-equipo-gallery-item-type">
-                          {imagen.tipo_imagen}
-                        </div>
-                        {imagen.descripcion && (
-                          <div className="detalle-equipo-gallery-item-description">
-                            {imagen.descripcion}
                           </div>
+                        )}
+                      </div>
+                      <div className="ambiente-imagen-info">
+                        <p className="ambiente-imagen-name" title={imagen.tipo_imagen}>
+                          {imagen.tipo_imagen}
+                        </p>
+                        {imagen.descripcion && (
+                          <p style={{ 
+                            fontSize: '12px', 
+                            color: '#9ca3af', 
+                            margin: '4px 0 0 0',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap'
+                          }} title={imagen.descripcion}>
+                            {imagen.descripcion}
+                          </p>
                         )}
                       </div>
                     </div>

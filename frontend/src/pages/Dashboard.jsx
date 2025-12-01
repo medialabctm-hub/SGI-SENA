@@ -79,82 +79,67 @@ export default function Dashboard() {
       <div className="dashboard-layout">
         <Sidebar user={user} />
         <main className="dashboard-main">
-          <div className="card">
-            <div className="card-header">
-              <h2 className="card-title">¡Bienvenido{userRole ? `, ${userRole}` : ''}{user ? ` ${user.nombre_usuario}` : ''}!</h2>
-            </div>
-            <div className="card-body">
-              <p style={{margin: 0, color: 'var(--muted)'}}>Sistema de Gestión de Inventario SENA</p>
-            </div>
+          <div className="welcome-card">
+            <h2>¡Bienvenido{userRole ? `, ${userRole}` : ''}{user ? ` ${user.nombre_usuario}` : ''}!</h2>
+            <p>Sistema de Gestión de Inventario SENA</p>
           </div>
 
           {/* Accesos Rápidos Destacados */}
-          <div className="card" style={{marginTop: '24px'}}>
-            <div className="card-header">
-              <h3 className="card-title">Accesos Rápidos</h3>
-            </div>
-            <div className="card-body">
-              <div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '16px'}}>
-                {(isAdmin || isCuentadante) && (
-                  <button
-                    className="card"
-                    onClick={() => nav('/equipos')}
-                    style={{textAlign: 'left', cursor: 'pointer', border: '2px solid var(--success-800)'}}
-                  >
-                    <div style={{display: 'flex', alignItems: 'center', gap: '16px'}}>
-                      <div style={{width: '48px', height: '48px', borderRadius: '12px', background: 'var(--success-800)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white'}}>
-                        <FiPlus size={24} />
-                      </div>
-                      <div>
-                        <h4 style={{margin: '0 0 4px 0', fontSize: '16px', fontWeight: '600', color: 'var(--neutral-900)'}}>Registrar Equipo</h4>
-                        <p style={{margin: 0, fontSize: '14px', color: 'var(--muted)'}}>Agregar nuevo equipo al inventario</p>
-                      </div>
-                    </div>
-                  </button>
-                )}
-                {(isAdmin || isInstructor || isCuentadante) && (
-                  <button
-                    className="card"
-                    onClick={() => nav('/novedades/crear')}
-                    style={{textAlign: 'left', cursor: 'pointer', border: '2px solid var(--success-800)'}}
-                  >
-                    <div style={{display: 'flex', alignItems: 'center', gap: '16px'}}>
-                      <div style={{width: '48px', height: '48px', borderRadius: '12px', background: 'var(--success-800)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white'}}>
-                        <FiAlertCircle size={24} />
-                      </div>
-                      <div>
-                        <h4 style={{margin: '0 0 4px 0', fontSize: '16px', fontWeight: '600', color: 'var(--neutral-900)'}}>Registrar Novedad</h4>
-                        <p style={{margin: 0, fontSize: '14px', color: 'var(--muted)'}}>Reportar una incidencia o problema</p>
-                      </div>
-                    </div>
-                  </button>
-                )}
-              </div>
+          <div className="quick-actions">
+            <h3 className="section-title">Accesos Rápidos</h3>
+            <div className="quick-actions-grid">
+              {(isAdmin || isCuentadante) && (
+                <button
+                  className="quick-action-card primary"
+                  onClick={() => nav('/equipos')}
+                >
+                  <div className="quick-action-icon">
+                    <FiPlus />
+                  </div>
+                  <div className="quick-action-content">
+                    <h4>Registrar Equipo</h4>
+                    <p>Agregar nuevo equipo al inventario</p>
+                  </div>
+                </button>
+              )}
+              {(isAdmin || isInstructor || isCuentadante) && (
+                <button
+                  className="quick-action-card secondary"
+                  onClick={() => nav('/novedades/crear')}
+                >
+                  <div className="quick-action-icon">
+                    <FiAlertCircle />
+                  </div>
+                  <div className="quick-action-content">
+                    <h4>Registrar Novedad</h4>
+                    <p>Reportar una incidencia o problema</p>
+                  </div>
+                </button>
+              )}
             </div>
           </div>
 
           {/* Estadísticas - Administrador, Instructor y Cuentadante */}
           {shouldShowStats && (
-            <div className="card" style={{marginTop: '24px'}}>
-              <div className="card-header">
-                <h3 className="card-title">Estadísticas Rápidas</h3>
+            <div className="stats-card">
+              <div className="stats-header">
+                <h3>Estadísticas Rápidas</h3>
                 {!statsLoaded && !loading && (
                   <button
-                    className="btn btn-primary btn-sm"
+                    className="load-stats-btn"
                     onClick={cargarEstadisticas}
                   >
                     Cargar estadísticas
                   </button>
                 )}
               </div>
-              <div className="card-body">
-                {loading ? (
-                  <div className="loading-state">
-                    <div className="loading-spinner"></div>
-                    <p>Cargando estadísticas...</p>
-                  </div>
-                ) : stats ? (
-                  <div className="stats-grid">
+              {loading ? (
+                <div className="stats-loading">
+                  <div className="loading-spinner"></div>
+                  <p>Cargando estadísticas...</p>
+                </div>
+              ) : stats ? (
+                <div className="stats-grid">
                   {/* Total Equipos */}
                   <div className="stat-card stat-card-blue">
                     <div className="stat-icon-wrapper">
@@ -217,31 +202,28 @@ export default function Dashboard() {
                     </div>
                     <div className="stat-label-small">Valor Total Inventario</div>
                   </div>
-                  </div>
-                ) : (
-                  <div className="empty-state">
-                    {!statsLoaded && (
-                      <button
-                        className="btn btn-primary btn-md"
-                        onClick={cargarEstadisticas}
-                      >
-                        Cargar estadísticas
-                      </button>
-                    )}
-                  </div>
-                )}
-              </div>
+                </div>
+              ) : (
+                <div className="stats-empty">
+                  {!statsLoaded && (
+                    <button
+                      className="load-stats-btn"
+                      onClick={cargarEstadisticas}
+                    >
+                      Cargar estadísticas
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
           )}
 
           {/* Información adicional para usuarios */}
-          <div className="card" style={{marginTop: '24px'}}>
-            <div className="card-body">
-              <p style={{margin: 0, color: 'var(--muted)', fontSize: '14px'}}>
-                Utiliza el menú lateral para acceder a todas las funcionalidades del sistema.
-                Las acciones más frecuentes están disponibles en los accesos rápidos.
-              </p>
-            </div>
+          <div className="dashboard-info">
+            <p className="info-text">
+              Utiliza el menú lateral para acceder a todas las funcionalidades del sistema.
+              Las acciones más frecuentes están disponibles en los accesos rápidos.
+            </p>
           </div>
         </main>
       </div>

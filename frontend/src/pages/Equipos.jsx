@@ -134,200 +134,117 @@ export default function Equipos() {
         <main className="dashboard-main">
           {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
           
-          <div className="card">
-            <div className="card-header">
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'var(--success-800)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <FiPlus size={24} color="#fff" />
-                </div>
-                <div>
-                  <h2 className="card-title">Registro de Equipos</h2>
-                  <p style={{ margin: '4px 0 0 0', color: 'var(--muted)', fontSize: '14px' }}>
-                    Registra equipos individualmente o importa múltiples equipos desde Excel
-                  </p>
-                </div>
+          <div className="form-equipos form-modern">
+            <div className="form-header">
+              <div className="form-icon-wrapper form-icon-wrapper-green">
+                <FiPlus size={28} color="#fff" />
+              </div>
+              <div className="form-header-content">
+                <h2 className="form-header-title">Registro de Equipos</h2>
+                <p className="form-header-subtitle">
+                  Registra equipos individualmente o importa múltiples equipos desde Excel
+                </p>
               </div>
             </div>
 
-            <div className="card-body">
-              {/* Pestañas */}
-              <div style={{ display: 'flex', gap: '8px', marginBottom: '24px', borderBottom: '2px solid var(--neutral-200)', paddingBottom: '0' }}>
-                <button
-                  onClick={() => setActiveTab('registrar')}
-                  className={`btn btn-ghost ${activeTab === 'registrar' ? '' : ''}`}
-                  style={{ 
-                    borderBottom: activeTab === 'registrar' ? '3px solid var(--success-800)' : '3px solid transparent',
-                    borderRadius: '0',
-                    borderTopLeftRadius: '8px',
-                    borderTopRightRadius: '8px',
-                    color: activeTab === 'registrar' ? 'var(--success-800)' : 'var(--neutral-600)',
-                    fontWeight: activeTab === 'registrar' ? '600' : '400'
-                  }}
-                >
-                  <FiPlus size={18} />
-                  Registrar Equipo
-                </button>
-                <button
-                  onClick={() => setActiveTab('importar')}
-                  className={`btn btn-ghost ${activeTab === 'importar' ? '' : ''}`}
-                  style={{ 
-                    borderBottom: activeTab === 'importar' ? '3px solid var(--success-800)' : '3px solid transparent',
-                    borderRadius: '0',
-                    borderTopLeftRadius: '8px',
-                    borderTopRightRadius: '8px',
-                    color: activeTab === 'importar' ? 'var(--success-800)' : 'var(--neutral-600)',
-                    fontWeight: activeTab === 'importar' ? '600' : '400'
-                  }}
-                >
-                  <FiUpload size={18} />
-                  Importar Equipos
-                </button>
-              </div>
-
-              {activeTab === 'registrar' ? (
-                <form className="form" onSubmit={handleSubmit}>
-                  <div className="form-row">
-                    <div className="form-group">
-                      <label className="form-label">R Centro *</label>
-                      <input 
-                        type="text"
-                        name="r_centro" 
-                        className="form-input"
-                        value={form.r_centro} 
-                        onChange={handleChange} 
-                      />
-                      {errores.r_centro && <div className="form-error">{errores.r_centro}</div>}
-                    </div>
-                    <div className="form-group">
-                      <label className="form-label">Modelo *</label>
-                      <input 
-                        type="text"
-                        name="modelo" 
-                        className="form-input"
-                        value={form.modelo} 
-                        onChange={handleChange} 
-                      />
-                      {errores.modelo && <div className="form-error">{errores.modelo}</div>}
-                    </div>
-                    <div className="form-group">
-                      <label className="form-label">Consecutivo *</label>
-                      <input 
-                        type="text"
-                        name="consecutivo" 
-                        className="form-input"
-                        value={form.consecutivo} 
-                        onChange={handleChange} 
-                      />
-                      {errores.consecutivo && <div className="form-error">{errores.consecutivo}</div>}
-                    </div>
-                    <div className="form-group">
-                      <label className="form-label">Descripción</label>
-                      <textarea 
-                        name="descripcion" 
-                        className="form-textarea"
-                        value={form.descripcion} 
-                        onChange={handleChange} 
-                      />
-                    </div>
-                    <div className="form-group">
-                      <label className="form-label">Tipo *</label>
-                      <input 
-                        type="text"
-                        name="tipo" 
-                        className="form-input"
-                        value={form.tipo} 
-                        onChange={handleChange} 
-                        placeholder="Ej: Computador de Escritorio, Portátil, Monitor..." 
-                      />
-                      {errores.tipo && <div className="form-error">{errores.tipo}</div>}
-                    </div>
-                    <div className="form-group">
-                      <label className="form-label">Placa</label>
-                      <input 
-                        type="text"
-                        name="placa" 
-                        className="form-input"
-                        value={form.placa} 
-                        onChange={handleChange} 
-                      />
-                    </div>
-                    <div className="form-group">
-                      <label className="form-label">Atributos</label>
-                      <textarea 
-                        name="atributos" 
-                        className="form-textarea"
-                        value={form.atributos} 
-                        onChange={handleChange} 
-                      />
-                    </div>
-                    <div className="form-group">
-                      <label className="form-label">Fecha Adquisición *</label>
-                      <input 
-                        type="date"
-                        name="fecha_adquisicion" 
-                        className="form-input"
-                        value={form.fecha_adquisicion} 
-                        onChange={handleChange} 
-                      />
-                      {errores.fecha_adquisicion && <div className="form-error">{errores.fecha_adquisicion}</div>}
-                    </div>
-                    <div className="form-group">
-                      <label className="form-label">Valor Ingreso</label>
-                      <input 
-                        type="number"
-                        name="valor_ingreso" 
-                        className="form-input"
-                        value={form.valor_ingreso} 
-                        onChange={handleChange} 
-                        min="0" 
-                        step="0.01" 
-                      />
-                    </div>
-                    <div className="form-group">
-                      <label className="form-label">Ambiente *</label>
-                      <select 
-                        name="ambiente" 
-                        className="form-select"
-                        value={form.ambiente} 
-                        onChange={handleChange}
-                      >
-                        <option value="">Seleccionar ambiente</option>
-                        {ambientes.map(amb => (
-                          <option key={amb.id_ambiente} value={amb.id_ambiente}>
-                            {amb.codigo_ambiente} - {amb.nombre_ambiente}
-                          </option>
-                        ))}
-                      </select>
-                      {errores.ambiente && <div className="form-error">{errores.ambiente}</div>}
-                    </div>
-                    <div className="form-group">
-                      <label className="form-label">Estado Físico *</label>
-                      <select 
-                        name="estado_fisico" 
-                        className="form-select"
-                        value={form.estado_fisico} 
-                        onChange={handleChange}
-                      >
-                        {ESTADOS_FISICOS.map(e => <option key={e} value={e}>{e}</option>)}
-                      </select>
-                      {errores.estado_fisico && <div className="form-error">{errores.estado_fisico}</div>}
-                    </div>
-                  </div>
-                  <div className="form-actions">
-                    <button type="submit" className="btn btn-primary btn-md btn-full-width">Registrar Equipo</button>
-                  </div>
-                </form>
-              ) : (
-                <ImportarEquipos 
-                  onImportComplete={(resultados) => {
-                    setToast({
-                      message: `Importación completada: ${resultados.exitosos} exitosos, ${resultados.fallidos} fallidos`,
-                      type: resultados.fallidos === 0 ? 'success' : 'warning'
-                    })
-                  }}
-                />
-              )}
+            {/* Pestañas */}
+            <div className="form-tabs">
+              <button
+                onClick={() => setActiveTab('registrar')}
+                className={`form-tab ${activeTab === 'registrar' ? 'active' : ''}`}
+              >
+                <FiPlus size={18} />
+                Registrar Equipo
+              </button>
+              <button
+                onClick={() => setActiveTab('importar')}
+                className={`form-tab ${activeTab === 'importar' ? 'active' : ''}`}
+              >
+                <FiUpload size={18} />
+                Importar Equipos
+              </button>
             </div>
+
+            <div className="form-divider form-divider-no-margin"></div>
+
+            {activeTab === 'registrar' ? (
+              <form className="form-equipos" onSubmit={handleSubmit}>
+        <div className="form-grid">
+          <div className="form-row">
+            <label>R Centro *</label>
+            <input name="r_centro" value={form.r_centro} onChange={handleChange} />
+            {errores.r_centro && <span className="error-text">{errores.r_centro}</span>}
+          </div>
+          <div className="form-row">
+            <label>Modelo *</label>
+            <input name="modelo" value={form.modelo} onChange={handleChange} />
+            {errores.modelo && <span className="error-text">{errores.modelo}</span>}
+          </div>
+          <div className="form-row">
+            <label>Consecutivo *</label>
+            <input name="consecutivo" value={form.consecutivo} onChange={handleChange} />
+            {errores.consecutivo && <span className="error-text">{errores.consecutivo}</span>}
+          </div>
+          <div className="form-row">
+            <label>Descripción</label>
+            <textarea name="descripcion" value={form.descripcion} onChange={handleChange} />
+          </div>
+          <div className="form-row">
+            <label>Tipo *</label>
+            <input name="tipo" value={form.tipo} onChange={handleChange} placeholder="Ej: Computador de Escritorio, Portátil, Monitor..." />
+            {errores.tipo && <span className="error-text">{errores.tipo}</span>}
+          </div>
+          <div className="form-row">
+            <label>Placa</label>
+            <input name="placa" value={form.placa} onChange={handleChange} />
+          </div>
+          <div className="form-row">
+            <label>Atributos</label>
+            <textarea name="atributos" value={form.atributos} onChange={handleChange} />
+          </div>
+          <div className="form-row">
+            <label>Fecha Adquisición *</label>
+            <input type="date" name="fecha_adquisicion" value={form.fecha_adquisicion} onChange={handleChange} />
+            {errores.fecha_adquisicion && <span className="error-text">{errores.fecha_adquisicion}</span>}
+          </div>
+          <div className="form-row">
+            <label>Valor Ingreso</label>
+            <input type="number" name="valor_ingreso" value={form.valor_ingreso} onChange={handleChange} min="0" step="0.01" />
+          </div>
+          <div className="form-row">
+            <label>Ambiente *</label>
+            <select name="ambiente" value={form.ambiente} onChange={handleChange}>
+              <option value="">Seleccionar ambiente</option>
+              {ambientes.map(amb => (
+                <option key={amb.id_ambiente} value={amb.id_ambiente}>
+                  {amb.codigo_ambiente} - {amb.nombre_ambiente}
+                </option>
+              ))}
+            </select>
+            {errores.ambiente && <span className="error-text">{errores.ambiente}</span>}
+          </div>
+          <div className="form-row">
+            <label>Estado Físico *</label>
+            <select name="estado_fisico" value={form.estado_fisico} onChange={handleChange}>
+              {ESTADOS_FISICOS.map(e => <option key={e} value={e}>{e}</option>)}
+            </select>
+            {errores.estado_fisico && <span className="error-text">{errores.estado_fisico}</span>}
+          </div>
+        </div>
+        <div className="form-row">
+          <button type="submit" className="btn-verde">Registrar Equipo</button>
+        </div>
+      </form>
+            ) : (
+              <ImportarEquipos 
+                onImportComplete={(resultados) => {
+                  setToast({
+                    message: `Importación completada: ${resultados.exitosos} exitosos, ${resultados.fallidos} fallidos`,
+                    type: resultados.fallidos === 0 ? 'success' : 'warning'
+                  })
+                }}
+              />
+            )}
           </div>
         </main>
       </div>

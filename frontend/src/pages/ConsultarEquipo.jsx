@@ -515,96 +515,92 @@ export default function ConsultarEquipo() {
             onConfirm={handleDelete}
             onCancel={() => setDeleteConfirm({ open: false, codigo: null })}
           />
-          <div className="card">
-            <div className="card-header">
-              <h2 className="card-title">Consultar Equipo</h2>
-              <div className="search-wrapper">
-                <form onSubmit={handleBuscar} style={{display:'flex', gap:'12px', alignItems:'center', flex: 1}}>
-                  <div className="search-input-wrapper" style={{flex: 1}}>
-                    <input
-                      type="text"
-                      className="search-input"
-                      placeholder="Buscar por código de inventario..."
-                      value={codigo}
-                      onChange={e => setCodigo(e.target.value)}
-                    />
-                    <span className="search-icon">🔍</span>
-                  </div>
-                  <button className="btn btn-primary btn-md" type="submit" disabled={loading}>
-                    <FiSearch size={16} />
-                    {loading ? 'Buscando...' : 'Buscar'}
-                  </button>
-                  <button type="button" className="btn btn-secondary btn-md" onClick={handleMostrarTodos} disabled={loading}>
-                    <FiList size={16} />
-                    {loading ? 'Cargando...' : 'Mostrar todos'}
-                  </button>
-                </form>
+          <div className="users-panel">
+          <div className="users-toolbar">
+            <h2 style={{margin:0}}>Consultar Equipo</h2>
+            <div style={{display:'flex', gap:12, alignItems:'center', flexWrap: 'wrap'}}>
+              <form onSubmit={handleBuscar} style={{display:'flex', gap:12, alignItems:'center'}}>
+                <input
+                  type="text"
+                  placeholder="Buscar por código de inventario..."
+                  value={codigo}
+                  onChange={e => setCodigo(e.target.value)}
+                  className="search-input"
+                />
+                <button className="btn btn-verde" type="submit" disabled={loading}>
+                  <FiSearch size={16} />
+                  {loading ? 'Buscando...' : 'Buscar'}
+                </button>
+                <button type="button" className="btn" onClick={handleMostrarTodos} disabled={loading}>
+                  <FiList size={16} />
+                  {loading ? 'Cargando...' : 'Mostrar todos'}
+                </button>
+              </form>
+              <div style={{display:'flex', gap:12, alignItems:'center'}}>
                 <button 
                   type="button" 
-                  className="btn btn-secondary btn-md" 
+                  className="btn" 
                   onClick={() => setShowColumnFilter(true)}
                   title="Configurar columnas visibles"
+                  style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
                 >
                   <FiSettings size={16} />
                   Columnas
                 </button>
-                <button type="button" className="btn btn-primary btn-md" onClick={handleDescargarPDF} disabled={loading}>
+                <button type="button" className="btn btn-verde" onClick={handleDescargarPDF} disabled={loading}>
                   <FiDownload size={16} />
                   Descargar Excel
                 </button>
               </div>
             </div>
+          </div>
 
           {/* Modal de filtro de columnas */}
           {showColumnFilter && (
-            <div className="modal-overlay" onClick={() => setShowColumnFilter(false)}>
-              <div className="modal" onClick={(e) => e.stopPropagation()}>
-                <div className="modal-header">
-                  <h3 className="modal-title">Seleccionar Columnas</h3>
+            <div
+              className="consultar-equipo-column-filter-modal"
+              onClick={() => setShowColumnFilter(false)}
+            >
+              <div
+                className="consultar-equipo-column-filter-content"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="consultar-equipo-column-filter-header">
+                  <h3>Seleccionar Columnas</h3>
                   <button
                     type="button"
-                    className="modal-close"
                     onClick={() => setShowColumnFilter(false)}
+                    className="consultar-equipo-column-filter-close"
                   >
                     ×
                   </button>
                 </div>
                 
-                <div className="modal-body">
-                  <div style={{display: 'flex', gap: '12px', marginBottom: '20px'}}>
+                <div>
+                  <div className="consultar-equipo-column-filter-actions">
                     <button
                       type="button"
-                      className="btn btn-secondary btn-sm"
+                      className="btn consultar-equipo-column-filter-btn"
                       onClick={() => setVisibleColumns(allColumns.map(col => col.key))}
                     >
                       Seleccionar Todas
                     </button>
                     <button
                       type="button"
-                      className="btn btn-secondary btn-sm"
+                      className="btn consultar-equipo-column-filter-btn"
                       onClick={() => setVisibleColumns(allColumns.filter(col => col.default).map(col => col.key))}
                     >
                       Restaurar Predeterminadas
                     </button>
                   </div>
                   
-                  <div style={{display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '400px', overflowY: 'auto'}}>
+                  <div className="consultar-equipo-column-list">
                     {allColumns.map((column) => {
                       const isVisible = visibleColumns.includes(column.key)
                       return (
                         <label
                           key={column.key}
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '12px',
-                            padding: '12px',
-                            borderRadius: '8px',
-                            background: isVisible ? 'var(--success-50)' : 'var(--neutral-50)',
-                            border: `1px solid ${isVisible ? 'var(--success-200)' : 'var(--neutral-200)'}`,
-                            cursor: 'pointer',
-                            transition: 'all 0.2s'
-                          }}
+                          className={`consultar-equipo-column-item ${isVisible ? 'checked' : ''}`}
                         >
                           <input
                             type="checkbox"
@@ -613,6 +609,7 @@ export default function ConsultarEquipo() {
                               if (e.target.checked) {
                                 setVisibleColumns([...visibleColumns, column.key])
                               } else {
+                                // Asegurar que al menos una columna permanezca visible
                                 if (visibleColumns.length > 1) {
                                   setVisibleColumns(visibleColumns.filter(key => key !== column.key))
                                 } else {
@@ -620,15 +617,15 @@ export default function ConsultarEquipo() {
                                 }
                               }
                             }}
-                            style={{width: '18px', height: '18px', cursor: 'pointer'}}
+                            className="consultar-equipo-column-checkbox"
                           />
-                          <span style={{flex: 1, fontWeight: isVisible ? '600' : '400', color: isVisible ? 'var(--success-800)' : 'var(--neutral-700)'}}>
+                          <span className="consultar-equipo-column-label">
                             {column.label}
                           </span>
                           {isVisible ? (
-                            <FiCheckSquare size={20} color="var(--success-800)" />
+                            <FiCheckSquare size={20} color="var(--success-800)" className="consultar-equipo-column-icon" />
                           ) : (
-                            <FiSquare size={20} color="#9ca3af" />
+                            <FiSquare size={20} color="#9ca3af" className="consultar-equipo-column-icon" />
                           )}
                         </label>
                       )
@@ -636,10 +633,10 @@ export default function ConsultarEquipo() {
                   </div>
                 </div>
 
-                <div className="modal-footer">
+                <div className="consultar-equipo-column-filter-footer">
                   <button
                     type="button"
-                    className="btn btn-secondary btn-md"
+                    className="btn"
                     onClick={() => setShowColumnFilter(false)}
                   >
                     Cerrar
@@ -649,15 +646,12 @@ export default function ConsultarEquipo() {
             </div>
           )}
 
-            <div className="card-body">
-              {loading ? (
-                <div className="loading-state">
-                  <div className="loading-spinner"></div>
-                  <p>Cargando equipos...</p>
-                </div>
-              ) : equipos.length > 0 ? (
-                <div className="table-wrapper" style={{overflowX:'auto'}}>
-                  <table className="table" style={{width:'100%'}}>
+          <div style={{marginTop:12}}>
+            {loading ? (
+              <div>Cargando equipos...</div>
+            ) : equipos.length > 0 ? (
+              <div style={{overflowX:'auto'}}>
+                <table className="users-table" style={{width:'100%'}}>
                   <thead>
                     <tr>
                       {visibleColumns.includes('codigo_inventario') && <th>Código Inventario</th>}
@@ -785,58 +779,59 @@ export default function ConsultarEquipo() {
                             ) : (eq.specs_completas || '-')}
                           </td>
                         )}
-                        <td>
-                          <div className="table-actions">
-                            {editingCodigo === eq.codigo_equipo ? (
-                              <>
-                                <button className="btn btn-primary btn-sm" type="button" onClick={saveEdit} disabled={loading}>Guardar</button>
-                                <button className="btn btn-secondary btn-sm" type="button" onClick={cancelEdit} disabled={loading}>Cancelar</button>
-                              </>
-                            ) : (
-                              <>
-                                <button 
-                                  className="table-action-btn" 
-                                  type="button" 
-                                  onClick={() => navigate(`/equipos/detalle/${eq.codigo_equipo}`)} 
-                                  disabled={loading}
-                                  title="Ver detalle completo del equipo"
-                                >
-                                  <FiEye size={14} />
-                                </button>
-                                <button 
-                                  className="table-action-btn" 
-                                  type="button" 
-                                  onClick={() => navigate(`/equipos/historial-verificaciones/${eq.codigo_equipo}`)} 
-                                  disabled={loading}
-                                  title="Ver historial de verificaciones"
-                                >
-                                  <FiClock size={14} />
-                                </button>
-                                {user?.nombre_rol === 'Administrador' && (
-                                  <>
-                                    <button 
-                                      className="table-action-btn" 
-                                      type="button" 
-                                      onClick={() => startEdit(eq)} 
-                                      disabled={loading}
-                                      title="Editar equipo"
-                                    >
-                                      Editar
-                                    </button>
-                                    <button 
-                                      className="table-action-btn table-action-btn-danger" 
-                                      type="button" 
-                                      onClick={() => confirmDelete(eq.codigo_equipo)} 
-                                      disabled={loading}
-                                      title="Eliminar equipo"
-                                    >
-                                      Eliminar
-                                    </button>
-                                  </>
-                                )}
-                              </>
-                            )}
-                          </div>
+                        <td className="users-actions">
+                          {editingCodigo === eq.codigo_equipo ? (
+                            <>
+                              <button className="btn btn-verde" type="button" onClick={saveEdit} disabled={loading}>Guardar</button>
+                              <button className="btn" type="button" onClick={cancelEdit} disabled={loading}>Cancelar</button>
+                            </>
+                          ) : (
+                            <>
+                              <button 
+                                className="btn btn-view" 
+                                type="button" 
+                                onClick={() => navigate(`/equipos/detalle/${eq.codigo_equipo}`)} 
+                                disabled={loading}
+                                title="Ver detalle completo del equipo"
+                                style={{ fontSize: '0.85rem', padding: '6px 12px', marginRight: '6px' }}
+                              >
+                                <FiEye size={14} />
+                                Ver Detalle
+                              </button>
+                              <button 
+                                className="btn btn-view" 
+                                type="button" 
+                                onClick={() => navigate(`/equipos/historial-verificaciones/${eq.codigo_equipo}`)} 
+                                disabled={loading}
+                                title="Ver historial de verificaciones"
+                                style={{ fontSize: '0.85rem', padding: '6px 12px', marginRight: '6px' }}
+                              >
+                                <FiClock size={14} />
+                                Historial
+                              </button>
+                              {user?.nombre_rol === 'Administrador' && (
+                                <>
+                                  <button 
+                                    className="btn btn-edit" 
+                                    type="button" 
+                                    onClick={() => startEdit(eq)} 
+                                    disabled={loading}
+                                    style={{ marginRight: '6px' }}
+                                  >
+                                    Editar
+                                  </button>
+                                  <button 
+                                    className="btn btn-delete" 
+                                    type="button" 
+                                    onClick={() => confirmDelete(eq.codigo_equipo)} 
+                                    disabled={loading}
+                                  >
+                                    Eliminar
+                                  </button>
+                                </>
+                              )}
+                            </>
+                          )}
                         </td>
                       </tr>
                     ))}
@@ -844,14 +839,15 @@ export default function ConsultarEquipo() {
                 </table>
               </div>
             ) : (
-              <div className="empty-state">
-                <div className="empty-icon-wrapper">📋</div>
-                <h3>No hay equipos para mostrar</h3>
-                <p>Busca un equipo por código de inventario o haz clic en "Mostrar todos" para ver todos los equipos.</p>
+              <div className="users-empty">
+                <div>
+                  <strong>No hay equipos para mostrar</strong>
+                  <div style={{color:'#666', marginTop:6}}>Busca un equipo por código de inventario o haz clic en "Mostrar todos" para ver todos los equipos.</div>
+                </div>
               </div>
             )}
           </div>
-        </div>
+          </div>
         </main>
       </div>
     </div>
