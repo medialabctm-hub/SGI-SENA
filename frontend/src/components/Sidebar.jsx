@@ -133,7 +133,6 @@ export default function Sidebar({ user }) {
     ],
     config: [
       { title: 'Personal Registrado', path: '/usuarios', icon: <FiUsers />, roles: ['Administrador', 'Instructor'] },
-      { title: 'Gestión de Usuarios', path: '/config?section=users', icon: <FiUsers />, roles: ['Administrador', 'Instructor'] },
       { title: 'Gestión de Ambientes', path: '/ambientes', icon: <FiMapPin />, roles: ['Administrador'] },
       { title: 'Asignar Ambientes', path: '/ambientes/asignar', icon: <FiUserCheck />, roles: ['Administrador'] },
       { title: 'Perfil', path: '/config?section=profile', icon: <FiUser />, roles: ['all'] },

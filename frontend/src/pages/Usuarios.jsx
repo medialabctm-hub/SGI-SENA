@@ -4,7 +4,8 @@ import Sidebar from '../components/Sidebar';
 import Toast from '../components/Toast';
 import ConfirmModal from '../components/ConfirmModal';
 import ImportarUsuarios from '../components/ImportarUsuarios';
-import { FiUpload } from 'react-icons/fi';
+import { FiUpload, FiDownload } from 'react-icons/fi';
+import * as XLSX from 'xlsx';
 import { parseApiResponse, buildErrorMessage } from '../utils/api';
 import '../styles/equipos.css';
 import '../styles/usuarios.css';
@@ -193,6 +194,142 @@ export default function Usuarios() {
     }
   };
 
+  const handleExportExcel = async () => {
+    try {
+      setLoading(true);
+      
+      // Obtener todos los usuarios
+      const res = await fetch('/api/auth/users', { headers: getAuthHeaders() });
+      const usuarios = await parseApiResponse(res, 'No se pudieron cargar los usuarios para exportar');
+
+      if (!Array.isArray(usuarios) || usuarios.length === 0) {
+        setToast({ message: 'No hay usuarios para exportar', type: 'info' });
+        return;
+      }
+
+      // Función para formatear fechas
+      const formatDate = (dateString) => {
+        if (!dateString) return '-';
+        try {
+          const date = new Date(dateString);
+          return date.toLocaleString('es-ES', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit'
+          });
+        } catch {
+          return dateString;
+        }
+      };
+
+      // Función para formatear booleanos
+      const formatBoolean = (value) => {
+        if (value === null || value === undefined) return 'No';
+        if (typeof value === 'boolean') return value ? 'Sí' : 'No';
+        if (value === 1 || value === '1' || value === true) return 'Sí';
+        return 'No';
+      };
+
+      // Preparar datos para Excel
+      const datosExcel = usuarios.map(user => ({
+        'ID Usuario': user.id_usuario || '-',
+        'Cédula': user.cedula || '-',
+        'Nombre Completo': user.nombre_usuario || '-',
+        'Correo Electrónico': user.correo || '-',
+        'Teléfono': user.telefono || '-',
+        'Rol': user.nombre_rol || '-',
+        'Estado': user.estado || '-',
+        'Fecha de Registro': formatDate(user.fecha_registro),
+        'Último Acceso': formatDate(user.ultimo_acceso),
+        'Requiere Cambio Contraseña': formatBoolean(user.requiere_cambio_contrasena),
+        'Creado Por': user.creado_por_nombre || '-',
+        'Equipos Asignados': user.equipos_asignados || 0
+      }));
+
+      // Crear workbook
+      const wb = XLSX.utils.book_new();
+      
+      // Preparar fila de título con información
+      const fechaExportacion = new Date().toLocaleDateString('es-ES', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+      
+      const numColumnas = Object.keys(datosExcel[0] || {}).length;
+      const filaTitulo = Array(numColumnas).fill('');
+      filaTitulo[0] = `LISTADO DE USUARIOS - SENA - Exportado el ${fechaExportacion} - Total de usuarios: ${usuarios.length}`;
+      
+      // Crear array de arrays: título + encabezados + datos
+      const headers = Object.keys(datosExcel[0] || {});
+      const datosArray = [
+        filaTitulo, // Fila 0: Título
+        headers,    // Fila 1: Encabezados
+        ...datosExcel.map(row => headers.map(key => row[key] || '-')) // Filas 2+: Datos
+      ];
+      
+      // Crear worksheet desde array de arrays
+      const ws = XLSX.utils.aoa_to_sheet(datosArray);
+      
+      // Combinar celdas de la fila de título (desde A1 hasta la última columna)
+      if (!ws['!merges']) ws['!merges'] = [];
+      ws['!merges'].push({
+        s: { r: 0, c: 0 },
+        e: { r: 0, c: numColumnas - 1 }
+      });
+      
+      // Ajustar altura de las filas
+      if (!ws['!rows']) ws['!rows'] = [];
+      ws['!rows'][0] = { hpt: 25 }; // Título
+      ws['!rows'][1] = { hpt: 20 }; // Encabezados
+      
+      // Ajustar ancho de columnas
+      const colWidths = [
+        { wch: 12 }, // ID Usuario
+        { wch: 15 }, // Cédula
+        { wch: 30 }, // Nombre Completo
+        { wch: 30 }, // Correo Electrónico
+        { wch: 15 }, // Teléfono
+        { wch: 15 }, // Rol
+        { wch: 12 }, // Estado
+        { wch: 20 }, // Fecha de Registro
+        { wch: 20 }, // Último Acceso
+        { wch: 25 }, // Requiere Cambio Contraseña
+        { wch: 20 }, // Creado Por
+        { wch: 18 }  // Equipos Asignados
+      ];
+      ws['!cols'] = colWidths;
+      
+      // Configurar vista: congelar fila de encabezados (fila 2, índice 1) y primera columna
+      ws['!freeze'] = { xSplit: 0, ySplit: 1, topLeftCell: 'A2', activePane: 'bottomLeft', state: 'frozen' };
+      
+      // Agregar filtros automáticos (autofilter) en la fila de encabezados
+      if (ws['!ref']) {
+        const range = XLSX.utils.decode_range(ws['!ref']);
+        range.s.r = 1; // Empezar desde la fila de encabezados
+        ws['!autofilter'] = { ref: XLSX.utils.encode_range(range) };
+      }
+      
+      // Agregar worksheet al workbook
+      XLSX.utils.book_append_sheet(wb, ws, 'Usuarios');
+      
+      // Generar archivo Excel
+      const nombreArchivo = `usuarios_sena_${new Date().toISOString().split('T')[0]}.xlsx`;
+      XLSX.writeFile(wb, nombreArchivo);
+      
+      setToast({ message: `Archivo Excel descargado exitosamente: ${nombreArchivo}`, type: 'success' });
+    } catch (err) {
+      console.error('Error al generar Excel:', err);
+      setToast({ message: buildErrorMessage(err, 'Error al generar el archivo Excel'), type: 'error' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="page simple-page">
       <Header />
@@ -210,6 +347,15 @@ export default function Usuarios() {
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
               />
+              <button
+                className="btn-import-users"
+                onClick={handleExportExcel}
+                disabled={loading}
+                title="Exportar todos los usuarios a Excel"
+              >
+                <FiDownload size={16} />
+                Exportar a Excel
+              </button>
               {isAdmin && (
                 <button
                   className="btn-import-users"
