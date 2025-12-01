@@ -52,6 +52,32 @@ router.get('/asignaciones',
   listarAsignaciones
 );
 
+// Obtener cuentadante principal - Solo Admin
+// IMPORTANTE: Debe ir ANTES de /:codigo para evitar conflictos
+router.get('/cuentadante-principal', 
+  authenticate,
+  requirePermission(PERMISSIONS.EQUIPOS.VIEW),
+  obtenerCuentadantePrincipal
+);
+
+// Actualizar cuentadante principal - Solo Admin
+// IMPORTANTE: Debe ir ANTES de /:codigo para evitar conflictos
+router.put('/cuentadante-principal', 
+  authenticate,
+  writeLimiter,
+  requirePermission(PERMISSIONS.EQUIPOS.UPDATE),
+  actualizarCuentadantePrincipal
+);
+
+// Buscar cuentadante por documento y ver su inventario - Solo Admin
+// IMPORTANTE: Debe ir ANTES de /:codigo para evitar conflictos
+router.get('/cuentadantes/buscar/:documento', 
+  authenticate,
+  readLimiter,
+  requirePermission(PERMISSIONS.EQUIPOS.VIEW),
+  buscarCuentadantePorDocumento
+);
+
 // Obtener historial de verificaciones de un equipo específico
 // IMPORTANTE: Esta ruta debe ir ANTES de /:codigo para evitar conflictos
 router.get('/:codigo/historial-verificaciones', 
@@ -66,7 +92,7 @@ router.get('/:codigo/historial-verificaciones',
 // Consultar equipo por código
 // Admin e Instructor: pueden ver cualquier equipo
 // Aprendiz: solo equipos asignados (controlador valida)
-// IMPORTANTE: Esta ruta debe ir DESPUÉS de las rutas específicas como /asignaciones y /:codigo/historial-verificaciones
+// IMPORTANTE: Esta ruta debe ir DESPUÉS de las rutas específicas como /asignaciones, /cuentadante-principal y /:codigo/historial-verificaciones
 router.get('/:codigo', 
   authenticate,
   requireAnyPermission([
@@ -144,29 +170,6 @@ router.get('/verificacion/historial',
     PERMISSIONS.EQUIPOS.VIEW_OWN
   ]),
   consultarHistorialVerificaciones
-);
-
-// Obtener cuentadante principal - Solo Admin
-router.get('/cuentadante-principal', 
-  authenticate,
-  requirePermission(PERMISSIONS.EQUIPOS.VIEW),
-  obtenerCuentadantePrincipal
-);
-
-// Actualizar cuentadante principal - Solo Admin
-router.put('/cuentadante-principal', 
-  authenticate,
-  writeLimiter,
-  requirePermission(PERMISSIONS.EQUIPOS.UPDATE),
-  actualizarCuentadantePrincipal
-);
-
-// Buscar cuentadante por documento y ver su inventario - Solo Admin
-router.get('/cuentadantes/buscar/:documento', 
-  authenticate,
-  readLimiter,
-  requirePermission(PERMISSIONS.EQUIPOS.VIEW),
-  buscarCuentadantePorDocumento
 );
 
 export default router;

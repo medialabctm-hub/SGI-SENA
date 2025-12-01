@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
-import { FiUpload, FiFile, FiDownload, FiUser, FiSave, FiAlertCircle } from 'react-icons/fi'
+import { FiUpload, FiFile, FiDownload, FiUser, FiSave, FiAlertCircle, FiSearch, FiCheckCircle } from 'react-icons/fi'
 import * as XLSX from 'xlsx'
-import { parseApiResponse, buildErrorMessage } from '../utils/api'
+import { parseApiResponse, buildErrorMessage, handleError } from '../utils/api'
 
 export default function ImportarEquipos({ onImportComplete }) {
   const [archivo, setArchivo] = useState(null)
@@ -10,6 +10,8 @@ export default function ImportarEquipos({ onImportComplete }) {
   const [error, setError] = useState(null)
   const [cuentadantePrincipal, setCuentadantePrincipal] = useState('')
   const [cuentadanteActual, setCuentadanteActual] = useState(null)
+  const [cuentadanteEncontrado, setCuentadanteEncontrado] = useState(null)
+  const [buscandoCuentadante, setBuscandoCuentadante] = useState(false)
   const [loadingCuentadante, setLoadingCuentadante] = useState(false)
   const [savingCuentadante, setSavingCuentadante] = useState(false)
   const [user, setUser] = useState(null)
@@ -49,10 +51,58 @@ export default function ImportarEquipos({ onImportComplete }) {
     }
   }
 
+  const buscarCuentadante = async () => {
+    if (!cuentadantePrincipal.trim()) {
+      setError('Ingresa la cédula del cuentadante')
+      return
+    }
+
+    try {
+      setBuscandoCuentadante(true)
+      setError(null)
+      setCuentadanteEncontrado(null)
+      const token = localStorage.getItem('token')
+      const res = await fetch(`/api/auth/user/cedula/${encodeURIComponent(cuentadantePrincipal.trim())}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      
+      if (res.ok) {
+        const data = await parseApiResponse(res, 'Error al buscar cuentadante')
+        
+        // Verificar que sea un Cuentadante
+        if (data.nombre_rol !== 'Cuentadante') {
+          setError('El usuario encontrado no tiene el rol de Cuentadante')
+          setCuentadanteEncontrado(null)
+          return
+        }
+        
+        setCuentadanteEncontrado(data)
+        setError(null)
+      } else {
+        const errorData = await res.json().catch(() => ({}))
+        setError(errorData.error || 'No se encontró un usuario con esa cédula')
+        setCuentadanteEncontrado(null)
+      }
+    } catch (err) {
+      handleError(err, (msg) => setError(msg), 'Error al buscar el cuentadante')
+      setCuentadanteEncontrado(null)
+    } finally {
+      setBuscandoCuentadante(false)
+    }
+  }
+
   const handleSaveCuentadante = async () => {
     if (!cuentadantePrincipal.trim()) {
       setError('La cédula del cuentadante es obligatoria')
       return
+    }
+
+    // Si no se ha buscado el cuentadante, buscarlo primero
+    if (!cuentadanteEncontrado) {
+      await buscarCuentadante()
+      if (!cuentadanteEncontrado) {
+        return // No continuar si no se encontró
+      }
     }
 
     try {
@@ -74,7 +124,7 @@ export default function ImportarEquipos({ onImportComplete }) {
       // Mostrar mensaje de éxito
       alert(`Cuentadante principal "${data.cuentadante_principal}" actualizado correctamente para ${data.equipos_actualizados} equipo(s)`)
     } catch (err) {
-      setError(buildErrorMessage(err, 'Error al guardar el cuentadante principal'))
+      handleError(err, (msg) => setError(msg), 'Error al guardar el cuentadante principal')
     } finally {
       setSavingCuentadante(false)
     }
@@ -305,40 +355,90 @@ export default function ImportarEquipos({ onImportComplete }) {
             El cuentadante principal es la persona responsable permanente de todo el inventario. 
             Debe ingresarse después de importar los equipos. Ingrese la <strong>cédula</strong> del cuentadante.
           </p>
-          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-start' }}>
-            <input
-              type="text"
-              value={cuentadantePrincipal}
-              onChange={(e) => setCuentadantePrincipal(e.target.value)}
-              placeholder="Cédula del cuentadante principal"
-              style={{
-                flex: 1,
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-start' }}>
+              <input
+                type="text"
+                value={cuentadantePrincipal}
+                onChange={(e) => {
+                  setCuentadantePrincipal(e.target.value)
+                  setCuentadanteEncontrado(null) // Limpiar resultado al cambiar la cédula
+                }}
+                onKeyPress={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault()
+                    buscarCuentadante()
+                  }
+                }}
+                placeholder="Cédula del cuentadante principal"
+                style={{
+                  flex: 1,
+                  padding: '0.75rem',
+                  border: cuentadanteEncontrado ? '2px solid #10b981' : '1px solid #ddd',
+                  borderRadius: '6px',
+                  fontSize: '0.95rem'
+                }}
+                disabled={loadingCuentadante || savingCuentadante}
+              />
+              <button
+                onClick={buscarCuentadante}
+                disabled={!cuentadantePrincipal.trim() || buscandoCuentadante || savingCuentadante}
+                style={{
+                  padding: '0.75rem 1rem',
+                  background: buscandoCuentadante || !cuentadantePrincipal.trim() ? '#ccc' : '#1976d2',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: buscandoCuentadante || !cuentadantePrincipal.trim() ? 'not-allowed' : 'pointer',
+                  fontSize: '0.95rem',
+                  fontWeight: 600,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem'
+                }}
+              >
+                <FiSearch size={16} />
+                {buscandoCuentadante ? 'Buscando...' : 'Buscar'}
+              </button>
+            </div>
+            
+            {cuentadanteEncontrado && (
+              <div style={{
                 padding: '0.75rem',
-                border: '1px solid #ddd',
+                background: '#d1fae5',
+                border: '1px solid #10b981',
                 borderRadius: '6px',
-                fontSize: '0.95rem'
-              }}
-              disabled={loadingCuentadante || savingCuentadante}
-            />
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem'
+              }}>
+                <FiCheckCircle size={18} color="#10b981" />
+                <div style={{ flex: 1 }}>
+                  <strong>{cuentadanteEncontrado.nombre_usuario}</strong> - Cédula: {cuentadanteEncontrado.cedula}
+                </div>
+              </div>
+            )}
+            
             <button
               onClick={handleSaveCuentadante}
-              disabled={!cuentadantePrincipal.trim() || savingCuentadante || loadingCuentadante}
+              disabled={!cuentadanteEncontrado || savingCuentadante || loadingCuentadante}
               style={{
                 padding: '0.75rem 1.5rem',
-                background: savingCuentadante || !cuentadantePrincipal.trim() ? '#ccc' : '#ffc107',
+                background: savingCuentadante || !cuentadanteEncontrado ? '#ccc' : '#ffc107',
                 color: '#000',
                 border: 'none',
                 borderRadius: '6px',
-                cursor: savingCuentadante || !cuentadantePrincipal.trim() ? 'not-allowed' : 'pointer',
+                cursor: savingCuentadante || !cuentadanteEncontrado ? 'not-allowed' : 'pointer',
                 fontSize: '0.95rem',
                 fontWeight: 600,
                 display: 'flex',
                 alignItems: 'center',
-                gap: '0.5rem'
+                gap: '0.5rem',
+                alignSelf: 'flex-start'
               }}
             >
               <FiSave size={16} />
-              {savingCuentadante ? 'Guardando...' : 'Guardar'}
+              {savingCuentadante ? 'Guardando...' : 'Guardar Cuentadante'}
             </button>
           </div>
           {cuentadanteActual && (
