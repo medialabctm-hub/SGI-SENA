@@ -27,8 +27,8 @@ export async function obtenerEstadisticas(req, res) {
         SUM(CASE WHEN estado_fisico = 'Malo' OR estado_fisico = 'Dañado' THEN 1 ELSE 0 END) AS equipos_danados,
         SUM(COALESCE(valor_ingreso, 0)) AS valor_total_inventario
        FROM Elementos`
-    );
-
+          );
+          
     const stats = {
       total_equipos: Number(estadisticas?.total_equipos) || 0,
       equipos_buenos: Number(estadisticas?.equipos_buenos) || 0,
@@ -42,7 +42,7 @@ export async function obtenerEstadisticas(req, res) {
     return res.json({
       stats,
       generatedAt: new Date().toISOString(),
-    });
+          });
   } catch (err) {
     logger.error('Error al obtener estadísticas de Administrador', { error: err.message, stack: err.stack });
     return res.status(500).json({ 
@@ -50,14 +50,14 @@ export async function obtenerEstadisticas(req, res) {
       details: err.message 
     });
   }
-}
-
+        }
+        
 /**
  * Obtener estadísticas de equipos del ambiente actual para Instructor
  * Solo muestra equipos del ambiente donde el instructor está en ese momento
  */
 export async function obtenerEstadisticasInstructor(req, res) {
-  try {
+        try {
     const userId = req.user?.id;
     if (!userId) {
       return res.status(401).json({ error: 'Usuario no autenticado' });
@@ -70,8 +70,8 @@ export async function obtenerEstadisticasInstructor(req, res) {
       jornadaActual = 'Tarde';
     } else if (horaActual >= 18) {
       jornadaActual = 'Noche';
-    }
-
+        }
+        
     // Obtener ambientes donde el instructor tiene responsabilidad activa en este momento
     const [ambientes] = await defaultDb.execute(
       `SELECT DISTINCT ra.id_ambiente
@@ -136,7 +136,7 @@ export async function obtenerEstadisticasInstructor(req, res) {
       stats,
       generatedAt: new Date().toISOString(),
     });
-  } catch (err) {
+    } catch (err) {
     logger.error('Error al obtener estadísticas de Instructor', { error: err.message, stack: err.stack });
     return res.status(500).json({ 
       error: 'Error al obtener estadísticas', 

@@ -131,31 +131,106 @@ Headers: Authorization: Bearer <token>
 3. IMÁGENES DE EQUIPOS (/api/equipos)
 ================================================================================
 
-3.1 SUBIR IMÁGENES EQUIPO (Protegido - Admin)
+3.1 SUBIR IMÁGENES EQUIPO (Protegido - Admin/Cuentadante)
 POST https://sgi-sena.up.railway.app/api/equipos/:codigoEquipo/imagenes
 Headers: Authorization: Bearer <token>
-Body: FormData con campo 'imagenes' (máximo 10 imágenes)
+Body: FormData con los siguientes campos:
+  - imagenes: Array de archivos (máximo 10 imágenes)
+  - tipo_imagen: String (opcional, default: "Detalle")
+  - descripcion: String (opcional)
+  - es_principal: Boolean (opcional, default: false)
+Tipos de imagen permitidos: JPEG, JPG, PNG, GIF, WEBP
+Tamaño máximo por imagen: 5MB
+
+Respuesta exitosa (201):
+{
+  "message": "2 imagen(es) subida(s) correctamente",
+  "imagenes": [
+    {
+      "id_imagen_equipo": 1,
+      "codigo_equipo": 123,
+      "ruta_imagen": "/uploads/equipos/1764187399392-123-imagen.jpg",
+      "nombre_archivo": "1764187399392-123-imagen.jpg",
+      "tipo_imagen": "Detalle",
+      "descripcion": "Vista frontal",
+      "es_principal": true
+    }
+  ]
+}
 
 3.2 LISTAR IMÁGENES EQUIPO (Protegido)
 GET https://sgi-sena.up.railway.app/api/equipos/:codigoEquipo/imagenes
 Headers: Authorization: Bearer <token>
+Nota: :codigoEquipo puede ser el código numérico del equipo
+
+Respuesta exitosa (200):
+{
+  "codigo_equipo": 123,
+  "total": 2,
+  "imagenes": [
+    {
+      "id_imagen_equipo": 1,
+      "codigo_equipo": 123,
+      "ruta_imagen": "/uploads/equipos/1764187399392-123-imagen.jpg",
+      "nombre_archivo": "1764187399392-123-imagen.jpg",
+      "tipo_imagen": "Detalle",
+      "descripcion": "Vista frontal",
+      "fecha_subida": "2025-11-28T10:30:00.000Z",
+      "subida_por": 1,
+      "es_principal": true
+    }
+  ]
+}
+Nota: Las imágenes se ordenan por es_principal DESC, luego por fecha_subida DESC
 
 3.3 OBTENER IMAGEN ESPECÍFICA (Protegido)
 GET https://sgi-sena.up.railway.app/api/equipos/imagenes/:idImagen
 Headers: Authorization: Bearer <token>
+Nota: :idImagen es el id_imagen_equipo
 
-3.4 ACTUALIZAR IMAGEN (Protegido - Admin)
+Respuesta exitosa (200):
+{
+  "id_imagen_equipo": 1,
+  "codigo_equipo": 123,
+  "ruta_imagen": "/uploads/equipos/1764187399392-123-imagen.jpg",
+  "nombre_archivo": "1764187399392-123-imagen.jpg",
+  "tipo_imagen": "Detalle",
+  "descripcion": "Vista frontal",
+  "fecha_subida": "2025-11-28T10:30:00.000Z",
+  "subida_por": 1,
+  "es_principal": true
+}
+
+3.4 ACTUALIZAR IMAGEN (Protegido - Admin/Cuentadante)
 PUT https://sgi-sena.up.railway.app/api/equipos/imagenes/:idImagen
 Headers: Authorization: Bearer <token>, Content-Type: application/json
-Body: {"descripcion": "Nueva descripción"}
+Body: {
+  "tipo_imagen": "Detalle",  // opcional
+  "descripcion": "Nueva descripción"  // opcional
+}
+Nota: Al menos uno de los campos debe estar presente
 
-3.5 MARCAR IMAGEN PRINCIPAL (Protegido - Admin)
+3.5 MARCAR IMAGEN PRINCIPAL (Protegido - Admin/Cuentadante)
 PATCH https://sgi-sena.up.railway.app/api/equipos/imagenes/:idImagen/principal
 Headers: Authorization: Bearer <token>
+Nota: Al marcar una imagen como principal, automáticamente se desmarca la anterior
 
-3.6 ELIMINAR IMAGEN (Protegido - Admin)
+Respuesta exitosa (200):
+{
+  "message": "Imagen marcada como principal correctamente",
+  "id_imagen_equipo": 1
+}
+
+3.6 ELIMINAR IMAGEN (Protegido - Admin/Cuentadante)
 DELETE https://sgi-sena.up.railway.app/api/equipos/imagenes/:idImagen
 Headers: Authorization: Bearer <token>
+Nota: Elimina tanto el registro de la base de datos como el archivo físico
+
+Respuesta exitosa (200):
+{
+  "message": "Imagen eliminada correctamente",
+  "id_imagen_equipo": 1
+}
 
 ================================================================================
 4. AMBIENTES (/api/ambientes)
@@ -475,8 +550,22 @@ GET https://sgi-sena.up.railway.app/health
 18. ARCHIVOS ESTÁTICOS
 ================================================================================
 
-18.1 IMÁGENES DE EQUIPOS
+18.1 IMÁGENES DE EQUIPOS (Público - No requiere autenticación)
 GET https://sgi-sena.up.railway.app/uploads/equipos/:nombre_archivo
+Nota: Las imágenes se sirven como archivos estáticos. No requiere token de autenticación.
+El nombre_archivo se obtiene del campo "nombre_archivo" o "ruta_imagen" de la respuesta de las APIs.
+
+Ejemplo de uso:
+1. Obtener lista de imágenes: GET /api/equipos/:codigoEquipo/imagenes
+2. Usar el campo "ruta_imagen" de la respuesta para construir la URL completa:
+   String imageUrl = "https://sgi-sena.up.railway.app" + imagen.ruta_imagen;
+   // Resultado: https://sgi-sena.up.railway.app/uploads/equipos/1764187399392-123-imagen.jpg
+
+Formato del nombre de archivo:
+{timestamp}-{codigo_equipo}-{nombre_sanitizado}.{extension}
+Ejemplo: 1764187399392-123-vista_frontal.jpg
+
+Tipos de archivo soportados: JPEG, JPG, PNG, GIF, WEBP
 
 ================================================================================
 NOTAS IMPORTANTES
@@ -487,8 +576,11 @@ NOTAS IMPORTANTES
 - Para subir archivos usar FormData (multipart/form-data)
 - Los códigos de estado HTTP comunes: 200 (éxito), 400 (error validación), 401 (no autorizado), 403 (sin permisos), 404 (no encontrado), 500 (error servidor)
 - Algunas rutas tienen rate limiting, especialmente las públicas
-- Los roles del sistema: Administrador, Instructor, Aprendiz
+- Los roles del sistema: Administrador, Instructor, Aprendiz, Cuentadante
 - Los permisos se verifican automáticamente según el rol del usuario
+- Las imágenes de equipos se almacenan en /uploads/equipos/ y se sirven como archivos estáticos (no requieren autenticación para visualizarlas)
+- El campo "ruta_imagen" en las respuestas de imágenes contiene la ruta relativa (ej: "/uploads/equipos/nombre.jpg")
+- Para acceder a una imagen, concatenar la base URL con el campo "ruta_imagen": baseUrl + ruta_imagen
 
 ================================================================================
 

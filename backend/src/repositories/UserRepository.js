@@ -87,7 +87,7 @@ export class UserRepository extends BaseRepository {
   async findById(userId) {
     return this.findOne(
       `SELECT u.id_usuario, u.nombre_usuario, u.correo, u.telefono, u.cedula, 
-              u.id_rol, r.nombre_rol, u.requiere_cambio_contrasena
+              u.id_rol, r.nombre_rol, u.requiere_cambio_contrasena, u.foto_perfil
        FROM Usuarios u
        LEFT JOIN Roles r ON r.id_rol = u.id_rol
        WHERE u.id_usuario = ? AND u.estado = "Activo"`,
@@ -112,6 +112,7 @@ export class UserRepository extends BaseRepository {
          u.fecha_registro,
          u.ultimo_acceso,
          u.requiere_cambio_contrasena,
+         u.foto_perfil,
          u.creado_por,
          creador.nombre_usuario AS creado_por_nombre,
          (SELECT COUNT(*) FROM Responsables_Equipo re 
@@ -170,6 +171,11 @@ export class UserRepository extends BaseRepository {
    * @returns {Promise<Object>} Resultado de la actualización
    */
   async update(userId, userData) {
+    // Mapear fotoPerfil a foto_perfil para la base de datos
+    if (userData.fotoPerfil !== undefined) {
+      userData.foto_perfil = userData.fotoPerfil;
+      delete userData.fotoPerfil;
+    }
     const updates = [];
     const values = [];
 
@@ -192,6 +198,10 @@ export class UserRepository extends BaseRepository {
     if (userData.idRol) {
       updates.push('id_rol = ?');
       values.push(userData.idRol);
+    }
+    if (userData.foto_perfil !== undefined) {
+      updates.push('foto_perfil = ?');
+      values.push(userData.foto_perfil || null);
     }
 
     if (updates.length === 0) {

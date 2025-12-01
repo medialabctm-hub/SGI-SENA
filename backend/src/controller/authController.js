@@ -202,3 +202,32 @@ export const restablecerContrasena = async (req, res, next) => {
     return next(error);
   }
 };
+
+/**
+ * Subir foto de perfil
+ */
+export const uploadProfilePhoto = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user?.id_usuario || req.user?.id;
+    
+    // Verificar que el usuario solo puede subir su propia foto
+    if (parseInt(id) !== parseInt(userId)) {
+      return res.status(403).json({ error: 'No tienes permiso para actualizar este perfil' });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({ error: 'No se proporcionó ninguna imagen' });
+    }
+
+    const authService = ServiceFactory.create('authService');
+    const { getProfileImagePath } = await import('../middleware/uploadProfileMiddleware.js');
+    const fotoPerfilPath = getProfileImagePath(req.file.filename);
+    
+    const result = await authService.updateUserProfilePhoto(id, fotoPerfilPath);
+    return res.json(result);
+  } catch (error) {
+    logger.error('Error en uploadProfilePhoto', { error: error.message });
+    return next(error);
+  }
+};

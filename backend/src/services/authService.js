@@ -220,6 +220,7 @@ export class AuthService {
       telefono: user.telefono,
       cedula: user.cedula,
       nombre_rol: user.nombre_rol,
+      foto_perfil: user.foto_perfil,
       requiere_cambio_contrasena: user.requiere_cambio_contrasena === 1 || user.requiere_cambio_contrasena === true,
     };
   }
@@ -320,6 +321,43 @@ export class AuthService {
 
     this.logger.info('Usuario actualizado', { userId });
     return { message: 'Usuario actualizado correctamente' };
+  }
+
+  /**
+   * Actualiza la foto de perfil del usuario
+   * @param {number} userId - ID del usuario
+   * @param {string} fotoPerfilPath - Ruta de la foto de perfil
+   * @returns {Promise<Object>} Resultado de la actualización
+   */
+  async updateUserProfilePhoto(userId, fotoPerfilPath) {
+    // Obtener usuario actual para eliminar foto anterior si existe
+    const user = await this.userRepository.findById(userId);
+    if (!user) {
+      throw new NotFoundError('Usuario');
+    }
+
+    // Si el usuario ya tiene una foto, eliminarla
+    if (user.foto_perfil) {
+      const { deleteProfileImageFile } = await import('../middleware/uploadProfileMiddleware.js');
+      deleteProfileImageFile(user.foto_perfil);
+    }
+
+    // Actualizar foto de perfil
+    const result = await this.userRepository.update(userId, { fotoPerfil: fotoPerfilPath });
+
+    if (result.affectedRows === 0) {
+      throw new NotFoundError('Usuario');
+    }
+
+    // Obtener usuario actualizado
+    const updatedUser = await this.userRepository.findById(userId);
+    
+    this.logger.info('Foto de perfil actualizada', { userId });
+    return { 
+      message: 'Foto de perfil actualizada correctamente',
+      user: updatedUser,
+      foto_perfil: fotoPerfilPath
+    };
   }
 
   /**

@@ -68,7 +68,7 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 // Cookie parser
 app.use(cookieParser());
 
-// Servir archivos estáticos (imágenes de equipos)
+// Servir archivos estáticos (imágenes de equipos y fotos de perfil)
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));

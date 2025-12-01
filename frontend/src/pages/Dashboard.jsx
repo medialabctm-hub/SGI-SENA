@@ -85,7 +85,7 @@ export default function Dashboard() {
         <main className="dashboard-main">
           <div className="welcome-card">
             <h2>¡Bienvenido{userRole ? `, ${userRole}` : ''}{user ? ` ${user.nombre_usuario}` : ''}!</h2>
-            <p>Sistema de Gestión de Equipos SENA</p>
+            <p>Sistema de Gestión de Inventario SENA</p>
           </div>
 
           {/* Accesos Rápidos Destacados */}

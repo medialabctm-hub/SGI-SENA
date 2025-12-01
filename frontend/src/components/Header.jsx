@@ -9,7 +9,6 @@ import { useNavigate } from 'react-router-dom';
 import logo from '/public/images/logoSena.png';
 import Toast from './Toast';
 import ConfirmModal from './ConfirmModal';
-import PerfilModal from './PerfilModal';
 import NotificationsModal from './NotificationsModal';
 import { buildErrorMessage, parseApiResponse } from '../utils/api';
 import { useSidebar } from '../contexts/SidebarContext';
@@ -24,7 +23,6 @@ export default function Header() {
   );
   const [toast, setToast] = useState(null);
   const [showConfirm, setShowConfirm] = useState(false);
-  const [showPerfil, setShowPerfil] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [notificationsLoading, setNotificationsLoading] = useState(false);
@@ -123,7 +121,7 @@ export default function Header() {
     } catch (err) {
       // Silencioso: si falla seguimos mostrando lo que haya en localStorage
     }
-    setShowPerfil(true);
+    nav('/perfil');
   };
 
   const handleToggleNotifications = () => {
@@ -222,11 +220,6 @@ export default function Header() {
         message="¿Seguro que deseas cerrar sesión?"
         onConfirm={confirmLogout}
         onCancel={cancelLogout}
-      />
-      <PerfilModal
-        open={showPerfil}
-        user={user}
-        onClose={() => setShowPerfil(false)}
       />
       <header className="app-header-wrapper">
         <div className="app-header">

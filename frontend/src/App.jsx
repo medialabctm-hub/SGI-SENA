@@ -27,6 +27,7 @@ import HistorialVerificaciones from './pages/HistorialVerificaciones';
 import HistorialVerificacionesGeneral from './pages/HistorialVerificacionesGeneral';
 import DetalleEquipo from './pages/DetalleEquipo';
 import BuscarCuentadante from './pages/BuscarCuentadante';
+import Perfil from './pages/Perfil';
 import ProtectedRoute from './components/ProtectedRoute';
 import RedirectIfAuth from './components/RedirectIfAuth';
 import ErrorBoundary from './components/ErrorBoundary';
@@ -120,6 +121,14 @@ export default function App() {
         element={
           <ProtectedRoute>
             <Config />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/perfil"
+        element={
+          <ProtectedRoute>
+            <Perfil />
           </ProtectedRoute>
         }
       />

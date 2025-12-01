@@ -319,7 +319,7 @@ export default function AsignarEquipo() {
         <Sidebar user={user} />
         <main className="dashboard-main">
           {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
-            <ConfirmModal
+          <ConfirmModal
             open={deleteConfirm.open}
             title="Eliminar Habilitación"
             message={`¿Estás seguro de que deseas eliminar ${deleteConfirm.info}? Esta acción no se puede deshacer.`}

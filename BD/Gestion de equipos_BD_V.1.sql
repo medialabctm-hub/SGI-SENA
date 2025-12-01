@@ -25,6 +25,7 @@ CREATE TABLE Usuarios (
   id_rol INT NOT NULL,
   estado ENUM('Activo', 'Inactivo') DEFAULT 'Activo',
   requiere_cambio_contrasena TINYINT(1) DEFAULT 0 COMMENT 'Indica si el usuario debe cambiar su contraseña (generada automáticamente)',
+  foto_perfil VARCHAR(255) NULL COMMENT 'Ruta de la foto de perfil del usuario',
   fecha_registro DATETIME DEFAULT NOW(),
   ultimo_acceso DATETIME,
   creado_por INT,
