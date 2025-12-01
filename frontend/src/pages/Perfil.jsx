@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FiUser, FiMail, FiShield, FiCamera, FiArrowLeft, FiCreditCard, FiPhone, FiEdit2 } from 'react-icons/fi';
-import { parseApiResponse, buildErrorMessage } from '../utils/api';
+import { parseApiResponse, buildErrorMessage, handleError } from '../utils/api';
 import Toast from '../components/Toast';
 import Header from '../components/Header';
 import Sidebar from '../components/Sidebar';
@@ -134,7 +134,7 @@ export default function Perfil() {
       
       setToast({ message: data.message || 'Foto de perfil actualizada correctamente', type: 'success' });
     } catch (err) {
-      setToast({ message: buildErrorMessage(err, 'Error al subir foto de perfil'), type: 'error' });
+      handleError(err, setToast, 'No se pudo actualizar la foto de perfil');
     } finally {
       setUploading(false);
       if (fileInputRef.current) {
@@ -167,7 +167,7 @@ export default function Perfil() {
       setEditing(false);
       await fetchUserData();
     } catch (err) {
-      setToast({ message: buildErrorMessage(err, 'Error al actualizar'), type: 'error' });
+      handleError(err, setToast, 'No se pudo actualizar el perfil');
     } finally {
       setLoading(false);
     }

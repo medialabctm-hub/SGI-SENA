@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { FiMail, FiLock, FiEye, FiEyeOff } from 'react-icons/fi';
 import Toast from '../components/Toast';
 import AnimatedBackground from '../components/AnimatedBackground';
-import { buildErrorMessage, parseApiResponse } from '../utils/api';
+import { buildErrorMessage, parseApiResponse, handleError } from '../utils/api';
 import '../styles/auth.css';
 
 export default function Login() {
@@ -50,10 +50,7 @@ export default function Login() {
         navigate('/dashboard');
       }
     } catch (err) {
-      setToast({
-        message: buildErrorMessage(err, 'No se pudo iniciar sesión'),
-        type: 'error',
-      });
+      handleError(err, setToast, 'No se pudo iniciar sesión');
     }
   };
 

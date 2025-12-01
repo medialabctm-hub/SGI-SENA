@@ -4,7 +4,7 @@ import Header from '../components/Header'
 import Sidebar from '../components/Sidebar'
 import Toast from '../components/Toast'
 import { FiPlus, FiAlertCircle, FiPackage, FiCheckCircle, FiTrendingDown, FiDollarSign } from 'react-icons/fi'
-import { parseApiResponse, buildErrorMessage } from '../utils/api'
+import { parseApiResponse, buildErrorMessage, handleError } from '../utils/api'
 import '../styles/dashboard.css'
 
 export default function Dashboard() {
@@ -57,11 +57,7 @@ export default function Dashboard() {
       setStats(data.stats)
       setStatsLoaded(true)
     } catch (error) {
-      console.error('Error al cargar estadísticas:', error)
-      setToast({
-        type: 'error',
-        message: buildErrorMessage(error, 'Error al cargar estadísticas')
-      })
+      handleError(error, setToast, 'No se pudieron cargar las estadísticas');
     } finally {
       setLoading(false)
     }
