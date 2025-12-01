@@ -4,7 +4,7 @@
 # ============================================
 # ETAPA 1: Construir Frontend
 # ============================================
-FROM node:18-alpine AS frontend-builder
+FROM node:20-alpine AS frontend-builder
 
 WORKDIR /app/frontend
 
@@ -19,7 +19,7 @@ RUN npm run build
 # ============================================
 # ETAPA 2: Construir Backend
 # ============================================
-FROM node:18-alpine AS backend-builder
+FROM node:20-alpine AS backend-builder
 
 WORKDIR /app/backend
 

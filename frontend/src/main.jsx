@@ -5,7 +5,6 @@ import { SidebarProvider } from './contexts/SidebarContext'
 import { LanguageProvider } from './contexts/LanguageContext'
 import App from './App'
 import './index.css'
-import './styles/base.css'
 
 createRoot(document.getElementById('root')).render(
   <React.StrictMode>
