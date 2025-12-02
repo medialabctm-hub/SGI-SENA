@@ -22,16 +22,16 @@
 .search-input {
   padding: 10px 14px;
   border-radius: 10px;
-  border: 1px solid var(--neutral-200);
+  border: 1px solid var(--success-300);
   min-width: 320px;
-  background: linear-gradient(180deg, white, var(--neutral-50));
+  background: white;
   box-shadow: 0 2px 6px rgba(2, 6, 23, 0.04);
-  transition: box-shadow 0.15s, transform 0.06s;
+  transition: box-shadow 0.15s, border-color 0.15s;
 }
 
 .search-input:focus {
-  box-shadow: 0 6px 18px rgba(67, 160, 71, 0.12);
-  transform: translateY(-1px);
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+  border-color: var(--success-500);
   outline: none;
 }
 

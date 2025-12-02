@@ -100,19 +100,20 @@
 .ambientes-page .form-control {
   padding: 8px 12px;
   border-radius: 10px;
-  border: 1px solid var(--neutral-200);
-  background: linear-gradient(180deg, white, var(--neutral-50));
+  border: 1px solid var(--success-300);
+  background: white;
   box-shadow: 0 2px 6px rgba(2, 6, 23, 0.04);
   min-height: 36px;
   font-size: 0.95rem;
   color: var(--neutral-800);
+  transition: box-shadow 0.15s, border-color 0.15s;
 }
 
 .ambientes-page .filter-control:focus,
 .ambientes-page .form-control:focus {
   outline: none;
-  box-shadow: 0 6px 18px rgba(67,160,71,0.12);
-  transform: translateY(-1px);
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+  border-color: var(--success-500);
 }
 
 /* Ajustes específicos para selects y textarea */
