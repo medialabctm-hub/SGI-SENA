@@ -110,9 +110,9 @@ export default function Equipos() {
         },
         body: JSON.stringify(payload)
       })
-      const data = await parseApiResponse(resp, 'No se pudo registrar el equipo')
+      const data = await parseApiResponse(resp, 'No se pudo registrar el elemento del inventario')
       setToast({
-        message: `Equipo registrado correctamente (ID interno: ${data.id})`,
+        message: `Elemento del inventario registrado correctamente (ID interno: ${data.id})`,
         type: 'success'
       })
       setForm({
@@ -120,7 +120,7 @@ export default function Equipos() {
       })
     } catch (err) {
       setToast({
-        message: buildErrorMessage(err, 'Error al registrar equipo'),
+        message: buildErrorMessage(err, 'Error al registrar elemento del inventario'),
         type: 'error'
       })
     }
@@ -140,9 +140,9 @@ export default function Equipos() {
                 <FiPlus size={28} color="#fff" />
               </div>
               <div className="form-header-content">
-                <h2 className="form-header-title">Registro de Equipos</h2>
+                <h2 className="form-header-title">Registro de Inventario</h2>
                 <p className="form-header-subtitle">
-                  Registra equipos individualmente o importa múltiples equipos desde Excel
+                  Registra elementos del inventario individualmente o importa múltiples elementos desde Excel
                 </p>
               </div>
             </div>
@@ -154,7 +154,7 @@ export default function Equipos() {
                 className={`form-tab ${activeTab === 'registrar' ? 'active' : ''}`}
               >
                 <FiPlus size={18} />
-                Registrar Equipo
+                Registrar Inventario
               </button>
               <button
                 onClick={() => setActiveTab('importar')}
@@ -232,7 +232,7 @@ export default function Equipos() {
           </div>
         </div>
         <div className="form-row">
-          <button type="submit" className="btn-verde">Registrar Equipo</button>
+          <button type="submit" className="btn-verde">Registrar Inventario</button>
         </div>
       </form>
             ) : (

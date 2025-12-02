@@ -517,7 +517,7 @@ export default function ConsultarEquipo() {
           />
           <div className="users-panel">
           <div className="users-toolbar">
-            <h2 style={{margin:0}}>Consultar Equipo</h2>
+            <h2 style={{margin:0}}>Consultar Inventario</h2>
             <div style={{display:'flex', gap:12, alignItems:'center', flexWrap: 'wrap'}}>
               <form onSubmit={handleBuscar} style={{display:'flex', gap:12, alignItems:'center'}}>
                 <input

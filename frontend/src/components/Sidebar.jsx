@@ -49,11 +49,12 @@ export default function Sidebar({ user }) {
     
     // Determinar qué menú debe estar expandido basándose en la ruta
     // Solo expandir el menú correspondiente y colapsar los demás
-    if (path.startsWith('/equipos') || path.startsWith('/mis-equipos') || path.startsWith('/asignaciones')) {
+    if (path.startsWith('/equipos') || path.startsWith('/mis-equipos') || path.startsWith('/asignaciones') || path.startsWith('/ambientes')) {
       setExpandedMenus({
         equipos: true,
         incidencias: false,
         mantenimiento: false,
+        horarios: false,
         config: false
       })
     } else if (path.startsWith('/novedades') || path.startsWith('/reportes')) {
@@ -61,6 +62,7 @@ export default function Sidebar({ user }) {
         equipos: false,
         incidencias: true,
         mantenimiento: false,
+        horarios: false,
         config: false
       })
     } else if (path.startsWith('/mantenimientos')) {
@@ -79,7 +81,7 @@ export default function Sidebar({ user }) {
         horarios: true,
         config: false
       })
-    } else if (path.startsWith('/usuarios') || path.startsWith('/ambientes') || path.startsWith('/config')) {
+    } else if (path.startsWith('/usuarios') || path.startsWith('/config')) {
       setExpandedMenus({
         equipos: false,
         incidencias: false,
@@ -111,13 +113,15 @@ export default function Sidebar({ user }) {
 
   const menuItems = {
     equipos: [
-      { title: 'Registrar Equipo', path: '/equipos', icon: <FiPlus />, roles: ['Administrador', 'Cuentadante'] },
-      { title: 'Consultar Equipo', path: '/equipos/consultar', icon: <FiSearch />, roles: ['all'] },
+      { title: 'Registrar Inventario', path: '/equipos', icon: <FiPlus />, roles: ['Administrador', 'Cuentadante'] },
+      { title: 'Consultar Inventario', path: '/equipos/consultar', icon: <FiSearch />, roles: ['all'] },
       { title: 'Mis Equipos', path: '/mis-equipos', icon: <FiPackage />, roles: ['all'] },
       { title: 'Asignar Equipo', path: '/equipos/asignar', icon: <FiUsers />, roles: ['Administrador', 'Instructor'] },
       { title: 'Verificar Inventario', path: '/equipos/verificar', icon: <FiCheckCircle />, roles: ['Instructor'] },
       { title: 'Historial de Verificaciones', path: '/equipos/verificacion/historial', icon: <FiClock />, roles: ['all'] },
-      { title: 'Buscar Cuentadante', path: '/equipos/cuentadantes/buscar', icon: <FiSearch />, roles: ['Administrador'] }
+      { title: 'Buscar Cuentadante', path: '/equipos/cuentadantes/buscar', icon: <FiSearch />, roles: ['Administrador'] },
+      { title: 'Gestión de Ambientes', path: '/ambientes', icon: <FiMapPin />, roles: ['Administrador'] },
+      { title: 'Asignar Ambientes', path: '/ambientes/asignar', icon: <FiUserCheck />, roles: ['Administrador'] }
     ],
     incidencias: [
       { title: 'Novedades', path: '/novedades', icon: <FiAlertCircle />, roles: ['Administrador', 'Instructor', 'Cuentadante'] },
@@ -133,8 +137,6 @@ export default function Sidebar({ user }) {
     ],
     config: [
       { title: 'Personal Registrado', path: '/usuarios', icon: <FiUsers />, roles: ['Administrador', 'Instructor'] },
-      { title: 'Gestión de Ambientes', path: '/ambientes', icon: <FiMapPin />, roles: ['Administrador'] },
-      { title: 'Asignar Ambientes', path: '/ambientes/asignar', icon: <FiUserCheck />, roles: ['Administrador'] },
       { title: 'Seguridad', path: '/config?section=security', icon: <FiShield />, roles: ['all'] },
       { title: 'Códigos de Seguridad', path: '/config?section=invitation-codes', icon: <FiKey />, roles: ['Administrador'] },
       { title: 'Roles y Áreas', path: '/config?section=roles', icon: <FiSettings />, roles: ['Administrador', 'Instructor', 'Aprendiz'] },
@@ -203,7 +205,7 @@ export default function Sidebar({ user }) {
           <span>Inicio</span>
         </button>
 
-        {renderMenuSection('equipos', 'Gestión de Equipos', <FiPackage />)}
+        {renderMenuSection('equipos', 'Inventario', <FiPackage />)}
         {renderMenuSection('incidencias', 'Incidencias / Reportes', <FiAlertCircle />)}
         {renderMenuSection('mantenimiento', 'Mantenimiento', <FiTool />)}
         {renderMenuSection('horarios', 'Horarios y Clases', <FiCalendar />)}

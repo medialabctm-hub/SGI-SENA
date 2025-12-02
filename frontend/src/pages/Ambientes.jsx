@@ -759,6 +759,68 @@ export default function Ambientes() {
                   </div>
                 </div>
               )}
+
+              {/* Sección de inventario/elementos */}
+              <div className="ambiente-inventario-section">
+                <h4 className="ambiente-section-title">Inventario del Ambiente</h4>
+                {viewAmbiente.equipos && viewAmbiente.equipos.length > 0 ? (
+                  <div className="users-table-wrapper" style={{ marginTop: '1rem' }}>
+                    <table className="users-table">
+                      <thead>
+                        <tr>
+                          <th>Código</th>
+                          <th>Tipo</th>
+                          <th>Modelo</th>
+                          <th>Placa</th>
+                          <th>Consecutivo</th>
+                          <th>Estado Operativo</th>
+                          <th>Estado Físico</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {viewAmbiente.equipos.map((equipo) => (
+                          <tr key={equipo.codigo_equipo}>
+                            <td>{equipo.codigo_equipo || '-'}</td>
+                            <td>{equipo.tipo || '-'}</td>
+                            <td>{equipo.modelo || '-'}</td>
+                            <td>{equipo.placa || '-'}</td>
+                            <td>{equipo.consecutivo || '-'}</td>
+                            <td>
+                              <span className={`badge ${
+                                equipo.estado_operativo === 'Disponible'
+                                  ? 'badge-success'
+                                  : equipo.estado_operativo === 'En Uso'
+                                  ? 'badge-warning'
+                                  : equipo.estado_operativo === 'En Mantenimiento'
+                                  ? 'badge-error'
+                                  : 'badge-secondary'
+                              }`}>
+                                {equipo.estado_operativo || '-'}
+                              </span>
+                            </td>
+                            <td>
+                              <span className={`badge ${
+                                equipo.estado_fisico === 'Bueno' || equipo.estado_fisico === 'Nuevo'
+                                  ? 'badge-success'
+                                  : equipo.estado_fisico === 'Regular'
+                                  ? 'badge-warning'
+                                  : 'badge-error'
+                              }`}>
+                                {equipo.estado_fisico || '-'}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div className="ambiente-no-images" style={{ marginTop: '1rem' }}>
+                    <FiPackage size={48} />
+                    <p>No hay elementos registrados en este ambiente</p>
+                  </div>
+                )}
+              </div>
                 
               {/* Sección de imágenes */}
               <div className="ambiente-imagenes-section">

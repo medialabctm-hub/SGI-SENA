@@ -97,8 +97,8 @@ export default function Dashboard() {
                     <FiPlus />
                   </div>
                   <div className="quick-action-content">
-                    <h4>Registrar Equipo</h4>
-                    <p>Agregar nuevo equipo al inventario</p>
+                    <h4>Registrar Inventario</h4>
+                    <p>Agregar nuevo elemento al inventario</p>
                   </div>
                 </button>
               )}
