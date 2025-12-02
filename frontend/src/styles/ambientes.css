@@ -100,7 +100,7 @@
 .ambientes-page .form-control {
   padding: 8px 12px;
   border-radius: 10px;
-  border: 1px solid var(--success-300);
+  border: 1px solid var(--success-800);
   background: white;
   box-shadow: 0 2px 6px rgba(2, 6, 23, 0.04);
   min-height: 36px;
@@ -113,7 +113,7 @@
 .ambientes-page .form-control:focus {
   outline: none;
   box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
-  border-color: var(--success-500);
+  border-color: var(--success-900);
 }
 
 /* Ajustes específicos para selects y textarea */
@@ -140,7 +140,7 @@
    ============================================ */
 
 .ambiente-detail-card {
-  background: white;
+  background: var(--neutral-50);
   border-radius: 16px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
   padding: 24px;

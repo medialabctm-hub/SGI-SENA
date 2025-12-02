@@ -41,14 +41,6 @@
   --error-900: #641119;
 
   /* Success */
-  --success-50: #9ef0d3;
-  --success-100: #7eebc4;
-  --success-200: #5ee7b6;
-  --success-300: #3ee2a7;
-  --success-400: #21d997;
-  --success-900: #1cb981;
-  --success-600: #18a271;
-  --success-700: #158b61;
   --success-800: #01af00;
   --success-900: #16943a;
 
@@ -334,7 +326,7 @@ body {
     width: 30%;
     height: 45%;
   }
-  margin-bottom: 2.5rem;
+
 }
 .pagina-no-encontrada__boton {
   background: var(--neutral-50);
