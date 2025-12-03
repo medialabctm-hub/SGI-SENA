@@ -61,16 +61,22 @@ export default function RevisarDuplicados({ idImportacion, onProcesarCompleto })
       const data = await parseApiResponse(res, 'Error al procesar duplicado')
       
       // Remover el duplicado procesado de la lista
-      setDuplicados(prev => prev.filter(d => d.id_duplicado !== idDuplicado))
+      setDuplicados(prev => {
+        const nuevos = prev.filter(d => d.id_duplicado !== idDuplicado)
+        // Si ya no quedan duplicados pendientes, notificar al componente padre
+        if (nuevos.length === 0 && onProcesarCompleto) {
+          // Pequeño delay para que el usuario vea el mensaje de éxito
+          setTimeout(() => {
+            onProcesarCompleto()
+          }, 500)
+        }
+        return nuevos
+      })
       setDecisiones(prev => {
         const nuevas = { ...prev }
         delete nuevas[idDuplicado]
         return nuevas
       })
-      
-      if (onProcesarCompleto) {
-        onProcesarCompleto()
-      }
     } catch (err) {
       handleError(err, (msg) => setError(msg), 'Error al procesar duplicado')
     } finally {
@@ -104,12 +110,18 @@ export default function RevisarDuplicados({ idImportacion, onProcesarCompleto })
       
       // Remover duplicados procesados
       const idsProcesados = decisionesArray.map(d => d.id_duplicado)
-      setDuplicados(prev => prev.filter(d => !idsProcesados.includes(d.id_duplicado)))
+      setDuplicados(prev => {
+        const nuevos = prev.filter(d => !idsProcesados.includes(d.id_duplicado))
+        // Si ya no quedan duplicados pendientes, notificar al componente padre
+        if (nuevos.length === 0 && onProcesarCompleto) {
+          // Pequeño delay para que el usuario vea el mensaje de éxito
+          setTimeout(() => {
+            onProcesarCompleto()
+          }, 500)
+        }
+        return nuevos
+      })
       setDecisiones({})
-      
-      if (onProcesarCompleto) {
-        onProcesarCompleto()
-      }
       
       alert(`Procesados: ${data.resultados.aprobados} aprobados, ${data.resultados.rechazados} rechazados`)
     } catch (err) {
