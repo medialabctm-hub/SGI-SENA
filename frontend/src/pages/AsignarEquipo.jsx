@@ -364,7 +364,6 @@ export default function AsignarEquipo() {
                 fontSize: '1rem',
                 cursor: 'pointer',
                 borderBottom: activeTab === 'asignar' ? '3px solid var(--success-800)' : '3px solid transparent',
-                transition: 'all 0.2s'
                 transition: 'all 0.2s',
                 display: 'flex',
                 alignItems: 'center',
@@ -385,7 +384,6 @@ export default function AsignarEquipo() {
                 fontSize: '1rem',
                 cursor: 'pointer',
                 borderBottom: activeTab === 'ver' ? '3px solid var(--success-800)' : '3px solid transparent',
-                transition: 'all 0.2s'
                 transition: 'all 0.2s',
                 display: 'flex',
                 alignItems: 'center',
