@@ -5,6 +5,46 @@ import emailService from '../services/emailService.js';
 import { logger } from '../utils/logger.js';
 
 /**
+ * Inicializar tabla de duplicados pendientes si no existe
+ */
+async function inicializarTablaDuplicados() {
+  try {
+    const [[tablaExiste]] = await defaultDb.execute(
+      `SELECT COUNT(*) AS cnt FROM INFORMATION_SCHEMA.TABLES 
+       WHERE TABLE_SCHEMA = DATABASE() 
+       AND TABLE_NAME = 'Importaciones_Duplicados'`
+    );
+
+    if (tablaExiste.cnt === 0) {
+      await defaultDb.execute(`
+        CREATE TABLE Importaciones_Duplicados (
+          id_duplicado INT PRIMARY KEY AUTO_INCREMENT,
+          id_importacion VARCHAR(100) NOT NULL COMMENT 'ID único de la sesión de importación',
+          fila_excel INT NOT NULL COMMENT 'Número de fila en el Excel',
+          placa VARCHAR(100) NOT NULL,
+          codigo_equipo_existente INT NOT NULL COMMENT 'ID del equipo que ya existe en BD',
+          datos_excel JSON NOT NULL COMMENT 'Todos los datos del registro del Excel',
+          datos_bd JSON NOT NULL COMMENT 'Todos los datos del registro existente en BD',
+          estado ENUM('Pendiente', 'Aprobado', 'Rechazado') DEFAULT 'Pendiente',
+          decidido_por INT NULL COMMENT 'Usuario que tomó la decisión',
+          fecha_decision DATETIME NULL,
+          fecha_creacion DATETIME DEFAULT NOW(),
+          INDEX idx_importacion (id_importacion),
+          INDEX idx_estado (estado),
+          INDEX idx_placa (placa),
+          FOREIGN KEY (codigo_equipo_existente) REFERENCES Elementos(codigo_equipo) ON DELETE CASCADE,
+          FOREIGN KEY (decidido_por) REFERENCES Usuarios(id_usuario) ON DELETE SET NULL
+        ) COMMENT = 'Registros duplicados pendientes de revisión manual'
+      `);
+      logger.info('Tabla Importaciones_Duplicados creada');
+    }
+  } catch (error) {
+    logger.error('Error al inicializar tabla de duplicados', { error: error.message });
+    throw error;
+  }
+}
+
+/**
  * Importar equipos desde archivo Excel
  */
 export async function importarEquipos(req, res) {
@@ -26,10 +66,18 @@ export async function importarEquipos(req, res) {
       total: data.length,
       exitosos: 0,
       fallidos: 0,
-      errores: []
+      errores: [],
+      duplicados: 0
     };
 
     const userId = req.user?.id || null;
+    const userRole = req.user?.rol || null;
+    
+    // Generar ID único para esta importación
+    const idImportacion = `import_${Date.now()}_${userId}`;
+    
+    // Inicializar tabla de duplicados
+    await inicializarTablaDuplicados();
 
     // Procesar cada fila
     for (let i = 0; i < data.length; i++) {
@@ -97,18 +145,90 @@ export async function importarEquipos(req, res) {
           continue;
         }
 
-        // Validar placa única
+        // Validar placa única - Si existe, guardar como duplicado pendiente
         if (placa) {
-           const [[placaExistente]] = await defaultDb.execute(
-            'SELECT codigo_equipo FROM Elementos WHERE placa = ? LIMIT 1',
+          const [equiposExistentes] = await defaultDb.execute(
+            `SELECT e.*, 
+                    c.nombre_categoria,
+                    a.nombre_ambiente,
+                    a.codigo_ambiente,
+                    u.nombre_usuario as cuentadante_nombre
+             FROM Elementos e
+             LEFT JOIN Categorias_Equipo c ON e.id_categoria = c.id_categoria
+             LEFT JOIN Ambientes a ON e.id_ambiente = a.id_ambiente
+             LEFT JOIN Usuarios u ON e.id_cuentadante = u.id_usuario
+             WHERE e.placa = ? 
+             LIMIT 1`,
             [placa]
           );
-          if (placaExistente) {
-             resultados.errores.push({
-              fila: numeroFila,
-              codigo: placa,
-              error: 'La placa ya está registrada'
-            });
+          
+          if (equiposExistentes.length > 0) {
+            const equipoExistente = equiposExistentes[0];
+            
+            // Preparar datos del Excel para comparación
+            const datosExcel = {
+              placa,
+              tipo,
+              marca: marca || null,
+              modelo,
+              consecutivo: numeroSerie || null,
+              descripcion: descripcion || null,
+              fecha_adquisicion: fechaAdq || null,
+              valor_ingreso: valorIngreso ? parseFloat(valorIngreso) : (costo ? parseFloat(costo) : null),
+              vida_util_meses: vidaUtilMeses ? parseInt(vidaUtilMeses) : null,
+              estado_fisico: estadoFisicoValido,
+              specs_completas: specsCompletas || null,
+              r_centro: rCentro || null,
+              atributos: atributos || null,
+              categoria: tipo,
+              ambiente: ambiente,
+              categoria_id: categoriaId,
+              ambiente_id: ambienteId
+            };
+            
+            // Preparar datos de BD para comparación
+            const datosBD = {
+              codigo_equipo: equipoExistente.codigo_equipo,
+              placa: equipoExistente.placa,
+              tipo: equipoExistente.tipo,
+              marca: equipoExistente.marca || null,
+              modelo: equipoExistente.modelo,
+              consecutivo: equipoExistente.consecutivo || null,
+              descripcion: equipoExistente.descripcion || null,
+              fecha_adquisicion: equipoExistente.fecha_adquisicion ? 
+                new Date(equipoExistente.fecha_adquisicion).toISOString().split('T')[0] : null,
+              valor_ingreso: equipoExistente.valor_ingreso ? parseFloat(equipoExistente.valor_ingreso) : 
+                           (equipoExistente.costo ? parseFloat(equipoExistente.costo) : null),
+              vida_util_meses: equipoExistente.vida_util_meses || null,
+              estado_fisico: equipoExistente.estado_fisico,
+              specs_completas: equipoExistente.specs_completas || null,
+              r_centro: equipoExistente.r_centro || null,
+              atributos: equipoExistente.atributos || null,
+              categoria: equipoExistente.nombre_categoria || null,
+              ambiente: equipoExistente.nombre_ambiente || equipoExistente.codigo_ambiente || null,
+              categoria_id: equipoExistente.id_categoria,
+              ambiente_id: equipoExistente.id_ambiente,
+              cuentadante: equipoExistente.cuentadante_nombre || null,
+              fecha_registro: equipoExistente.fecha_registro ? 
+                new Date(equipoExistente.fecha_registro).toISOString() : null
+            };
+            
+            // Guardar como duplicado pendiente
+            await defaultDb.execute(
+              `INSERT INTO Importaciones_Duplicados 
+               (id_importacion, fila_excel, placa, codigo_equipo_existente, datos_excel, datos_bd, estado)
+               VALUES (?, ?, ?, ?, ?, ?, 'Pendiente')`,
+              [
+                idImportacion,
+                numeroFila,
+                placa,
+                equipoExistente.codigo_equipo,
+                JSON.stringify(datosExcel),
+                JSON.stringify(datosBD)
+              ]
+            );
+            
+            resultados.duplicados++;
             resultados.fallidos++;
             continue;
           }
@@ -264,13 +384,353 @@ export async function importarEquipos(req, res) {
       }
     }
 
+    let mensaje = `Importación completada: ${resultados.exitosos} exitosos, ${resultados.fallidos} fallidos`;
+    if (resultados.duplicados > 0) {
+      mensaje += `. ${resultados.duplicados} registro(s) con placas duplicadas pendientes de revisión`;
+    }
+
     return res.json({
-      message: `Importación completada: ${resultados.exitosos} exitosos, ${resultados.fallidos} fallidos`,
-      resultados
+      message: mensaje,
+      resultados,
+      id_importacion: idImportacion,
+      tiene_duplicados: resultados.duplicados > 0
     });
   } catch (error) {
     logger.error('Error en importarEquipos', { error: error.message, stack: error.stack });
     return res.status(500).json({ error: 'Error al procesar el archivo Excel', detalle: error.message });
+  }
+}
+
+/**
+ * Obtener duplicados pendientes de revisión
+ */
+export async function obtenerDuplicadosPendientes(req, res) {
+  try {
+    const { id_importacion } = req.query;
+    const userId = req.user?.id;
+    const userRole = req.user?.rol;
+
+    // Solo Administrador y Cuentadante pueden ver duplicados
+    if (userRole !== 'Administrador' && userRole !== 'Cuentadante') {
+      return res.status(403).json({
+        error: 'Solo Administradores y Cuentadantes pueden revisar duplicados'
+      });
+    }
+
+    // Asegurar que la tabla existe
+    await inicializarTablaDuplicados();
+
+    let query = `
+      SELECT 
+        d.id_duplicado,
+        d.id_importacion,
+        d.fila_excel,
+        d.placa,
+        d.codigo_equipo_existente,
+        d.datos_excel,
+        d.datos_bd,
+        d.estado,
+        d.fecha_creacion,
+        e.codigo_equipo,
+        e.tipo,
+        e.modelo
+      FROM Importaciones_Duplicados d
+      INNER JOIN Elementos e ON d.codigo_equipo_existente = e.codigo_equipo
+      WHERE d.estado = 'Pendiente'
+    `;
+    const params = [];
+
+    if (id_importacion) {
+      query += ' AND d.id_importacion = ?';
+      params.push(id_importacion);
+    }
+
+    query += ' ORDER BY d.fecha_creacion DESC';
+
+    const [duplicados] = await defaultDb.execute(query, params);
+
+    // Parsear JSON de datos
+    const duplicadosParseados = duplicados.map(dup => ({
+      ...dup,
+      datos_excel: typeof dup.datos_excel === 'string' ? JSON.parse(dup.datos_excel) : dup.datos_excel,
+      datos_bd: typeof dup.datos_bd === 'string' ? JSON.parse(dup.datos_bd) : dup.datos_bd
+    }));
+
+    return res.json({
+      ok: true,
+      duplicados: duplicadosParseados,
+      total: duplicadosParseados.length
+    });
+  } catch (error) {
+    logger.error('Error al obtener duplicados pendientes', { error: error.message, stack: error.stack });
+    return res.status(500).json({
+      error: 'Error al obtener duplicados pendientes',
+      detalle: error.message
+    });
+  }
+}
+
+/**
+ * Procesar decisión sobre un duplicado (Aprobar o Rechazar)
+ */
+export async function procesarDuplicado(req, res) {
+  try {
+    const { id_duplicado, accion } = req.body; // accion: 'aprobar' o 'rechazar'
+    const userId = req.user?.id;
+    const userRole = req.user?.rol;
+
+    // Solo Administrador y Cuentadante pueden procesar duplicados
+    if (userRole !== 'Administrador' && userRole !== 'Cuentadante') {
+      return res.status(403).json({
+        error: 'Solo Administradores y Cuentadantes pueden procesar duplicados'
+      });
+    }
+
+    // Asegurar que la tabla existe
+    await inicializarTablaDuplicados();
+
+    if (!id_duplicado || !accion) {
+      return res.status(400).json({
+        error: 'Se requiere id_duplicado y accion (aprobar o rechazar)'
+      });
+    }
+
+    if (accion !== 'aprobar' && accion !== 'rechazar') {
+      return res.status(400).json({
+        error: 'La accion debe ser "aprobar" o "rechazar"'
+      });
+    }
+
+    // Obtener el duplicado
+    const [duplicados] = await defaultDb.execute(
+      `SELECT * FROM Importaciones_Duplicados 
+       WHERE id_duplicado = ? AND estado = 'Pendiente'`,
+      [id_duplicado]
+    );
+
+    if (duplicados.length === 0) {
+      return res.status(404).json({
+        error: 'Duplicado no encontrado o ya procesado'
+      });
+    }
+
+    const duplicado = duplicados[0];
+    const datosExcel = typeof duplicado.datos_excel === 'string' 
+      ? JSON.parse(duplicado.datos_excel) 
+      : duplicado.datos_excel;
+
+    if (accion === 'aprobar') {
+      // Insertar el equipo duplicado en la base de datos
+      const [[userRoleInfo]] = await defaultDb.execute(
+        `SELECT r.nombre_rol FROM Usuarios u
+         INNER JOIN Roles r ON u.id_rol = r.id_rol
+         WHERE u.id_usuario = ?`,
+        [userId]
+      );
+      const idCuentadante = userRoleInfo?.nombre_rol === 'Cuentadante' ? userId : null;
+
+      const query = `INSERT INTO Elementos
+        (id_categoria, id_ambiente, id_cuentadante, tipo, marca, modelo, descripcion, 
+         fecha_adquisicion, costo, vida_util_meses, estado_fisico, specs_completas, registrado_por,
+         r_centro, consecutivo, placa, atributos, valor_ingreso)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+
+      await defaultDb.execute(query, [
+        datosExcel.categoria_id,
+        datosExcel.ambiente_id,
+        idCuentadante,
+        datosExcel.tipo,
+        datosExcel.marca || null,
+        datosExcel.modelo,
+        datosExcel.descripcion || null,
+        datosExcel.fecha_adquisicion || null,
+        datosExcel.valor_ingreso || null,
+        datosExcel.vida_util_meses || null,
+        datosExcel.estado_fisico,
+        datosExcel.specs_completas || null,
+        userId,
+        datosExcel.r_centro || null,
+        datosExcel.consecutivo || null,
+        datosExcel.placa || null,
+        datosExcel.atributos || null,
+        datosExcel.valor_ingreso || null
+      ]);
+
+      // Actualizar estado del duplicado
+      await defaultDb.execute(
+        `UPDATE Importaciones_Duplicados 
+         SET estado = 'Aprobado', decidido_por = ?, fecha_decision = NOW()
+         WHERE id_duplicado = ?`,
+        [userId, id_duplicado]
+      );
+
+      return res.json({
+        ok: true,
+        message: 'Duplicado aprobado y registrado exitosamente',
+        accion: 'aprobar'
+      });
+    } else {
+      // Rechazar: solo actualizar estado
+      await defaultDb.execute(
+        `UPDATE Importaciones_Duplicados 
+         SET estado = 'Rechazado', decidido_por = ?, fecha_decision = NOW()
+         WHERE id_duplicado = ?`,
+        [userId, id_duplicado]
+      );
+
+      return res.json({
+        ok: true,
+        message: 'Duplicado rechazado',
+        accion: 'rechazar'
+      });
+    }
+  } catch (error) {
+    logger.error('Error al procesar duplicado', { error: error.message, stack: error.stack });
+    return res.status(500).json({
+      error: 'Error al procesar duplicado',
+      detalle: error.message
+    });
+  }
+}
+
+/**
+ * Procesar múltiples duplicados a la vez
+ */
+export async function procesarDuplicadosMasivo(req, res) {
+  try {
+    const { decisiones } = req.body; // Array de { id_duplicado, accion }
+    const userId = req.user?.id;
+    const userRole = req.user?.rol;
+
+    // Solo Administrador y Cuentadante pueden procesar duplicados
+    if (userRole !== 'Administrador' && userRole !== 'Cuentadante') {
+      return res.status(403).json({
+        error: 'Solo Administradores y Cuentadantes pueden procesar duplicados'
+      });
+    }
+
+    // Asegurar que la tabla existe
+    await inicializarTablaDuplicados();
+
+    if (!Array.isArray(decisiones) || decisiones.length === 0) {
+      return res.status(400).json({
+        error: 'Se requiere un array de decisiones'
+      });
+    }
+
+    const resultados = {
+      aprobados: 0,
+      rechazados: 0,
+      errores: []
+    };
+
+    // Obtener rol del usuario para asignar cuentadante si es necesario
+    const [[userRoleInfo]] = await defaultDb.execute(
+      `SELECT r.nombre_rol FROM Usuarios u
+       INNER JOIN Roles r ON u.id_rol = r.id_rol
+       WHERE u.id_usuario = ?`,
+      [userId]
+    );
+    const idCuentadante = userRoleInfo?.nombre_rol === 'Cuentadante' ? userId : null;
+
+    for (const decision of decisiones) {
+      const { id_duplicado, accion } = decision;
+
+      try {
+        if (accion !== 'aprobar' && accion !== 'rechazar') {
+          resultados.errores.push({
+            id_duplicado,
+            error: 'Acción inválida'
+          });
+          continue;
+        }
+
+        // Obtener el duplicado
+        const [duplicados] = await defaultDb.execute(
+          `SELECT * FROM Importaciones_Duplicados 
+           WHERE id_duplicado = ? AND estado = 'Pendiente'`,
+          [id_duplicado]
+        );
+
+        if (duplicados.length === 0) {
+          resultados.errores.push({
+            id_duplicado,
+            error: 'Duplicado no encontrado o ya procesado'
+          });
+          continue;
+        }
+
+        const duplicado = duplicados[0];
+        const datosExcel = typeof duplicado.datos_excel === 'string' 
+          ? JSON.parse(duplicado.datos_excel) 
+          : duplicado.datos_excel;
+
+        if (accion === 'aprobar') {
+          // Insertar el equipo
+          const query = `INSERT INTO Elementos
+            (id_categoria, id_ambiente, id_cuentadante, tipo, marca, modelo, descripcion, 
+             fecha_adquisicion, costo, vida_util_meses, estado_fisico, specs_completas, registrado_por,
+             r_centro, consecutivo, placa, atributos, valor_ingreso)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+
+          await defaultDb.execute(query, [
+            datosExcel.categoria_id,
+            datosExcel.ambiente_id,
+            idCuentadante,
+            datosExcel.tipo,
+            datosExcel.marca || null,
+            datosExcel.modelo,
+            datosExcel.descripcion || null,
+            datosExcel.fecha_adquisicion || null,
+            datosExcel.valor_ingreso || null,
+            datosExcel.vida_util_meses || null,
+            datosExcel.estado_fisico,
+            datosExcel.specs_completas || null,
+            userId,
+            datosExcel.r_centro || null,
+            datosExcel.consecutivo || null,
+            datosExcel.placa || null,
+            datosExcel.atributos || null,
+            datosExcel.valor_ingreso || null
+          ]);
+
+          await defaultDb.execute(
+            `UPDATE Importaciones_Duplicados 
+             SET estado = 'Aprobado', decidido_por = ?, fecha_decision = NOW()
+             WHERE id_duplicado = ?`,
+            [userId, id_duplicado]
+          );
+
+          resultados.aprobados++;
+        } else {
+          await defaultDb.execute(
+            `UPDATE Importaciones_Duplicados 
+             SET estado = 'Rechazado', decidido_por = ?, fecha_decision = NOW()
+             WHERE id_duplicado = ?`,
+            [userId, id_duplicado]
+          );
+
+          resultados.rechazados++;
+        }
+      } catch (error) {
+        resultados.errores.push({
+          id_duplicado,
+          error: error.message
+        });
+      }
+    }
+
+    return res.json({
+      ok: true,
+      message: `Procesados: ${resultados.aprobados} aprobados, ${resultados.rechazados} rechazados`,
+      resultados
+    });
+  } catch (error) {
+    logger.error('Error al procesar duplicados masivo', { error: error.message, stack: error.stack });
+    return res.status(500).json({
+      error: 'Error al procesar duplicados',
+      detalle: error.message
+    });
   }
 }
 

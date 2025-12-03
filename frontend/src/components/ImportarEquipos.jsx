@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { FiUpload, FiFile, FiDownload, FiUser, FiSave, FiAlertCircle, FiSearch, FiCheckCircle } from 'react-icons/fi'
 import * as XLSX from 'xlsx'
 import { parseApiResponse, buildErrorMessage, handleError } from '../utils/api'
+import RevisarDuplicados from './RevisarDuplicados'
 
 export default function ImportarEquipos({ onImportComplete }) {
   const [archivo, setArchivo] = useState(null)
@@ -15,6 +16,8 @@ export default function ImportarEquipos({ onImportComplete }) {
   const [loadingCuentadante, setLoadingCuentadante] = useState(false)
   const [savingCuentadante, setSavingCuentadante] = useState(false)
   const [user, setUser] = useState(null)
+  const [idImportacion, setIdImportacion] = useState(null)
+  const [mostrarDuplicados, setMostrarDuplicados] = useState(false)
 
   useEffect(() => {
     try {
@@ -175,6 +178,15 @@ export default function ImportarEquipos({ onImportComplete }) {
 
       const data = await parseApiResponse(res, 'Error al importar equipos')
       setResultado(data.resultados)
+      
+      // Si hay duplicados, guardar el ID de importación y mostrar sección de revisión
+      if (data.tiene_duplicados && data.id_importacion) {
+        setIdImportacion(data.id_importacion)
+        setMostrarDuplicados(true)
+      } else {
+        setMostrarDuplicados(false)
+        setIdImportacion(null)
+      }
       
       if (onImportComplete) {
         onImportComplete(data.resultados)
@@ -459,7 +471,7 @@ export default function ImportarEquipos({ onImportComplete }) {
         }}>
           <h4 style={{ margin: '0 0 1rem 0', fontSize: '1.1rem', color: '#1a2a3a' }}>Resultados de la Importación</h4>
           
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem', marginBottom: '1rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem', marginBottom: '1rem' }}>
             <div style={{ textAlign: 'center', padding: '1rem', background: '#fff', borderRadius: '8px' }}>
               <div style={{ fontSize: '2rem', fontWeight: 700, color: '#1a2a3a' }}>{resultado.total}</div>
               <div style={{ color: '#666', fontSize: '0.9rem' }}>Total</div>
@@ -472,6 +484,12 @@ export default function ImportarEquipos({ onImportComplete }) {
               <div style={{ fontSize: '2rem', fontWeight: 700, color: '#ef4444' }}>{resultado.fallidos}</div>
               <div style={{ color: '#dc2626', fontSize: '0.9rem' }}>Fallidos</div>
             </div>
+            {resultado.duplicados > 0 && (
+              <div style={{ textAlign: 'center', padding: '1rem', background: '#fff3cd', borderRadius: '8px' }}>
+                <div style={{ fontSize: '2rem', fontWeight: 700, color: '#ffc107' }}>{resultado.duplicados}</div>
+                <div style={{ color: '#b45309', fontSize: '0.9rem' }}>Duplicados</div>
+              </div>
+            )}
           </div>
 
           {resultado.errores && resultado.errores.length > 0 && (
@@ -493,6 +511,21 @@ export default function ImportarEquipos({ onImportComplete }) {
             </div>
           )}
         </div>
+      )}
+
+      {/* Sección de revisión de duplicados */}
+      {mostrarDuplicados && idImportacion && (
+        <RevisarDuplicados 
+          idImportacion={idImportacion}
+          onProcesarCompleto={() => {
+            // Recargar duplicados o actualizar resultados
+            setMostrarDuplicados(false)
+            // Opcional: recargar la lista de equipos si hay callback
+            if (onImportComplete) {
+              onImportComplete(resultado)
+            }
+          }}
+        />
       )}
     </div>
   )

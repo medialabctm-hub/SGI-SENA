@@ -1,6 +1,12 @@
 import express from 'express';
 import multer from 'multer';
-import { importarEquipos, importarUsuarios } from '../controller/importController.js';
+import { 
+  importarEquipos, 
+  importarUsuarios, 
+  obtenerDuplicadosPendientes, 
+  procesarDuplicado, 
+  procesarDuplicadosMasivo 
+} from '../controller/importController.js';
 import { authenticate } from '../middleware/authMiddleware.js';
 import { requirePermission } from '../middleware/authorization.js';
 import { PERMISSIONS } from '../config/permissions.js';
@@ -43,6 +49,24 @@ router.post('/usuarios',
   requirePermission(PERMISSIONS.USERS.CREATE),
   upload.single('archivo'),
   importarUsuarios
+);
+
+// Obtener duplicados pendientes de revisión - Admin y Cuentadante
+router.get('/duplicados',
+  authenticate,
+  obtenerDuplicadosPendientes
+);
+
+// Procesar un duplicado (aprobar o rechazar) - Admin y Cuentadante
+router.post('/duplicados/procesar',
+  authenticate,
+  procesarDuplicado
+);
+
+// Procesar múltiples duplicados - Admin y Cuentadante
+router.post('/duplicados/procesar-masivo',
+  authenticate,
+  procesarDuplicadosMasivo
 );
 
 export default router;
