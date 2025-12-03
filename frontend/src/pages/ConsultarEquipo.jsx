@@ -527,11 +527,22 @@ export default function ConsultarEquipo() {
                   onChange={e => setCodigo(e.target.value)}
                   className="search-input"
                 />
-                <button className="btn btn-verde" type="submit" disabled={loading}>
+                <button 
+                  className="btn btn-verde" 
+                  type="submit" 
+                  disabled={loading}
+                  style={{ display: 'flex', alignItems: 'center', gap: '8px', opacity: 1, visibility: 'visible' }}
+                >
                   <FiSearch size={16} />
                   {loading ? 'Buscando...' : 'Buscar'}
                 </button>
-                <button type="button" className="btn" onClick={handleMostrarTodos} disabled={loading}>
+                <button 
+                  type="button" 
+                  className="btn" 
+                  onClick={handleMostrarTodos} 
+                  disabled={loading}
+                  style={{ display: 'flex', alignItems: 'center', gap: '8px', opacity: 1, visibility: 'visible' }}
+                >
                   <FiList size={16} />
                   {loading ? 'Cargando...' : 'Mostrar todos'}
                 </button>
@@ -542,12 +553,18 @@ export default function ConsultarEquipo() {
                   className="btn" 
                   onClick={() => setShowColumnFilter(true)}
                   title="Configurar columnas visibles"
-                  style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+                  style={{ display: 'flex', alignItems: 'center', gap: '8px', opacity: 1, visibility: 'visible' }}
                 >
                   <FiSettings size={16} />
                   Columnas
                 </button>
-                <button type="button" className="btn btn-verde" onClick={handleDescargarPDF} disabled={loading}>
+                <button 
+                  type="button" 
+                  className="btn btn-verde" 
+                  onClick={handleDescargarPDF} 
+                  disabled={loading}
+                  style={{ display: 'flex', alignItems: 'center', gap: '8px', opacity: 1, visibility: 'visible' }}
+                >
                   <FiDownload size={16} />
                   Descargar Excel
                 </button>

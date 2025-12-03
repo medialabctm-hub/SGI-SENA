@@ -536,6 +536,9 @@ export async function procesarDuplicado(req, res) {
          r_centro, consecutivo, placa, atributos, valor_ingreso)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
 
+      // Calcular costo (usar valor_ingreso si existe, sino null)
+      const costoValue = datosExcel.valor_ingreso ? parseFloat(datosExcel.valor_ingreso) : null;
+      
       await defaultDb.execute(query, [
         datosExcel.categoria_id,
         datosExcel.ambiente_id,
@@ -545,7 +548,7 @@ export async function procesarDuplicado(req, res) {
         datosExcel.modelo,
         datosExcel.descripcion || null,
         datosExcel.fecha_adquisicion || null,
-        datosExcel.valor_ingreso || null,
+        costoValue, // costo
         datosExcel.vida_util_meses || null,
         datosExcel.estado_fisico,
         datosExcel.specs_completas || null,
@@ -554,7 +557,7 @@ export async function procesarDuplicado(req, res) {
         datosExcel.consecutivo || null,
         datosExcel.placa || null,
         datosExcel.atributos || null,
-        datosExcel.valor_ingreso || null
+        datosExcel.valor_ingreso ? parseFloat(datosExcel.valor_ingreso) : null // valor_ingreso
       ]);
 
       // Actualizar estado del duplicado
@@ -674,6 +677,9 @@ export async function procesarDuplicadosMasivo(req, res) {
              r_centro, consecutivo, placa, atributos, valor_ingreso)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
 
+          // Calcular costo (usar valor_ingreso si existe, sino null)
+          const costoValue = datosExcel.valor_ingreso ? parseFloat(datosExcel.valor_ingreso) : null;
+
           await defaultDb.execute(query, [
             datosExcel.categoria_id,
             datosExcel.ambiente_id,
@@ -683,7 +689,7 @@ export async function procesarDuplicadosMasivo(req, res) {
             datosExcel.modelo,
             datosExcel.descripcion || null,
             datosExcel.fecha_adquisicion || null,
-            datosExcel.valor_ingreso || null,
+            costoValue, // costo
             datosExcel.vida_util_meses || null,
             datosExcel.estado_fisico,
             datosExcel.specs_completas || null,
@@ -692,7 +698,7 @@ export async function procesarDuplicadosMasivo(req, res) {
             datosExcel.consecutivo || null,
             datosExcel.placa || null,
             datosExcel.atributos || null,
-            datosExcel.valor_ingreso || null
+            datosExcel.valor_ingreso ? parseFloat(datosExcel.valor_ingreso) : null // valor_ingreso
           ]);
 
           await defaultDb.execute(
