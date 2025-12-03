@@ -272,23 +272,28 @@ export async function obtenerEquipoPorCodigo(req, res) {
     const whereClause = userRole === 'Cuentadante' ? ' AND e.id_cuentadante = ?' : '';
     const params = userRole === 'Cuentadante' ? [codigo, userId] : [codigo];
 
-    const [[rowInventario]] = await defaultDb.execute(
+    // Buscar por placa - ahora devuelve TODOS los registros con la misma placa (permite duplicados)
+    const [rowsInventario] = await defaultDb.execute(
       `${queryBase} WHERE e.placa = ?${whereClause}`,
       params
     );
 
-    if (rowInventario) {
-      return res.json(rowInventario);
+    if (rowsInventario && rowsInventario.length > 0) {
+      // Si hay múltiples registros, devolver array; si solo uno, devolver el objeto para compatibilidad
+      return res.json(rowsInventario.length === 1 ? rowsInventario[0] : rowsInventario);
     }
 
+    // Si no se encontró por placa, intentar por código_equipo (ID interno)
     const codigoNumerico = Number.parseInt(codigo, 10);
     if (Number.isFinite(codigoNumerico)) {
       const paramsId = userRole === 'Cuentadante' ? [codigoNumerico, userId] : [codigoNumerico];
-      const [[rowId]] = await defaultDb.execute(
+      const [rowsId] = await defaultDb.execute(
         `${queryBase} WHERE e.codigo_equipo = ?${whereClause}`,
         paramsId
       );
-      if (rowId) return res.json(rowId);
+      if (rowsId && rowsId.length > 0) {
+        return res.json(rowsId.length === 1 ? rowsId[0] : rowsId);
+      }
     }
 
     return res.status(404).json({ error: 'Equipo no encontrado' });

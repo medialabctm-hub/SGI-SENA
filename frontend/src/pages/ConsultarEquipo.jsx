@@ -104,7 +104,8 @@ export default function ConsultarEquipo() {
         headers: { Authorization: `Bearer ${token}` }
       })
       const data = await parseApiResponse(res, 'No se pudo consultar el equipo')
-      setEquipos([data])
+      // Si es un array, usar directamente; si es un objeto, convertirlo a array
+      setEquipos(Array.isArray(data) ? data : [data])
     } catch (err) {
       setEquipos([])
       setToast({ message: buildErrorMessage(err, 'No se pudo consultar el equipo'), type: 'error' })
@@ -531,7 +532,20 @@ export default function ConsultarEquipo() {
                   className="btn btn-verde" 
                   type="submit" 
                   disabled={loading}
-                  style={{ display: 'flex', alignItems: 'center', gap: '8px', opacity: 1, visibility: 'visible' }}
+                  style={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: '8px', 
+                    opacity: 1, 
+                    visibility: 'visible',
+                    background: '#10b981',
+                    color: '#fff',
+                    border: '1px solid #10b981',
+                    padding: '8px 16px',
+                    borderRadius: '8px',
+                    cursor: loading ? 'not-allowed' : 'pointer',
+                    fontWeight: 600
+                  }}
                 >
                   <FiSearch size={16} />
                   {loading ? 'Buscando...' : 'Buscar'}
@@ -563,7 +577,20 @@ export default function ConsultarEquipo() {
                   className="btn btn-verde" 
                   onClick={handleDescargarPDF} 
                   disabled={loading}
-                  style={{ display: 'flex', alignItems: 'center', gap: '8px', opacity: 1, visibility: 'visible' }}
+                  style={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: '8px', 
+                    opacity: 1, 
+                    visibility: 'visible',
+                    background: '#10b981',
+                    color: '#fff',
+                    border: '1px solid #10b981',
+                    padding: '8px 16px',
+                    borderRadius: '8px',
+                    cursor: loading ? 'not-allowed' : 'pointer',
+                    fontWeight: 600
+                  }}
                 >
                   <FiDownload size={16} />
                   Descargar Excel
