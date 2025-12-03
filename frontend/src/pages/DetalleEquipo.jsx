@@ -206,10 +206,10 @@ export default function DetalleEquipo() {
   function getEstadoBadge(estado) {
     const estados = {
       Bueno: { color: 'var(--success-800)', bg: 'var(--success-50)' },
-      Regular: { color: '#f59e0b', bg: '#fef3c7' },
-      Malo: { color: '#ef4444', bg: '#fee2e2' },
+      Regular: { color: 'var(--warning-600)', bg: '#fef3c7' },
+      Malo: { color: 'var(--error-700)', bg: '#fee2e2' },
       Nuevo: { color: '#3b82f6', bg: '#dbeafe' },
-      Dañado: { color: '#dc2626', bg: '#fee2e2' },
+      Dañado: { color: 'var(--error-700)', bg: '#fee2e2' },
     };
     const estadoInfo = estados[estado] || { color: '#6b7280', bg: '#f3f4f6' };
     return (
@@ -674,7 +674,7 @@ export default function DetalleEquipo() {
               boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px', paddingBottom: '16px', borderBottom: '2px solid #e5e7eb' }}>
-                <FiImage size={20} color="#10b981" />
+                <FiImage size={20} style={{ color: 'var(--success-800)' }} />
                 <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 700, color: '#111827' }}>
                   Galería de Imágenes
                   <span style={{ marginLeft: '12px', fontSize: '16px', fontWeight: 500, color: '#6b7280' }}>

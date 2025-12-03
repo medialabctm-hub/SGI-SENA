@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { FiCheck, FiX, FiAlertCircle, FiCheckCircle, FiClock, FiSave } from 'react-icons/fi'
 import { parseApiResponse, buildErrorMessage, handleError } from '../utils/api'
+import '../styles/revisarDuplicados.css'
 
 export default function RevisarDuplicados({ idImportacion, onProcesarCompleto }) {
   const [duplicados, setDuplicados] = useState([])
@@ -166,10 +167,10 @@ export default function RevisarDuplicados({ idImportacion, onProcesarCompleto })
         textAlign: 'center',
         background: '#d1fae5',
         borderRadius: '8px',
-        border: '1px solid #10b981'
+        border: '1px solid var(--success-800)'
       }}>
-        <FiCheckCircle size={32} color="#10b981" style={{ marginBottom: '0.5rem' }} />
-        <p style={{ color: '#059669', fontWeight: 600 }}>No hay duplicados pendientes de revisión</p>
+        <FiCheckCircle size={32} style={{ marginBottom: '0.5rem', color: 'var(--success-800)' }} />
+        <p style={{ color: 'var(--success-800)', fontWeight: 600 }}>No hay duplicados pendientes de revisión</p>
       </div>
     )
   }
@@ -180,13 +181,13 @@ export default function RevisarDuplicados({ idImportacion, onProcesarCompleto })
         padding: '1rem',
         background: '#fff3cd',
         borderRadius: '8px',
-        border: '1px solid #ffc107',
+        border: '1px solid var(--warning-600)',
         marginBottom: '1.5rem',
         display: 'flex',
         alignItems: 'center',
         gap: '0.5rem'
       }}>
-        <FiAlertCircle size={20} color="#ffc107" />
+        <FiAlertCircle size={20} style={{ color: 'var(--warning-600)' }} />
         <div style={{ flex: 1 }}>
           <strong>Duplicados pendientes de revisión</strong>
           <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.9rem', color: '#666' }}>
@@ -200,7 +201,7 @@ export default function RevisarDuplicados({ idImportacion, onProcesarCompleto })
         <div style={{
           padding: '1rem',
           background: '#fee2e2',
-          color: '#dc2626',
+          color: 'var(--error-700)',
           borderRadius: '8px',
           marginBottom: '1rem',
           display: 'flex',
@@ -240,7 +241,7 @@ export default function RevisarDuplicados({ idImportacion, onProcesarCompleto })
             style={{
               marginBottom: '1.5rem',
               border: decision 
-                ? (decision === 'aprobar' ? '2px solid #10b981' : '2px solid #ef4444')
+                ? (decision === 'aprobar' ? '2px solid var(--success-800)' : '2px solid var(--error-700)')
                 : '1px solid #e5e7eb',
               borderRadius: '8px',
               overflow: 'hidden',
@@ -267,7 +268,7 @@ export default function RevisarDuplicados({ idImportacion, onProcesarCompleto })
                 <div style={{
                   padding: '0.5rem 1rem',
                   borderRadius: '6px',
-                  background: decision === 'aprobar' ? '#10b981' : '#ef4444',
+                  background: decision === 'aprobar' ? 'var(--success-800)' : 'var(--error-700)',
                   color: '#fff',
                   fontSize: '0.85rem',
                   fontWeight: 600,
@@ -326,9 +327,9 @@ export default function RevisarDuplicados({ idImportacion, onProcesarCompleto })
                         </td>
                         <td style={{ padding: '0.75rem', border: '1px solid #e5e7eb', textAlign: 'center' }}>
                           {coincide ? (
-                            <FiCheckCircle size={18} color="#10b981" />
+                            <FiCheckCircle size={18} style={{ color: 'var(--success-800)' }} />
                           ) : (
-                            <FiX size={18} color="#ef4444" />
+                            <FiX size={18} style={{ color: 'var(--error-700)' }} />
                           )}
                         </td>
                       </tr>
@@ -349,20 +350,7 @@ export default function RevisarDuplicados({ idImportacion, onProcesarCompleto })
               <button
                 onClick={() => tomarDecision(duplicado.id_duplicado, 'rechazar')}
                 disabled={procesandoId === duplicado.id_duplicado}
-                style={{
-                  padding: '0.5rem 1rem',
-                  background: decision === 'rechazar' ? '#ef4444' : '#fff',
-                  color: decision === 'rechazar' ? '#fff' : '#ef4444',
-                  border: '1px solid #ef4444',
-                  borderRadius: '6px',
-                  cursor: procesandoId === duplicado.id_duplicado ? 'not-allowed' : 'pointer',
-                  fontSize: '0.9rem',
-                  fontWeight: 600,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.5rem',
-                  opacity: procesandoId === duplicado.id_duplicado ? 0.6 : 1
-                }}
+                className={`duplicado-btn-rechazar ${decision === 'rechazar' ? 'selected' : ''}`}
               >
                 <FiX size={16} />
                 Rechazar
@@ -370,20 +358,7 @@ export default function RevisarDuplicados({ idImportacion, onProcesarCompleto })
               <button
                 onClick={() => tomarDecision(duplicado.id_duplicado, 'aprobar')}
                 disabled={procesandoId === duplicado.id_duplicado}
-                style={{
-                  padding: '0.5rem 1rem',
-                  background: decision === 'aprobar' ? '#10b981' : '#fff',
-                  color: decision === 'aprobar' ? '#fff' : '#10b981',
-                  border: '1px solid #10b981',
-                  borderRadius: '6px',
-                  cursor: procesandoId === duplicado.id_duplicado ? 'not-allowed' : 'pointer',
-                  fontSize: '0.9rem',
-                  fontWeight: 600,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.5rem',
-                  opacity: procesandoId === duplicado.id_duplicado ? 0.6 : 1
-                }}
+                className={`duplicado-btn-aprobar ${decision === 'aprobar' ? 'selected' : ''}`}
               >
                 <FiCheckCircle size={16} />
                 Aprobar
@@ -392,19 +367,7 @@ export default function RevisarDuplicados({ idImportacion, onProcesarCompleto })
                 <button
                   onClick={() => procesarIndividual(duplicado.id_duplicado, decision)}
                   disabled={procesandoId === duplicado.id_duplicado}
-                  style={{
-                    padding: '0.5rem 1rem',
-                    background: procesandoId === duplicado.id_duplicado ? '#ccc' : '#1976d2',
-                    color: '#fff',
-                    border: 'none',
-                    borderRadius: '6px',
-                    cursor: procesandoId === duplicado.id_duplicado ? 'not-allowed' : 'pointer',
-                    fontSize: '0.9rem',
-                    fontWeight: 600,
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.5rem'
-                  }}
+                  className="duplicado-btn-confirmar"
                 >
                   {procesandoId === duplicado.id_duplicado ? (
                     <>

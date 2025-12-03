@@ -301,9 +301,9 @@ export default function ImportarEquipos({ onImportComplete }) {
                 gap: '0.5rem'
               }}
             >
-              <FiFile size={32} color="#40c057" />
+              <FiFile size={32} style={{ color: 'var(--success-800)' }} />
               {archivo ? (
-                <span style={{ color: '#40c057', fontWeight: 600 }}>{archivo.name}</span>
+                <span style={{ color: 'var(--success-800)', fontWeight: 600 }}>{archivo.name}</span>
               ) : (
                 <span style={{ color: '#666' }}>Haz clic para seleccionar un archivo</span>
               )}
@@ -315,7 +315,7 @@ export default function ImportarEquipos({ onImportComplete }) {
           <div style={{
             padding: '1rem',
             background: '#fee2e2',
-            color: '#dc2626',
+            color: 'var(--error-700)',
             borderRadius: '8px',
             marginBottom: '1rem',
             display: 'flex',
@@ -332,7 +332,7 @@ export default function ImportarEquipos({ onImportComplete }) {
           disabled={!archivo || loading}
           style={{
             padding: '0.75rem 1.5rem',
-            background: loading || !archivo ? '#ccc' : '#40c057',
+            background: loading || !archivo ? '#ccc' : 'var(--success-800)',
             color: '#fff',
             border: 'none',
             borderRadius: '8px',
@@ -357,7 +357,7 @@ export default function ImportarEquipos({ onImportComplete }) {
           padding: '1.5rem',
           background: '#fff3cd',
           borderRadius: '8px',
-          border: '1px solid #ffc107'
+          border: '1px solid var(--warning-600)'
         }}>
           <h4 style={{ margin: '0 0 1rem 0', fontSize: '1.1rem', color: '#1a2a3a', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <FiUser size={20} />
@@ -386,7 +386,7 @@ export default function ImportarEquipos({ onImportComplete }) {
                 style={{
                   flex: 1,
                   padding: '0.75rem',
-                  border: cuentadanteEncontrado ? '2px solid #10b981' : '1px solid #ddd',
+                  border: cuentadanteEncontrado ? '2px solid var(--success-800)' : '1px solid #ddd',
                   borderRadius: '6px',
                   fontSize: '0.95rem'
                 }}
@@ -418,13 +418,13 @@ export default function ImportarEquipos({ onImportComplete }) {
               <div style={{
                 padding: '0.75rem',
                 background: '#d1fae5',
-                border: '1px solid #10b981',
+                border: '1px solid var(--success-800)',
                 borderRadius: '6px',
                 display: 'flex',
                 alignItems: 'center',
                 gap: '0.5rem'
               }}>
-                <FiCheckCircle size={18} color="#10b981" />
+                <FiCheckCircle size={18} style={{ color: 'var(--success-800)' }} />
                 <div style={{ flex: 1 }}>
                   <strong>{cuentadanteEncontrado.nombre_usuario}</strong> - Cédula: {cuentadanteEncontrado.cedula}
                 </div>
@@ -436,7 +436,7 @@ export default function ImportarEquipos({ onImportComplete }) {
               disabled={!cuentadanteEncontrado || savingCuentadante || loadingCuentadante}
               style={{
                 padding: '0.75rem 1.5rem',
-                background: savingCuentadante || !cuentadanteEncontrado ? '#ccc' : '#ffc107',
+                background: savingCuentadante || !cuentadanteEncontrado ? '#ccc' : 'var(--warning-600)',
                 color: '#000',
                 border: 'none',
                 borderRadius: '6px',
@@ -477,16 +477,16 @@ export default function ImportarEquipos({ onImportComplete }) {
               <div style={{ color: '#666', fontSize: '0.9rem' }}>Total</div>
             </div>
             <div style={{ textAlign: 'center', padding: '1rem', background: '#d1fae5', borderRadius: '8px' }}>
-              <div style={{ fontSize: '2rem', fontWeight: 700, color: '#10b981' }}>{resultado.exitosos}</div>
-              <div style={{ color: '#059669', fontSize: '0.9rem' }}>Exitosos</div>
+              <div style={{ fontSize: '2rem', fontWeight: 700, color: 'var(--success-800)' }}>{resultado.exitosos}</div>
+              <div style={{ color: 'var(--success-800)', fontSize: '0.9rem' }}>Exitosos</div>
             </div>
             <div style={{ textAlign: 'center', padding: '1rem', background: '#fee2e2', borderRadius: '8px' }}>
-              <div style={{ fontSize: '2rem', fontWeight: 700, color: '#ef4444' }}>{resultado.fallidos}</div>
-              <div style={{ color: '#dc2626', fontSize: '0.9rem' }}>Fallidos</div>
+              <div style={{ fontSize: '2rem', fontWeight: 700, color: 'var(--error-700)' }}>{resultado.fallidos}</div>
+              <div style={{ color: 'var(--error-700)', fontSize: '0.9rem' }}>Fallidos</div>
             </div>
             {resultado.duplicados > 0 && (
               <div style={{ textAlign: 'center', padding: '1rem', background: '#fff3cd', borderRadius: '8px' }}>
-                <div style={{ fontSize: '2rem', fontWeight: 700, color: '#ffc107' }}>{resultado.duplicados}</div>
+                <div style={{ fontSize: '2rem', fontWeight: 700, color: 'var(--warning-600)' }}>{resultado.duplicados}</div>
                 <div style={{ color: '#b45309', fontSize: '0.9rem' }}>Duplicados</div>
               </div>
             )}

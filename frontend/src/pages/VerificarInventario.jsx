@@ -180,7 +180,7 @@ export default function VerificarInventario() {
 
   function getJornadaBadge(jornada) {
     const jornadas = {
-      'Mañana': { color: '#f59e0b', bg: '#fef3c7' },
+      'Mañana': { color: 'var(--warning-600)', bg: '#fef3c7' },
       'Tarde': { color: '#3b82f6', bg: '#dbeafe' },
       'Noche': { color: '#8b5cf6', bg: '#ede9fe' }
     }
@@ -204,8 +204,8 @@ export default function VerificarInventario() {
 
   function getEstadoBadge(estado) {
     const estados = {
-      'Verificado': { color: '#10b981', bg: '#d1fae5', icon: <FiCheckCircle /> },
-      'Con Novedad': { color: '#ef4444', bg: '#fee2e2', icon: <FiAlertCircle /> },
+      'Verificado': { color: 'var(--success-800)', bg: '#d1fae5', icon: <FiCheckCircle /> },
+      'Con Novedad': { color: 'var(--error-700)', bg: '#fee2e2', icon: <FiAlertCircle /> },
       'No Verificado': { color: '#6b7280', bg: '#f3f4f6', icon: <FiXCircle /> }
     }
     const estadoInfo = estados[estado] || estados['No Verificado']
@@ -446,7 +446,7 @@ export default function VerificarInventario() {
                                       borderRadius: '12px',
                                       fontSize: '0.85rem',
                                       fontWeight: 600,
-                                      color: equipo.estado_fisico === 'Bueno' || equipo.estado_fisico === 'Nuevo' ? '#10b981' : '#ef4444',
+                                      color: equipo.estado_fisico === 'Bueno' || equipo.estado_fisico === 'Nuevo' ? 'var(--success-800)' : 'var(--error-700)',
                                       background: equipo.estado_fisico === 'Bueno' || equipo.estado_fisico === 'Nuevo' ? '#d1fae5' : '#fee2e2',
                                       display: 'inline-block'
                                     }}>
@@ -471,7 +471,7 @@ export default function VerificarInventario() {
                                         className="btn"
                                         onClick={() => handleReportarNovedad(equipo)}
                                         disabled={loading}
-                                        style={{ fontSize: '0.85rem', padding: '6px 12px', background: '#fee2e2', color: '#ef4444', border: '2px solid #ef4444' }}
+                                        style={{ fontSize: '0.85rem', padding: '6px 12px', background: '#fee2e2', color: 'var(--error-700)', border: '2px solid var(--error-700)' }}
                                         title="Reportar novedad"
                                       >
                                         <FiAlertCircle size={14} />

@@ -190,7 +190,7 @@ export default function BuscarCuentadante() {
                             fontSize: '0.85rem',
                             fontWeight: 600,
                             background: cuentadante.estado === 'Activo' ? '#d1fae5' : '#fee2e2',
-                            color: cuentadante.estado === 'Activo' ? '#059669' : '#dc2626'
+                            color: cuentadante.estado === 'Activo' ? 'var(--success-800)' : 'var(--error-700)'
                           }}>
                             {cuentadante.estado}
                           </span>
@@ -231,11 +231,11 @@ export default function BuscarCuentadante() {
                         padding: '1.5rem',
                         background: '#f0fdf4',
                         borderRadius: '8px',
-                        border: '1px solid #10b981',
+                        border: '1px solid var(--success-800)',
                         textAlign: 'center'
                       }}>
-                        <FiCheckCircle size={32} color="#10b981" style={{ marginBottom: '0.5rem' }} />
-                        <div style={{ fontSize: '2rem', fontWeight: 700, color: '#059669' }}>
+                        <FiCheckCircle size={32} style={{ marginBottom: '0.5rem', color: 'var(--success-800)' }} />
+                        <div style={{ fontSize: '2rem', fontWeight: 700, color: 'var(--success-800)' }}>
                           {estadisticas.equipos_buenos || 0}
                         </div>
                         <div style={{ color: '#666', fontSize: '0.9rem', marginTop: '0.25rem' }}>Equipos en Buen Estado</div>
@@ -244,11 +244,11 @@ export default function BuscarCuentadante() {
                         padding: '1.5rem',
                         background: '#fef3c7',
                         borderRadius: '8px',
-                        border: '1px solid #f59e0b',
+                        border: '1px solid var(--warning-600)',
                         textAlign: 'center'
                       }}>
-                        <FiAlertCircle size={32} color="#f59e0b" style={{ marginBottom: '0.5rem' }} />
-                        <div style={{ fontSize: '2rem', fontWeight: 700, color: '#d97706' }}>
+                        <FiAlertCircle size={32} style={{ marginBottom: '0.5rem', color: 'var(--warning-600)' }} />
+                        <div style={{ fontSize: '2rem', fontWeight: 700, color: 'var(--warning-600)' }}>
                           {estadisticas.equipos_regulares || 0}
                         </div>
                         <div style={{ color: '#666', fontSize: '0.9rem', marginTop: '0.25rem' }}>Equipos en Estado Regular</div>
@@ -257,11 +257,11 @@ export default function BuscarCuentadante() {
                         padding: '1.5rem',
                         background: '#fee2e2',
                         borderRadius: '8px',
-                        border: '1px solid #ef4444',
+                        border: '1px solid var(--error-700)',
                         textAlign: 'center'
                       }}>
-                        <FiTrendingDown size={32} color="#ef4444" style={{ marginBottom: '0.5rem' }} />
-                        <div style={{ fontSize: '2rem', fontWeight: 700, color: '#dc2626' }}>
+                        <FiTrendingDown size={32} style={{ marginBottom: '0.5rem', color: 'var(--error-700)' }} />
+                        <div style={{ fontSize: '2rem', fontWeight: 700, color: 'var(--error-700)' }}>
                           {estadisticas.equipos_danados || 0}
                         </div>
                         <div style={{ color: '#666', fontSize: '0.9rem', marginTop: '0.25rem' }}>Equipos Dañados</div>
@@ -327,8 +327,8 @@ export default function BuscarCuentadante() {
                                   fontWeight: 600,
                                   background: equipo.estado_fisico === 'Bueno' ? '#d1fae5' : 
                                              equipo.estado_fisico === 'Regular' ? '#fef3c7' : '#fee2e2',
-                                  color: equipo.estado_fisico === 'Bueno' ? '#059669' : 
-                                         equipo.estado_fisico === 'Regular' ? '#d97706' : '#dc2626'
+                                  color: equipo.estado_fisico === 'Bueno' ? 'var(--success-800)' : 
+                                         equipo.estado_fisico === 'Regular' ? 'var(--warning-600)' : 'var(--error-700)'
                                 }}>
                                   {equipo.estado_fisico}
                                 </span>

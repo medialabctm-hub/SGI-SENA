@@ -171,7 +171,7 @@ export default function AsignarAmbientes() {
 
   function getEstadoBadge(estado) {
     const estados = {
-      'Activa': { color: '#10b981', bg: '#d1fae5' },
+      'Activa': { color: 'var(--success-800)', bg: '#d1fae5' },
       'Finalizada': { color: '#6b7280', bg: '#f3f4f6' }
     }
     const estadoInfo = estados[estado] || estados['Finalizada']
@@ -420,7 +420,7 @@ export default function AsignarAmbientes() {
                               borderRadius: '12px',
                               fontSize: '0.85rem',
                               fontWeight: 600,
-                              color: grupo.jornada === 'Mañana' ? '#f59e0b' : grupo.jornada === 'Tarde' ? '#3b82f6' : '#8b5cf6',
+                              color: grupo.jornada === 'Mañana' ? 'var(--warning-600)' : grupo.jornada === 'Tarde' ? '#3b82f6' : '#8b5cf6',
                               background: grupo.jornada === 'Mañana' ? '#fef3c7' : grupo.jornada === 'Tarde' ? '#dbeafe' : '#ede9fe'
                             }}>
                               Jornada: {grupo.jornada || 'Sin Jornada'}

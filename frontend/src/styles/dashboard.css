@@ -207,44 +207,44 @@
 
 .stat-card-green {
   background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
-  border-color: #10b981;
+  border-color: var(--success-800);
 }
 
 .stat-card-green .stat-icon-wrapper {
-  color: #10b981;
-  background: rgba(16, 185, 129, 0.1);
+  color: var(--success-800);
+  background: rgba(1, 175, 0, 0.1);
 }
 
 .stat-card-green .stat-value-large {
-  color: #059669;
+  color: var(--success-800);
 }
 
 .stat-card-yellow {
   background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
-  border-color: #f59e0b;
+  border-color: var(--warning-600);
 }
 
 .stat-card-yellow .stat-icon-wrapper {
-  color: #f59e0b;
-  background: rgba(245, 158, 11, 0.1);
+  color: var(--warning-600);
+  background: rgba(229, 172, 0, 0.1);
 }
 
 .stat-card-yellow .stat-value-large {
-  color: #d97706;
+  color: var(--warning-600);
 }
 
 .stat-card-red {
   background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
-  border-color: #ef4444;
+  border-color: var(--error-700);
 }
 
 .stat-card-red .stat-icon-wrapper {
-  color: #ef4444;
-  background: rgba(239, 68, 68, 0.1);
+  color: var(--error-700);
+  background: rgba(166, 29, 42, 0.1);
 }
 
 .stat-card-red .stat-value-large {
-  color: #dc2626;
+  color: var(--error-700);
 }
 
 .stat-card-gray {

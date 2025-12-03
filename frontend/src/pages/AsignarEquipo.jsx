@@ -331,7 +331,7 @@ export default function AsignarEquipo() {
           />
         <div className="form-equipos form-modern">
           <div className="form-header">
-            <div className="form-icon-wrapper" style={{ background: 'linear-gradient(135deg, #51cf66 0%, #40c057 100%)' }}>
+            <div className="form-icon-wrapper" style={{ background: 'linear-gradient(135deg, var(--success-800) 0%, var(--success-900) 100%)' }}>
               <FiUserPlus size={28} color="#fff" />
             </div>
             <div style={{ flex: 1 }}>
@@ -359,11 +359,12 @@ export default function AsignarEquipo() {
                 padding: '0.75rem 1.5rem',
                 border: 'none',
                 background: 'transparent',
-                color: activeTab === 'asignar' ? '#40c057' : '#6b7280',
+                color: activeTab === 'asignar' ? 'var(--success-800)' : '#6b7280',
                 fontWeight: activeTab === 'asignar' ? 600 : 400,
                 fontSize: '1rem',
                 cursor: 'pointer',
-                borderBottom: activeTab === 'asignar' ? '3px solid #40c057' : '3px solid transparent',
+                borderBottom: activeTab === 'asignar' ? '3px solid var(--success-800)' : '3px solid transparent',
+                transition: 'all 0.2s'
                 transition: 'all 0.2s',
                 display: 'flex',
                 alignItems: 'center',
@@ -379,11 +380,12 @@ export default function AsignarEquipo() {
                 padding: '0.75rem 1.5rem',
                 border: 'none',
                 background: 'transparent',
-                color: activeTab === 'ver' ? '#40c057' : '#6b7280',
+                color: activeTab === 'ver' ? 'var(--success-800)' : '#6b7280',
                 fontWeight: activeTab === 'ver' ? 600 : 400,
                 fontSize: '1rem',
                 cursor: 'pointer',
-                borderBottom: activeTab === 'ver' ? '3px solid #40c057' : '3px solid transparent',
+                borderBottom: activeTab === 'ver' ? '3px solid var(--success-800)' : '3px solid transparent',
+                transition: 'all 0.2s'
                 transition: 'all 0.2s',
                 display: 'flex',
                 alignItems: 'center',
@@ -447,7 +449,7 @@ export default function AsignarEquipo() {
                   <div className="equipo-found-header">
                     {equipoEncontrado.estado_mantenimiento_activo === 'En Proceso' ? (
                       <>
-                        <FiAlertCircle size={20} color="#f59e0b" />
+                        <FiAlertCircle size={20} style={{ color: 'var(--warning-600)' }} />
                         <span>Equipo en Mantenimiento</span>
                       </>
                     ) : (
@@ -469,9 +471,9 @@ export default function AsignarEquipo() {
                         padding: '12px', 
                         background: '#fef3c7', 
                         borderRadius: '8px',
-                        border: '1px solid #f59e0b'
+                        border: '1px solid var(--warning-600)'
                       }}>
-                        <strong style={{ color: '#f59e0b' }}>⚠️ Equipo en Mantenimiento</strong>
+                        <strong style={{ color: 'var(--warning-600)' }}>⚠️ Equipo en Mantenimiento</strong>
                         <div style={{ marginTop: '4px', fontSize: '0.9rem', color: '#92400e' }}>
                           Este equipo está actualmente en mantenimiento ({equipoEncontrado.tipo_mantenimiento_activo || 'En Proceso'}). 
                           No se puede asignar hasta que el mantenimiento finalice.

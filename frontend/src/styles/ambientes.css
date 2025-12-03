@@ -232,9 +232,9 @@
 }
 
 .stat-total::before { background: #3b82f6; }
-.stat-disponibles::before { background: #10b981; }
-.stat-regular::before { background: #f59e0b; }
-.stat-danados::before { background: #ef4444; }
+.stat-disponibles::before { background: var(--success-800); }
+.stat-regular::before { background: var(--warning-600); }
+.stat-danados::before { background: var(--error-700); }
 
 .stat-icon {
   width: 56px;
@@ -252,17 +252,17 @@
 }
 
 .stat-disponibles .stat-icon {
-  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  background: linear-gradient(135deg, var(--success-800) 0%, var(--success-900) 100%);
   color: white;
 }
 
 .stat-regular .stat-icon {
-  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  background: linear-gradient(135deg, var(--warning-600) 0%, var(--warning-700) 100%);
   color: white;
 }
 
 .stat-danados .stat-icon {
-  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  background: linear-gradient(135deg, var(--error-700) 0%, var(--error-800) 100%);
   color: white;
 }
 
@@ -507,7 +507,7 @@
   position: absolute;
   top: 12px;
   right: 12px;
-  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  background: linear-gradient(135deg, var(--success-800) 0%, var(--success-900) 100%);
   color: white;
   padding: 6px 12px;
   border-radius: 20px;
@@ -561,7 +561,7 @@
 
 .ambiente-imagen-btn-delete:hover {
   background: #fee2e2;
-  color: #ef4444;
+  color: var(--error-700);
 }
 
 .ambiente-imagen-info {
@@ -621,7 +621,7 @@
 
 .error-text-inline {
   font-size: 12px;
-  color: #ef4444;
+  color: var(--error-700);
   margin-top: 4px;
   display: block;
 }

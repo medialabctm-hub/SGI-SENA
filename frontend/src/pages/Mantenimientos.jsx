@@ -56,9 +56,9 @@ export default function Mantenimientos() {
   function getEstadoBadge(estado) {
     const estados = {
       'Programado': { color: '#3b82f6', bg: '#dbeafe', icon: <FiClock size={14} /> },
-      'En Proceso': { color: '#f59e0b', bg: '#fef3c7', icon: <FiAlertCircle size={14} /> },
-      'Completado': { color: '#10b981', bg: '#d1fae5', icon: <FiCheckCircle size={14} /> },
-      'Cancelado': { color: '#ef4444', bg: '#fee2e2', icon: <FiXCircle size={14} /> }
+      'En Proceso': { color: 'var(--warning-600)', bg: '#fef3c7', icon: <FiAlertCircle size={14} /> },
+      'Completado': { color: 'var(--success-800)', bg: '#d1fae5', icon: <FiCheckCircle size={14} /> },
+      'Cancelado': { color: 'var(--error-700)', bg: '#fee2e2', icon: <FiXCircle size={14} /> }
     }
     const estadoInfo = estados[estado] || estados['Completado']
     return (
@@ -81,8 +81,8 @@ export default function Mantenimientos() {
 
   function getTipoBadge(tipo) {
     const tipos = {
-      'Preventivo': { color: '#10b981', bg: '#d1fae5' },
-      'Correctivo': { color: '#f59e0b', bg: '#fef3c7' },
+      'Preventivo': { color: 'var(--success-800)', bg: '#d1fae5' },
+      'Correctivo': { color: 'var(--warning-600)', bg: '#fef3c7' },
       'Actualización': { color: '#3b82f6', bg: '#dbeafe' }
     }
     const tipoInfo = tipos[tipo] || tipos['Preventivo']

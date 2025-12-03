@@ -262,3 +262,35 @@
   background: #f3f4f6;
   transform: scale(0.98);
 }
+
+.consultar-equipo-btn-rojo {
+  background: var(--error-700);
+  color: #fff;
+  border: 1px solid var(--error-700);
+}
+
+.consultar-equipo-btn-rojo:hover:not(:disabled) {
+  background: var(--error-800);
+  border-color: var(--error-800);
+}
+
+.consultar-equipo-btn-rojo:active:not(:disabled) {
+  background: var(--error-800);
+  transform: scale(0.98);
+}
+
+.consultar-equipo-btn-naranja {
+  background: var(--warning-600);
+  color: #fff;
+  border: 1px solid var(--warning-600);
+}
+
+.consultar-equipo-btn-naranja:hover:not(:disabled) {
+  background: var(--warning-700);
+  border-color: var(--warning-700);
+}
+
+.consultar-equipo-btn-naranja:active:not(:disabled) {
+  background: var(--warning-700);
+  transform: scale(0.98);
+}

@@ -323,9 +323,9 @@ export default function Horarios() {
   function getEstadoBadge(estado) {
     const estados = {
       'Programada': { color: '#3b82f6', bg: '#dbeafe' },
-      'En Curso': { color: '#10b981', bg: '#d1fae5' },
+      'En Curso': { color: 'var(--success-800)', bg: '#d1fae5' },
       'Finalizada': { color: '#6b7280', bg: '#f3f4f6' },
-      'Cancelada': { color: '#ef4444', bg: '#fee2e2' }
+      'Cancelada': { color: 'var(--error-700)', bg: '#fee2e2' }
     }
     const estadoInfo = estados[estado] || estados['Programada']
     return (

@@ -7,10 +7,10 @@ export default function ConfirmModal({ open, message, onConfirm, onCancel, title
   
   const typeStyles = {
     danger: {
-      iconColor: '#ef4444'
+      iconColor: 'var(--error-700)'
     },
     warning: {
-      iconColor: '#f59e0b'
+      iconColor: 'var(--warning-600)'
     },
     info: {
       iconColor: '#3b82f6'

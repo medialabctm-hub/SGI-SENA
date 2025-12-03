@@ -392,14 +392,15 @@
 }
 
 .row-actions .btn.danger {
-  background: var(--error-500);
+  background: var(--error-700);
   color: white;
-  box-shadow: 0 2px 6px rgba(220, 53, 69, 0.3);
+  box-shadow: 0 2px 6px rgba(166, 29, 42, 0.3);
 }
 
 .row-actions .btn.danger:hover {
+  background: var(--error-800);
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(220, 53, 69, 0.4);
+  box-shadow: 0 4px 12px rgba(133, 23, 34, 0.4);
 }
 
 .row-actions .btn:not(.primary):not(.danger) {

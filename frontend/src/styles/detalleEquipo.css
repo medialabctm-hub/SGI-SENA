@@ -337,7 +337,7 @@
 
 .detalle-equipo-gallery-btn-delete {
   background: #fee2e2;
-  color: #dc2626;
+  color: var(--error-700);
   border: 1px solid #fecaca;
 }
 

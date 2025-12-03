@@ -287,8 +287,8 @@ export default function ConsultarEquipo() {
   function getEstadoBadge(estado) {
     const estados = {
       'Bueno': { color: 'var(--success-800)', bg: 'var(--success-50)' },
-      'Regular': { color: '#f59e0b', bg: '#fef3c7' },
-      'Malo': { color: '#ef4444', bg: '#fee2e2' },
+      'Regular': { color: 'var(--warning-600)', bg: '#fef3c7' },
+      'Malo': { color: 'var(--error-700)', bg: '#fee2e2' },
       'Nuevo': { color: '#3b82f6', bg: '#dbeafe' },
       'En Reparación': { color: '#8b5cf6', bg: '#ede9fe' }
     }

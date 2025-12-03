@@ -117,7 +117,7 @@ export default function MisEquipos() {
                             background: 
                               eq.estado_fisico === 'Nuevo' ? '#28a745' :
                               eq.estado_fisico === 'Bueno' ? '#17a2b8' :
-                              eq.estado_fisico === 'Regular' ? '#ffc107' :
+                              eq.estado_fisico === 'Regular' ? 'var(--warning-600)' :
                               eq.estado_fisico === 'Malo' ? '#fd7e14' :
                               eq.estado_fisico === 'Dañado' ? '#dc3545' : '#6c757d',
                             color: '#fff',

@@ -75,8 +75,8 @@ export default function HistorialVerificaciones() {
 
   function getEstadoBadge(estado) {
     const estados = {
-      'Verificado': { color: '#10b981', bg: '#d1fae5', icon: <FiCheckCircle size={16} /> },
-      'Con Novedad': { color: '#ef4444', bg: '#fee2e2', icon: <FiAlertCircle size={16} /> },
+      'Verificado': { color: 'var(--success-800)', bg: '#d1fae5', icon: <FiCheckCircle size={16} /> },
+      'Con Novedad': { color: 'var(--error-700)', bg: '#fee2e2', icon: <FiAlertCircle size={16} /> },
       'No Verificado': { color: '#6b7280', bg: '#f3f4f6', icon: <FiX size={16} /> }
     }
     const estadoInfo = estados[estado] || estados['No Verificado']
@@ -280,7 +280,7 @@ export default function HistorialVerificaciones() {
                             borderRadius: '12px',
                             fontSize: '0.85rem',
                             fontWeight: 600,
-                            color: verif.jornada === 'Mañana' ? '#f59e0b' : verif.jornada === 'Tarde' ? '#3b82f6' : '#8b5cf6',
+                            color: verif.jornada === 'Mañana' ? 'var(--warning-600)' : verif.jornada === 'Tarde' ? '#3b82f6' : '#8b5cf6',
                             background: verif.jornada === 'Mañana' ? '#fef3c7' : verif.jornada === 'Tarde' ? '#dbeafe' : '#ede9fe'
                           }}>
                             {verif.jornada}
