@@ -145,95 +145,6 @@ export async function importarEquipos(req, res) {
           continue;
         }
 
-        // Validar placa única - Si existe, guardar como duplicado pendiente
-        if (placa) {
-          const [equiposExistentes] = await defaultDb.execute(
-            `SELECT e.*, 
-                    c.nombre_categoria,
-                    a.nombre_ambiente,
-                    a.codigo_ambiente,
-                    u.nombre_usuario as cuentadante_nombre
-             FROM Elementos e
-             LEFT JOIN Categorias_Equipo c ON e.id_categoria = c.id_categoria
-             LEFT JOIN Ambientes a ON e.id_ambiente = a.id_ambiente
-             LEFT JOIN Usuarios u ON e.id_cuentadante = u.id_usuario
-             WHERE e.placa = ? 
-             LIMIT 1`,
-            [placa]
-          );
-          
-          if (equiposExistentes.length > 0) {
-            const equipoExistente = equiposExistentes[0];
-            
-            // Preparar datos del Excel para comparación
-            const datosExcel = {
-              placa,
-              tipo,
-              marca: marca || null,
-              modelo,
-              consecutivo: numeroSerie || null,
-              descripcion: descripcion || null,
-              fecha_adquisicion: fechaAdq || null,
-              valor_ingreso: valorIngreso ? parseFloat(valorIngreso) : (costo ? parseFloat(costo) : null),
-              vida_util_meses: vidaUtilMeses ? parseInt(vidaUtilMeses) : null,
-              estado_fisico: estadoFisicoValido,
-              specs_completas: specsCompletas || null,
-              r_centro: rCentro || null,
-              atributos: atributos || null,
-              categoria: tipo,
-              ambiente: ambiente,
-              categoria_id: categoriaId,
-              ambiente_id: ambienteId
-            };
-            
-            // Preparar datos de BD para comparación
-            const datosBD = {
-              codigo_equipo: equipoExistente.codigo_equipo,
-              placa: equipoExistente.placa,
-              tipo: equipoExistente.tipo,
-              marca: equipoExistente.marca || null,
-              modelo: equipoExistente.modelo,
-              consecutivo: equipoExistente.consecutivo || null,
-              descripcion: equipoExistente.descripcion || null,
-              fecha_adquisicion: equipoExistente.fecha_adquisicion ? 
-                new Date(equipoExistente.fecha_adquisicion).toISOString().split('T')[0] : null,
-              valor_ingreso: equipoExistente.valor_ingreso ? parseFloat(equipoExistente.valor_ingreso) : 
-                           (equipoExistente.costo ? parseFloat(equipoExistente.costo) : null),
-              vida_util_meses: equipoExistente.vida_util_meses || null,
-              estado_fisico: equipoExistente.estado_fisico,
-              specs_completas: equipoExistente.specs_completas || null,
-              r_centro: equipoExistente.r_centro || null,
-              atributos: equipoExistente.atributos || null,
-              categoria: equipoExistente.nombre_categoria || null,
-              ambiente: equipoExistente.nombre_ambiente || equipoExistente.codigo_ambiente || null,
-              categoria_id: equipoExistente.id_categoria,
-              ambiente_id: equipoExistente.id_ambiente,
-              cuentadante: equipoExistente.cuentadante_nombre || null,
-              fecha_registro: equipoExistente.fecha_registro ? 
-                new Date(equipoExistente.fecha_registro).toISOString() : null
-            };
-            
-            // Guardar como duplicado pendiente
-            await defaultDb.execute(
-              `INSERT INTO Importaciones_Duplicados 
-               (id_importacion, fila_excel, placa, codigo_equipo_existente, datos_excel, datos_bd, estado)
-               VALUES (?, ?, ?, ?, ?, ?, 'Pendiente')`,
-              [
-                idImportacion,
-                numeroFila,
-                placa,
-                equipoExistente.codigo_equipo,
-                JSON.stringify(datosExcel),
-                JSON.stringify(datosBD)
-              ]
-            );
-            
-            resultados.duplicados++;
-            resultados.fallidos++;
-            continue;
-          }
-        }
-
         // Validar consecutivo único (si se proporciona)
         // NOTA: Se permite consecutivo duplicado bajo solicitud del usuario ("el consecutivo esta dando problemas")
         /*
@@ -320,6 +231,96 @@ export async function importarEquipos(req, res) {
                 fechaAdq = parsed.toISOString().split('T')[0];
               }
             }
+          }
+        }
+
+        // Validar placa única - Si existe, guardar como duplicado pendiente
+        // IMPORTANTE: Esta validación debe ir DESPUÉS de inicializar todas las variables necesarias
+        if (placa) {
+          const [equiposExistentes] = await defaultDb.execute(
+            `SELECT e.*, 
+                    c.nombre_categoria,
+                    a.nombre_ambiente,
+                    a.codigo_ambiente,
+                    u.nombre_usuario as cuentadante_nombre
+             FROM Elementos e
+             LEFT JOIN Categorias_Equipo c ON e.id_categoria = c.id_categoria
+             LEFT JOIN Ambientes a ON e.id_ambiente = a.id_ambiente
+             LEFT JOIN Usuarios u ON e.id_cuentadante = u.id_usuario
+             WHERE e.placa = ? 
+             LIMIT 1`,
+            [placa]
+          );
+          
+          if (equiposExistentes.length > 0) {
+            const equipoExistente = equiposExistentes[0];
+            
+            // Preparar datos del Excel para comparación
+            const datosExcel = {
+              placa,
+              tipo,
+              marca: marca || null,
+              modelo,
+              consecutivo: numeroSerie || null,
+              descripcion: descripcion || null,
+              fecha_adquisicion: fechaAdq || null,
+              valor_ingreso: valorIngreso ? parseFloat(valorIngreso) : (costo ? parseFloat(costo) : null),
+              vida_util_meses: vidaUtilMeses ? parseInt(vidaUtilMeses) : null,
+              estado_fisico: estadoFisicoValido,
+              specs_completas: specsCompletas || null,
+              r_centro: rCentro || null,
+              atributos: atributos || null,
+              categoria: tipo,
+              ambiente: ambiente,
+              categoria_id: categoriaId,
+              ambiente_id: ambienteId
+            };
+            
+            // Preparar datos de BD para comparación
+            const datosBD = {
+              codigo_equipo: equipoExistente.codigo_equipo,
+              placa: equipoExistente.placa,
+              tipo: equipoExistente.tipo,
+              marca: equipoExistente.marca || null,
+              modelo: equipoExistente.modelo,
+              consecutivo: equipoExistente.consecutivo || null,
+              descripcion: equipoExistente.descripcion || null,
+              fecha_adquisicion: equipoExistente.fecha_adquisicion ? 
+                new Date(equipoExistente.fecha_adquisicion).toISOString().split('T')[0] : null,
+              valor_ingreso: equipoExistente.valor_ingreso ? parseFloat(equipoExistente.valor_ingreso) : 
+                           (equipoExistente.costo ? parseFloat(equipoExistente.costo) : null),
+              vida_util_meses: equipoExistente.vida_util_meses || null,
+              estado_fisico: equipoExistente.estado_fisico,
+              specs_completas: equipoExistente.specs_completas || null,
+              r_centro: equipoExistente.r_centro || null,
+              atributos: equipoExistente.atributos || null,
+              categoria: equipoExistente.nombre_categoria || null,
+              ambiente: equipoExistente.nombre_ambiente || equipoExistente.codigo_ambiente || null,
+              categoria_id: equipoExistente.id_categoria,
+              ambiente_id: equipoExistente.id_ambiente,
+              cuentadante: equipoExistente.cuentadante_nombre || null,
+              fecha_registro: equipoExistente.fecha_registro ? 
+                new Date(equipoExistente.fecha_registro).toISOString() : null
+            };
+            
+            // Guardar como duplicado pendiente
+            await defaultDb.execute(
+              `INSERT INTO Importaciones_Duplicados 
+               (id_importacion, fila_excel, placa, codigo_equipo_existente, datos_excel, datos_bd, estado)
+               VALUES (?, ?, ?, ?, ?, ?, 'Pendiente')`,
+              [
+                idImportacion,
+                numeroFila,
+                placa,
+                equipoExistente.codigo_equipo,
+                JSON.stringify(datosExcel),
+                JSON.stringify(datosBD)
+              ]
+            );
+            
+            resultados.duplicados++;
+            resultados.fallidos++;
+            continue;
           }
         }
 
