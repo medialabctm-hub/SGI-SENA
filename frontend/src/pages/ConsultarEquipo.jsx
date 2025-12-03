@@ -529,33 +529,18 @@ export default function ConsultarEquipo() {
                   className="search-input"
                 />
                 <button 
-                  className="btn btn-verde" 
+                  className="consultar-equipo-btn consultar-equipo-btn-verde" 
                   type="submit" 
                   disabled={loading}
-                  style={{ 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    gap: '8px', 
-                    opacity: 1, 
-                    visibility: 'visible',
-                    background: '#10b981',
-                    color: '#fff',
-                    border: '1px solid #10b981',
-                    padding: '8px 16px',
-                    borderRadius: '8px',
-                    cursor: loading ? 'not-allowed' : 'pointer',
-                    fontWeight: 600
-                  }}
                 >
                   <FiSearch size={16} />
                   {loading ? 'Buscando...' : 'Buscar'}
                 </button>
                 <button 
                   type="button" 
-                  className="btn" 
+                  className="consultar-equipo-btn consultar-equipo-btn-gris" 
                   onClick={handleMostrarTodos} 
                   disabled={loading}
-                  style={{ display: 'flex', alignItems: 'center', gap: '8px', opacity: 1, visibility: 'visible' }}
                 >
                   <FiList size={16} />
                   {loading ? 'Cargando...' : 'Mostrar todos'}
@@ -564,33 +549,18 @@ export default function ConsultarEquipo() {
               <div style={{display:'flex', gap:12, alignItems:'center'}}>
                 <button 
                   type="button" 
-                  className="btn" 
+                  className="consultar-equipo-btn consultar-equipo-btn-gris" 
                   onClick={() => setShowColumnFilter(true)}
                   title="Configurar columnas visibles"
-                  style={{ display: 'flex', alignItems: 'center', gap: '8px', opacity: 1, visibility: 'visible' }}
                 >
                   <FiSettings size={16} />
                   Columnas
                 </button>
                 <button 
                   type="button" 
-                  className="btn btn-verde" 
+                  className="consultar-equipo-btn consultar-equipo-btn-verde" 
                   onClick={handleDescargarPDF} 
                   disabled={loading}
-                  style={{ 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    gap: '8px', 
-                    opacity: 1, 
-                    visibility: 'visible',
-                    background: '#10b981',
-                    color: '#fff',
-                    border: '1px solid #10b981',
-                    padding: '8px 16px',
-                    borderRadius: '8px',
-                    cursor: loading ? 'not-allowed' : 'pointer',
-                    fontWeight: 600
-                  }}
                 >
                   <FiDownload size={16} />
                   Descargar Excel

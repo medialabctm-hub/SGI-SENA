@@ -210,3 +210,55 @@
   }
 }
 
+/* Estilos para botones de la toolbar */
+.consultar-equipo-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  opacity: 1;
+  visibility: visible;
+  padding: 8px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.9rem;
+  min-height: 40px;
+  transition: all 0.2s;
+}
+
+.consultar-equipo-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.consultar-equipo-btn-verde {
+  background: var(--success-800);
+  color: #fff;
+  border: 1px solid var(--success-800);
+}
+
+.consultar-equipo-btn-verde:hover:not(:disabled) {
+  background: var(--success-900);
+  border-color: var(--success-900);
+}
+
+.consultar-equipo-btn-verde:active:not(:disabled) {
+  background: var(--success-900);
+  transform: scale(0.98);
+}
+
+.consultar-equipo-btn-gris {
+  background: #fff;
+  color: #374151;
+  border: 1px solid #d1d5db;
+}
+
+.consultar-equipo-btn-gris:hover:not(:disabled) {
+  background: #f9fafb;
+  border-color: #9ca3af;
+}
+
+.consultar-equipo-btn-gris:active:not(:disabled) {
+  background: #f3f4f6;
+  transform: scale(0.98);
+}
