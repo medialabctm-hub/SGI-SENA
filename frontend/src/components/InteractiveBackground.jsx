@@ -94,7 +94,7 @@ export default function InteractiveBackground() {
         p.vy *= friction;
 
         // 🔵 COLOR REAL EXACTO DE ANTIGRAVITY
-        let color = "rgba(0, 0, 0, 0.55)"; // puntos grises externos
+        let color = "rgba(28, 197, 5, 0.94)"; // puntos grises externos
 
         if (dist < radius * 1.1) {
           const t = Math.max(0, 1 - dist / (radius * 1.1));
