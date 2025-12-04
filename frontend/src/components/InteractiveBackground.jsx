@@ -13,10 +13,10 @@ export default function InteractiveBackground() {
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    const spacing = 26; // separación EXACTA como en Antigravity
-    const radius = 160; // radio de deformación real
-    const returnSpeed = 0.055; // fuerza resorte original
-    const pushForce = 6.5; // fuerza de empuje idéntica
+    const spacing = 26; // separación entre puntos
+    const radius = 200; // radio de atracción hacia el cursor
+    const returnSpeed = 0.055; // fuerza resorte para volver a posición original
+    const attractionForce = 4.5; // fuerza de atracción hacia el cursor
     const friction = 0.88; // fricción para suavidad
 
     let dots = [];
@@ -69,20 +69,21 @@ export default function InteractiveBackground() {
       const mouse = mouseRef.current;
 
       dots.forEach((p) => {
-        const dx = p.x - mouse.x;
-        const dy = p.y - mouse.y;
+        const dx = mouse.x - p.x; // Invertido para atracción
+        const dy = mouse.y - p.y; // Invertido para atracción
         const dist = Math.sqrt(dx * dx + dy * dy);
 
-        // 🔵 FUERZA QUE REPELE COMO ANTIGRAVITY
-        if (mouse.active && dist < radius) {
+        // 🟢 FUERZA QUE ATRAE HACIA EL CURSOR
+        if (mouse.active && dist < radius && dist > 0) {
           const force = (radius - dist) / radius;
           const angle = Math.atan2(dy, dx);
 
-          p.vx += Math.cos(angle) * force * pushForce;
-          p.vy += Math.sin(angle) * force * pushForce;
+          // Atraer hacia el cursor
+          p.vx += Math.cos(angle) * force * attractionForce;
+          p.vy += Math.sin(angle) * force * attractionForce;
         }
 
-        // 🔵 EFECTO RESORTE — VOLVER A POSICIÓN ORIGINAL
+        // 🟢 EFECTO RESORTE — VOLVER A POSICIÓN ORIGINAL
         p.vx += (p.x0 - p.x) * returnSpeed;
         p.vy += (p.y0 - p.y) * returnSpeed;
 
@@ -93,19 +94,20 @@ export default function InteractiveBackground() {
         p.vx *= friction;
         p.vy *= friction;
 
-        // 🔵 COLOR REAL EXACTO DE ANTIGRAVITY
-        let color = "rgba(28, 197, 5, 0.94)"; // puntos grises externos
+        // 🟢 COLORES VERDES - más intenso cerca del cursor
+        let color = "rgba(1, 175, 0, 0.4)"; // verde base para puntos lejanos
 
-        if (dist < radius * 1.1) {
-          const t = Math.max(0, 1 - dist / (radius * 1.1));
-          const blueLevel = Math.floor(255 * t);
-          const opacity = 0.25 + t * 0.55;
+        if (dist < radius * 1.2) {
+          const t = Math.max(0, 1 - dist / (radius * 1.2));
+          // Verde más intenso y brillante cerca del cursor
+          const greenIntensity = Math.floor(1 + t * 174); // de 1 a 175
+          const opacity = 0.4 + t * 0.6; // de 0.4 a 1.0
 
-          color = `rgba(${40 - t * 40}, ${110 - t * 110}, ${255}, ${opacity})`;
+          color = `rgba(1, ${greenIntensity}, 0, ${opacity})`;
         }
 
-        // 🔵 TAMAÑO REAL (crece cerca del cursor)
-        const size = dist < radius ? 2.6 + (1 - dist / radius) * 2.1 : 2;
+        // 🟢 TAMAÑO (crece cerca del cursor)
+        const size = dist < radius ? 2 + (1 - dist / radius) * 2.5 : 2;
 
         ctx.beginPath();
         ctx.fillStyle = color;
