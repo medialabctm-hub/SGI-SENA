@@ -42,9 +42,10 @@ const desiredPort = Number(config.server.PORT) || 3000;
 // ============================================
 // CONFIGURACIÓN DE PROXY
 // ============================================
-// Confiar en proxies (necesario para Railway y otros servicios detrás de proxy)
+// Confiar en el primer proxy (Railway usa 1 proxy)
 // Esto permite que express-rate-limit identifique correctamente las IPs reales
-app.set('trust proxy', true);
+// sin permitir que cualquiera eluda el rate limiting
+app.set('trust proxy', 1);
 
 // ============================================
 // MIDDLEWARES DE SEGURIDAD

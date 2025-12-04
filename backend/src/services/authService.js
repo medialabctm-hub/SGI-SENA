@@ -457,6 +457,13 @@ export class AuthService {
 
     // Enviar correo con el token
     const emailService = (await import('../services/emailService.js')).default;
+    
+    // Reinicializar el servicio si no está configurado (por si las variables de entorno se cargaron después)
+    if (!emailService.apiInstance && process.env.BREVO_API_KEY) {
+      this.logger.info('Reinicializando servicio de email con BREVO_API_KEY encontrada');
+      emailService.reinitialize();
+    }
+    
     const urlRecuperacion = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/restablecer-contrasena?token=${token}`;
     
     const resultadoCorreo = await emailService.enviarCorreoRecuperacion(

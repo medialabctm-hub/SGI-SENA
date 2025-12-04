@@ -19,10 +19,23 @@ class EmailService {
    */
   initializeBrevo() {
     try {
+      // Leer directamente de process.env primero (para Railway/producción)
+      // Luego de config.email.brevoApiKey (para desarrollo local)
       const apiKey = process.env.BREVO_API_KEY || config.email.brevoApiKey;
       
-      if (!apiKey) {
-        logger.warn('BREVO_API_KEY no configurada. El servicio de email no estará disponible.');
+      // Log para debugging (sin mostrar la key completa)
+      if (apiKey) {
+        logger.info('BREVO_API_KEY encontrada', {
+          keyLength: apiKey.length,
+          keyPrefix: apiKey.substring(0, 10) + '...',
+          source: process.env.BREVO_API_KEY ? 'process.env' : 'config.email'
+        });
+      } else {
+        logger.warn('BREVO_API_KEY no configurada. El servicio de email no estará disponible.', {
+          hasProcessEnv: !!process.env.BREVO_API_KEY,
+          hasConfigKey: !!config.email.brevoApiKey,
+          envKeys: Object.keys(process.env).filter(k => k.includes('BREVO') || k.includes('EMAIL'))
+        });
         this.apiInstance = null;
         this.apiClient = null;
         return;
@@ -438,4 +451,10 @@ SENA - Sistema de Gestión de Equipos
 
 // Exportar instancia singleton
 export const emailService = new EmailService();
+
+// Método para reinicializar el servicio (útil si las variables de entorno se cargan después)
+emailService.reinitialize = function() {
+  this.initializeBrevo();
+};
+
 export default emailService;
