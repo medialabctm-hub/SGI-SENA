@@ -234,7 +234,6 @@ export async function importarEquipos(req, res) {
             }
           }
         }
-
         // Validar placa única - Si existe, guardar como duplicado pendiente
         // IMPORTANTE: Esta validación debe ir DESPUÉS de inicializar todas las variables necesarias
         if (placa) {
