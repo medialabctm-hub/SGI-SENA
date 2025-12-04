@@ -1,14 +1,17 @@
 import React, { useEffect, useRef } from "react";
 import "../styles/interactiveBackground.css";
 
-export default function InteractiveDotsBackground() {
+export default function InteractiveBackground() {
   const canvasRef = useRef(null);
   const mouseRef = useRef({ x: 0, y: 0, active: false });
   const animationRef = useRef(null);
 
   useEffect(() => {
     const canvas = canvasRef.current;
+    if (!canvas) return;
+    
     const ctx = canvas.getContext("2d");
+    if (!ctx) return;
 
     const spacing = 26; // separación EXACTA como en Antigravity
     const radius = 160; // radio de deformación real
@@ -19,12 +22,14 @@ export default function InteractiveDotsBackground() {
     let dots = [];
 
     function resize() {
+      if (!canvas) return;
       canvas.width = window.innerWidth;
       canvas.height = window.innerHeight;
       initDots();
     }
 
     window.addEventListener("resize", resize);
+    // Inicializar inmediatamente
     resize();
 
     /** CREA LA CUADRÍCULA EXACTA DE ANTIGRAVITY */
