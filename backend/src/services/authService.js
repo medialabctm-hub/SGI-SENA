@@ -458,8 +458,9 @@ export class AuthService {
     // Enviar correo con el token
     const emailService = (await import('../services/emailService.js')).default;
     
-    // Reinicializar el servicio si no está configurado (por si las variables de entorno se cargaron después)
-    if (!emailService.apiInstance && process.env.BREVO_API_KEY) {
+    // Asegurar que el servicio esté inicializado antes de enviar
+    const apiKey = process.env.BREVO_API_KEY;
+    if (!emailService.apiInstance && apiKey) {
       this.logger.info('Reinicializando servicio de email con BREVO_API_KEY encontrada');
       emailService.reinitialize();
     }

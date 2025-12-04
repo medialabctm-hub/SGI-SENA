@@ -12,6 +12,8 @@ import { errorHandler } from './src/utils/errors.js';
 import { logger } from './src/utils/logger.js';
 // Inicializar contenedor de dependencias
 import './src/di/setup.js';
+// Importar servicio de email para inicializarlo al arrancar
+import emailService from './src/services/emailService.js';
 
 // Importar rutas
 import authRoutes from './src/routes/authRoutes.js';
@@ -154,6 +156,13 @@ const startServer = (port) => {
         mode: config.server.mode || 'development',
         env: process.env.NODE_ENV || 'development',
       });
+      
+      // Verificar y reinicializar servicio de email si es necesario
+      // (por si las variables de entorno se cargaron después de la importación)
+      if (process.env.BREVO_API_KEY && !emailService.apiInstance) {
+        logger.info('BREVO_API_KEY detectada al iniciar servidor. Inicializando servicio de email...');
+        emailService.reinitialize();
+      }
       
       // Iniciar scheduler para sincronización automática de responsabilidades
       // Se ejecuta cada minuto para verificar clases que deben iniciar/finalizar

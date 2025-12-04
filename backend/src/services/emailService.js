@@ -102,6 +102,23 @@ class EmailService {
    * @returns {Promise<{success: boolean, error?: string}>} Resultado del envío
    */
   async sendEmail(to, subject, htmlContent, textContent) {
+    // Si el servicio no está inicializado, intentar reinicializarlo
+    if (!this.apiInstance) {
+      const apiKey = process.env.BREVO_API_KEY || config.email.brevoApiKey;
+      if (apiKey) {
+        logger.info('Servicio de email no inicializado pero BREVO_API_KEY encontrada. Reinicializando...');
+        this.initializeBrevo();
+      } else {
+        const errorMsg = 'Servicio de email no configurado. Verifica BREVO_API_KEY';
+        logger.warn(errorMsg, {
+          hasProcessEnv: !!process.env.BREVO_API_KEY,
+          hasConfigKey: !!config.email.brevoApiKey
+        });
+        return { success: false, error: errorMsg };
+      }
+    }
+    
+    // Verificar nuevamente después de la reinicialización
     if (!this.apiInstance) {
       const errorMsg = 'Servicio de email no configurado. Verifica BREVO_API_KEY';
       logger.warn(errorMsg);
@@ -454,7 +471,21 @@ export const emailService = new EmailService();
 
 // Método para reinicializar el servicio (útil si las variables de entorno se cargan después)
 emailService.reinitialize = function() {
+  logger.info('Reinicializando servicio de email Brevo...');
   this.initializeBrevo();
 };
+
+// Verificar y reinicializar el servicio al iniciar el servidor (después de que las variables estén disponibles)
+// Esto se ejecuta después de que el servidor esté listo
+if (typeof process !== 'undefined' && process.env) {
+  // Usar setImmediate para ejecutar después de que todas las importaciones estén completas
+  setImmediate(() => {
+    const apiKey = process.env.BREVO_API_KEY;
+    if (apiKey && !emailService.apiInstance) {
+      logger.info('BREVO_API_KEY detectada después de la inicialización. Reinicializando servicio...');
+      emailService.reinitialize();
+    }
+  });
+}
 
 export default emailService;
