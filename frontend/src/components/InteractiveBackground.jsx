@@ -2,8 +2,11 @@ import React, { useEffect, useRef } from 'react';
 import '../styles/interactiveBackground.css';
 
 /**
- * Componente de fondo interactivo similar a Google Antigravity
- * Partículas que se alejan del mouse creando un efecto de "liftoff"
+ * Fondo interactivo estilo Google Antigravity:
+ * - partículas más rápidas
+ * - estelas tipo dash
+ * - conexiones suaves
+ * - repulsión elástica
  */
 export default function InteractiveBackground() {
   const canvasRef = useRef(null);
@@ -16,126 +19,113 @@ export default function InteractiveBackground() {
     if (!canvas) return;
 
     const ctx = canvas.getContext('2d');
-    const particleCount = 250;
-    const particleSize = 2;
-    const connectionDistance = 150;
-    const repulsionStrength = 0.2;
 
-    // Ajustar tamaño del canvas
+    const particleCount = 240;
+    const particleSize = 1.7;
+    const repulsionRadius = 180;
+    const repulsionStrength = 0.08; // Mucho más suave = estilo Antigravity
+    const connectionDistance = 170;
+    const globalFloatStrength = 0.02; // fuerza de flotación global
+
+    // Ajuste de tamaño
     const resizeCanvas = () => {
       canvas.width = window.innerWidth;
       canvas.height = window.innerHeight;
     };
     resizeCanvas();
-    window.addEventListener('resize', resizeCanvas);
+    window.addEventListener("resize", resizeCanvas);
 
-    // Crear partículas con distribución inicial
+    // Crear partículas
     particlesRef.current = Array.from({ length: particleCount }, () => ({
       x: Math.random() * canvas.width,
       y: Math.random() * canvas.height,
-      vx: (Math.random() - 0.5) * 0.3,
-      vy: (Math.random() - 0.5) * 0.3,
-      size: particleSize + Math.random() * 1,
-      opacity: Math.random() * 0.5 + 0.2,
-      baseOpacity: Math.random() * 0.5 + 0.2,
+      vx: (Math.random() - 0.5) * 0.8, // Más rápido
+      vy: (Math.random() - 0.5) * 0.8,
+      size: particleSize + Math.random() * 0.8,
+      opacity: Math.random() * 0.5 + 0.3,
     }));
 
-    // Seguir el mouse
     const handleMouseMove = (e) => {
-      mouseRef.current = {
-        x: e.clientX,
-        y: e.clientY,
-      };
+      mouseRef.current = { x: e.clientX, y: e.clientY };
     };
-    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener("mousemove", handleMouseMove);
 
-    // Función de animación
     const animate = () => {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
       const particles = particlesRef.current;
       const mouse = mouseRef.current;
 
-      // Actualizar y dibujar partículas
-      particles.forEach((particle, i) => {
-        // Repulsión desde el mouse (efecto "liftoff")
-        const dx = particle.x - mouse.x;
-        const dy = particle.y - mouse.y;
-        const distance = Math.sqrt(dx * dx + dy * dy);
+      particles.forEach((p, i) => {
+        // Repulsión estilo Antigravity
+        const dx = p.x - mouse.x;
+        const dy = p.y - mouse.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
 
-        if (distance < 150 && distance > 0) {
-          const force = (150 - distance) / 150;
+        if (dist < repulsionRadius && dist > 0) {
+          // fuerza elástica suave
+          const force = (repulsionRadius - dist) / repulsionRadius;
           const angle = Math.atan2(dy, dx);
-          particle.vx += Math.cos(angle) * force * repulsionStrength;
-          particle.vy += Math.sin(angle) * force * repulsionStrength;
-          
-          // Aumentar opacidad cerca del mouse
-          particle.opacity = Math.min(1, particle.baseOpacity + force * 0.4);
+
+          p.vx += Math.cos(angle) * force * repulsionStrength;
+          p.vy += Math.sin(angle) * force * repulsionStrength;
+
+          p.opacity = Math.min(1, 0.25 + force);
         } else {
-          particle.opacity = particle.baseOpacity;
+          p.opacity *= 0.98;
         }
 
-        // Movimiento natural
-        particle.x += particle.vx;
-        particle.y += particle.vy;
+        // Flotación global suave
+        p.vx += (Math.random() - 0.5) * globalFloatStrength;
+        p.vy += (Math.random() - 0.5) * globalFloatStrength;
 
-        // Rebote suave en los bordes
-        if (particle.x < 0) {
-          particle.x = 0;
-          particle.vx *= -0.8;
-        }
-        if (particle.x > canvas.width) {
-          particle.x = canvas.width;
-          particle.vx *= -0.8;
-        }
-        if (particle.y < 0) {
-          particle.y = 0;
-          particle.vy *= -0.8;
-        }
-        if (particle.y > canvas.height) {
-          particle.y = canvas.height;
-          particle.vy *= -0.8;
-        }
+        // Movimiento
+        p.x += p.vx;
+        p.y += p.vy;
 
-        // Fricción
-        particle.vx *= 0.97;
-        particle.vy *= 0.97;
+        // rebote suave
+        if (p.x < 0 || p.x > canvas.width) p.vx *= -0.9;
+        if (p.y < 0 || p.y > canvas.height) p.vy *= -0.9;
 
-        // Limitar velocidad
-        const maxSpeed = 2;
-        const speed = Math.sqrt(particle.vx * particle.vx + particle.vy * particle.vy);
+        // fricción
+        p.vx *= 0.985;
+        p.vy *= 0.985;
+
+        // Limitar velocidad (más alta como Antigravity)
+        const maxSpeed = 3.2;
+        const speed = Math.sqrt(p.vx ** 2 + p.vy ** 2);
         if (speed > maxSpeed) {
-          particle.vx = (particle.vx / speed) * maxSpeed;
-          particle.vy = (particle.vy / speed) * maxSpeed;
+          p.vx = (p.vx / speed) * maxSpeed;
+          p.vy = (p.vy / speed) * maxSpeed;
         }
 
-        // Dibujar partícula como línea/dash (similar a Google Antigravity)
+        // Dibujo tipo Antigravity: líneas con orientación a la velocidad
         ctx.save();
-        ctx.translate(particle.x, particle.y);
-        const angle = Math.atan2(particle.vy, particle.vx);
+        ctx.translate(p.x, p.y);
+        const angle = Math.atan2(p.vy, p.vx);
         ctx.rotate(angle);
         ctx.beginPath();
-        ctx.moveTo(-particle.size * 2, 0);
-        ctx.lineTo(particle.size * 2, 0);
-        ctx.strokeStyle = `rgba(1, 175, 0, ${particle.opacity})`;
-        ctx.lineWidth = particle.size;
-        ctx.lineCap = 'round';
+        ctx.moveTo(-p.size * 2.5, 0);
+        ctx.lineTo(p.size * 2.5, 0);
+        ctx.strokeStyle = `rgba(1, 175, 0, ${p.opacity})`;
+        ctx.lineWidth = p.size;
+        ctx.lineCap = "round";
         ctx.stroke();
         ctx.restore();
 
-        // Dibujar conexiones entre partículas cercanas
-        particles.slice(i + 1).forEach((otherParticle) => {
-          const dx = otherParticle.x - particle.x;
-          const dy = otherParticle.y - particle.y;
-          const distance = Math.sqrt(dx * dx + dy * dy);
+        // Conexiones tipo malla suave
+        particles.slice(i + 1).forEach((o) => {
+          const dx2 = o.x - p.x;
+          const dy2 = o.y - p.y;
+          const dist2 = Math.sqrt(dx2 * dx2 + dy2 * dy2);
 
-          if (distance < connectionDistance) {
-            const opacity = (1 - distance / connectionDistance) * 0.2 * Math.min(particle.opacity, otherParticle.opacity);
+          if (dist2 < connectionDistance) {
+            const opacity = (1 - dist2 / connectionDistance) * 0.18 * Math.min(p.opacity, o.opacity);
             ctx.beginPath();
-            ctx.moveTo(particle.x, particle.y);
-            ctx.lineTo(otherParticle.x, otherParticle.y);
+            ctx.moveTo(p.x, p.y);
+            ctx.lineTo(o.x, o.y);
             ctx.strokeStyle = `rgba(1, 175, 0, ${opacity})`;
-            ctx.lineWidth = 0.8;
+            ctx.lineWidth = 0.7;
             ctx.stroke();
           }
         });
@@ -146,16 +136,12 @@ export default function InteractiveBackground() {
 
     animate();
 
-    // Cleanup
     return () => {
-      window.removeEventListener('resize', resizeCanvas);
-      window.removeEventListener('mousemove', handleMouseMove);
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current);
-      }
+      window.removeEventListener("resize", resizeCanvas);
+      window.removeEventListener("mousemove", handleMouseMove);
+      cancelAnimationFrame(animationFrameRef.current);
     };
   }, []);
 
   return <canvas ref={canvasRef} className="interactive-background-canvas" />;
 }
-
