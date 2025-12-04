@@ -84,13 +84,27 @@ if (missingEnvVars.length > 0) {
   let errorMsg = `❌ ERROR: Faltan las siguientes variables de entorno requeridas: ${missingEnvVars.join(", ")}\n\n`;
   
   if (missingEnvVars.includes('BREVO_SMTP_KEY')) {
+    const hasApiKey = !!process.env.BREVO_API_KEY;
+    
     errorMsg += `📧 CONFIGURACIÓN DE BREVO SMTP:\n`;
-    errorMsg += `   1. Ve a https://app.brevo.com/settings/keys/api (pestaña SMTP)\n`;
-    errorMsg += `   2. Genera o copia tu SMTP Key de Brevo (debe empezar con "xsmtpsib-")\n`;
-    errorMsg += `   3. En Railway, ve a Variables de Entorno y agrega:\n`;
-    errorMsg += `      - BREVO_SMTP_KEY=tu_smtp_key_aqui\n`;
-    errorMsg += `      - BREVO_SMTP_LOGIN=tu_login_smtp@smtp-brevo.com (opcional, se puede extraer del email)\n`;
-    errorMsg += `      - BREVO_SENDER_EMAIL=tu_email_verificado@dominio.com\n\n`;
+    
+    if (hasApiKey) {
+      errorMsg += `   ⚠️  Tienes BREVO_API_KEY configurada, pero ahora necesitas BREVO_SMTP_KEY\n`;
+      errorMsg += `   📝 En Railway, REEMPLAZA la variable BREVO_API_KEY por BREVO_SMTP_KEY:\n\n`;
+      errorMsg += `   1. Ve a https://app.brevo.com/settings/keys/api (pestaña SMTP)\n`;
+      errorMsg += `   2. Copia tu SMTP Key de Brevo (debe empezar con "xsmtpsib-")\n`;
+      errorMsg += `   3. En Railway > Variables de Entorno:\n`;
+      errorMsg += `      ❌ ELIMINA: BREVO_API_KEY\n`;
+      errorMsg += `      ✅ AGREGA: BREVO_SMTP_KEY=xsmtpsib-tu_clave_aqui\n`;
+      errorMsg += `      ✅ OPCIONAL: BREVO_SMTP_LOGIN=tu_login@smtp-brevo.com\n\n`;
+    } else {
+      errorMsg += `   1. Ve a https://app.brevo.com/settings/keys/api (pestaña SMTP)\n`;
+      errorMsg += `   2. Genera o copia tu SMTP Key de Brevo (debe empezar con "xsmtpsib-")\n`;
+      errorMsg += `   3. En Railway, ve a Variables de Entorno y agrega:\n`;
+      errorMsg += `      - BREVO_SMTP_KEY=xsmtpsib-tu_clave_aqui\n`;
+      errorMsg += `      - BREVO_SMTP_LOGIN=tu_login@smtp-brevo.com (opcional)\n`;
+      errorMsg += `      - BREVO_SENDER_EMAIL=tu_email_verificado@dominio.com\n\n`;
+    }
   }
   
   errorMsg += `🔍 DIAGNÓSTICO:\n`;
