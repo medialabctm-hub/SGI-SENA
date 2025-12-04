@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FiMail, FiArrowLeft } from 'react-icons/fi';
 import Toast from '../components/Toast';
+import InteractiveBackground from '../components/InteractiveBackground';
 import { buildErrorMessage, parseApiResponse } from '../utils/api';
 import '../styles/auth.css';
 
@@ -61,30 +62,7 @@ export default function OlvidarContrasena() {
   if (enviado) {
     return (
       <div className="page login-page animated-bg">
-        <div className="bubbles-container">
-          {[...Array(50)].map((_, i) => {
-            const randomX = (Math.random() * 150 - 75);
-            const randomDelay = Math.random() * 25;
-            const randomDuration = 12 + Math.random() * 15;
-            const randomSize = 8 + Math.random() * 30;
-            const randomOpacity = 0.08 + Math.random() * 0.25;
-            return (
-              <div
-                key={i}
-                className="bubble"
-                style={{
-                  left: `${Math.random() * 100}%`,
-                  animationDelay: `${randomDelay}s`,
-                  animationDuration: `${randomDuration}s`,
-                  width: `${randomSize}px`,
-                  height: `${randomSize}px`,
-                  opacity: randomOpacity,
-                  '--move-x': `${randomX}px`
-                }}
-              ></div>
-            );
-          })}
-        </div>
+        <InteractiveBackground />
         {toast && (
           <Toast
             message={toast.message}
@@ -94,7 +72,7 @@ export default function OlvidarContrasena() {
         )}
         <div className="login-card">
           <div className="logo-box">
-            <div className="logo"><img src='/public/images/logoSena.png' alt="Logo SENA" /></div>
+            <div className="logo"><img src='/images/logoSena.png' alt="Logo SENA" /></div>
           </div>
           <h1 className="title">Correo Enviado</h1>
           <p className="subtitle subtitle-centered">
@@ -117,30 +95,7 @@ export default function OlvidarContrasena() {
 
   return (
     <div className="page login-page animated-bg">
-      <div className="bubbles-container">
-        {[...Array(50)].map((_, i) => {
-          const randomX = (Math.random() * 150 - 75);
-          const randomDelay = Math.random() * 25;
-          const randomDuration = 12 + Math.random() * 15;
-          const randomSize = 8 + Math.random() * 30;
-          const randomOpacity = 0.08 + Math.random() * 0.25;
-          return (
-            <div
-              key={i}
-              className="bubble"
-              style={{
-                left: `${Math.random() * 100}%`,
-                animationDelay: `${randomDelay}s`,
-                animationDuration: `${randomDuration}s`,
-                width: `${randomSize}px`,
-                height: `${randomSize}px`,
-                opacity: randomOpacity,
-                '--move-x': `${randomX}px`
-              }}
-            ></div>
-          );
-        })}
-      </div>
+      <InteractiveBackground />
       {toast && (
         <Toast
           message={toast.message}
@@ -194,9 +149,9 @@ export default function OlvidarContrasena() {
               e.preventDefault();
               navigate('/login');
             }}
-            className="btn-link"
+            className="back-to-login-link"
           >
-            <FiArrowLeft /> Volver al Login
+            <FiArrowLeft /> Volver al inicio de sesión
           </a>
         </div>
       </div>
