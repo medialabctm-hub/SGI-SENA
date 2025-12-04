@@ -63,8 +63,8 @@ export default function InteractiveBackground() {
         const dy = particle.y - mouse.y;
         const distance = Math.sqrt(dx * dx + dy * dy);
 
-        if (distance < 300 && distance > 0) {
-          const force = (300 - distance) / 300;
+        if (distance < 150 && distance > 0) {
+          const force = (150 - distance) / 150;
           const angle = Math.atan2(dy, dx);
           particle.vx += Math.cos(angle) * force * repulsionStrength;
           particle.vy += Math.sin(angle) * force * repulsionStrength;
