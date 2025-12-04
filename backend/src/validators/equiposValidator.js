@@ -24,6 +24,7 @@ export const registrarEquipoSchema = z.object({
   specs_completas: z.string().optional().nullable(),
   id_ambiente: z.number().int().positive().optional().nullable(),
   ambiente: z.string().optional().nullable(),
+  comentarios: z.string().max(1000).optional().nullable(),
 });
 
 export const actualizarEquipoSchema = z.object({

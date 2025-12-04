@@ -7,11 +7,12 @@
   position: relative;
   overflow: hidden;
   min-height: 100vh;
+  background: white;
 }
 
-/* Fondo animado verde */
+/* Fondo blanco sin gradiente */
 .animated-bg {
-  background: linear-gradient(135deg, var(--success-800) 0%, var(--success-900) 50%, var(--success-900) 100%);
+  background: white;
   position: relative;
 }
 
