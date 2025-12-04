@@ -3,7 +3,7 @@ import "../styles/interactiveBackground.css";
 
 export default function InteractiveBackground() {
   const canvasRef = useRef(null);
-  const mouseRef = useRef({ x: 0, y: 0, active: false });
+  const mouseRef = useRef({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
   const animationRef = useRef(null);
 
   useEffect(() => {
@@ -13,34 +13,28 @@ export default function InteractiveBackground() {
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    const spacing = 26; // separación entre puntos
-    const radius = 200; // radio de atracción hacia el cursor
-    const returnSpeed = 0.055; // fuerza resorte para volver a posición original
-    const attractionForce = 4.5; // fuerza de atracción hacia el cursor
-    const friction = 0.88; // fricción para suavidad
+    const spacing = 26; // Espaciado de la cuadrícula
+    const radius = 160; // Radio de influencia del cursor
+    const returnSpeed = 0.055; // Velocidad de retorno a posición original
+    const pushForce = 6.5; // Fuerza de repulsión
+    const friction = 0.88; // Fricción
 
-    let dots = [];
+    let particles = [];
 
     function resize() {
-      if (!canvas) return;
       canvas.width = window.innerWidth;
       canvas.height = window.innerHeight;
-      initDots();
+      initParticles();
     }
 
-    window.addEventListener("resize", resize);
-    // Inicializar inmediatamente
-    resize();
-
-    /** CREA LA CUADRÍCULA EXACTA DE ANTIGRAVITY */
-    function initDots() {
-      dots = [];
+    function initParticles() {
+      particles = [];
       const offsetX = (canvas.width % spacing) / 2;
       const offsetY = (canvas.height % spacing) / 2;
 
       for (let x = offsetX; x < canvas.width; x += spacing) {
         for (let y = offsetY; y < canvas.height; y += spacing) {
-          dots.push({
+          particles.push({
             x0: x,
             y0: y,
             x: x,
@@ -52,67 +46,77 @@ export default function InteractiveBackground() {
       }
     }
 
-    /** MOVIMIENTO DEL USUARIO */
-    const mouseMove = (e) => {
+    const handleMouseMove = (e) => {
       mouseRef.current = {
         x: e.clientX,
         y: e.clientY,
-        active: true,
       };
     };
 
-    window.addEventListener("mousemove", mouseMove);
+    window.addEventListener("resize", resize);
+    window.addEventListener("mousemove", handleMouseMove);
+    resize();
 
-    /** ANIMACIÓN PRINCIPAL */
     function animate() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       const mouse = mouseRef.current;
 
-      dots.forEach((p) => {
-        const dx = mouse.x - p.x; // Invertido para atracción
-        const dy = mouse.y - p.y; // Invertido para atracción
+      particles.forEach((p) => {
+        const dx = p.x - mouse.x;
+        const dy = p.y - mouse.y;
         const dist = Math.sqrt(dx * dx + dy * dy);
 
-        // 🟢 FUERZA QUE ATRAE HACIA EL CURSOR
-        if (mouse.active && dist < radius && dist > 0) {
+        // REPULSIÓN: Las partículas se alejan del cursor
+        if (dist < radius && dist > 0) {
           const force = (radius - dist) / radius;
           const angle = Math.atan2(dy, dx);
 
-          // Atraer hacia el cursor
-          p.vx += Math.cos(angle) * force * attractionForce;
-          p.vy += Math.sin(angle) * force * attractionForce;
+          p.vx += Math.cos(angle) * force * pushForce;
+          p.vy += Math.sin(angle) * force * pushForce;
         }
 
-        // 🟢 EFECTO RESORTE — VOLVER A POSICIÓN ORIGINAL
+        // Efecto resorte: volver a posición original
         p.vx += (p.x0 - p.x) * returnSpeed;
         p.vy += (p.y0 - p.y) * returnSpeed;
 
-        // movimiento final
+        // Actualizar posición
         p.x += p.vx;
         p.y += p.vy;
 
+        // Aplicar fricción
         p.vx *= friction;
         p.vy *= friction;
 
-        // 🟢 COLORES VERDES - más intenso cerca del cursor
-        let color = "rgba(1, 175, 0, 0.4)"; // verde base para puntos lejanos
+        // Calcular color verde basado en distancia al cursor
+        let color = "rgba(1, 175, 0, 0.3)"; // Verde base para partículas lejanas
 
-        if (dist < radius * 1.2) {
-          const t = Math.max(0, 1 - dist / (radius * 1.2));
-          // Verde más intenso y brillante cerca del cursor
-          const greenIntensity = Math.floor(1 + t * 174); // de 1 a 175
-          const opacity = 0.4 + t * 0.6; // de 0.4 a 1.0
-
-          color = `rgba(1, ${greenIntensity}, 0, ${opacity})`;
+        if (dist < radius * 1.1) {
+          const t = Math.max(0, 1 - dist / (radius * 1.1));
+          // Verde más intenso cerca del cursor
+          const greenValue = Math.floor(100 + t * 75); // De 100 a 175
+          const opacity = 0.3 + t * 0.7; // De 0.3 a 1.0
+          color = `rgba(1, ${greenValue}, 0, ${opacity})`;
         }
 
-        // 🟢 TAMAÑO (crece cerca del cursor)
-        const size = dist < radius ? 2 + (1 - dist / radius) * 2.5 : 2;
+        // Dibujar como DASH (línea) como en Antigravity
+        const speed = Math.sqrt(p.vx * p.vx + p.vy * p.vy);
+        const angle = Math.atan2(p.vy, p.vx);
+        
+        // Tamaño del dash basado en velocidad y distancia
+        const dashLength = dist < radius ? 3 + speed * 0.5 : 2.5;
+        const dashWidth = dist < radius ? 1.5 + (1 - dist / radius) * 1 : 1;
 
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        ctx.rotate(angle);
         ctx.beginPath();
-        ctx.fillStyle = color;
-        ctx.arc(p.x, p.y, size, 0, Math.PI * 2);
-        ctx.fill();
+        ctx.moveTo(-dashLength / 2, 0);
+        ctx.lineTo(dashLength / 2, 0);
+        ctx.strokeStyle = color;
+        ctx.lineWidth = dashWidth;
+        ctx.lineCap = "round";
+        ctx.stroke();
+        ctx.restore();
       });
 
       animationRef.current = requestAnimationFrame(animate);
@@ -122,8 +126,10 @@ export default function InteractiveBackground() {
 
     return () => {
       window.removeEventListener("resize", resize);
-      window.removeEventListener("mousemove", mouseMove);
-      cancelAnimationFrame(animationRef.current);
+      window.removeEventListener("mousemove", handleMouseMove);
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current);
+      }
     };
   }, []);
 
