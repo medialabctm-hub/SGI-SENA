@@ -106,10 +106,18 @@ class EmailService {
           user: finalSmtpLogin.trim(),
           pass: trimmedKey
         },
+        connectionTimeout: 60000, // 60 segundos para establecer conexión
+        greetingTimeout: 30000, // 30 segundos para saludo SMTP
+        socketTimeout: 60000, // 60 segundos para operaciones de socket
         tls: {
           // No rechazar certificados no autorizados (útil en algunos entornos)
-          rejectUnauthorized: false
-        }
+          rejectUnauthorized: false,
+          minVersion: 'TLSv1.2'
+        },
+        // Opciones adicionales para mejorar la conexión
+        pool: false, // No usar pool de conexiones
+        maxConnections: 1,
+        maxMessages: 1
       });
       
       logger.info('Transportador SMTP de Brevo configurado', {
@@ -258,14 +266,24 @@ class EmailService {
         hasTransporter: !!this.transporter
       });
 
-      // Enviar el correo usando nodemailer
-      const info = await this.transporter.sendMail({
+      // Crear una promesa con timeout para evitar que se quede colgado
+      const sendEmailPromise = this.transporter.sendMail({
         from: `"${this.senderName}" <${currentSenderEmail}>`,
         to: to.trim(),
         subject: subject,
         text: textContent,
         html: htmlContent
       });
+
+      // Timeout de 45 segundos para el envío
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => {
+          reject(new Error('Timeout: El envío del correo tardó más de 45 segundos'));
+        }, 45000);
+      });
+
+      // Ejecutar con timeout
+      const info = await Promise.race([sendEmailPromise, timeoutPromise]);
 
       logger.info(`✅ Correo enviado exitosamente a: ${to}`, { 
         messageId: info.messageId,
@@ -279,6 +297,70 @@ class EmailService {
     } catch (error) {
       let errorMessage = 'Error al enviar correo';
       
+      // Si es un timeout, intentar con puerto alternativo (465 SSL)
+      if (error.message && error.message.includes('Timeout') || error.code === 'ETIMEDOUT') {
+        logger.warn(`Timeout en puerto 587, intentando con puerto 465 (SSL)...`, {
+          to: to.trim(),
+          error: error.message
+        });
+        
+        // Intentar crear un transportador alternativo con puerto 465
+        try {
+          const smtpKey = process.env.BREVO_SMTP_KEY || config.email?.brevoSmtpKey;
+          const smtpLogin = process.env.BREVO_SMTP_LOGIN || process.env.BREVO_SENDER_EMAIL || config.email?.user;
+          
+          if (smtpKey && smtpLogin) {
+            const altTransporter = nodemailer.createTransport({
+              host: 'smtp-relay.brevo.com',
+              port: 465,
+              secure: true, // SSL
+              auth: {
+                user: smtpLogin.trim(),
+                pass: smtpKey.trim()
+              },
+              connectionTimeout: 30000,
+              greetingTimeout: 15000,
+              socketTimeout: 30000,
+              tls: {
+                rejectUnauthorized: false,
+                minVersion: 'TLSv1.2'
+              }
+            });
+
+            const currentSenderEmail = process.env.BREVO_SENDER_EMAIL || this.senderEmail || config.email?.user || 'noreply@sena.edu.co';
+            
+            logger.info('Intentando envío con puerto 465 (SSL)...');
+            const info = await Promise.race([
+              altTransporter.sendMail({
+                from: `"${this.senderName}" <${currentSenderEmail}>`,
+                to: to.trim(),
+                subject: subject,
+                text: textContent,
+                html: htmlContent
+              }),
+              new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout en puerto 465')), 30000))
+            ]);
+
+            logger.info(`✅ Correo enviado exitosamente a: ${to} (puerto 465)`, { 
+              messageId: info.messageId
+            });
+            
+            // Actualizar el transportador principal para futuros envíos
+            this.transporter = altTransporter;
+            
+            return { 
+              success: true, 
+              messageId: info.messageId
+            };
+          }
+        } catch (altError) {
+          logger.error(`Error también en puerto 465:`, {
+            message: altError.message,
+            code: altError.code
+          });
+        }
+      }
+      
       if (error.response) {
         errorMessage = error.response || errorMessage;
         logger.error(`Error de SMTP de Brevo al enviar correo a ${to}:`, {
@@ -289,8 +371,7 @@ class EmailService {
       } else {
         logger.error(`Error al enviar correo a ${to}:`, {
           message: error.message,
-          code: error.code,
-          stack: error.stack
+          code: error.code
         });
         errorMessage = error.message || errorMessage;
       }
