@@ -14,12 +14,15 @@ export default function InteractiveBackground() {
     if (!ctx) return;
 
     const spacing = 26; // Espaciado de la cuadrícula
-    const radius = 160; // Radio de influencia del cursor
+    const radius = 200; // Radio de influencia del cursor (aumentado)
     const returnSpeed = 0.055; // Velocidad de retorno a posición original
-    const pushForce = 6.5; // Fuerza de repulsión
+    const pushForce = 8.0; // Fuerza de repulsión (aumentada)
     const friction = 0.88; // Fricción
+    const waveSpeed = 0.02; // Velocidad de propagación de la onda
+    const waveAmplitude = 15; // Amplitud de la onda
 
     let particles = [];
+    let waveTime = 0; // Tiempo para el efecto de onda
 
     function resize() {
       canvas.width = window.innerWidth;
@@ -60,24 +63,43 @@ export default function InteractiveBackground() {
     function animate() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       const mouse = mouseRef.current;
+      
+      // Incrementar tiempo para el efecto de onda
+      waveTime += waveSpeed;
 
       particles.forEach((p) => {
         const dx = p.x - mouse.x;
         const dy = p.y - mouse.y;
         const dist = Math.sqrt(dx * dx + dy * dy);
 
+        // EFECTO DE ONDA: Onda sinusoidal que se propaga desde el cursor
+        let waveEffect = 0;
+        if (dist < radius * 1.5 && dist > 0) {
+          // Crear múltiples ondas concéntricas
+          const waveDistance = dist / 30; // Frecuencia de la onda
+          const wavePhase = waveTime - waveDistance;
+          waveEffect = Math.sin(wavePhase) * waveAmplitude * (1 - dist / (radius * 1.5));
+        }
+
         // REPULSIÓN: Las partículas se alejan del cursor
         if (dist < radius && dist > 0) {
           const force = (radius - dist) / radius;
           const angle = Math.atan2(dy, dx);
 
-          p.vx += Math.cos(angle) * force * pushForce;
-          p.vy += Math.sin(angle) * force * pushForce;
+          // Añadir efecto de onda a la fuerza
+          const waveBoost = 1 + Math.abs(waveEffect) / waveAmplitude;
+          p.vx += Math.cos(angle) * force * pushForce * waveBoost;
+          p.vy += Math.sin(angle) * force * pushForce * waveBoost;
         }
 
         // Efecto resorte: volver a posición original
         p.vx += (p.x0 - p.x) * returnSpeed;
         p.vy += (p.y0 - p.y) * returnSpeed;
+
+        // Aplicar efecto de onda a la posición (movimiento ondulatorio)
+        const waveAngle = Math.atan2(dy, dx) + Math.PI / 2; // Perpendicular a la dirección del cursor
+        p.x += Math.cos(waveAngle) * waveEffect * 0.1;
+        p.y += Math.sin(waveAngle) * waveEffect * 0.1;
 
         // Actualizar posición
         p.x += p.vx;
@@ -87,24 +109,35 @@ export default function InteractiveBackground() {
         p.vx *= friction;
         p.vy *= friction;
 
-        // Calcular color verde basado en distancia al cursor
-        let color = "rgba(1, 175, 0, 0.3)"; // Verde base para partículas lejanas
+        // Calcular color verde basado en distancia al cursor y efecto de onda
+        let color = "rgba(1, 175, 0, 0.4)"; // Verde base más visible
 
-        if (dist < radius * 1.1) {
-          const t = Math.max(0, 1 - dist / (radius * 1.1));
+        if (dist < radius * 1.2) {
+          const t = Math.max(0, 1 - dist / (radius * 1.2));
           // Verde más intenso cerca del cursor
-          const greenValue = Math.floor(100 + t * 75); // De 100 a 175
-          const opacity = 0.3 + t * 0.7; // De 0.3 a 1.0
+          const greenValue = Math.floor(120 + t * 55); // De 120 a 175
+          // Aumentar opacidad con el efecto de onda
+          const waveOpacity = Math.abs(waveEffect) / waveAmplitude;
+          const opacity = Math.min(1, 0.4 + t * 0.6 + waveOpacity * 0.3);
           color = `rgba(1, ${greenValue}, 0, ${opacity})`;
         }
 
-        // Dibujar como DASH (línea) como en Antigravity
+        // Dibujar como DASH (línea) más grande
         const speed = Math.sqrt(p.vx * p.vx + p.vy * p.vy);
         const angle = Math.atan2(p.vy, p.vx);
         
-        // Tamaño del dash basado en velocidad y distancia
-        const dashLength = dist < radius ? 3 + speed * 0.5 : 2.5;
-        const dashWidth = dist < radius ? 1.5 + (1 - dist / radius) * 1 : 1;
+        // Tamaño del dash aumentado y con efecto de onda
+        const baseLength = 5; // Tamaño base más grande
+        const baseWidth = 2.5; // Ancho base más grande
+        const speedBoost = speed * 0.8;
+        const waveBoost = 1 + Math.abs(waveEffect) / waveAmplitude * 0.5;
+        
+        const dashLength = dist < radius 
+          ? baseLength + speedBoost + (1 - dist / radius) * 4 * waveBoost
+          : baseLength;
+        const dashWidth = dist < radius 
+          ? baseWidth + (1 - dist / radius) * 2 * waveBoost
+          : baseWidth;
 
         ctx.save();
         ctx.translate(p.x, p.y);
