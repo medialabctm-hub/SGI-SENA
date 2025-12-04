@@ -59,21 +59,19 @@ export async function registrarEquipo(req, res) {
       estado_fisico,
       specs_completas,
       id_ambiente,
-      ambiente
+      ambiente,
+      comentarios
     } = req.body;
 
     // La placa es el código de inventario (compatibilidad con frontend que puede enviar codigo_inventario)
     const placaValue = (placa || codigo_inventario || '').toString().trim();
-    const rCentroValue = (r_centro || placaValue || '').toString().trim();
+    const rCentroValue = (r_centro || '').toString().trim() || null;
     const consecutivoValue = (consecutivo || numero_serie || '').toString().trim();
     const valorIngreso = valor_ingreso || costo || null;
 
     // Validación básica
     if (!placaValue) {
       return res.status(400).json({ error: 'La placa (código de inventario) es obligatoria' });
-    }
-    if (!rCentroValue) {
-      return res.status(400).json({ error: 'El R Centro es obligatorio' });
     }
     if (!tipo || !modelo || !estado_fisico || !fecha_adquisicion) {
       return res.status(400).json({ error: 'Faltan campos obligatorios: tipo, modelo, estado_fisico o fecha_adquisicion' });
@@ -159,6 +157,11 @@ export async function registrarEquipo(req, res) {
       logger.info('Columna id_cuentadante creada en la tabla Elementos');
     }
 
+    // Combinar descripcion y comentarios si ambos existen
+    const descripcionFinal = comentarios 
+      ? (descripcion ? `${descripcion}\n\nComentarios: ${comentarios}` : `Comentarios: ${comentarios}`)
+      : (descripcion || null);
+
     // Insertar en la tabla Elementos (con o sin id_tipo)
     let query;
     let params;
@@ -175,7 +178,7 @@ export async function registrarEquipo(req, res) {
         marca || null,
         modelo,
         numero_serie || null,
-        descripcion || null,
+        descripcionFinal,
         fecha_adquisicion,
         valorIngreso ? parseFloat(valorIngreso) : null,
         vida_util_meses || null,
@@ -198,7 +201,7 @@ export async function registrarEquipo(req, res) {
         marca || null,
         modelo,
         numero_serie || null,
-        descripcion || null,
+        descripcionFinal,
         fecha_adquisicion,
         valorIngreso ? parseFloat(valorIngreso) : null,
         vida_util_meses || null,
