@@ -14,6 +14,7 @@
 .animated-bg {
   background: white;
   position: relative;
+  overflow: hidden;
 }
 
 /* Contenedor de burbujas */

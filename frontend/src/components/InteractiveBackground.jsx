@@ -16,10 +16,10 @@ export default function InteractiveBackground() {
     if (!canvas) return;
 
     const ctx = canvas.getContext('2d');
-    const particleCount = 200;
-    const particleSize = 1.5;
-    const connectionDistance = 120;
-    const repulsionStrength = 0.15;
+    const particleCount = 250;
+    const particleSize = 2;
+    const connectionDistance = 150;
+    const repulsionStrength = 0.2;
 
     // Ajustar tamaño del canvas
     const resizeCanvas = () => {
@@ -35,9 +35,9 @@ export default function InteractiveBackground() {
       y: Math.random() * canvas.height,
       vx: (Math.random() - 0.5) * 0.3,
       vy: (Math.random() - 0.5) * 0.3,
-      size: particleSize + Math.random() * 0.5,
-      opacity: Math.random() * 0.4 + 0.1,
-      baseOpacity: Math.random() * 0.4 + 0.1,
+      size: particleSize + Math.random() * 1,
+      opacity: Math.random() * 0.5 + 0.2,
+      baseOpacity: Math.random() * 0.5 + 0.2,
     }));
 
     // Seguir el mouse
@@ -63,14 +63,14 @@ export default function InteractiveBackground() {
         const dy = particle.y - mouse.y;
         const distance = Math.sqrt(dx * dx + dy * dy);
 
-        if (distance < 250 && distance > 0) {
-          const force = (250 - distance) / 250;
+        if (distance < 300 && distance > 0) {
+          const force = (300 - distance) / 300;
           const angle = Math.atan2(dy, dx);
           particle.vx += Math.cos(angle) * force * repulsionStrength;
           particle.vy += Math.sin(angle) * force * repulsionStrength;
           
           // Aumentar opacidad cerca del mouse
-          particle.opacity = Math.min(1, particle.baseOpacity + force * 0.3);
+          particle.opacity = Math.min(1, particle.baseOpacity + force * 0.4);
         } else {
           particle.opacity = particle.baseOpacity;
         }
@@ -130,12 +130,12 @@ export default function InteractiveBackground() {
           const distance = Math.sqrt(dx * dx + dy * dy);
 
           if (distance < connectionDistance) {
-            const opacity = (1 - distance / connectionDistance) * 0.15 * Math.min(particle.opacity, otherParticle.opacity);
+            const opacity = (1 - distance / connectionDistance) * 0.2 * Math.min(particle.opacity, otherParticle.opacity);
             ctx.beginPath();
             ctx.moveTo(particle.x, particle.y);
             ctx.lineTo(otherParticle.x, otherParticle.y);
             ctx.strokeStyle = `rgba(1, 175, 0, ${opacity})`;
-            ctx.lineWidth = 0.5;
+            ctx.lineWidth = 0.8;
             ctx.stroke();
           }
         });
