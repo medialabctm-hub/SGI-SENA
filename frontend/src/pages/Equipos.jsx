@@ -12,7 +12,6 @@ const ESTADOS_FISICOS = ['Nuevo', 'Bueno', 'Regular', 'Malo', 'Dañado']
 export default function Equipos() {
   const [activeTab, setActiveTab] = useState('registrar') // 'registrar' o 'importar'
   const [form, setForm] = useState({
-    r_centro: '',
     modelo: '',
     consecutivo: '',
     descripcion: '',
@@ -23,6 +22,7 @@ export default function Equipos() {
     valor_ingreso: '',
     ambiente: '',
     estado_fisico: 'Bueno',
+    comentarios: '',
   })
 
   const [errores, setErrores] = useState({})
@@ -53,7 +53,6 @@ export default function Equipos() {
   const handleSubmit = async e => {
     e.preventDefault()
     const errs = {}
-    if (!form.r_centro) errs.r_centro = 'R Centro es obligatorio'
     if (!form.modelo) errs.modelo = 'El modelo es obligatorio'
     if (!form.consecutivo) errs.consecutivo = 'El consecutivo es obligatorio'
     if (!form.tipo) errs.tipo = 'El tipo es obligatorio'
@@ -77,11 +76,10 @@ export default function Equipos() {
         estado_fisico: form.estado_fisico,
         ambiente: form.ambiente,
         specs_completas: form.atributos || null,
-        // Nuevos campos
-        r_centro: form.r_centro,
         placa: form.placa || null,
         atributos: form.atributos || null,
-        valor_ingreso: form.valor_ingreso || null
+        valor_ingreso: form.valor_ingreso || null,
+        comentarios: form.comentarios || null
       }
       const resp = await fetch('/api/equipos', {
         method: 'POST',
@@ -97,7 +95,7 @@ export default function Equipos() {
         type: 'success'
       })
       setForm({
-        r_centro: '', modelo: '', consecutivo: '', descripcion: '', tipo: '', placa: '', atributos: '', fecha_adquisicion: '', valor_ingreso: '', ambiente: '', estado_fisico: 'Bueno'
+        modelo: '', consecutivo: '', descripcion: '', tipo: '', placa: '', atributos: '', fecha_adquisicion: '', valor_ingreso: '', ambiente: '', estado_fisico: 'Bueno', comentarios: ''
       })
     } catch (err) {
       setToast({
@@ -152,11 +150,6 @@ export default function Equipos() {
               <form className="form-equipos" onSubmit={handleSubmit}>
         <div className="form-grid">
           <div className="form-row">
-            <label>R Centro *</label>
-            <input name="r_centro" value={form.r_centro} onChange={handleChange} />
-            {errores.r_centro && <span className="error-text">{errores.r_centro}</span>}
-          </div>
-          <div className="form-row">
             <label>Modelo *</label>
             <input name="modelo" value={form.modelo} onChange={handleChange} />
             {errores.modelo && <span className="error-text">{errores.modelo}</span>}
@@ -203,6 +196,10 @@ export default function Equipos() {
               {ESTADOS_FISICOS.map(e => <option key={e} value={e}>{e}</option>)}
             </select>
             {errores.estado_fisico && <span className="error-text">{errores.estado_fisico}</span>}
+          </div>
+          <div className="form-row">
+            <label>Comentarios</label>
+            <textarea name="comentarios" value={form.comentarios} onChange={handleChange} rows="3" />
           </div>
         </div>
         <div className="form-row">

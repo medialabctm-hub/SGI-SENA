@@ -71,9 +71,10 @@ export async function importarEquipos(req, res) {
         const ambiente = String(row['Ambiente'] || row['ambiente'] || row['AMBIENTE'] || row['codigo_ambiente'] || row['Código Ambiente'] || '').trim();
         const specsCompletas = row['Atributos'] || row['atributos'] || row['specs_completas'] || row['Especificaciones'] || row['SPECS_COMPLETAS'] || null;
         // Campos nuevos
-        const rCentro = String(row['R Centro'] || row['r_centro'] || codigoInventario || '').trim();
+        const rCentro = String(row['R Centro'] || row['r_centro'] || codigoInventario || '').trim() || null;
         const atributos = row['Atributos'] || row['atributos'] || specsCompletas || null;
         const valorIngreso = costo; // Usar el costo procesado
+        const comentarios = row['Comentarios'] || row['comentarios'] || row['COMENTARIOS'] || null;
 
         // Validaciones básicas
         // AHORA: Validamos 'placa' en lugar de 'codigoInventario'
@@ -203,6 +204,11 @@ export async function importarEquipos(req, res) {
           }
         }
 
+        // Combinar descripcion y comentarios si ambos existen
+        const descripcionFinal = comentarios 
+          ? (descripcion ? `${descripcion}\n\nComentarios: ${comentarios}` : `Comentarios: ${comentarios}`)
+          : (descripcion || null);
+
         // Insertar equipo con nuevos campos
         const query = `INSERT INTO Elementos
           (id_categoria, id_ambiente, tipo, marca, modelo, descripcion, 
@@ -216,14 +222,14 @@ export async function importarEquipos(req, res) {
           tipo,
           marca || null,
           modelo,
-          descripcion || null,
+          descripcionFinal,
           fechaAdq || null,
           costo ? parseFloat(costo) : null,
           vidaUtilMeses ? parseInt(vidaUtilMeses) : null,
           estadoFisicoValido,
           specsCompletas || null,
           userId,
-          rCentro || null,
+          rCentro,
           numeroSerie || null,
           placa || null,
           atributos || null,

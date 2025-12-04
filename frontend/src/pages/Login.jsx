@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FiMail, FiLock, FiEye } from 'react-icons/fi';
 import Toast from '../components/Toast';
-import AnimatedBackground from '../components/AnimatedBackground';
+import InteractiveBackground from '../components/InteractiveBackground';
 import { buildErrorMessage, parseApiResponse } from '../utils/api';
 import '../styles/auth.css';
 
@@ -58,7 +58,7 @@ export default function Login() {
 
   return (
     <div className="page login-page animated-bg">
-      <AnimatedBackground />
+      <InteractiveBackground />
       {toast && (
         <Toast
           message={toast.message}

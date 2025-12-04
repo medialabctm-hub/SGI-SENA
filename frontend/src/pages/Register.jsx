@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { FiMail, FiLock, FiEye, FiUser, FiCreditCard, FiPhone } from 'react-icons/fi'
 import { validarRegistro, validarContraseña, validarEmail, validarTelefono, validarCaracteresEspeciales, validarEspaciosInicioFinalNombre } from '../utils/validaciones';
 import Toast from '../components/Toast';
-import AnimatedBackground from '../components/AnimatedBackground';
+import InteractiveBackground from '../components/InteractiveBackground';
 import { parseApiResponse, buildErrorMessage } from '../utils/api';
 import '../styles/auth.css';
 
@@ -84,7 +84,7 @@ export default function Register() {
     <>
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
       <div className="page login-page animated-bg">
-        <AnimatedBackground />
+        <InteractiveBackground />
       <div className="login-card">
         <div className="logo-box">
           <div className="logo"><img src='/images/logoSena.png' alt="Logo SENA" /></div>

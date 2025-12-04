@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { FiUpload, FiFile, FiDownload } from 'react-icons/fi'
+import { FiUpload, FiFile, FiDownload, FiAlertCircle } from 'react-icons/fi'
 import * as XLSX from 'xlsx'
 import { parseApiResponse, buildErrorMessage } from '../utils/api'
 
@@ -68,7 +68,6 @@ export default function ImportarEquipos({ onImportComplete }) {
   const descargarPlantilla = () => {
     // Crear plantilla Excel básica con los nuevos campos
     const plantilla = {
-      'R Centro': [],
       'Modelo': [],
       'Consecutivo': [],
       'Descripcion': [],
@@ -79,7 +78,8 @@ export default function ImportarEquipos({ onImportComplete }) {
       'Fecha Adquisición': [],
       'Valor Ingreso': [],
       'Ambiente': [],
-      'Estado Físico': []
+      'Estado Físico': [],
+      'Comentarios': []
     }
 
     // Crear workbook y worksheet
