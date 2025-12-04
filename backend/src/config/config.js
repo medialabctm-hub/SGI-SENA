@@ -8,7 +8,9 @@ const __dirname = dirname(__filename);
 
 // Cargar variables de entorno desde .env si existe (solo para desarrollo local)
 // En producción (Docker/Railway), las variables vienen de process.env directamente
-dotenv.config({ path: join(__dirname, "../../.env") });
+// Usar override: false para que las variables de Railway (process.env) tengan prioridad
+const envPath = join(__dirname, "../../.env");
+dotenv.config({ path: envPath, override: false });
 
 // Establecer valores por defecto para variables opcionales
 if (!process.env.NODE_ENV) {
@@ -35,10 +37,7 @@ if (!process.env.JWT_ISSUER) {
 if (!process.env.JWT_AUDIENCE) {
   process.env.JWT_AUDIENCE = 'gse-users';
 }
-
-// Validar variables de entorno requeridas (solo las críticas)
-// Nota: BREVO_API_KEY y BREVO_SENDER_EMAIL son opcionales - el servicio de email
-// funcionará sin ellas pero mostrará un warning
+  
 const requiredEnvVars = [
   "DB_PASSWORD",
   "DB_HOST",
@@ -52,12 +51,64 @@ const requiredEnvVars = [
   "FRONTEND_URL",
 ];
 
-const missingEnvVars = requiredEnvVars.filter((envVar) => !process.env[envVar]);
+// Verificar variables de entorno con logging detallado
+const missingEnvVars = requiredEnvVars.filter((envVar) => {
+  // Leer directamente de process.env (más confiable en Railway)
+  const value = process.env[envVar];
+  const exists = !!value && typeof value === 'string' && value.trim() !== '';
+  
+  // Log para debugging en Railway
+  if (!exists) {
+    console.warn(`[CONFIG] Variable de entorno faltante o vacía: ${envVar}`);
+    // Mostrar todas las variables relacionadas para debugging
+    const relatedVars = Object.keys(process.env).filter(k => 
+      k.toUpperCase().includes(envVar.split('_')[0]) || 
+      k.toUpperCase() === envVar.toUpperCase()
+    );
+    if (relatedVars.length > 0) {
+      console.warn(`[CONFIG] Variables relacionadas encontradas: ${relatedVars.join(', ')}`);
+    }
+  } else {
+    // Confirmar que la variable existe (sin mostrar el valor completo por seguridad)
+    const preview = value.length > 20 ? value.substring(0, 20) + '...' : value.substring(0, value.length);
+    console.log(`[CONFIG] ✓ ${envVar} configurada (${value.length} caracteres)`);
+  }
+  
+  return !exists;
+});
 
 if (missingEnvVars.length > 0) {
-  throw new Error(
-    `Faltan las siguientes variables de entorno requeridas: ${missingEnvVars.join(", ")}`,
-  );
+  const brevoVars = Object.keys(process.env).filter(k => k.toUpperCase().includes('BREVO'));
+  const emailVars = Object.keys(process.env).filter(k => k.toUpperCase().includes('EMAIL'));
+  
+  let errorMsg = `❌ ERROR: Faltan las siguientes variables de entorno requeridas: ${missingEnvVars.join(", ")}\n\n`;
+  
+  if (missingEnvVars.includes('BREVO_API_KEY')) {
+    errorMsg += `📧 CONFIGURACIÓN DE BREVO:\n`;
+    errorMsg += `   1. Ve a https://app.brevo.com/settings/keys/api\n`;
+    errorMsg += `   2. Genera o copia tu API Key de Brevo\n`;
+    errorMsg += `   3. En Railway, ve a Variables de Entorno y agrega:\n`;
+    errorMsg += `      - BREVO_API_KEY=tu_api_key_aqui\n`;
+    errorMsg += `      - BREVO_SENDER_EMAIL=tu_email_verificado@dominio.com\n\n`;
+  }
+  
+  errorMsg += `🔍 DIAGNÓSTICO:\n`;
+  errorMsg += `   - Variables detectadas en process.env: ${Object.keys(process.env).length} totales\n`;
+  if (brevoVars.length > 0) {
+    errorMsg += `   - Variables relacionadas con BREVO encontradas: ${brevoVars.join(', ')}\n`;
+  } else {
+    errorMsg += `   - ⚠️  No se encontraron variables relacionadas con BREVO\n`;
+  }
+  if (emailVars.length > 0) {
+    errorMsg += `   - Variables relacionadas con EMAIL encontradas: ${emailVars.join(', ')}\n`;
+  }
+  
+  errorMsg += `\n💡 SOLUCIÓN:\n`;
+  errorMsg += `   En Railway, ve a tu proyecto > Variables y agrega todas las variables requeridas.\n`;
+  errorMsg += `   Después de agregarlas, Railway reiniciará automáticamente el servicio.\n`;
+  
+  console.error('[CONFIG ERROR]', errorMsg);
+  throw new Error(errorMsg);
 }
 
 export const config = {

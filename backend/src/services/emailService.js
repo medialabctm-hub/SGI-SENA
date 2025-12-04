@@ -19,8 +19,8 @@ class EmailService {
    */
   initializeBrevo() {
     try {
-      // Leer directamente de process.env primero (para Railway/producción)
-      // Luego de config.email.brevoApiKey (para desarrollo local)
+      // SIEMPRE leer directamente de process.env primero (Railway inyecta las variables aquí)
+      // process.env tiene prioridad absoluta sobre config
       const apiKeyFromEnv = process.env.BREVO_API_KEY;
       const apiKeyFromConfig = config.email?.brevoApiKey;
       const apiKey = apiKeyFromEnv || apiKeyFromConfig;
@@ -31,25 +31,38 @@ class EmailService {
         hasConfigKey: !!apiKeyFromConfig,
         apiKeyExists: !!apiKey,
         apiKeyLength: apiKey ? apiKey.length : 0,
-        envKeysWithBrevo: Object.keys(process.env).filter(k => k.toUpperCase().includes('BREVO')).join(', ')
+        apiKeyPrefix: apiKey ? apiKey.substring(0, 20) + '...' : 'N/A',
+        envKeysWithBrevo: Object.keys(process.env).filter(k => k.toUpperCase().includes('BREVO')).join(', ') || 'ninguna',
+        nodeEnv: process.env.NODE_ENV
       });
       
-      if (!apiKey || !apiKey.trim()) {
-        logger.warn('BREVO_API_KEY no configurada o vacía. El servicio de email no estará disponible.', {
+      if (!apiKey || typeof apiKey !== 'string' || !apiKey.trim()) {
+        const errorDetails = {
           hasProcessEnv: !!apiKeyFromEnv,
           hasConfigKey: !!apiKeyFromConfig,
-          apiKeyFromEnvValue: apiKeyFromEnv ? `${apiKeyFromEnv.substring(0, 10)}...` : 'undefined',
-          envKeys: Object.keys(process.env).filter(k => k.toUpperCase().includes('BREVO') || k.toUpperCase().includes('EMAIL')).join(', ')
-        });
+          apiKeyType: typeof apiKey,
+          apiKeyValue: apiKey ? 'existe pero vacío' : 'no existe',
+          envKeys: Object.keys(process.env).filter(k => k.toUpperCase().includes('BREVO') || k.toUpperCase().includes('EMAIL')).join(', ') || 'ninguna',
+          allEnvKeys: Object.keys(process.env).slice(0, 10).join(', ') + '...' // Primeras 10 para debugging
+        };
+        logger.error('BREVO_API_KEY no configurada o inválida. El servicio de email no estará disponible.', errorDetails);
         this.apiInstance = null;
         this.apiClient = null;
         return;
       }
       
+      // Validar formato básico de la API key de Brevo
+      const trimmedKey = apiKey.trim();
+      if (!trimmedKey.startsWith('xkeysib-')) {
+        logger.warn('BREVO_API_KEY no tiene el formato esperado (debe empezar con "xkeysib-")', {
+          keyPrefix: trimmedKey.substring(0, 20) + '...'
+        });
+      }
+      
       logger.info('BREVO_API_KEY encontrada, configurando servicio', {
-        keyLength: apiKey.length,
-        keyPrefix: apiKey.substring(0, 15) + '...',
-        source: apiKeyFromEnv ? 'process.env' : 'config.email'
+        keyLength: trimmedKey.length,
+        keyPrefix: trimmedKey.substring(0, 20) + '...',
+        source: apiKeyFromEnv ? 'process.env (Railway)' : 'config.email (local)'
       });
 
       // Configurar la API key de Brevo según la documentación oficial
@@ -58,7 +71,8 @@ class EmailService {
       if (!apiKeyAuth) {
         throw new Error('No se pudo acceder a la autenticación api-key de Brevo');
       }
-      apiKeyAuth.apiKey = apiKey.trim();
+      // Asegurarse de que la API key esté correctamente configurada
+      apiKeyAuth.apiKey = trimmedKey;
       
       // Crear instancia del cliente API
       this.apiClient = defaultClient;
@@ -73,11 +87,15 @@ class EmailService {
       });
       
       // Obtener email del remitente desde configuración o usar el por defecto
-      this.senderEmail = process.env.BREVO_SENDER_EMAIL || config.email.user || 'noreply@sena.edu.co';
+      // SIEMPRE priorizar process.env (Railway)
+      this.senderEmail = process.env.BREVO_SENDER_EMAIL || config.email?.user || 'noreply@sena.edu.co';
       
-      logger.info('Servicio de email Brevo configurado correctamente', {
+      logger.info('✅ Servicio de email Brevo configurado correctamente', {
         senderEmail: this.senderEmail,
-        hasApiKey: !!apiKey
+        hasApiKey: !!trimmedKey,
+        apiKeyLength: trimmedKey.length,
+        apiKeyConfigured: !!apiKeyAuth.apiKey,
+        senderEmailSource: process.env.BREVO_SENDER_EMAIL ? 'process.env' : (config.email?.user ? 'config.email' : 'default')
       });
     } catch (error) {
       logger.error('Error al inicializar servicio de email Brevo:', error);
@@ -191,9 +209,12 @@ class EmailService {
       sendSmtpEmail.subject = subject;
       sendSmtpEmail.htmlContent = htmlContent;
       sendSmtpEmail.textContent = textContent;
+      // Asegurarse de usar el email del remitente más actualizado (de process.env si está disponible)
+      const currentSenderEmail = process.env.BREVO_SENDER_EMAIL || this.senderEmail || config.email?.user || 'noreply@sena.edu.co';
+      
       sendSmtpEmail.sender = {
         name: this.senderName,
-        email: this.senderEmail
+        email: currentSenderEmail
       };
       sendSmtpEmail.to = [{
         email: to.trim()
@@ -201,8 +222,9 @@ class EmailService {
 
       logger.info('Enviando correo a través de Brevo API', {
         to: to.trim(),
-        sender: this.senderEmail,
-        hasApiInstance: !!this.apiInstance
+        sender: currentSenderEmail,
+        hasApiInstance: !!this.apiInstance,
+        apiKeyConfigured: !!this.apiClient?.authentications?.['api-key']?.apiKey
       });
 
       const result = await this.apiInstance.sendTransacEmail(sendSmtpEmail);
