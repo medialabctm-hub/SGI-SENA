@@ -169,6 +169,8 @@ export const config = {
     password: process.env.EMAIL_PASSWORD, // Mantener para compatibilidad
     brevoSmtpKey: process.env.BREVO_SMTP_KEY,
     brevoSmtpLogin: process.env.BREVO_SMTP_LOGIN,
+    brevoSmtpHost: process.env.BREVO_SMTP_HOST || 'smtp-relay.brevo.com',
+    brevoSmtpPort: process.env.BREVO_SMTP_PORT || '587',
     // Mantener brevoApiKey para compatibilidad con código antiguo (deprecated)
     brevoApiKey: process.env.BREVO_API_KEY,
   },

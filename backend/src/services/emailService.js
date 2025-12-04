@@ -94,38 +94,56 @@ class EmailService {
       });
 
       // Configurar el transportador SMTP de Brevo
-      // Brevo SMTP settings:
-      // - Host: smtp-relay.brevo.com
-      // - Port: 587 (TLS) o 465 (SSL)
+      // Brevo SMTP settings (configurables via variables de entorno):
+      // - Host: smtp-relay.brevo.com (por defecto)
+      // - Port: 587 (TLS) o 465 (SSL) (por defecto 587)
       // - Auth: Login (email) y Password (SMTP key)
+      const smtpHost = process.env.BREVO_SMTP_HOST || 'smtp-relay.brevo.com';
+      const smtpPort = parseInt(process.env.BREVO_SMTP_PORT || '587', 10);
+      const useSecure = smtpPort === 465;
+      
+      logger.info('Configurando transportador SMTP', {
+        host: smtpHost,
+        port: smtpPort,
+        secure: useSecure,
+        smtpLogin: finalSmtpLogin.trim().substring(0, 30) + '...'
+      });
+      
       this.transporter = nodemailer.createTransport({
-        host: 'smtp-relay.brevo.com',
-        port: 587,
-        secure: false, // true para 465, false para otros puertos
+        host: smtpHost,
+        port: smtpPort,
+        secure: useSecure, // true para 465, false para otros puertos
         auth: {
           user: finalSmtpLogin.trim(),
           pass: trimmedKey
         },
-        connectionTimeout: 60000, // 60 segundos para establecer conexión
-        greetingTimeout: 30000, // 30 segundos para saludo SMTP
-        socketTimeout: 60000, // 60 segundos para operaciones de socket
+        connectionTimeout: 30000, // 30 segundos para establecer conexión (reducido)
+        greetingTimeout: 15000, // 15 segundos para saludo SMTP (reducido)
+        socketTimeout: 30000, // 30 segundos para operaciones de socket (reducido)
         tls: {
           // No rechazar certificados no autorizados (útil en algunos entornos)
           rejectUnauthorized: false,
-          minVersion: 'TLSv1.2'
+          minVersion: 'TLSv1.2',
+          ciphers: 'SSLv3'
         },
         // Opciones adicionales para mejorar la conexión
         pool: false, // No usar pool de conexiones
         maxConnections: 1,
-        maxMessages: 1
+        maxMessages: 1,
+        // Opciones de debug (solo en desarrollo)
+        debug: process.env.NODE_ENV === 'development',
+        logger: process.env.NODE_ENV === 'development'
       });
       
       logger.info('Transportador SMTP de Brevo configurado', {
-        host: 'smtp-relay.brevo.com',
-        port: 587,
+        host: smtpHost,
+        port: smtpPort,
+        secure: useSecure,
         hasTransporter: !!this.transporter,
-        authUser: finalSmtpLogin.trim().substring(0, 20) + '...',
-        authPassSet: !!trimmedKey
+        authUser: finalSmtpLogin.trim().substring(0, 30) + '...',
+        authPassSet: !!trimmedKey,
+        connectionTimeout: 30000,
+        greetingTimeout: 15000
       });
       
       // Obtener email del remitente desde configuración o usar el por defecto
@@ -275,11 +293,11 @@ class EmailService {
         html: htmlContent
       });
 
-      // Timeout de 45 segundos para el envío
+      // Timeout de 25 segundos para el envío (reducido para respuesta más rápida)
       const timeoutPromise = new Promise((_, reject) => {
         setTimeout(() => {
-          reject(new Error('Timeout: El envío del correo tardó más de 45 segundos'));
-        }, 45000);
+          reject(new Error('Timeout: El envío del correo tardó más de 25 segundos'));
+        }, 25000);
       });
 
       // Ejecutar con timeout
@@ -308,23 +326,34 @@ class EmailService {
         try {
           const smtpKey = process.env.BREVO_SMTP_KEY || config.email?.brevoSmtpKey;
           const smtpLogin = process.env.BREVO_SMTP_LOGIN || process.env.BREVO_SENDER_EMAIL || config.email?.user;
+          const smtpHost = process.env.BREVO_SMTP_HOST || 'smtp-relay.brevo.com';
           
           if (smtpKey && smtpLogin) {
+            logger.info('Creando transportador alternativo con puerto 465 (SSL)', {
+              host: smtpHost,
+              port: 465,
+              login: smtpLogin.trim().substring(0, 30) + '...'
+            });
+            
             const altTransporter = nodemailer.createTransport({
-              host: 'smtp-relay.brevo.com',
+              host: smtpHost,
               port: 465,
               secure: true, // SSL
               auth: {
                 user: smtpLogin.trim(),
                 pass: smtpKey.trim()
               },
-              connectionTimeout: 30000,
-              greetingTimeout: 15000,
-              socketTimeout: 30000,
+              connectionTimeout: 20000, // 20 segundos
+              greetingTimeout: 10000, // 10 segundos
+              socketTimeout: 20000, // 20 segundos
               tls: {
                 rejectUnauthorized: false,
-                minVersion: 'TLSv1.2'
-              }
+                minVersion: 'TLSv1.2',
+                ciphers: 'SSLv3'
+              },
+              pool: false,
+              maxConnections: 1,
+              maxMessages: 1
             });
 
             const currentSenderEmail = process.env.BREVO_SENDER_EMAIL || this.senderEmail || config.email?.user || 'noreply@sena.edu.co';
