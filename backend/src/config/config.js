@@ -37,6 +37,8 @@ if (!process.env.JWT_AUDIENCE) {
 }
 
 // Validar variables de entorno requeridas (solo las críticas)
+// Nota: BREVO_API_KEY y BREVO_SENDER_EMAIL son opcionales - el servicio de email
+// funcionará sin ellas pero mostrará un warning
 const requiredEnvVars = [
   "DB_PASSWORD",
   "DB_HOST",
@@ -44,10 +46,6 @@ const requiredEnvVars = [
   "DB_NAME",
   "JWT_SECRET",
   "COOKIE_SECRET",
-  "EMAIL_USER",
-  "EMAIL_PASSWORD",
-  "BREVO_API_KEY",
-  "BREVO_SENDER_EMAIL",
   "CORS_ORIGIN",
   "FRONTEND_URL",
 ];
