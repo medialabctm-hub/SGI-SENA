@@ -1,105 +1,54 @@
-import nodemailer from 'nodemailer';
+import * as brevo from '@getbrevo/brevo';
 import { config } from '../config/config.js';
 import { logger } from '../utils/logger.js';
 
 /**
- * Servicio de envío de correos electrónicos
+ * Servicio de envío de correos electrónicos usando Brevo API
  */
 class EmailService {
   constructor() {
-    this.transporter = null;
-    this.initializeTransporter();
+    this.apiInstance = null;
+    this.apiClient = null;
+    this.senderEmail = null;
+    this.senderName = 'Sistema de Gestión de Equipos SENA';
+    this.initializeBrevo();
   }
 
   /**
-   * Inicializa el transporter de nodemailer
+   * Inicializa el cliente de Brevo API
    */
-  initializeTransporter() {
+  initializeBrevo() {
     try {
-      // Verificar que existan las credenciales
-      if (!config.email.user || !config.email.password) {
-        logger.warn('Credenciales de email no configuradas. El servicio de email no estará disponible.');
-        this.transporter = null;
+      const apiKey = process.env.BREVO_API_KEY || config.email.brevoApiKey;
+      
+      if (!apiKey) {
+        logger.warn('BREVO_API_KEY no configurada. El servicio de email no estará disponible.');
+        this.apiInstance = null;
+        this.apiClient = null;
         return;
       }
 
-      logger.info('Inicializando servicio de email...', {
-        user: config.email.user,
-        hasPassword: !!config.email.password,
-        emailHost: process.env.EMAIL_HOST || 'Gmail (por defecto)',
-        emailPort: process.env.EMAIL_PORT || '587'
+      // Configurar la API key de Brevo
+      const defaultClient = brevo.ApiClient.instance;
+      defaultClient.authentications['api-key'].apiKey = apiKey;
+      
+      // Crear instancia del cliente API
+      this.apiClient = defaultClient;
+      
+      // Crear instancia de TransactionalEmailsApi
+      this.apiInstance = new brevo.TransactionalEmailsApi(this.apiClient);
+      
+      // Obtener email del remitente desde configuración o usar el por defecto
+      this.senderEmail = process.env.BREVO_SENDER_EMAIL || config.email.user || 'noreply@sena.edu.co';
+      
+      logger.info('Servicio de email Brevo configurado correctamente', {
+        senderEmail: this.senderEmail,
+        hasApiKey: !!apiKey
       });
-
-      // Configuración flexible para diferentes proveedores
-      // Si EMAIL_HOST está configurado, usar configuración SMTP personalizada
-      if (process.env.EMAIL_HOST) {
-        this.transporter = nodemailer.createTransport({
-          host: process.env.EMAIL_HOST,
-          port: parseInt(process.env.EMAIL_PORT || '587'),
-          secure: process.env.EMAIL_SECURE === 'true', // true para 465, false para otros puertos
-          auth: {
-            user: config.email.user,
-            pass: config.email.password
-          },
-          // Opciones de conexión para evitar timeouts
-          connectionTimeout: 10000, // 10 segundos
-          greetingTimeout: 5000, // 5 segundos
-          socketTimeout: 10000, // 10 segundos
-          pool: true, // Usar pool de conexiones
-          maxConnections: 1,
-          maxMessages: 3
-        });
-      } else {
-        // Configuración por defecto para Gmail con opciones mejoradas
-        this.transporter = nodemailer.createTransport({
-          service: 'gmail',
-          auth: {
-            user: config.email.user,
-            pass: config.email.password
-          },
-          // Opciones de conexión para evitar timeouts
-          connectionTimeout: 15000, // 15 segundos para Gmail
-          greetingTimeout: 10000, // 10 segundos
-          socketTimeout: 15000, // 15 segundos
-          pool: true, // Usar pool de conexiones
-          maxConnections: 1,
-          maxMessages: 3,
-          // Configuración adicional para Gmail
-          tls: {
-            rejectUnauthorized: false // Permitir certificados autofirmados en desarrollo
-          }
-        });
-      }
-
-      // Verificar conexión (en desarrollo o si se solicita explícitamente)
-      // NOTA: En producción, Railway puede tener problemas con Gmail debido a restricciones de red
-      // Si experimentas timeouts (ETIMEDOUT), considera:
-      // 1. Usar una "Contraseña de aplicación" de Gmail en lugar de tu contraseña normal
-      // 2. Configurar EMAIL_HOST=smtp.gmail.com y EMAIL_PORT=587 explícitamente
-      // 3. Usar un servicio SMTP alternativo como SendGrid, Mailgun, o AWS SES
-      if (process.env.NODE_ENV === 'development' || process.env.VERIFY_EMAIL === 'true') {
-        this.transporter.verify((error, success) => {
-          if (error) {
-            logger.warn('Error al verificar configuración de email:', {
-              message: error.message,
-              code: error.code,
-              command: error.command
-            });
-            logger.warn('El servicio de email puede no funcionar correctamente. Verifica las credenciales.');
-            if (error.code === 'ETIMEDOUT' && !process.env.EMAIL_HOST) {
-              logger.warn('Sugerencia: Configura EMAIL_HOST=smtp.gmail.com y EMAIL_PORT=587 explícitamente');
-            }
-          } else {
-            logger.info('Servicio de email configurado y verificado correctamente');
-          }
-        });
-      } else {
-        logger.info('Servicio de email configurado (verificación omitida en producción)');
-      }
     } catch (error) {
-      logger.error('Error al inicializar servicio de email:', error);
-      // En caso de error, el servicio seguirá funcionando pero no enviará emails
-      this.transporter = null;
+      logger.error('Error al inicializar servicio de email Brevo:', error);
+      this.apiInstance = null;
+      this.apiClient = null;
     }
   }
 
@@ -132,6 +81,77 @@ class EmailService {
   }
 
   /**
+   * Envía un correo usando Brevo API
+   * @param {string} to - Correo destinatario
+   * @param {string} subject - Asunto del correo
+   * @param {string} htmlContent - Contenido HTML del correo
+   * @param {string} textContent - Contenido de texto plano del correo
+   * @returns {Promise<{success: boolean, error?: string}>} Resultado del envío
+   */
+  async sendEmail(to, subject, htmlContent, textContent) {
+    if (!this.apiInstance) {
+      const errorMsg = 'Servicio de email no configurado. Verifica BREVO_API_KEY';
+      logger.warn(errorMsg);
+      return { success: false, error: errorMsg };
+    }
+
+    if (!to || !to.trim()) {
+      const errorMsg = 'No se proporcionó correo electrónico';
+      logger.warn(errorMsg);
+      return { success: false, error: errorMsg };
+    }
+
+    try {
+      const sendSmtpEmail = new brevo.SendSmtpEmail();
+      
+      sendSmtpEmail.subject = subject;
+      sendSmtpEmail.htmlContent = htmlContent;
+      sendSmtpEmail.textContent = textContent;
+      sendSmtpEmail.sender = {
+        name: this.senderName,
+        email: this.senderEmail
+      };
+      sendSmtpEmail.to = [{
+        email: to.trim()
+      }];
+
+      const result = await this.apiInstance.sendTransacEmail(sendSmtpEmail);
+      logger.info(`Correo enviado exitosamente a: ${to}`, { 
+        messageId: result.messageId || result.body?.messageId 
+      });
+      return { 
+        success: true, 
+        messageId: result.messageId || result.body?.messageId 
+      };
+    } catch (error) {
+      let errorMessage = 'Error al enviar correo';
+      
+      if (error.response?.body) {
+        errorMessage = error.response.body.message || errorMessage;
+        logger.error(`Error de Brevo API al enviar correo a ${to}:`, {
+          message: error.response.body.message,
+          code: error.response.body.code,
+          statusCode: error.response.statusCode
+        });
+      } else if (error.body) {
+        errorMessage = error.body.message || error.message || errorMessage;
+        logger.error(`Error de Brevo API al enviar correo a ${to}:`, {
+          message: error.body.message || error.message,
+          code: error.body.code
+        });
+      } else {
+        logger.error(`Error al enviar correo a ${to}:`, {
+          message: error.message,
+          stack: error.stack
+        });
+        errorMessage = error.message || errorMessage;
+      }
+      
+      return { success: false, error: errorMessage };
+    }
+  }
+
+  /**
    * Envía un correo con la contraseña generada
    * @param {string} to - Correo destinatario
    * @param {string} nombreUsuario - Nombre del usuario
@@ -140,113 +160,99 @@ class EmailService {
    * @returns {Promise<{success: boolean, error?: string}>} Resultado del envío
    */
   async enviarContrasena(to, nombreUsuario, cedula, password) {
-    if (!this.transporter) {
-      const errorMsg = 'Servicio de email no configurado. Verifica las credenciales EMAIL_USER y EMAIL_PASSWORD';
-      logger.warn(errorMsg);
-      return { success: false, error: errorMsg };
-    }
+    const subject = 'Credenciales de acceso - Sistema de Gestión de Equipos SENA';
+    
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="UTF-8">
+        <style>
+          body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+          }
+          .header {
+            background: linear-gradient(135deg, #40c057 0%, #51cf66 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+            border-radius: 8px 8px 0 0;
+          }
+          .content {
+            background: #f8f9fa;
+            padding: 30px;
+            border-radius: 0 0 8px 8px;
+          }
+          .credentials-box {
+            background: white;
+            border: 2px solid #40c057;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            text-align: center;
+          }
+          .password {
+            font-size: 24px;
+            font-weight: bold;
+            color: #40c057;
+            letter-spacing: 2px;
+            font-family: 'Courier New', monospace;
+            padding: 10px;
+            background: #f0f0f0;
+            border-radius: 4px;
+            margin: 10px 0;
+          }
+          .warning {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+          }
+          .footer {
+            text-align: center;
+            margin-top: 30px;
+            color: #666;
+            font-size: 12px;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <h1>Sistema de Gestión de Equipos SENA</h1>
+        </div>
+        <div class="content">
+          <h2>Bienvenido/a, ${nombreUsuario}</h2>
+          <p>Tu cuenta ha sido creada en el Sistema de Gestión de Equipos SENA. A continuación encontrarás tus credenciales de acceso:</p>
+          
+          <div class="credentials-box">
+            <p><strong>Cédula:</strong> ${cedula}</p>
+            <p><strong>Contraseña temporal:</strong></p>
+            <div class="password">${password}</div>
+          </div>
 
-    if (!to || !to.trim()) {
-      const errorMsg = 'No se proporcionó correo electrónico para enviar contraseña';
-      logger.warn(errorMsg);
-      return { success: false, error: errorMsg };
-    }
+          <div class="warning">
+            <strong>⚠️ Importante:</strong> Por seguridad, te recomendamos cambiar esta contraseña después de tu primer inicio de sesión.
+          </div>
 
-    try {
-      const mailOptions = {
-        from: `"Sistema de Gestión de Equipos SENA" <${config.email.user}>`,
-        to: to.trim(),
-        subject: 'Credenciales de acceso - Sistema de Gestión de Equipos SENA',
-        html: `
-          <!DOCTYPE html>
-          <html>
-          <head>
-            <meta charset="UTF-8">
-            <style>
-              body {
-                font-family: Arial, sans-serif;
-                line-height: 1.6;
-                color: #333;
-                max-width: 600px;
-                margin: 0 auto;
-                padding: 20px;
-              }
-              .header {
-                background: linear-gradient(135deg, #40c057 0%, #51cf66 100%);
-                color: white;
-                padding: 20px;
-                text-align: center;
-                border-radius: 8px 8px 0 0;
-              }
-              .content {
-                background: #f8f9fa;
-                padding: 30px;
-                border-radius: 0 0 8px 8px;
-              }
-              .credentials-box {
-                background: white;
-                border: 2px solid #40c057;
-                border-radius: 8px;
-                padding: 20px;
-                margin: 20px 0;
-                text-align: center;
-              }
-              .password {
-                font-size: 24px;
-                font-weight: bold;
-                color: #40c057;
-                letter-spacing: 2px;
-                font-family: 'Courier New', monospace;
-                padding: 10px;
-                background: #f0f0f0;
-                border-radius: 4px;
-                margin: 10px 0;
-              }
-              .warning {
-                background: #fff3cd;
-                border-left: 4px solid #ffc107;
-                padding: 15px;
-                margin: 20px 0;
-                border-radius: 4px;
-              }
-              .footer {
-                text-align: center;
-                margin-top: 30px;
-                color: #666;
-                font-size: 12px;
-              }
-            </style>
-          </head>
-          <body>
-            <div class="header">
-              <h1>Sistema de Gestión de Equipos SENA</h1>
-            </div>
-            <div class="content">
-              <h2>Bienvenido/a, ${nombreUsuario}</h2>
-              <p>Tu cuenta ha sido creada en el Sistema de Gestión de Equipos SENA. A continuación encontrarás tus credenciales de acceso:</p>
-              
-              <div class="credentials-box">
-                <p><strong>Cédula:</strong> ${cedula}</p>
-                <p><strong>Contraseña temporal:</strong></p>
-                <div class="password">${password}</div>
-              </div>
+          <p>Puedes acceder al sistema utilizando tu cédula y la contraseña proporcionada.</p>
+          
+          <p>Si no solicitaste esta cuenta, por favor contacta al administrador del sistema.</p>
+        </div>
+        <div class="footer">
+          <p>Este es un correo automático, por favor no responder.</p>
+          <p>SENA - Sistema de Gestión de Equipos</p>
+        </div>
+      </body>
+      </html>
+    `;
 
-              <div class="warning">
-                <strong>⚠️ Importante:</strong> Por seguridad, te recomendamos cambiar esta contraseña después de tu primer inicio de sesión.
-              </div>
-
-              <p>Puedes acceder al sistema utilizando tu cédula y la contraseña proporcionada.</p>
-              
-              <p>Si no solicitaste esta cuenta, por favor contacta al administrador del sistema.</p>
-            </div>
-            <div class="footer">
-              <p>Este es un correo automático, por favor no responder.</p>
-              <p>SENA - Sistema de Gestión de Equipos</p>
-            </div>
-          </body>
-          </html>
-        `,
-        text: `
+    const textContent = `
 Sistema de Gestión de Equipos SENA
 
 Bienvenido/a, ${nombreUsuario}
@@ -265,45 +271,9 @@ Si no solicitaste esta cuenta, por favor contacta al administrador del sistema.
 ---
 Este es un correo automático, por favor no responder.
 SENA - Sistema de Gestión de Equipos
-        `
-      };
+    `;
 
-      await this.transporter.sendMail(mailOptions);
-      logger.info(`Correo enviado exitosamente a: ${to}`);
-      return { success: true };
-    } catch (error) {
-      // Capturar mensaje de error más detallado
-      let errorMessage = 'Error al enviar correo';
-      
-      if (error.code === 'EAUTH') {
-        errorMessage = 'Error de autenticación. Verifica las credenciales EMAIL_USER y EMAIL_PASSWORD. Si usas Gmail, asegúrate de usar una "Contraseña de aplicación" en lugar de tu contraseña normal.';
-      } else if (error.code === 'ECONNECTION') {
-        errorMessage = 'Error de conexión con el servidor de correo. Verifica EMAIL_HOST y EMAIL_PORT, o si usas Gmail, verifica que el servicio esté disponible.';
-      } else if (error.code === 'ETIMEDOUT') {
-        if (error.command === 'CONN') {
-          errorMessage = 'Timeout al conectar con el servidor de correo. Verifica EMAIL_HOST y EMAIL_PORT. Si usas Gmail, puede que esté bloqueando la conexión desde este servidor. Considera usar un servicio SMTP alternativo o configurar EMAIL_HOST explícitamente.';
-        } else {
-          errorMessage = 'Timeout al enviar correo. El servidor de correo no respondió a tiempo. Verifica la configuración de red y firewall.';
-        }
-      } else if (error.code === 'EENVELOPE') {
-        errorMessage = 'Error en la dirección de correo. Verifica que el correo sea válido';
-      } else if (error.response) {
-        errorMessage = `Error del servidor de correo: ${error.response}`;
-      } else {
-        errorMessage = error.message || 'Error desconocido al enviar correo';
-      }
-      
-      // Log detallado del error
-      logger.error(`Error al enviar correo a ${to}:`, {
-        message: error.message,
-        code: error.code,
-        command: error.command,
-        response: error.response,
-        stack: error.stack
-      });
-      
-      return { success: false, error: errorMessage };
-    }
+    return await this.sendEmail(to, subject, htmlContent, textContent);
   }
 
   /**
@@ -349,113 +319,99 @@ SENA - Sistema de Gestión de Equipos
    * @returns {Promise<{success: boolean, error?: string}>} Resultado del envío
    */
   async enviarCorreoRecuperacion(to, nombreUsuario, urlRecuperacion) {
-    if (!this.transporter) {
-      const errorMsg = 'Servicio de email no configurado. Verifica las credenciales EMAIL_USER y EMAIL_PASSWORD';
-      logger.warn(errorMsg);
-      return { success: false, error: errorMsg };
-    }
+    const subject = 'Recuperación de Contraseña - Sistema de Gestión de Equipos SENA';
+    
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="UTF-8">
+        <style>
+          body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+          }
+          .header {
+            background: linear-gradient(135deg, #40c057 0%, #51cf66 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+            border-radius: 8px 8px 0 0;
+          }
+          .content {
+            background: #f8f9fa;
+            padding: 30px;
+            border-radius: 0 0 8px 8px;
+          }
+          .button {
+            display: inline-block;
+            padding: 12px 30px;
+            background: #40c057;
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+            margin: 20px 0;
+            font-weight: 600;
+          }
+          .warning {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+          }
+          .footer {
+            text-align: center;
+            margin-top: 30px;
+            color: #666;
+            font-size: 12px;
+          }
+          .url-fallback {
+            word-break: break-all;
+            background: #e9ecef;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+            font-size: 12px;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <h1>Sistema de Gestión de Equipos SENA</h1>
+        </div>
+        <div class="content">
+          <h2>Recuperación de Contraseña</h2>
+          <p>Hola ${nombreUsuario},</p>
+          <p>Hemos recibido una solicitud para restablecer tu contraseña en el Sistema de Gestión de Equipos SENA.</p>
+          
+          <p>Haz clic en el siguiente botón para restablecer tu contraseña:</p>
+          <div style="text-align: center;">
+            <a href="${urlRecuperacion}" class="button">Restablecer Contraseña</a>
+          </div>
 
-    if (!to || !to.trim()) {
-      const errorMsg = 'No se proporcionó correo electrónico para enviar recuperación';
-      logger.warn(errorMsg);
-      return { success: false, error: errorMsg };
-    }
+          <p>O copia y pega el siguiente enlace en tu navegador:</p>
+          <div class="url-fallback">${urlRecuperacion}</div>
 
-    try {
-      const mailOptions = {
-        from: `"Sistema de Gestión de Equipos SENA" <${config.email.user}>`,
-        to: to.trim(),
-        subject: 'Recuperación de Contraseña - Sistema de Gestión de Equipos SENA',
-        html: `
-          <!DOCTYPE html>
-          <html>
-          <head>
-            <meta charset="UTF-8">
-            <style>
-              body {
-                font-family: Arial, sans-serif;
-                line-height: 1.6;
-                color: #333;
-                max-width: 600px;
-                margin: 0 auto;
-                padding: 20px;
-              }
-              .header {
-                background: linear-gradient(135deg, #40c057 0%, #51cf66 100%);
-                color: white;
-                padding: 20px;
-                text-align: center;
-                border-radius: 8px 8px 0 0;
-              }
-              .content {
-                background: #f8f9fa;
-                padding: 30px;
-                border-radius: 0 0 8px 8px;
-              }
-              .button {
-                display: inline-block;
-                padding: 12px 30px;
-                background: #40c057;
-                color: white;
-                text-decoration: none;
-                border-radius: 6px;
-                margin: 20px 0;
-                font-weight: 600;
-              }
-              .warning {
-                background: #fff3cd;
-                border-left: 4px solid #ffc107;
-                padding: 15px;
-                margin: 20px 0;
-                border-radius: 4px;
-              }
-              .footer {
-                text-align: center;
-                margin-top: 30px;
-                color: #666;
-                font-size: 12px;
-              }
-              .url-fallback {
-                word-break: break-all;
-                background: #e9ecef;
-                padding: 10px;
-                border-radius: 4px;
-                margin: 10px 0;
-                font-size: 12px;
-              }
-            </style>
-          </head>
-          <body>
-            <div class="header">
-              <h1>Sistema de Gestión de Equipos SENA</h1>
-            </div>
-            <div class="content">
-              <h2>Recuperación de Contraseña</h2>
-              <p>Hola ${nombreUsuario},</p>
-              <p>Hemos recibido una solicitud para restablecer tu contraseña en el Sistema de Gestión de Equipos SENA.</p>
-              
-              <p>Haz clic en el siguiente botón para restablecer tu contraseña:</p>
-              <div style="text-align: center;">
-                <a href="${urlRecuperacion}" class="button">Restablecer Contraseña</a>
-              </div>
+          <div class="warning">
+            <strong>⚠️ Importante:</strong> Este enlace expirará en 1 hora. Si no solicitaste este cambio, puedes ignorar este correo de forma segura.
+          </div>
 
-              <p>O copia y pega el siguiente enlace en tu navegador:</p>
-              <div class="url-fallback">${urlRecuperacion}</div>
+          <p>Si no solicitaste este cambio, por favor contacta al administrador del sistema.</p>
+        </div>
+        <div class="footer">
+          <p>Este es un correo automático, por favor no responder.</p>
+          <p>SENA - Sistema de Gestión de Equipos</p>
+        </div>
+      </body>
+      </html>
+    `;
 
-              <div class="warning">
-                <strong>⚠️ Importante:</strong> Este enlace expirará en 1 hora. Si no solicitaste este cambio, puedes ignorar este correo de forma segura.
-              </div>
-
-              <p>Si no solicitaste este cambio, por favor contacta al administrador del sistema.</p>
-            </div>
-            <div class="footer">
-              <p>Este es un correo automático, por favor no responder.</p>
-              <p>SENA - Sistema de Gestión de Equipos</p>
-            </div>
-          </body>
-          </html>
-        `,
-        text: `
+    const textContent = `
 Sistema de Gestión de Equipos SENA
 
 Recuperación de Contraseña
@@ -474,49 +430,12 @@ Si no solicitaste este cambio, por favor contacta al administrador del sistema.
 ---
 Este es un correo automático, por favor no responder.
 SENA - Sistema de Gestión de Equipos
-        `
-      };
+    `;
 
-      await this.transporter.sendMail(mailOptions);
-      logger.info(`Correo de recuperación enviado exitosamente a: ${to}`);
-      return { success: true };
-    } catch (error) {
-      // Capturar mensaje de error más detallado
-      let errorMessage = 'Error al enviar correo';
-      
-      if (error.code === 'EAUTH') {
-        errorMessage = 'Error de autenticación. Verifica las credenciales EMAIL_USER y EMAIL_PASSWORD. Si usas Gmail, asegúrate de usar una "Contraseña de aplicación" en lugar de tu contraseña normal.';
-      } else if (error.code === 'ECONNECTION') {
-        errorMessage = 'Error de conexión con el servidor de correo. Verifica EMAIL_HOST y EMAIL_PORT, o si usas Gmail, verifica que el servicio esté disponible.';
-      } else if (error.code === 'ETIMEDOUT') {
-        if (error.command === 'CONN') {
-          errorMessage = 'Timeout al conectar con el servidor de correo. Verifica EMAIL_HOST y EMAIL_PORT. Si usas Gmail, puede que esté bloqueando la conexión desde este servidor. Considera usar un servicio SMTP alternativo o configurar EMAIL_HOST explícitamente.';
-        } else {
-          errorMessage = 'Timeout al enviar correo. El servidor de correo no respondió a tiempo. Verifica la configuración de red y firewall.';
-        }
-      } else if (error.code === 'EENVELOPE') {
-        errorMessage = 'Error en la dirección de correo. Verifica que el correo sea válido';
-      } else if (error.response) {
-        errorMessage = `Error del servidor de correo: ${error.response}`;
-      } else {
-        errorMessage = error.message || 'Error desconocido al enviar correo';
-      }
-      
-      // Log detallado del error
-      logger.error(`Error al enviar correo de recuperación a ${to}:`, {
-        message: error.message,
-        code: error.code,
-        command: error.command,
-        response: error.response,
-        stack: error.stack
-      });
-      
-      return { success: false, error: errorMessage };
-    }
+    return await this.sendEmail(to, subject, htmlContent, textContent);
   }
 }
 
 // Exportar instancia singleton
 export const emailService = new EmailService();
 export default emailService;
-

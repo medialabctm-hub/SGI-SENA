@@ -105,7 +105,7 @@ export default function OlvidarContrasena() {
       )}
       <div className="login-card">
         <div className="logo-box">
-          <div className="logo"><img src='/public/images/logoSena.png' alt="Logo SENA" /></div>
+          <div className="logo"><img src='/images/logoSena.png' alt="Logo SENA" /></div>
         </div>
         <h1 className="title">Recuperar Contraseña</h1>
         <p className="subtitle">Ingresa tu cédula y correo para recibir un enlace de recuperación</p>

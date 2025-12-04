@@ -46,6 +46,8 @@ const requiredEnvVars = [
   "COOKIE_SECRET",
   "EMAIL_USER",
   "EMAIL_PASSWORD",
+  "BREVO_API_KEY",
+  "BREVO_SENDER_EMAIL",
   "CORS_ORIGIN",
   "FRONTEND_URL",
 ];
@@ -95,10 +97,11 @@ export const config = {
     secret: process.env.COOKIE_SECRET,
   },
 
-  // Configuración de correo electrónico
+  // Configuración de correo electrónico (Brevo)
   email: {
-    user: process.env.EMAIL_USER,
-    password: process.env.EMAIL_PASSWORD,
+    user: process.env.EMAIL_USER || process.env.BREVO_SENDER_EMAIL,
+    password: process.env.EMAIL_PASSWORD, // Mantener para compatibilidad
+    brevoApiKey: process.env.BREVO_API_KEY,
   },
 
   // URL del frontend
