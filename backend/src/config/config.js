@@ -44,6 +44,8 @@ const requiredEnvVars = [
   "DB_HOST",
   "DB_USER",
   "DB_NAME",
+  "BREVO_API_KEY",
+  "BREVO_SENDER_EMAIL",
   "JWT_SECRET",
   "COOKIE_SECRET",
   "CORS_ORIGIN",
