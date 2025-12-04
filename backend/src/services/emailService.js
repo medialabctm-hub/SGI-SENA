@@ -1,106 +1,165 @@
-import * as brevo from '@getbrevo/brevo';
+import nodemailer from 'nodemailer';
 import { config } from '../config/config.js';
 import { logger } from '../utils/logger.js';
 
 /**
- * Servicio de envío de correos electrónicos usando Brevo API
+ * Servicio de envío de correos electrónicos usando SMTP de Brevo
  */
 class EmailService {
   constructor() {
-    this.apiInstance = null;
-    this.apiClient = null;
+    this.transporter = null;
     this.senderEmail = null;
     this.senderName = 'Sistema de Gestión de Equipos SENA';
-    this.initializeBrevo();
+    this.initializeBrevoSMTP();
   }
 
   /**
-   * Inicializa el cliente de Brevo API
+   * Inicializa el transportador SMTP de Brevo
    */
-  initializeBrevo() {
+  initializeBrevoSMTP() {
     try {
       // SIEMPRE leer directamente de process.env primero (Railway inyecta las variables aquí)
       // process.env tiene prioridad absoluta sobre config
-      const apiKeyFromEnv = process.env.BREVO_API_KEY;
-      const apiKeyFromConfig = config.email?.brevoApiKey;
-      const apiKey = apiKeyFromEnv || apiKeyFromConfig;
+      const smtpKeyFromEnv = process.env.BREVO_SMTP_KEY;
+      const smtpKeyFromConfig = config.email?.brevoSmtpKey;
+      const smtpKey = smtpKeyFromEnv || smtpKeyFromConfig;
+      
+      // Obtener el login SMTP (puede venir de una variable o extraerse de la configuración)
+      const smtpLoginFromEnv = process.env.BREVO_SMTP_LOGIN;
+      const smtpLoginFromConfig = config.email?.brevoSmtpLogin;
+      const smtpLogin = smtpLoginFromEnv || smtpLoginFromConfig;
       
       // Log detallado para debugging
-      logger.info('Inicializando servicio Brevo', {
-        hasProcessEnv: !!apiKeyFromEnv,
-        hasConfigKey: !!apiKeyFromConfig,
-        apiKeyExists: !!apiKey,
-        apiKeyLength: apiKey ? apiKey.length : 0,
-        apiKeyPrefix: apiKey ? apiKey.substring(0, 20) + '...' : 'N/A',
+      logger.info('Inicializando servicio SMTP de Brevo', {
+        hasSmtpKeyEnv: !!smtpKeyFromEnv,
+        hasSmtpKeyConfig: !!smtpKeyFromConfig,
+        hasSmtpLoginEnv: !!smtpLoginFromEnv,
+        hasSmtpLoginConfig: !!smtpLoginFromConfig,
+        smtpKeyExists: !!smtpKey,
+        smtpKeyLength: smtpKey ? smtpKey.length : 0,
+        smtpKeyPrefix: smtpKey ? smtpKey.substring(0, 20) + '...' : 'N/A',
+        smtpLoginExists: !!smtpLogin,
         envKeysWithBrevo: Object.keys(process.env).filter(k => k.toUpperCase().includes('BREVO')).join(', ') || 'ninguna',
         nodeEnv: process.env.NODE_ENV
       });
       
-      if (!apiKey || typeof apiKey !== 'string' || !apiKey.trim()) {
+      if (!smtpKey || typeof smtpKey !== 'string' || !smtpKey.trim()) {
         const errorDetails = {
-          hasProcessEnv: !!apiKeyFromEnv,
-          hasConfigKey: !!apiKeyFromConfig,
-          apiKeyType: typeof apiKey,
-          apiKeyValue: apiKey ? 'existe pero vacío' : 'no existe',
-          envKeys: Object.keys(process.env).filter(k => k.toUpperCase().includes('BREVO') || k.toUpperCase().includes('EMAIL')).join(', ') || 'ninguna',
+          hasSmtpKeyEnv: !!smtpKeyFromEnv,
+          hasSmtpKeyConfig: !!smtpKeyFromConfig,
+          smtpKeyType: typeof smtpKey,
+          smtpKeyValue: smtpKey ? 'existe pero vacío' : 'no existe',
+          envKeys: Object.keys(process.env).filter(k => k.toUpperCase().includes('BREVO') || k.toUpperCase().includes('SMTP')).join(', ') || 'ninguna',
           allEnvKeys: Object.keys(process.env).slice(0, 10).join(', ') + '...' // Primeras 10 para debugging
         };
-        logger.error('BREVO_API_KEY no configurada o inválida. El servicio de email no estará disponible.', errorDetails);
-        this.apiInstance = null;
-        this.apiClient = null;
+        logger.error('BREVO_SMTP_KEY no configurada o inválida. El servicio de email no estará disponible.', errorDetails);
+        this.transporter = null;
         return;
       }
       
-      // Validar formato básico de la API key de Brevo
-      const trimmedKey = apiKey.trim();
-      if (!trimmedKey.startsWith('xkeysib-')) {
-        logger.warn('BREVO_API_KEY no tiene el formato esperado (debe empezar con "xkeysib-")', {
+      // Validar formato básico de la clave SMTP de Brevo
+      const trimmedKey = smtpKey.trim();
+      if (!trimmedKey.startsWith('xsmtpsib-')) {
+        logger.warn('BREVO_SMTP_KEY no tiene el formato esperado (debe empezar con "xsmtpsib-")', {
           keyPrefix: trimmedKey.substring(0, 20) + '...'
         });
       }
       
-      logger.info('BREVO_API_KEY encontrada, configurando servicio', {
+      // Si no hay login SMTP, intentar extraerlo de la clave o usar un valor por defecto
+      // El login SMTP de Brevo generalmente es: [número]@smtp-brevo.com
+      // Si no está configurado, intentaremos usar el email del remitente
+      let finalSmtpLogin = smtpLogin;
+      if (!finalSmtpLogin || !finalSmtpLogin.trim()) {
+        // Intentar extraer el número del inicio de la clave SMTP o usar un valor por defecto
+        // Por ahora, usaremos el email del remitente como fallback
+        const senderEmail = process.env.BREVO_SENDER_EMAIL || config.email?.user;
+        if (senderEmail) {
+          // Intentar extraer el número del email o usar el email completo
+          finalSmtpLogin = senderEmail;
+          logger.warn('BREVO_SMTP_LOGIN no configurado, usando email del remitente como fallback', {
+            fallbackLogin: finalSmtpLogin
+          });
+        } else {
+          logger.error('BREVO_SMTP_LOGIN no configurado y no hay email del remitente disponible');
+          this.transporter = null;
+          return;
+        }
+      }
+      
+      logger.info('BREVO_SMTP_KEY encontrada, configurando transportador SMTP', {
         keyLength: trimmedKey.length,
         keyPrefix: trimmedKey.substring(0, 20) + '...',
-        source: apiKeyFromEnv ? 'process.env (Railway)' : 'config.email (local)'
+        smtpLogin: finalSmtpLogin,
+        source: smtpKeyFromEnv ? 'process.env (Railway)' : 'config.email (local)'
       });
 
-      // Configurar la API key de Brevo según la documentación oficial
-      const defaultClient = brevo.ApiClient.instance;
-      const apiKeyAuth = defaultClient.authentications['api-key'];
-      if (!apiKeyAuth) {
-        throw new Error('No se pudo acceder a la autenticación api-key de Brevo');
-      }
-      // Asegurarse de que la API key esté correctamente configurada
-      apiKeyAuth.apiKey = trimmedKey;
+      // Configurar el transportador SMTP de Brevo
+      // Brevo SMTP settings:
+      // - Host: smtp-relay.brevo.com
+      // - Port: 587 (TLS) o 465 (SSL)
+      // - Auth: Login (email) y Password (SMTP key)
+      this.transporter = nodemailer.createTransport({
+        host: 'smtp-relay.brevo.com',
+        port: 587,
+        secure: false, // true para 465, false para otros puertos
+        auth: {
+          user: finalSmtpLogin.trim(),
+          pass: trimmedKey
+        },
+        tls: {
+          // No rechazar certificados no autorizados (útil en algunos entornos)
+          rejectUnauthorized: false
+        }
+      });
       
-      // Crear instancia del cliente API
-      this.apiClient = defaultClient;
-      
-      // Crear instancia de TransactionalEmailsApi con el cliente configurado
-      this.apiInstance = new brevo.TransactionalEmailsApi(this.apiClient);
-      
-      logger.info('Cliente de Brevo API configurado', {
-        hasApiClient: !!this.apiClient,
-        hasApiInstance: !!this.apiInstance,
-        apiKeySet: !!apiKeyAuth.apiKey
+      logger.info('Transportador SMTP de Brevo configurado', {
+        host: 'smtp-relay.brevo.com',
+        port: 587,
+        hasTransporter: !!this.transporter,
+        authUser: finalSmtpLogin.trim().substring(0, 20) + '...',
+        authPassSet: !!trimmedKey
       });
       
       // Obtener email del remitente desde configuración o usar el por defecto
       // SIEMPRE priorizar process.env (Railway)
       this.senderEmail = process.env.BREVO_SENDER_EMAIL || config.email?.user || 'noreply@sena.edu.co';
       
-      logger.info('✅ Servicio de email Brevo configurado correctamente', {
+      logger.info('✅ Servicio de email SMTP de Brevo configurado correctamente', {
         senderEmail: this.senderEmail,
-        hasApiKey: !!trimmedKey,
-        apiKeyLength: trimmedKey.length,
-        apiKeyConfigured: !!apiKeyAuth.apiKey,
+        hasSmtpKey: !!trimmedKey,
+        smtpKeyLength: trimmedKey.length,
+        smtpLogin: finalSmtpLogin.trim(),
         senderEmailSource: process.env.BREVO_SENDER_EMAIL ? 'process.env' : (config.email?.user ? 'config.email' : 'default')
       });
     } catch (error) {
-      logger.error('Error al inicializar servicio de email Brevo:', error);
-      this.apiInstance = null;
-      this.apiClient = null;
+      logger.error('Error al inicializar servicio de email SMTP de Brevo:', error);
+      this.transporter = null;
+    }
+  }
+
+  /**
+   * Verifica la conexión SMTP
+   * @returns {Promise<boolean>} True si la conexión es exitosa
+   */
+  async verifyConnection() {
+    if (!this.transporter) {
+      logger.warn('Transportador SMTP no inicializado, intentando reinicializar...');
+      this.initializeBrevoSMTP();
+      if (!this.transporter) {
+        return false;
+      }
+    }
+
+    try {
+      await this.transporter.verify();
+      logger.info('✅ Conexión SMTP de Brevo verificada correctamente');
+      return true;
+    } catch (error) {
+      logger.error('Error al verificar conexión SMTP de Brevo:', {
+        message: error.message,
+        code: error.code
+      });
+      return false;
     }
   }
 
@@ -133,40 +192,40 @@ class EmailService {
   }
 
   /**
-   * Envía un correo usando Brevo API
+   * Envía un correo usando SMTP de Brevo
    * @param {string} to - Correo destinatario
    * @param {string} subject - Asunto del correo
    * @param {string} htmlContent - Contenido HTML del correo
    * @param {string} textContent - Contenido de texto plano del correo
-   * @returns {Promise<{success: boolean, error?: string}>} Resultado del envío
+   * @returns {Promise<{success: boolean, error?: string, messageId?: string}>} Resultado del envío
    */
   async sendEmail(to, subject, htmlContent, textContent) {
     // Si el servicio no está inicializado, intentar reinicializarlo
-    if (!this.apiInstance) {
+    if (!this.transporter) {
       // Leer directamente de process.env (más confiable en producción)
-      const apiKeyFromEnv = process.env.BREVO_API_KEY;
-      const apiKeyFromConfig = config.email?.brevoApiKey;
-      const apiKey = apiKeyFromEnv || apiKeyFromConfig;
+      const smtpKeyFromEnv = process.env.BREVO_SMTP_KEY;
+      const smtpKeyFromConfig = config.email?.brevoSmtpKey;
+      const smtpKey = smtpKeyFromEnv || smtpKeyFromConfig;
       
-      logger.info('Intentando reinicializar servicio de email', {
-        hasProcessEnv: !!apiKeyFromEnv,
-        hasConfigKey: !!apiKeyFromConfig,
-        apiKeyLength: apiKey ? apiKey.length : 0,
-        allEnvKeys: Object.keys(process.env).filter(k => k.toUpperCase().includes('BREVO') || k.toUpperCase().includes('EMAIL')).join(', ')
+      logger.info('Intentando reinicializar servicio de email SMTP', {
+        hasSmtpKeyEnv: !!smtpKeyFromEnv,
+        hasSmtpKeyConfig: !!smtpKeyFromConfig,
+        smtpKeyLength: smtpKey ? smtpKey.length : 0,
+        allEnvKeys: Object.keys(process.env).filter(k => k.toUpperCase().includes('BREVO') || k.toUpperCase().includes('SMTP')).join(', ')
       });
       
-      if (apiKey) {
-        logger.info('BREVO_API_KEY encontrada. Reinicializando servicio...', {
-          source: apiKeyFromEnv ? 'process.env' : 'config',
-          keyPrefix: apiKey.substring(0, 15) + '...'
+      if (smtpKey) {
+        logger.info('BREVO_SMTP_KEY encontrada. Reinicializando servicio...', {
+          source: smtpKeyFromEnv ? 'process.env' : 'config',
+          keyPrefix: smtpKey.substring(0, 20) + '...'
         });
-        this.initializeBrevo();
+        this.initializeBrevoSMTP();
       } else {
-        const errorMsg = 'Servicio de email no configurado. Verifica BREVO_API_KEY';
+        const errorMsg = 'Servicio de email no configurado. Verifica BREVO_SMTP_KEY';
         logger.error(errorMsg, {
-          hasProcessEnv: !!apiKeyFromEnv,
-          hasConfigKey: !!apiKeyFromConfig,
-          processEnvKeys: Object.keys(process.env).filter(k => k.includes('BREVO') || k.includes('EMAIL')),
+          hasSmtpKeyEnv: !!smtpKeyFromEnv,
+          hasSmtpKeyConfig: !!smtpKeyFromConfig,
+          processEnvKeys: Object.keys(process.env).filter(k => k.includes('BREVO') || k.includes('SMTP')),
           configEmailKeys: Object.keys(config.email || {})
         });
         return { success: false, error: errorMsg };
@@ -174,11 +233,11 @@ class EmailService {
     }
     
     // Verificar nuevamente después de la reinicialización
-    if (!this.apiInstance) {
-      const errorMsg = 'Servicio de email no configurado después de reinicialización. Verifica BREVO_API_KEY';
+    if (!this.transporter) {
+      const errorMsg = 'Servicio de email no configurado después de reinicialización. Verifica BREVO_SMTP_KEY';
       logger.error(errorMsg, {
-        hasProcessEnv: !!process.env.BREVO_API_KEY,
-        hasConfigKey: !!config.email?.brevoApiKey
+        hasSmtpKeyEnv: !!process.env.BREVO_SMTP_KEY,
+        hasSmtpKeyConfig: !!config.email?.brevoSmtpKey
       });
       return { success: false, error: errorMsg };
     }
@@ -190,70 +249,47 @@ class EmailService {
     }
 
     try {
-      // Verificar que la API key esté configurada antes de enviar
-      const currentApiKey = this.apiClient?.authentications?.['api-key']?.apiKey;
-      if (!currentApiKey) {
-        logger.error('API key no configurada en el cliente de Brevo antes de enviar');
-        // Intentar reconfigurar
-        const apiKey = process.env.BREVO_API_KEY || config.email?.brevoApiKey;
-        if (apiKey) {
-          logger.info('Reconfigurando API key antes de enviar correo');
-          this.apiClient.authentications['api-key'].apiKey = apiKey.trim();
-        } else {
-          return { success: false, error: 'API key de Brevo no disponible' };
-        }
-      }
-      
-      const sendSmtpEmail = new brevo.SendSmtpEmail();
-      
-      sendSmtpEmail.subject = subject;
-      sendSmtpEmail.htmlContent = htmlContent;
-      sendSmtpEmail.textContent = textContent;
       // Asegurarse de usar el email del remitente más actualizado (de process.env si está disponible)
       const currentSenderEmail = process.env.BREVO_SENDER_EMAIL || this.senderEmail || config.email?.user || 'noreply@sena.edu.co';
       
-      sendSmtpEmail.sender = {
-        name: this.senderName,
-        email: currentSenderEmail
-      };
-      sendSmtpEmail.to = [{
-        email: to.trim()
-      }];
-
-      logger.info('Enviando correo a través de Brevo API', {
+      logger.info('Enviando correo a través de SMTP de Brevo', {
         to: to.trim(),
         sender: currentSenderEmail,
-        hasApiInstance: !!this.apiInstance,
-        apiKeyConfigured: !!this.apiClient?.authentications?.['api-key']?.apiKey
+        hasTransporter: !!this.transporter
       });
 
-      const result = await this.apiInstance.sendTransacEmail(sendSmtpEmail);
-      logger.info(`Correo enviado exitosamente a: ${to}`, { 
-        messageId: result.messageId || result.body?.messageId 
+      // Enviar el correo usando nodemailer
+      const info = await this.transporter.sendMail({
+        from: `"${this.senderName}" <${currentSenderEmail}>`,
+        to: to.trim(),
+        subject: subject,
+        text: textContent,
+        html: htmlContent
       });
+
+      logger.info(`✅ Correo enviado exitosamente a: ${to}`, { 
+        messageId: info.messageId,
+        response: info.response
+      });
+      
       return { 
         success: true, 
-        messageId: result.messageId || result.body?.messageId 
+        messageId: info.messageId
       };
     } catch (error) {
       let errorMessage = 'Error al enviar correo';
       
-      if (error.response?.body) {
-        errorMessage = error.response.body.message || errorMessage;
-        logger.error(`Error de Brevo API al enviar correo a ${to}:`, {
-          message: error.response.body.message,
-          code: error.response.body.code,
-          statusCode: error.response.statusCode
-        });
-      } else if (error.body) {
-        errorMessage = error.body.message || error.message || errorMessage;
-        logger.error(`Error de Brevo API al enviar correo a ${to}:`, {
-          message: error.body.message || error.message,
-          code: error.body.code
+      if (error.response) {
+        errorMessage = error.response || errorMessage;
+        logger.error(`Error de SMTP de Brevo al enviar correo a ${to}:`, {
+          response: error.response,
+          code: error.code,
+          command: error.command
         });
       } else {
         logger.error(`Error al enviar correo a ${to}:`, {
           message: error.message,
+          code: error.code,
           stack: error.stack
         });
         errorMessage = error.message || errorMessage;
@@ -553,8 +589,8 @@ export const emailService = new EmailService();
 
 // Método para reinicializar el servicio (útil si las variables de entorno se cargan después)
 emailService.reinitialize = function() {
-  logger.info('Reinicializando servicio de email Brevo...');
-  this.initializeBrevo();
+  logger.info('Reinicializando servicio de email SMTP de Brevo...');
+  this.initializeBrevoSMTP();
 };
 
 // Verificar y reinicializar el servicio al iniciar el servidor (después de que las variables estén disponibles)
@@ -562,20 +598,20 @@ emailService.reinitialize = function() {
 if (typeof process !== 'undefined' && process.env) {
   // Usar setImmediate para ejecutar después de que todas las importaciones estén completas
   setImmediate(() => {
-    const apiKey = process.env.BREVO_API_KEY;
-    logger.info('Verificando BREVO_API_KEY después de inicialización', {
-      hasApiKey: !!apiKey,
-      apiKeyLength: apiKey ? apiKey.length : 0,
-      hasInstance: !!emailService.apiInstance,
-      envKeys: Object.keys(process.env).filter(k => k.toUpperCase().includes('BREVO')).join(', ')
+    const smtpKey = process.env.BREVO_SMTP_KEY;
+    logger.info('Verificando BREVO_SMTP_KEY después de inicialización', {
+      hasSmtpKey: !!smtpKey,
+      smtpKeyLength: smtpKey ? smtpKey.length : 0,
+      hasTransporter: !!emailService.transporter,
+      envKeys: Object.keys(process.env).filter(k => k.toUpperCase().includes('BREVO') || k.toUpperCase().includes('SMTP')).join(', ')
     });
     
-    if (apiKey && !emailService.apiInstance) {
-      logger.info('BREVO_API_KEY detectada después de la inicialización. Reinicializando servicio...');
+    if (smtpKey && !emailService.transporter) {
+      logger.info('BREVO_SMTP_KEY detectada después de la inicialización. Reinicializando servicio...');
       emailService.reinitialize();
-    } else if (!apiKey) {
-      logger.warn('BREVO_API_KEY no encontrada en process.env después de la inicialización', {
-        allEnvKeys: Object.keys(process.env).filter(k => k.toUpperCase().includes('BREVO') || k.toUpperCase().includes('EMAIL')).join(', ')
+    } else if (!smtpKey) {
+      logger.warn('BREVO_SMTP_KEY no encontrada en process.env después de la inicialización', {
+        allEnvKeys: Object.keys(process.env).filter(k => k.toUpperCase().includes('BREVO') || k.toUpperCase().includes('SMTP') || k.toUpperCase().includes('EMAIL')).join(', ')
       });
     }
   });

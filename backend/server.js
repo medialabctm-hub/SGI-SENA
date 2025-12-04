@@ -159,8 +159,8 @@ const startServer = (port) => {
       
       // Verificar y reinicializar servicio de email si es necesario
       // (por si las variables de entorno se cargaron después de la importación)
-      if (process.env.BREVO_API_KEY && !emailService.apiInstance) {
-        logger.info('BREVO_API_KEY detectada al iniciar servidor. Inicializando servicio de email...');
+      if (process.env.BREVO_SMTP_KEY && !emailService.transporter) {
+        logger.info('BREVO_SMTP_KEY detectada al iniciar servidor. Inicializando servicio de email SMTP...');
         emailService.reinitialize();
       }
       
