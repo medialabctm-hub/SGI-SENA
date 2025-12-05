@@ -6,7 +6,7 @@ import { z } from 'zod';
 
 export const registrarEquipoSchema = z.object({
   codigo_inventario: z.string().optional(),
-  placa: z.string().min(1, 'La placa es requerida').max(100),
+  placa: z.string().max(100).optional().nullable(),
   r_centro: z.string().optional().nullable(),
   consecutivo: z.string().optional().nullable(),
   tipo: z.string().min(1, 'El tipo es requerido').max(100),
@@ -15,14 +15,46 @@ export const registrarEquipoSchema = z.object({
   numero_serie: z.string().max(100).optional().nullable(),
   descripcion: z.string().optional().nullable(),
   fecha_adquisicion: z.string().optional().nullable(),
-  costo: z.number().min(0).optional().nullable(),
-  valor_ingreso: z.number().min(0).optional().nullable(),
-  vida_util_meses: z.number().min(1).optional().nullable(),
+  costo: z.union([
+    z.number().min(0),
+    z.string().transform((val) => {
+      if (!val || val === '') return null;
+      const num = parseFloat(val);
+      return isNaN(num) ? null : num;
+    }),
+    z.null()
+  ]).optional().nullable(),
+  valor_ingreso: z.union([
+    z.number().min(0),
+    z.string().transform((val) => {
+      if (!val || val === '') return null;
+      const num = parseFloat(val);
+      return isNaN(num) ? null : num;
+    }),
+    z.null()
+  ]).optional().nullable(),
+  vida_util_meses: z.union([
+    z.number().int().min(1),
+    z.string().transform((val) => {
+      if (!val || val === '') return null;
+      const num = parseInt(val, 10);
+      return isNaN(num) ? null : num;
+    }),
+    z.null()
+  ]).optional().nullable(),
   estado_fisico: z.enum(['Nuevo', 'Bueno', 'Regular', 'Malo', 'Dañado'], {
     errorMap: () => ({ message: 'Estado físico inválido' }),
   }),
   specs_completas: z.string().optional().nullable(),
-  id_ambiente: z.number().int().positive().optional().nullable(),
+  id_ambiente: z.union([
+    z.number().int().positive(),
+    z.string().transform((val) => {
+      if (!val || val === '') return null;
+      const num = parseInt(val, 10);
+      return isNaN(num) || num <= 0 ? null : num;
+    }),
+    z.null()
+  ]).optional().nullable(),
   ambiente: z.string().optional().nullable(),
   comentarios: z.string().max(1000).optional().nullable(),
 });
@@ -116,11 +148,11 @@ export const validate = (schema) => (req, res, next) => {
     req.body = validated;
     next();
   } catch (error) {
-    if (error instanceof z.ZodError) {
+    if (error instanceof z.ZodError && error.errors && Array.isArray(error.errors)) {
       const details = error.errors.map((e) => ({
-        path: e.path.join('.'),
-        message: e.message,
-        code: e.code,
+        path: e.path && Array.isArray(e.path) ? e.path.join('.') : 'unknown',
+        message: e.message || 'Error de validación',
+        code: e.code || 'invalid_type',
       }));
       
       // Log para debugging
@@ -135,7 +167,7 @@ export const validate = (schema) => (req, res, next) => {
         details: details.length > 0 ? details : [{ path: 'unknown', message: 'Error de validación desconocido' }],
       });
     }
-    // Si no es un ZodError, loguear y pasar al siguiente middleware
+    // Si no es un ZodError o no tiene errors, loguear y pasar al siguiente middleware
     console.error('Validation middleware error:', error);
     next(error);
   }
