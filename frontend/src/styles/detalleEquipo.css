@@ -70,6 +70,7 @@
 
 .detalle-equipo-upload-btn:hover {
   background: var(--success-900);
+  color: white;
   transform: translateY(-1px);
 }
 
@@ -591,6 +592,7 @@
 
 .detalle-equipo-modal-btn-primary:hover {
   background: var(--success-900);
+  color: white;
   transform: translateY(-1px);
 }
 

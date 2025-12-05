@@ -192,6 +192,7 @@
 
 .btn.primary:hover:not(:disabled) {
   background: var(--success-800);
+  color: white;
   opacity: 0.9;
   transform: none;
   box-shadow: none;
@@ -199,6 +200,7 @@
 
 .btn.primary:active:not(:disabled) {
   background: var(--success-800);
+  color: white;
   opacity: 0.8;
   transform: none;
   box-shadow: none;

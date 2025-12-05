@@ -197,6 +197,7 @@
 
 .consulta-form .btn.primary:hover:not(:disabled) {
   background: linear-gradient(135deg, var(--success-800) 0%, var(--success-900) 100%);
+  color: white;
   transform: translateY(-2px);
   box-shadow: 0 6px 20px rgba(16, 185, 129, 0.35);
 }
@@ -387,6 +388,7 @@
 }
 
 .row-actions .btn.primary:hover {
+  color: white;
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(59, 139, 255, 0.4);
 }
@@ -1033,6 +1035,7 @@
 
 .users-toolbar .btn-verde:hover:not(:disabled) {
   background: linear-gradient(135deg, var(--success-800) 0%, var(--success-900) 100%);
+  color: white;
   transform: translateY(-2px);
   box-shadow: 0 6px 20px rgba(16, 185, 129, 0.35);
 }
@@ -1449,6 +1452,7 @@
 
 .btn-primary.btn-modern:hover:not(:disabled) {
   background: linear-gradient(135deg, var(--success-800) 0%, var(--success-900) 100%);
+  color: white;
   transform: translateY(-2px);
   box-shadow: 0 6px 20px rgba(16, 185, 129, 0.35);
 }

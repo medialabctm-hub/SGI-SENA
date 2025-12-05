@@ -430,6 +430,7 @@
 
 .btn-upload-images:hover:not(:disabled) {
   background: var(--success-900);
+  color: white;
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(67, 160, 71, 0.3);
 }
@@ -649,6 +650,7 @@
 
 .btn-save-inline:hover {
   background: var(--success-900);
+  color: white;
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(67, 160, 71, 0.3);
 }
