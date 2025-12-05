@@ -94,6 +94,7 @@
 
 .form-equipos .btn-verde:hover {
   background: var(--success-700);
+  color: white;
 }
 
 
@@ -619,6 +620,7 @@
 
 .form-equipos .btn-verde:hover {
   background: var(--success-700);
+  color: white;
 }
 
 

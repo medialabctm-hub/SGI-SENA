@@ -240,6 +240,7 @@
 .consultar-equipo-btn-verde:hover:not(:disabled) {
   background: var(--success-900);
   border-color: var(--success-900);
+  color: #fff;
 }
 
 .consultar-equipo-btn-verde:active:not(:disabled) {

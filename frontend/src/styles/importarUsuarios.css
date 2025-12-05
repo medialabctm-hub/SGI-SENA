@@ -104,6 +104,7 @@
 
 .importar-usuarios-submit-btn:hover:not(:disabled) {
   background: var(--success-900);
+  color: #fff;
 }
 
 .importar-usuarios-submit-btn:disabled {
