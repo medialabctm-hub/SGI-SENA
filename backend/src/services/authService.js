@@ -431,14 +431,41 @@ export class AuthService {
    * @returns {Promise<Object>} Resultado de la solicitud
    */
   async solicitarRecuperacionContrasena(cedula, correo) {
+    // Normalizar el correo del input
+    const correoNormalizado = correo?.toLowerCase().trim();
+    
+    // Verificar primero si el usuario existe por cédula (para diagnóstico)
+    const usuarioPorCedula = await this.userRepository.findOne(
+      'SELECT id_usuario, nombre_usuario, correo, estado FROM Usuarios WHERE cedula = ?',
+      [cedula]
+    );
+    
+    if (usuarioPorCedula) {
+      this.logger.info('Usuario encontrado por cédula', {
+        cedula,
+        correoEnBD: usuarioPorCedula.correo,
+        correoIngresado: correo,
+        correoNormalizado: correoNormalizado,
+        estado: usuarioPorCedula.estado
+      });
+    }
+    
+    // Buscar usuario normalizando también el correo de la base de datos para comparación case-insensitive
     const usuario = await this.userRepository.findOne(
-      'SELECT id_usuario, nombre_usuario, correo FROM Usuarios WHERE cedula = ? AND correo = ? AND estado = "Activo"',
-      [cedula, correo.toLowerCase().trim()]
+      'SELECT id_usuario, nombre_usuario, correo FROM Usuarios WHERE cedula = ? AND LOWER(TRIM(correo)) = ? AND estado = "Activo"',
+      [cedula, correoNormalizado]
     );
 
     if (!usuario) {
       // Por seguridad, no revelamos si el usuario existe o no
-      this.logger.warn('Intento de recuperación de contraseña - Usuario no encontrado', { cedula });
+      this.logger.warn('Intento de recuperación de contraseña - Usuario no encontrado', { 
+        cedula,
+        correoIngresado: correo,
+        correoNormalizado: correoNormalizado,
+        usuarioExistePorCedula: !!usuarioPorCedula,
+        correoEnBD: usuarioPorCedula?.correo,
+        estadoUsuario: usuarioPorCedula?.estado
+      });
       return { message: 'Si el usuario existe, se enviará un correo con las instrucciones' };
     }
 
