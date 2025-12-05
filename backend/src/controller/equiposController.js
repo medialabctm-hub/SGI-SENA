@@ -87,12 +87,36 @@ export async function registrarEquipo(req, res) {
     }
 
     // Resolver id_categoria a partir del nombre de categoria (tipo)
-    const [[categoria]] = await defaultDb.execute(
+    // Si no existe, crearla automáticamente
+    let [[categoria]] = await defaultDb.execute(
       'SELECT id_categoria, es_componente FROM Categorias_Equipo WHERE nombre_categoria = ? LIMIT 1',
       [tipo]
     );
+    
     if (!categoria?.id_categoria) {
-      return res.status(400).json({ error: 'Categoría inválida', detalle: 'El campo tipo no coincide con una categoría registrada' });
+      // Crear la categoría automáticamente si no existe
+      try {
+        const [result] = await defaultDb.execute(
+          'INSERT INTO Categorias_Equipo (nombre_categoria, descripcion, es_componente) VALUES (?, ?, ?)',
+          [tipo, `Categoría: ${tipo}`, false]
+        );
+        categoria = {
+          id_categoria: result.insertId,
+          es_componente: false
+        };
+        logger.info(`Categoría "${tipo}" creada automáticamente con ID: ${result.insertId}`);
+      } catch (err) {
+        // Si falla la inserción (por ejemplo, por duplicado), intentar obtenerla de nuevo
+        if (err.code === 'ER_DUP_ENTRY') {
+          [[categoria]] = await defaultDb.execute(
+            'SELECT id_categoria, es_componente FROM Categorias_Equipo WHERE nombre_categoria = ? LIMIT 1',
+            [tipo]
+          );
+        } else {
+          logger.error('Error al crear categoría automáticamente', { error: err.message, tipo });
+          return res.status(500).json({ error: 'Error al procesar la categoría', detalle: err.message });
+        }
+      }
     }
 
     // Verificar si la columna id_tipo existe en Elementos (compatibilidad con esquemas antiguos)

@@ -977,14 +977,31 @@ INSERT INTO Roles (nombre_rol, descripcion) VALUES
 ('Cuentadante', 'Cuentadante responsable de su inventario asignado');
 
 INSERT INTO Categorias_Equipo (nombre_categoria, descripcion, es_componente) VALUES
-('Computador de Escritorio', 'Equipos de escritorio completos', FALSE),
-('Portátil', 'Computadores portátiles', FALSE),
-('Monitor', 'Pantallas y monitores', TRUE),
-('Mouse', 'Dispositivos de entrada - Mouse', TRUE),
-('Teclado', 'Dispositivos de entrada - Teclado', TRUE),
-('Impresora', 'Equipos de impresión', FALSE),
-('Proyector', 'Equipos de proyección', FALSE),
-('Router', 'Equipos de red', FALSE);
+('ADAPTADOR DE RED', 'Adaptadores de red', FALSE),
+('ACCES POINT', 'Puntos de acceso inalámbricos', FALSE),
+('COMPONENTE ELECTRONICO', 'Componentes electrónicos diversos', TRUE),
+('PORTATIL', 'Computadores portátiles', FALSE),
+('CPU', 'Unidad central de procesamiento', FALSE),
+('CPU INTEGRADA CON MONITOR', 'CPU integrada con monitor', FALSE),
+('GAFAS DE REALIDAD VIRTUAL', 'Gafas de realidad virtual', FALSE),
+('INSUMOS ELECTRICOS', 'Insumos y materiales eléctricos', TRUE),
+('MODEM', 'Módems de red', FALSE),
+('MODULO DE CIRCUITOS', 'Módulos de circuitos', TRUE),
+('MONITOR', 'Pantallas y monitores', TRUE),
+('MOTOR', 'Motores eléctricos', FALSE),
+('PROYECTOR', 'Equipos de proyección', FALSE),
+('ROUTER O ENRUTADOR', 'Routers y enrutadores de red', FALSE),
+('SILLA', 'Sillas y mobiliario', FALSE),
+('SISTEMA DE REALIDAD VIRTUAL', 'Sistemas completos de realidad virtual', FALSE),
+('SWITCH', 'Switches de red', FALSE),
+('TABLET', 'Tablets y dispositivos móviles', FALSE),
+('TABLETA DIGITALIZADORA', 'Tabletas digitalizadoras', FALSE),
+('ESTANTE', 'Estantes y mobiliario', FALSE),
+('MESA', 'Mesas y mobiliario', FALSE),
+('MOUSE', 'Dispositivos de entrada - Mouse', TRUE),
+('TECLADO', 'Dispositivos de entrada - Teclado', TRUE),
+('AIRE ACONDICIONADO', 'Equipos de aire acondicionado', FALSE)
+ON DUPLICATE KEY UPDATE nombre_categoria = nombre_categoria;
 
 INSERT INTO Ambientes (codigo_ambiente, nombre_ambiente, tipo_ambiente) VALUES
 ('101','Ambiente 101','Aula'), ('102','Ambiente 102','Aula'), ('103','Ambiente 103','Aula'),

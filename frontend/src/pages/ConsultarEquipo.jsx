@@ -37,7 +37,7 @@ export default function ConsultarEquipo() {
     { key: 'costo', label: 'Costo', default: true },
     { key: 'nombre_ambiente', label: 'Ambiente', default: true },
     { key: 'codigo_ambiente', label: 'Código Ambiente', default: false },
-    { key: 'descripcion', label: 'Descripción', default: true },
+    { key: 'descripcion', label: 'Categoria', default: true },
     { key: 'specs_completas', label: 'Especificaciones', default: true },
   ]
 
