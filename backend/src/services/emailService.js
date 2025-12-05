@@ -50,13 +50,53 @@ class EmailService {
 
       const trimmedKey = apiKey.trim();
 
+      // Verificar que el SDK de Brevo está correctamente importado
+      if (!brevo || !brevo.ApiClient) {
+        throw new Error('SDK de Brevo no está correctamente importado. Verifica que @getbrevo/brevo esté instalado.');
+      }
+
       // Configurar el cliente API de Brevo
-      const defaultClient = brevo.ApiClient.instance;
-      const apiKeyAuth = defaultClient.authentications['api-key'];
-      apiKeyAuth.apiKey = trimmedKey;
+      // El SDK de Brevo usa ApiClient.instance como singleton
+      const apiClient = brevo.ApiClient.instance;
+      
+      // Verificar que ApiClient.instance existe
+      if (!apiClient) {
+        logger.error('ApiClient.instance no está disponible', {
+          hasBrevo: !!brevo,
+          hasApiClient: !!brevo.ApiClient,
+          apiClientType: typeof brevo.ApiClient,
+          apiClientKeys: brevo.ApiClient ? Object.keys(brevo.ApiClient) : []
+        });
+        throw new Error('ApiClient.instance no está disponible en el SDK de Brevo');
+      }
+
+      // Configurar la autenticación con la API Key
+      // El SDK espera que la autenticación esté en apiClient.authentications['api-key']
+      if (!apiClient.authentications) {
+        apiClient.authentications = {};
+      }
+      
+      if (!apiClient.authentications['api-key']) {
+        apiClient.authentications['api-key'] = {};
+      }
+      
+      apiClient.authentications['api-key'].apiKey = trimmedKey;
+
+      logger.info('ApiClient configurado correctamente', {
+        hasAuthentications: !!apiClient.authentications,
+        hasApiKeyAuth: !!apiClient.authentications['api-key'],
+        apiKeySet: !!apiClient.authentications['api-key']?.apiKey
+      });
 
       // Crear instancia del API de transaccional emails
+      // Esta instancia usará la configuración de ApiClient.instance
+      if (!brevo.TransactionalEmailsApi) {
+        throw new Error('TransactionalEmailsApi no está disponible en el SDK de Brevo');
+      }
+      
       this.apiInstance = new brevo.TransactionalEmailsApi();
+      
+      logger.info('TransactionalEmailsApi instanciado correctamente');
 
       // Obtener email del remitente desde configuración o usar el por defecto
       this.senderEmail = process.env.BREVO_SENDER_EMAIL || config.email?.user || 'noreply@sena.edu.co';
@@ -68,7 +108,12 @@ class EmailService {
         senderEmailSource: process.env.BREVO_SENDER_EMAIL ? 'process.env' : (config.email?.user ? 'config.email' : 'default')
       });
     } catch (error) {
-      logger.error('Error al inicializar servicio de email API de Brevo:', error);
+      logger.error('Error al inicializar servicio de email API de Brevo:', {
+        message: error?.message || 'Error desconocido',
+        stack: error?.stack,
+        name: error?.name,
+        error: error
+      });
       this.apiInstance = null;
     }
   }
