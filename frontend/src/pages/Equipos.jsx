@@ -9,6 +9,33 @@ import '../styles/equipos.css'
 
 const ESTADOS_FISICOS = ['Nuevo', 'Bueno', 'Regular', 'Malo', 'Dañado']
 
+const TIPOS_EQUIPO = [
+  'ADAPTADOR DE RED',
+  'ACCES POINT',
+  'COMPONENTE ELECTRONICO',
+  'PORTATIL',
+  'CPU',
+  'CPU INTEGRADA CON MONITOR',
+  'GAFAS DE REALIDAD VIRTUAL',
+  'INSUMOS ELECTRICOS',
+  'MODEM',
+  'MODULO DE CIRCUITOS',
+  'MONITOR',
+  'MOTOR',
+  'PROYECTOR',
+  'ROUTER O ENRUTADOR',
+  'SILLA',
+  'SISTEMA DE REALIDAD VIRTUAL',
+  'SWITCH',
+  'TABLET',
+  'TABLETA DIGITALIZADORA',
+  'ESTANTE',
+  'MESA',
+  'MOUSE',
+  'TECLADO',
+  'AIRE ACONDICIONADO'
+]
+
 export default function Equipos() {
   const [activeTab, setActiveTab] = useState('registrar') // 'registrar' o 'importar'
   const [form, setForm] = useState({
@@ -30,7 +57,6 @@ export default function Equipos() {
   const [toast, setToast] = useState(null)
   const [user, setUser] = useState(null)
   const [ambientes, setAmbientes] = useState([])
-  const [categorias, setCategorias] = useState([])
 
   useEffect(() => {
     try {
@@ -59,24 +85,6 @@ export default function Equipos() {
       }
     }
     cargarAmbientes()
-  }, [])
-
-  // Cargar categorías disponibles
-  useEffect(() => {
-    async function cargarCategorias() {
-      try {
-        const token = localStorage.getItem('token')
-        const res = await fetch('/api/equipos/categorias', {
-          headers: { Authorization: `Bearer ${token}` }
-        })
-        const data = await parseApiResponse(res, 'No se pudieron cargar las categorías')
-        setCategorias(Array.isArray(data) ? data : [])
-      } catch (err) {
-        console.error('Error al cargar categorías:', err)
-        setCategorias([])
-      }
-    }
-    cargarCategorias()
   }, [])
 
   // Handler para cambios en el formulario
@@ -211,9 +219,9 @@ export default function Equipos() {
             <label>Tipo *</label>
             <select name="tipo" value={form.tipo} onChange={handleChange}>
               <option value="">Seleccionar tipo</option>
-              {categorias.map(cat => (
-                <option key={cat.id_categoria} value={cat.nombre_categoria}>
-                  {cat.nombre_categoria}
+              {TIPOS_EQUIPO.map(tipo => (
+                <option key={tipo} value={tipo}>
+                  {tipo}
                 </option>
               ))}
             </select>
