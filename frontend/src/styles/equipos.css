@@ -93,7 +93,7 @@
 }
 
 .form-equipos .btn-verde:hover {
-  background: var(--success-700);
+  background: var(--success-900);
   color: white;
 }
 
@@ -619,7 +619,7 @@
 }
 
 .form-equipos .btn-verde:hover {
-  background: var(--success-700);
+  background: var(--success-900);
   color: white;
 }
 
