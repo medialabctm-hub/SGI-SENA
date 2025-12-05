@@ -459,9 +459,9 @@ export class AuthService {
     const emailService = (await import('../services/emailService.js')).default;
     
     // Asegurar que el servicio esté inicializado antes de enviar
-    const smtpKey = process.env.BREVO_SMTP_KEY;
-    if (!emailService.transporter && smtpKey) {
-      this.logger.info('Reinicializando servicio de email SMTP con BREVO_SMTP_KEY encontrada');
+    const apiKey = process.env.BREVO_API_KEY;
+    if (!emailService.apiInstance && apiKey) {
+      this.logger.info('Reinicializando servicio de email API con BREVO_API_KEY encontrada');
       emailService.reinitialize();
     }
     

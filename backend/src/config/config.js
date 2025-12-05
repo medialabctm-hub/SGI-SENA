@@ -43,7 +43,7 @@ const requiredEnvVars = [
   "DB_HOST",
   "DB_USER",
   "DB_NAME",
-  "BREVO_SMTP_KEY",
+  "BREVO_API_KEY",
   "BREVO_SENDER_EMAIL",
   "JWT_SECRET",
   "COOKIE_SECRET",
@@ -77,35 +77,34 @@ const missingEnvVars = requiredEnvVars.filter((envVar) => {
   return !exists;
 });
 
-if (missingEnvVars.length > 0) {
-  const brevoVars = Object.keys(process.env).filter(k => k.toUpperCase().includes('BREVO'));
-  const emailVars = Object.keys(process.env).filter(k => k.toUpperCase().includes('EMAIL'));
-  
-  let errorMsg = `❌ ERROR: Faltan las siguientes variables de entorno requeridas: ${missingEnvVars.join(", ")}\n\n`;
-  
-  if (missingEnvVars.includes('BREVO_SMTP_KEY')) {
-    const hasApiKey = !!process.env.BREVO_API_KEY;
+  if (missingEnvVars.length > 0) {
+    const brevoVars = Object.keys(process.env).filter(k => k.toUpperCase().includes('BREVO'));
+    const emailVars = Object.keys(process.env).filter(k => k.toUpperCase().includes('EMAIL'));
     
-    errorMsg += `📧 CONFIGURACIÓN DE BREVO SMTP:\n`;
+    let errorMsg = `❌ ERROR: Faltan las siguientes variables de entorno requeridas: ${missingEnvVars.join(", ")}\n\n`;
     
-    if (hasApiKey) {
-      errorMsg += `   ⚠️  Tienes BREVO_API_KEY configurada, pero ahora necesitas BREVO_SMTP_KEY\n`;
-      errorMsg += `   📝 En Railway, REEMPLAZA la variable BREVO_API_KEY por BREVO_SMTP_KEY:\n\n`;
-      errorMsg += `   1. Ve a https://app.brevo.com/settings/keys/api (pestaña SMTP)\n`;
-      errorMsg += `   2. Copia tu SMTP Key de Brevo (debe empezar con "xsmtpsib-")\n`;
-      errorMsg += `   3. En Railway > Variables de Entorno:\n`;
-      errorMsg += `      ❌ ELIMINA: BREVO_API_KEY\n`;
-      errorMsg += `      ✅ AGREGA: BREVO_SMTP_KEY=xsmtpsib-tu_clave_aqui\n`;
-      errorMsg += `      ✅ OPCIONAL: BREVO_SMTP_LOGIN=tu_login@smtp-brevo.com\n\n`;
-    } else {
-      errorMsg += `   1. Ve a https://app.brevo.com/settings/keys/api (pestaña SMTP)\n`;
-      errorMsg += `   2. Genera o copia tu SMTP Key de Brevo (debe empezar con "xsmtpsib-")\n`;
-      errorMsg += `   3. En Railway, ve a Variables de Entorno y agrega:\n`;
-      errorMsg += `      - BREVO_SMTP_KEY=xsmtpsib-tu_clave_aqui\n`;
-      errorMsg += `      - BREVO_SMTP_LOGIN=tu_login@smtp-brevo.com (opcional)\n`;
-      errorMsg += `      - BREVO_SENDER_EMAIL=tu_email_verificado@dominio.com\n\n`;
+    if (missingEnvVars.includes('BREVO_API_KEY')) {
+      const hasSmtpKey = !!process.env.BREVO_SMTP_KEY;
+      
+      errorMsg += `📧 CONFIGURACIÓN DE BREVO API:\n`;
+      
+      if (hasSmtpKey) {
+        errorMsg += `   ⚠️  Tienes BREVO_SMTP_KEY configurada, pero ahora necesitas BREVO_API_KEY\n`;
+        errorMsg += `   📝 En Railway, REEMPLAZA la variable BREVO_SMTP_KEY por BREVO_API_KEY:\n\n`;
+        errorMsg += `   1. Ve a https://app.brevo.com/settings/keys/api (pestaña API Keys)\n`;
+        errorMsg += `   2. Genera o copia tu API Key de Brevo\n`;
+        errorMsg += `   3. En Railway > Variables de Entorno:\n`;
+        errorMsg += `      ❌ ELIMINA: BREVO_SMTP_KEY\n`;
+        errorMsg += `      ✅ AGREGA: BREVO_API_KEY=tu_api_key_aqui\n`;
+        errorMsg += `      ✅ MANTÉN: BREVO_SENDER_EMAIL=tu_email_verificado@dominio.com\n\n`;
+      } else {
+        errorMsg += `   1. Ve a https://app.brevo.com/settings/keys/api (pestaña API Keys)\n`;
+        errorMsg += `   2. Genera o copia tu API Key de Brevo\n`;
+        errorMsg += `   3. En Railway, ve a Variables de Entorno y agrega:\n`;
+        errorMsg += `      - BREVO_API_KEY=tu_api_key_aqui\n`;
+        errorMsg += `      - BREVO_SENDER_EMAIL=tu_email_verificado@dominio.com\n\n`;
+      }
     }
-  }
   
   errorMsg += `🔍 DIAGNÓSTICO:\n`;
   errorMsg += `   - Variables detectadas en process.env: ${Object.keys(process.env).length} totales\n`;
@@ -163,16 +162,11 @@ export const config = {
     secret: process.env.COOKIE_SECRET,
   },
 
-  // Configuración de correo electrónico (Brevo SMTP)
+  // Configuración de correo electrónico (Brevo API)
   email: {
     user: process.env.EMAIL_USER || process.env.BREVO_SENDER_EMAIL,
-    password: process.env.EMAIL_PASSWORD, // Mantener para compatibilidad
-    brevoSmtpKey: process.env.BREVO_SMTP_KEY,
-    brevoSmtpLogin: process.env.BREVO_SMTP_LOGIN,
-    brevoSmtpHost: process.env.BREVO_SMTP_HOST || 'smtp-relay.brevo.com',
-    brevoSmtpPort: process.env.BREVO_SMTP_PORT || '587',
-    // Mantener brevoApiKey para compatibilidad con código antiguo (deprecated)
     brevoApiKey: process.env.BREVO_API_KEY,
+    brevoSenderEmail: process.env.BREVO_SENDER_EMAIL,
   },
 
   // URL del frontend
