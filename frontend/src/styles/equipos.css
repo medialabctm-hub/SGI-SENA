@@ -17,7 +17,7 @@
 .form-equipos .form-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 1.2rem 2rem;
+  gap: 1.5rem 2rem;
 }
 
 @media (max-width: 800px) {
@@ -27,7 +27,7 @@
 }
 
 .form-equipos .form-row {
-  margin-bottom: 1.2rem;
+  margin-bottom: 1.5rem;
   display: flex;
   flex-direction: column;
   max-width: 100%;
@@ -41,23 +41,26 @@
 }
 
 .form-equipos label {
-  font-weight: 500;
-  margin-bottom: 0.3rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
   color: var(--neutral-800);
-  font-size: 1rem;
+  font-size: 0.95rem;
+  letter-spacing: 0.01em;
 }
 
 
 .form-equipos input,
 .form-equipos select,
 .form-equipos textarea {
-  border: 1px solid var(--success-800);
-  border-radius: 6px;
-  padding: 0.45rem 0.7rem;
-  font-size: 0.98rem;
+  border: 1.5px solid var(--success-800);
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  font-size: 1rem;
+  line-height: 1.5;
   background: white;
   transition: border-color 0.2s, box-shadow 0.2s;
   max-width: 100%;
+  min-height: 44px;
 }
 
 .form-equipos input:focus,
@@ -65,12 +68,15 @@
 .form-equipos textarea:focus {
   border-color: var(--success-900);
   outline: none;
-  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+  box-shadow: 0 0 0 3px rgba(1, 175, 0, 0.15);
+  border-width: 2px;
 }
 
 .form-equipos textarea {
-  min-height: 60px;
+  min-height: 80px;
+  padding: 0.875rem 1rem;
   resize: vertical;
+  line-height: 1.6;
 }
 
 .form-equipos .form-row label input[type="checkbox"] {
@@ -82,14 +88,16 @@
   background: var(--success-800);
   color: white;
   border: none;
-  border-radius: 6px;
-  padding: 0.7rem 1.5rem;
-  font-size: 1.1rem;
+  border-radius: 8px;
+  padding: 0.875rem 1.5rem;
+  font-size: 1.05rem;
   font-weight: 600;
   cursor: pointer;
-  margin-top: 0.5rem;
+  margin-top: 1rem;
   width: 100%;
   transition: background 0.2s;
+  min-height: 48px;
+  letter-spacing: 0.02em;
 }
 
 .form-equipos .btn-verde:hover {
@@ -543,7 +551,7 @@
 .form-equipos .form-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 1.2rem 2rem;
+  gap: 1.5rem 2rem;
 }
 
 @media (max-width: 800px) {
@@ -553,7 +561,7 @@
 }
 
 .form-equipos .form-row {
-  margin-bottom: 1.2rem;
+  margin-bottom: 1.5rem;
   display: flex;
   flex-direction: column;
   max-width: 100%;
@@ -567,23 +575,26 @@
 }
 
 .form-equipos label {
-  font-weight: 500;
-  margin-bottom: 0.3rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
   color: var(--neutral-800);
-  font-size: 1rem;
+  font-size: 0.95rem;
+  letter-spacing: 0.01em;
 }
 
 
 .form-equipos input,
 .form-equipos select,
 .form-equipos textarea {
-  border: 1px solid var(--success-800);
-  border-radius: 6px;
-  padding: 0.45rem 0.7rem;
-  font-size: 0.98rem;
+  border: 1.5px solid var(--success-800);
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  font-size: 1rem;
+  line-height: 1.5;
   background: white;
   transition: border-color 0.2s, box-shadow 0.2s;
   max-width: 100%;
+  min-height: 44px;
 }
 
 .form-equipos input:focus,
@@ -591,12 +602,15 @@
 .form-equipos textarea:focus {
   border-color: var(--success-900);
   outline: none;
-  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+  box-shadow: 0 0 0 3px rgba(1, 175, 0, 0.15);
+  border-width: 2px;
 }
 
 .form-equipos textarea {
-  min-height: 60px;
+  min-height: 80px;
+  padding: 0.875rem 1rem;
   resize: vertical;
+  line-height: 1.6;
 }
 
 .form-equipos .form-row label input[type="checkbox"] {
@@ -608,14 +622,16 @@
   background: var(--success-800);
   color: white;
   border: none;
-  border-radius: 6px;
-  padding: 0.7rem 1.5rem;
-  font-size: 1.1rem;
+  border-radius: 8px;
+  padding: 0.875rem 1.5rem;
+  font-size: 1.05rem;
   font-weight: 600;
   cursor: pointer;
-  margin-top: 0.5rem;
+  margin-top: 1rem;
   width: 100%;
   transition: background 0.2s;
+  min-height: 48px;
+  letter-spacing: 0.02em;
 }
 
 .form-equipos .btn-verde:hover {

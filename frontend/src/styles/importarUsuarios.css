@@ -10,9 +10,9 @@
 
 .importar-usuarios-download-btn {
   padding: 0.5rem 1rem;
-  background: #e3f2fd;
-  color: #1976d2;
-  border: 1px solid #1976d2;
+  background: var(--success-800);
+  color: white;
+  border: 1px solid var(--success-800);
   border-radius: 6px;
   cursor: pointer;
   font-size: 0.85rem;
@@ -20,6 +20,13 @@
   align-items: center;
   gap: 0.5rem;
   font-weight: 500;
+  transition: background 0.2s;
+}
+
+.importar-usuarios-download-btn:hover {
+  background: var(--success-900);
+  border-color: var(--success-900);
+  color: white;
 }
 
 .importar-usuarios-file-section {

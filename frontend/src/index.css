@@ -367,3 +367,34 @@ body {
   pointer-events: none;
   transition: background 0.18s;
 }
+
+/* Clase global para botones verdes */
+.btn.btn-verde,
+.btn-verde {
+  background: var(--success-800);
+  color: white;
+  border: 1px solid var(--success-800);
+  border-radius: 8px;
+  padding: 0.625rem 1.25rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.btn.btn-verde:hover,
+.btn-verde:hover {
+  background: var(--success-900);
+  border-color: var(--success-900);
+  color: white;
+}
+
+.btn.btn-verde:active,
+.btn-verde:active {
+  background: var(--success-900);
+  transform: translateY(1px);
+}

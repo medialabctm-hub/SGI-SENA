@@ -389,7 +389,7 @@ export default function Horarios() {
                 <>
                   <button
                     type="button"
-                    className="btn"
+                    className="btn btn-verde"
                     onClick={() => setShowImport(true)}
                     style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
                   >
@@ -398,7 +398,7 @@ export default function Horarios() {
                   </button>
                   <button
                     type="button"
-                    className="btn"
+                    className="btn btn-verde"
                     onClick={downloadTemplate}
                     style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
                   >

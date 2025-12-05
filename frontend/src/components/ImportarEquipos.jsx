@@ -255,16 +255,26 @@ export default function ImportarEquipos({ onImportComplete }) {
         onClick={descargarPlantilla}
         style={{
           padding: '0.5rem 1rem',
-          background: '#e3f2fd',
-          color: '#1976d2',
-          border: '1px solid #1976d2',
+          background: 'var(--success-800)',
+          color: 'white',
+          border: '1px solid var(--success-800)',
           borderRadius: '6px',
           cursor: 'pointer',
           fontSize: '0.9rem',
           display: 'inline-flex',
           alignItems: 'center',
           gap: '0.5rem',
-          marginBottom: '1rem'
+          marginBottom: '1rem',
+          fontWeight: '500',
+          transition: 'background 0.2s'
+        }}
+        onMouseEnter={(e) => {
+          e.target.style.background = 'var(--success-900)';
+          e.target.style.borderColor = 'var(--success-900)';
+        }}
+        onMouseLeave={(e) => {
+          e.target.style.background = 'var(--success-800)';
+          e.target.style.borderColor = 'var(--success-800)';
         }}
       >
         <FiDownload size={16} />
