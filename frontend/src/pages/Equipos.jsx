@@ -23,12 +23,14 @@ export default function Equipos() {
     ambiente: '',
     estado_fisico: 'Bueno',
     comentarios: '',
+    r_centro: '00000',
   })
 
   const [errores, setErrores] = useState({})
   const [toast, setToast] = useState(null)
   const [user, setUser] = useState(null)
   const [ambientes, setAmbientes] = useState([])
+  const [categorias, setCategorias] = useState([])
 
   useEffect(() => {
     try {
@@ -57,6 +59,24 @@ export default function Equipos() {
       }
     }
     cargarAmbientes()
+  }, [])
+
+  // Cargar categorías disponibles
+  useEffect(() => {
+    async function cargarCategorias() {
+      try {
+        const token = localStorage.getItem('token')
+        const res = await fetch('/api/equipos/categorias', {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+        const data = await parseApiResponse(res, 'No se pudieron cargar las categorías')
+        setCategorias(Array.isArray(data) ? data : [])
+      } catch (err) {
+        console.error('Error al cargar categorías:', err)
+        setCategorias([])
+      }
+    }
+    cargarCategorias()
   }, [])
 
   // Handler para cambios en el formulario
@@ -98,7 +118,8 @@ export default function Equipos() {
         placa: form.placa || null,
         atributos: form.atributos || null,
         valor_ingreso: form.valor_ingreso || null,
-        comentarios: form.comentarios || null
+        comentarios: form.comentarios || null,
+        r_centro: '00000'
       }
       const resp = await fetch('/api/equipos', {
         method: 'POST',
@@ -114,7 +135,7 @@ export default function Equipos() {
         type: 'success'
       })
       setForm({
-        modelo: '', consecutivo: '', descripcion: '', tipo: '', placa: '', atributos: '', fecha_adquisicion: '', valor_ingreso: '', ambiente: '', estado_fisico: 'Bueno', comentarios: ''
+        modelo: '', consecutivo: '', descripcion: '', tipo: '', placa: '', atributos: '', fecha_adquisicion: '', valor_ingreso: '', ambiente: '', estado_fisico: 'Bueno', comentarios: '', r_centro: '00000'
       })
     } catch (err) {
       setToast({
@@ -179,12 +200,23 @@ export default function Equipos() {
             {errores.consecutivo && <span className="error-text">{errores.consecutivo}</span>}
           </div>
           <div className="form-row">
+            <label>R Centro</label>
+            <input name="r_centro" value="00000" readOnly disabled style={{ backgroundColor: '#f5f5f5', cursor: 'not-allowed' }} />
+          </div>
+          <div className="form-row">
             <label>Descripción</label>
             <textarea name="descripcion" value={form.descripcion} onChange={handleChange} />
           </div>
           <div className="form-row">
             <label>Tipo *</label>
-            <input name="tipo" value={form.tipo} onChange={handleChange} placeholder="Ej: Computador de Escritorio, Portátil, Monitor..." />
+            <select name="tipo" value={form.tipo} onChange={handleChange}>
+              <option value="">Seleccionar tipo</option>
+              {categorias.map(cat => (
+                <option key={cat.id_categoria} value={cat.nombre_categoria}>
+                  {cat.nombre_categoria}
+                </option>
+              ))}
+            </select>
             {errores.tipo && <span className="error-text">{errores.tipo}</span>}
           </div>
           <div className="form-row">

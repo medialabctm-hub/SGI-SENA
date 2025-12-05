@@ -1428,3 +1428,21 @@ export async function buscarCuentadantePorDocumento(req, res) {
     })
   }
 }
+
+/**
+ * Listar todas las categorías de equipos disponibles
+ */
+export async function listarCategorias(req, res) {
+  try {
+    const [rows] = await defaultDb.execute(
+      'SELECT id_categoria, nombre_categoria, descripcion, es_componente FROM Categorias_Equipo ORDER BY nombre_categoria ASC'
+    )
+    return res.json(rows)
+  } catch (err) {
+    logger.error('Error al listar categorías', { error: err.message, stack: err.stack })
+    return res.status(500).json({
+      error: 'Error al listar categorías',
+      detalle: err.message
+    })
+  }
+}
