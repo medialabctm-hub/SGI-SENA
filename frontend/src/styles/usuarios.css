@@ -305,7 +305,7 @@
 
 .btn-import-users {
   padding: 0.5rem 1rem;
-  background: var(--success-900);
+  background: var(--success-800);
   color: white;
   border: none;
   border-radius: 6px;
@@ -319,7 +319,7 @@
 }
 
 .btn-import-users:hover {
-  background: var(--success-600);
+  background: var(--success-900);
 }
 
 .users-content {

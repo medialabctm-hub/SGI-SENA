@@ -75,7 +75,7 @@
 .form-equipos textarea {
   min-height: 80px;
   padding: 0.875rem 1rem;
-  resize: vertical;
+  resize: horizontal;
   line-height: 1.6;
 }
 
