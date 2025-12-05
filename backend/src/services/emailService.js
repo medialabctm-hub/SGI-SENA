@@ -1,6 +1,8 @@
-import * as brevo from '@getbrevo/brevo';
 import { config } from '../config/config.js';
 import { logger } from '../utils/logger.js';
+
+// Variable para almacenar el SDK de Brevo (se carga dinámicamente)
+let brevo = null;
 
 /**
  * Servicio de envío de correos electrónicos usando API de Brevo
@@ -10,14 +12,37 @@ class EmailService {
     this.apiInstance = null;
     this.senderEmail = null;
     this.senderName = 'Sistema de Gestión de Equipos SENA';
-    this.initializeBrevoAPI();
+    // Inicializar de forma asíncrona sin bloquear el constructor
+    this.initializeBrevoAPI().catch(error => {
+      logger.error('Error en inicialización asíncrona de Brevo:', error);
+    });
   }
 
   /**
    * Inicializa el cliente API de Brevo
    */
-  initializeBrevoAPI() {
+  async initializeBrevoAPI() {
     try {
+      // Cargar el SDK de Brevo dinámicamente si no está cargado
+      if (!brevo) {
+        try {
+          const brevoModule = await import('@getbrevo/brevo');
+          brevo = brevoModule.default || brevoModule;
+          logger.info('SDK de Brevo cargado dinámicamente', {
+            hasDefault: !!brevoModule.default,
+            hasModule: !!brevoModule,
+            moduleKeys: Object.keys(brevoModule).slice(0, 10)
+          });
+        } catch (importError) {
+          logger.error('Error al importar SDK de Brevo:', {
+            message: importError?.message,
+            stack: importError?.stack,
+            code: importError?.code
+          });
+          throw new Error(`No se pudo importar el SDK de Brevo: ${importError?.message || 'Error desconocido'}`);
+        }
+      }
+
       // Leer directamente de process.env primero (Railway inyecta las variables aquí)
       const apiKeyFromEnv = process.env.BREVO_API_KEY;
       const apiKeyFromConfig = config.email?.brevoApiKey;
@@ -51,8 +76,26 @@ class EmailService {
       const trimmedKey = apiKey.trim();
 
       // Verificar que el SDK de Brevo está correctamente importado
-      if (!brevo || !brevo.ApiClient) {
-        throw new Error('SDK de Brevo no está correctamente importado. Verifica que @getbrevo/brevo esté instalado.');
+      logger.info('Verificando importación del SDK de Brevo', {
+        hasBrevo: !!brevo,
+        brevoType: typeof brevo,
+        brevoKeys: brevo ? Object.keys(brevo).slice(0, 10) : [],
+        hasApiClient: !!(brevo && brevo.ApiClient),
+        apiClientType: brevo && brevo.ApiClient ? typeof brevo.ApiClient : 'N/A'
+      });
+
+      if (!brevo) {
+        logger.error('brevo es null o undefined');
+        throw new Error('SDK de Brevo no está correctamente importado. El módulo es null/undefined.');
+      }
+
+      if (!brevo.ApiClient) {
+        logger.error('ApiClient no está disponible en el SDK', {
+          brevoKeys: Object.keys(brevo).slice(0, 20),
+          hasDefault: !!brevo.default,
+          defaultKeys: brevo.default ? Object.keys(brevo.default).slice(0, 10) : []
+        });
+        throw new Error('ApiClient no está disponible en el SDK de Brevo. Verifica la versión del paquete @getbrevo/brevo.');
       }
 
       // Configurar el cliente API de Brevo
@@ -125,7 +168,7 @@ class EmailService {
   async verifyConnection() {
     if (!this.apiInstance) {
       logger.warn('Cliente API de Brevo no inicializado, intentando reinicializar...');
-      this.initializeBrevoAPI();
+      await this.initializeBrevoAPI();
       if (!this.apiInstance) {
         return false;
       }
@@ -201,7 +244,7 @@ class EmailService {
           source: apiKeyFromEnv ? 'process.env' : 'config',
           keyPrefix: apiKey.substring(0, 20) + '...'
         });
-        this.initializeBrevoAPI();
+        await this.initializeBrevoAPI();
       } else {
         const errorMsg = 'Servicio de email no configurado. Verifica BREVO_API_KEY';
         logger.error(errorMsg, {
@@ -580,9 +623,9 @@ SENA - Sistema de Gestión de Equipos
 export const emailService = new EmailService();
 
 // Método para reinicializar el servicio (útil si las variables de entorno se cargan después)
-emailService.reinitialize = function() {
+emailService.reinitialize = async function() {
   logger.info('Reinicializando servicio de email API de Brevo...');
-  this.initializeBrevoAPI();
+  await this.initializeBrevoAPI();
 };
 
 // Verificar y reinicializar el servicio al iniciar el servidor (después de que las variables estén disponibles)
@@ -598,7 +641,9 @@ if (typeof process !== 'undefined' && process.env) {
 
     if (apiKey && !emailService.apiInstance) {
       logger.info('BREVO_API_KEY detectada después de la inicialización. Reinicializando servicio...');
-      emailService.reinitialize();
+      emailService.reinitialize().catch(error => {
+        logger.error('Error al reinicializar servicio de email:', error);
+      });
     } else if (!apiKey) {
       logger.warn('BREVO_API_KEY no encontrada en process.env después de la inicialización', {
         allEnvKeys: Object.keys(process.env).filter(k => k.toUpperCase().includes('BREVO') || k.toUpperCase().includes('EMAIL')).join(', ')
