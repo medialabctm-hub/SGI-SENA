@@ -87,14 +87,62 @@ html,
 body {
   font-family: 'Segoe UI', 'Helvetica Neue', Arial;
   margin: 0;
-  background: var(--neutral-50);
+  background: linear-gradient(135deg, #f5f9f7 0%, #f0f5f2 25%, #f5f9f7 50%, #f0f5f2 75%, #f5f9f7 100%);
+  background-size: 400% 400%;
+  animation: bodyGradientShift 20s ease infinite;
   color: var(--neutral-900);
+  position: relative;
+  min-height: 100vh;
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: 
+    radial-gradient(circle at 10% 20%, rgba(1, 175, 0, 0.04) 0%, transparent 40%),
+    radial-gradient(circle at 90% 60%, rgba(1, 175, 0, 0.03) 0%, transparent 40%),
+    radial-gradient(circle at 50% 80%, rgba(1, 175, 0, 0.02) 0%, transparent 40%),
+    radial-gradient(circle at 30% 40%, rgba(1, 175, 0, 0.02) 0%, transparent 40%);
+  background-size: 100% 100%;
+  pointer-events: none;
+  z-index: 0;
+}
+
+body::after {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: 
+    repeating-linear-gradient(0deg, transparent, transparent 50px, rgba(1, 175, 0, 0.015) 50px, rgba(1, 175, 0, 0.015) 51px),
+    repeating-linear-gradient(90deg, transparent, transparent 50px, rgba(1, 175, 0, 0.015) 50px, rgba(1, 175, 0, 0.015) 51px);
+  background-size: 100px 100px;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.6;
+}
+
+@keyframes bodyGradientShift {
+  0%, 100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
 }
 
 .page {
   min-height: 100%;
   display: flex;
   flex-direction: column;
+  position: relative;
+  z-index: 1;
 }
 
 /* Estilos para scrollbars */
