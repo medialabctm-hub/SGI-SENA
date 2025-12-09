@@ -5,7 +5,7 @@ import {
   FiUser,
   FiMenu,
 } from 'react-icons/fi';
-import { useHashNavigate } from '../utils/useHashNavigate';
+import { useNavigate } from 'react-router-dom';
 import logo from '/public/images/logoSena.png';
 import Toast from './Toast';
 import ConfirmModal from './ConfirmModal';
@@ -28,7 +28,7 @@ export default function Header() {
   const [notificationsLoading, setNotificationsLoading] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const [lastSync, setLastSync] = useState(null);
-  const nav = useHashNavigate();
+  const nav = useNavigate();
   const notificationsRef = useRef(null);
   const { toggleSidebar } = useSidebar();
 

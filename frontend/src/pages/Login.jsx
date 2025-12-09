@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useHashNavigate } from '../utils/useHashNavigate';
+import { useNavigate } from 'react-router-dom';
 import { FiMail, FiLock, FiEye, FiEyeOff } from 'react-icons/fi';
 import Toast from '../components/Toast';
 import InteractiveBackground from '../components/InteractiveBackground';
@@ -12,7 +12,7 @@ export default function Login() {
   const [mostrarContrasena, setMostrarContrasena] = useState(false);
   const [errores, setErrores] = useState({});
   const [toast, setToast] = useState(null);
-  const navigate = useHashNavigate();
+  const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();

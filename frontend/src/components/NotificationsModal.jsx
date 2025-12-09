@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react'
-import { useHashNavigate } from '../utils/useHashNavigate'
+import { useNavigate } from 'react-router-dom'
 import { FiCircle } from 'react-icons/fi'
 
 function formatRelativeTime(dateString) {
@@ -29,7 +29,7 @@ function NotificationsModal({
   onMarkAsRead,
   onClose,
 }) {
-  const navigate = useHashNavigate()
+  const navigate = useNavigate()
 
   function handleNotificationClick(notification) {
     // Si tiene metadata con ruta, navegar allí

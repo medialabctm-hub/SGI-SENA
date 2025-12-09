@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { useHashNavigate } from '../utils/useHashNavigate'
+import { useNavigate } from 'react-router-dom'
 import Header from '../components/Header'
 import Sidebar from '../components/Sidebar'
 import Toast from '../components/Toast'
@@ -13,7 +13,7 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(false)
   const [statsLoaded, setStatsLoaded] = useState(false)
   const [toast, setToast] = useState(null)
-  const nav = useHashNavigate()
+  const nav = useNavigate()
 
   useEffect(() => {
     try {
