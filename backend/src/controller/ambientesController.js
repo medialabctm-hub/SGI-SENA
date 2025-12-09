@@ -1,9 +1,6 @@
 import defaultDb from '../config/dbconfig.js';
 import { logger } from '../utils/logger.js';
 
-/**
- * Listar todos los ambientes con filtros opcionales
- */
 export async function listarAmbientes(req, res) {
   try {
     const { estado_ambiente, tipo_ambiente, edificio, piso } = req.query;
@@ -60,9 +57,6 @@ export async function listarAmbientes(req, res) {
   }
 }
 
-/**
- * Obtener un ambiente específico por ID
- */
 export async function obtenerAmbiente(req, res) {
   try {
     const { id } = req.params;
@@ -86,7 +80,6 @@ export async function obtenerAmbiente(req, res) {
       return res.status(404).json({ error: 'Ambiente no encontrado' });
     }
 
-    // Obtener equipos del ambiente
     const [equipos] = await defaultDb.execute(
       `SELECT 
         e.codigo_equipo,
@@ -104,7 +97,6 @@ export async function obtenerAmbiente(req, res) {
       [id]
     );
 
-    // Obtener responsables actuales del ambiente (si hay clases activas)
     const [responsables] = await defaultDb.execute(
       `SELECT 
         ra.id_responsabilidad_ambiente,
@@ -128,7 +120,6 @@ export async function obtenerAmbiente(req, res) {
       [id]
     );
 
-    // Obtener imágenes del ambiente
     const [imagenes] = await defaultDb.execute(
       `SELECT 
         id_imagen_ambiente,
@@ -156,9 +147,6 @@ export async function obtenerAmbiente(req, res) {
   }
 }
 
-/**
- * Crear un nuevo ambiente
- */
 export async function crearAmbiente(req, res) {
   try {
     const {
@@ -172,7 +160,6 @@ export async function crearAmbiente(req, res) {
       estado_ambiente = 'Activo'
     } = req.body;
 
-    // Validaciones
     if (!codigo_ambiente || !nombre_ambiente || !tipo_ambiente) {
       return res.status(400).json({
         error: 'Faltan campos obligatorios',
@@ -180,7 +167,6 @@ export async function crearAmbiente(req, res) {
       });
     }
 
-    // Validar que el código de ambiente sea único
     const [[codigoExistente]] = await defaultDb.execute(
       'SELECT id_ambiente FROM Ambientes WHERE codigo_ambiente = ? LIMIT 1',
       [codigo_ambiente]
@@ -190,7 +176,6 @@ export async function crearAmbiente(req, res) {
       return res.status(409).json({ error: 'El código de ambiente ya existe' });
     }
 
-    // Validar tipo_ambiente
     const tiposValidos = ['Laboratorio', 'Aula', 'Taller', 'Oficina', 'Bodega'];
     if (!tiposValidos.includes(tipo_ambiente)) {
       return res.status(400).json({
@@ -199,7 +184,6 @@ export async function crearAmbiente(req, res) {
       });
     }
 
-    // Validar estado_ambiente
     const estadosValidos = ['Activo', 'Inactivo', 'En Mantenimiento'];
     if (!estadosValidos.includes(estado_ambiente)) {
       return res.status(400).json({
@@ -208,7 +192,6 @@ export async function crearAmbiente(req, res) {
       });
     }
 
-    // Insertar el ambiente
     const [result] = await defaultDb.execute(
       `INSERT INTO Ambientes 
        (codigo_ambiente, nombre_ambiente, tipo_ambiente, capacidad_personas, piso, edificio, descripcion, estado_ambiente)
@@ -246,9 +229,6 @@ export async function crearAmbiente(req, res) {
   }
 }
 
-/**
- * Actualizar un ambiente existente
- */
 export async function actualizarAmbiente(req, res) {
   try {
     const { id } = req.params;
@@ -263,7 +243,6 @@ export async function actualizarAmbiente(req, res) {
       estado_ambiente
     } = req.body;
 
-    // Validar que el ambiente existe
     const [[ambiente]] = await defaultDb.execute(
       'SELECT id_ambiente FROM Ambientes WHERE id_ambiente = ?',
       [id]
@@ -273,7 +252,6 @@ export async function actualizarAmbiente(req, res) {
       return res.status(404).json({ error: 'Ambiente no encontrado' });
     }
 
-    // Validar código único si se está cambiando
     if (codigo_ambiente) {
       const [[codigoExistente]] = await defaultDb.execute(
         'SELECT id_ambiente FROM Ambientes WHERE codigo_ambiente = ? AND id_ambiente != ? LIMIT 1',
@@ -285,7 +263,6 @@ export async function actualizarAmbiente(req, res) {
       }
     }
 
-    // Validar tipo_ambiente si se proporciona
     if (tipo_ambiente) {
       const tiposValidos = ['Laboratorio', 'Aula', 'Taller', 'Oficina', 'Bodega'];
       if (!tiposValidos.includes(tipo_ambiente)) {
@@ -296,7 +273,6 @@ export async function actualizarAmbiente(req, res) {
       }
     }
 
-    // Validar estado_ambiente si se proporciona
     if (estado_ambiente) {
       const estadosValidos = ['Activo', 'Inactivo', 'En Mantenimiento'];
       if (!estadosValidos.includes(estado_ambiente)) {
@@ -307,7 +283,6 @@ export async function actualizarAmbiente(req, res) {
       }
     }
 
-    // Construir query de actualización
     const allowed = [
       'codigo_ambiente',
       'nombre_ambiente',
@@ -351,14 +326,10 @@ export async function actualizarAmbiente(req, res) {
   }
 }
 
-/**
- * Eliminar un ambiente (solo si no tiene equipos asignados)
- */
 export async function eliminarAmbiente(req, res) {
   try {
     const { id } = req.params;
 
-    // Validar que el ambiente existe
     const [[ambiente]] = await defaultDb.execute(
       'SELECT id_ambiente, codigo_ambiente, nombre_ambiente FROM Ambientes WHERE id_ambiente = ?',
       [id]
@@ -368,7 +339,6 @@ export async function eliminarAmbiente(req, res) {
       return res.status(404).json({ error: 'Ambiente no encontrado' });
     }
 
-    // Verificar si tiene equipos asignados
     const [[equiposCount]] = await defaultDb.execute(
       'SELECT COUNT(*) AS total FROM Elementos WHERE id_ambiente = ?',
       [id]
@@ -381,7 +351,6 @@ export async function eliminarAmbiente(req, res) {
       });
     }
 
-    // Verificar si tiene clases programadas o en curso
     const [[clasesCount]] = await defaultDb.execute(
       `SELECT COUNT(*) AS total FROM Clases 
        WHERE id_ambiente = ? 
@@ -396,7 +365,6 @@ export async function eliminarAmbiente(req, res) {
       });
     }
 
-    // Eliminar el ambiente
     const [result] = await defaultDb.execute(
       'DELETE FROM Ambientes WHERE id_ambiente = ?',
       [id]
@@ -416,9 +384,6 @@ export async function eliminarAmbiente(req, res) {
   }
 }
 
-/**
- * Listar ambientes activos (versión simplificada para formularios)
- */
 export async function listarAmbientesActivos(req, res) {
   try {
     const [rows] = await defaultDb.execute(
@@ -430,10 +395,6 @@ export async function listarAmbientesActivos(req, res) {
   }
 }
 
-/**
- * Asignar ambiente a instructor (asignación permanente)
- * Solo Administrador puede asignar ambientes
- */
 export async function asignarAmbienteInstructor(req, res) {
   try {
     const { id_ambiente, id_instructor, jornada, observaciones } = req.body;
@@ -446,7 +407,6 @@ export async function asignarAmbienteInstructor(req, res) {
       });
     }
 
-    // Validar jornada
     const jornadasValidas = ['Mañana', 'Tarde', 'Noche'];
     if (!jornadasValidas.includes(jornada)) {
       return res.status(400).json({
@@ -455,7 +415,6 @@ export async function asignarAmbienteInstructor(req, res) {
       });
     }
 
-    // Validar que el ambiente existe
     const [[ambiente]] = await defaultDb.execute(
       'SELECT id_ambiente, nombre_ambiente, codigo_ambiente FROM Ambientes WHERE id_ambiente = ?',
       [id_ambiente]
@@ -465,7 +424,6 @@ export async function asignarAmbienteInstructor(req, res) {
       return res.status(404).json({ error: 'Ambiente no encontrado' });
     }
 
-    // Validar que el usuario es instructor
     const [[instructor]] = await defaultDb.execute(
       `SELECT u.id_usuario, u.nombre_usuario, r.nombre_rol
        FROM Usuarios u
@@ -481,8 +439,6 @@ export async function asignarAmbienteInstructor(req, res) {
       });
     }
 
-    // Verificar si ya existe una asignación permanente activa para este instructor en esta jornada
-    // Permitimos múltiples instructores en la misma jornada, pero no duplicados del mismo instructor
     const [[asignacionExistente]] = await defaultDb.execute(
       `SELECT id_responsabilidad_ambiente
        FROM Responsabilidades_Ambiente
@@ -502,7 +458,6 @@ export async function asignarAmbienteInstructor(req, res) {
       });
     }
 
-    // Crear nueva asignación permanente (id_clase = NULL indica asignación permanente)
     const [result] = await defaultDb.execute(
       `INSERT INTO Responsabilidades_Ambiente
        (id_ambiente, id_clase, jornada, id_usuario, tipo_responsabilidad, fecha_inicio, fecha_fin, estado_responsabilidad, observaciones, creado_por)
@@ -530,14 +485,10 @@ export async function asignarAmbienteInstructor(req, res) {
   }
 }
 
-/**
- * Desasignar ambiente de instructor (finalizar asignación permanente)
- */
 export async function desasignarAmbienteInstructor(req, res) {
   try {
     const { id_responsabilidad } = req.params;
 
-    // Validar que la asignación existe y es permanente
     const [[asignacion]] = await defaultDb.execute(
       `SELECT ra.id_responsabilidad_ambiente, ra.id_ambiente, ra.id_usuario,
               a.nombre_ambiente, u.nombre_usuario AS instructor_nombre
@@ -557,7 +508,6 @@ export async function desasignarAmbienteInstructor(req, res) {
       });
     }
 
-    // Finalizar la asignación
     await defaultDb.execute(
       `UPDATE Responsabilidades_Ambiente
        SET estado_responsabilidad = 'Finalizada',
@@ -579,9 +529,6 @@ export async function desasignarAmbienteInstructor(req, res) {
   }
 }
 
-/**
- * Listar asignaciones permanentes de ambientes a instructores
- */
 export async function listarAsignacionesAmbientes(req, res) {
   try {
     const { id_ambiente, id_instructor } = req.query;

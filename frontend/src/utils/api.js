@@ -202,8 +202,14 @@ export const handleError = (error, setToast, fallback = 'Ocurrió un problema. P
   const message = buildErrorMessage(error, fallback);
   setToast({ message, type: 'error' });
   
-  // Log del error técnico solo en desarrollo (no en producción)
   if (import.meta.env.DEV) {
     console.error('Error técnico (solo en desarrollo):', error);
   }
+};
+
+export const getAuthHeaders = () => {
+  const token = localStorage.getItem('token');
+  return token
+    ? { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
+    : { 'Content-Type': 'application/json' };
 };

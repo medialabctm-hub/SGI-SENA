@@ -3,15 +3,11 @@ import { notifyNuevoEquipo } from '../services/notificationService.js';
 import { logger } from '../utils/logger.js';
 import { obtenerEquipoPorCodigo as obtenerEquipoPorCodigoUtil } from '../utils/sqlQueries.js';
 
-// Esta función se mantiene para compatibilidad con rutas existentes
-// Nota: La funcionalidad principal está en ambientesController.js
-
 export async function listarEquipos(req, res) {
   try {
     const userId = req.user?.id;
     const userRole = req.user?.rol;
 
-    // Si es Cuentadante, solo puede ver su inventario (equipos donde id_cuentadante = su id_usuario)
     let query = `
       SELECT e.codigo_equipo, e.placa AS codigo_inventario, e.tipo, e.marca, e.modelo, e.numero_serie, e.consecutivo, e.descripcion,
              e.fecha_adquisicion, e.valor_ingreso AS costo, e.vida_util_meses, e.estado_fisico,
@@ -23,7 +19,6 @@ export async function listarEquipos(req, res) {
 
     const params = [];
 
-    // Si es Cuentadante, filtrar solo su inventario
     if (userRole === 'Cuentadante') {
       query += ` WHERE e.id_cuentadante = ?`;
       params.push(userId);
@@ -39,7 +34,6 @@ export async function listarEquipos(req, res) {
   }
 }
 
-// Controlador para registrar un nuevo equipo
 export async function registrarEquipo(req, res) {
   try {
     const {
@@ -63,13 +57,11 @@ export async function registrarEquipo(req, res) {
       comentarios
     } = req.body;
 
-    // La placa es el código de inventario (compatibilidad con frontend que puede enviar codigo_inventario)
     const placaValue = (placa || codigo_inventario || '').toString().trim();
     const rCentroValue = (r_centro || '').toString().trim() || null;
     const consecutivoValue = (consecutivo || numero_serie || '').toString().trim();
     const valorIngreso = valor_ingreso || costo || null;
 
-    // Validación básica
     if (!placaValue) {
       return res.status(400).json({ error: 'La placa (código de inventario) es obligatoria' });
     }
@@ -77,7 +69,6 @@ export async function registrarEquipo(req, res) {
       return res.status(400).json({ error: 'Faltan campos obligatorios: tipo, modelo, estado_fisico o fecha_adquisicion' });
     }
 
-    // Validar placa única
     const [[placaExistente]] = await defaultDb.execute(
       'SELECT codigo_equipo FROM Elementos WHERE placa = ? LIMIT 1',
       [placaValue]
@@ -86,15 +77,12 @@ export async function registrarEquipo(req, res) {
       return res.status(409).json({ error: 'La placa ya está registrada' });
     }
 
-    // Resolver id_categoria a partir del nombre de categoria (tipo)
-    // Si no existe, crearla automáticamente
     let [[categoria]] = await defaultDb.execute(
       'SELECT id_categoria, es_componente FROM Categorias_Equipo WHERE nombre_categoria = ? LIMIT 1',
       [tipo]
     );
     
     if (!categoria?.id_categoria) {
-      // Crear la categoría automáticamente si no existe
       try {
         const [result] = await defaultDb.execute(
           'INSERT INTO Categorias_Equipo (nombre_categoria, descripcion, es_componente) VALUES (?, ?, ?)',
@@ -1247,8 +1235,6 @@ export async function actualizarCuentadantePrincipal(req, res) {
           OR id_cuentadante != ?`,
       [nombreCuentadante, usuario.id_usuario, nombreCuentadante, usuario.id_usuario]
     )
-
-    // También sincronizar equipos que tienen cuentadante_principal pero no id_cuentadante
     // (para equipos importados antes de que se implementara id_cuentadante)
     const [resultSync] = await defaultDb.execute(
       `UPDATE Elementos 

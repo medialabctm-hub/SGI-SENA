@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import Toast from '../../components/Toast'
-import { parseApiResponse, buildErrorMessage } from '../../utils/api'
+import { parseApiResponse, buildErrorMessage, getAuthHeaders } from '../../utils/api'
 import '../../styles/rolesAreas.css'
 
 export default function RolesAreas() {
@@ -8,13 +8,6 @@ export default function RolesAreas() {
   const [areas, setAreas] = useState([])
   const [loading, setLoading] = useState(true)
   const [toast, setToast] = useState(null)
-
-  const getAuthHeaders = () => {
-    const token = localStorage.getItem('token')
-    return token
-      ? { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
-      : { 'Content-Type': 'application/json' }
-  }
 
   const fetchRoles = useCallback(async () => {
     try {

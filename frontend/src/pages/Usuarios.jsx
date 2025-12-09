@@ -6,7 +6,7 @@ import ConfirmModal from '../components/ConfirmModal';
 import ImportarUsuarios from '../components/ImportarUsuarios';
 import { FiUpload, FiDownload } from 'react-icons/fi';
 import * as XLSX from 'xlsx';
-import { parseApiResponse, buildErrorMessage } from '../utils/api';
+import { parseApiResponse, buildErrorMessage, getAuthHeaders } from '../utils/api';
 import '../styles/equipos.css';
 import '../styles/usuarios.css';
 import '../styles/modal.css';
@@ -46,13 +46,6 @@ export default function Usuarios() {
 
   const isAdmin = currentUser?.nombre_rol === 'Administrador';
   const isInstructor = currentUser?.nombre_rol === 'Instructor';
-
-  const getAuthHeaders = () => {
-    const token = localStorage.getItem('token');
-    return token
-      ? { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
-      : { 'Content-Type': 'application/json' };
-  };
 
   const fetchUsers = async () => {
     setLoading(true);

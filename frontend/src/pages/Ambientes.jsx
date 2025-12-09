@@ -4,7 +4,7 @@ import Header from '../components/Header';
 import Sidebar from '../components/Sidebar';
 import Toast from '../components/Toast';
 import ConfirmModal from '../components/ConfirmModal';
-import { parseApiResponse, buildErrorMessage, handleError } from '../utils/api';
+import { parseApiResponse, buildErrorMessage, handleError, getAuthHeaders } from '../utils/api';
 import '../styles/equipos.css';
 import '../styles/usuarios.css';
 import '../styles/modal.css';
@@ -13,6 +13,17 @@ import '../styles/ambientes.css';
 
 const TIPOS_AMBIENTE = ['Laboratorio', 'Aula', 'Taller', 'Oficina', 'Bodega'];
 const ESTADOS_AMBIENTE = ['Activo', 'Inactivo', 'En Mantenimiento'];
+
+const INITIAL_FORM = {
+  codigo_ambiente: '',
+  nombre_ambiente: '',
+  tipo_ambiente: 'Aula',
+  capacidad_personas: '',
+  piso: '',
+  edificio: '',
+  descripcion: '',
+  estado_ambiente: 'Activo',
+};
 
 export default function Ambientes() {
   const [ambientes, setAmbientes] = useState([]);
@@ -23,16 +34,7 @@ export default function Ambientes() {
   const [showForm, setShowForm] = useState(false);
   const [editingAmbiente, setEditingAmbiente] = useState(null);
   const [editingRowId, setEditingRowId] = useState(null);
-  const [form, setForm] = useState({
-    codigo_ambiente: '',
-    nombre_ambiente: '',
-    tipo_ambiente: 'Aula',
-    capacidad_personas: '',
-    piso: '',
-    edificio: '',
-    descripcion: '',
-    estado_ambiente: 'Activo',
-  });
+  const [form, setForm] = useState(INITIAL_FORM);
   const [errores, setErrores] = useState({});
   const [confirm, setConfirm] = useState({ open: false, id: null });
   const [currentUser, setCurrentUser] = useState(null);
@@ -45,26 +47,17 @@ export default function Ambientes() {
   const [uploadingImages, setUploadingImages] = useState(false);
   const fileInputRef = useRef(null);
 
-  // Obtener rol del usuario actual
   useEffect(() => {
     try {
       const userData = localStorage.getItem('user');
       if (userData) {
         setCurrentUser(JSON.parse(userData));
       }
-    } catch (error) {
-      // Error silencioso
+    } catch {
     }
   }, []);
 
   const isAdmin = currentUser?.nombre_rol === 'Administrador';
-
-  const getAuthHeaders = () => {
-    const token = localStorage.getItem('token');
-    return token
-      ? { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
-      : { 'Content-Type': 'application/json' };
-  };
 
   const fetchAmbientes = async () => {
     setLoading(true);
@@ -110,10 +103,8 @@ export default function Ambientes() {
     return Object.keys(errs).length === 0;
   };
 
-  // Prepare payload converting numeric empty strings to null or numbers
   const preparePayload = (src) => {
     const payload = { ...src };
-    // Convert capacidad_personas: if empty string -> null, else number
     if (payload.capacidad_personas === '' || payload.capacidad_personas === null) {
       payload.capacidad_personas = null;
     } else {
@@ -155,16 +146,7 @@ export default function Ambientes() {
 
       setShowForm(false);
       setEditingAmbiente(null);
-      setForm({
-        codigo_ambiente: '',
-        nombre_ambiente: '',
-        tipo_ambiente: 'Aula',
-        capacidad_personas: '',
-        piso: '',
-        edificio: '',
-        descripcion: '',
-        estado_ambiente: 'Activo',
-      });
+      setForm(INITIAL_FORM);
       setErrores({});
       fetchAmbientes();
     } catch (err) {
@@ -179,18 +161,18 @@ export default function Ambientes() {
   };
 
   const handleEdit = (amb) => {
-    // activate inline editing for the row instead of opening top form
     setEditingAmbiente(amb);
     setEditingRowId(amb.id_ambiente);
     setForm({
+      ...INITIAL_FORM,
       codigo_ambiente: amb.codigo_ambiente || '',
       nombre_ambiente: amb.nombre_ambiente || '',
-      tipo_ambiente: amb.tipo_ambiente || 'Aula',
+      tipo_ambiente: amb.tipo_ambiente || INITIAL_FORM.tipo_ambiente,
       capacidad_personas: amb.capacidad_personas || '',
       piso: amb.piso || '',
       edificio: amb.edificio || '',
       descripcion: amb.descripcion || '',
-      estado_ambiente: amb.estado_ambiente || 'Activo',
+      estado_ambiente: amb.estado_ambiente || INITIAL_FORM.estado_ambiente,
     });
     setShowForm(false);
     setViewAmbiente(null);
@@ -200,16 +182,7 @@ export default function Ambientes() {
     setEditingRowId(null);
     setEditingAmbiente(null);
     setErrores({});
-    setForm({
-      codigo_ambiente: '',
-      nombre_ambiente: '',
-      tipo_ambiente: 'Aula',
-      capacidad_personas: '',
-      piso: '',
-      edificio: '',
-      descripcion: '',
-      estado_ambiente: 'Activo',
-    });
+    setForm(INITIAL_FORM);
   };
 
   const handleInlineSave = async () => {
@@ -227,16 +200,7 @@ export default function Ambientes() {
       setToast({ message: 'Ambiente actualizado correctamente', type: 'success' });
       setEditingRowId(null);
       setEditingAmbiente(null);
-      setForm({
-        codigo_ambiente: '',
-        nombre_ambiente: '',
-        tipo_ambiente: 'Aula',
-        capacidad_personas: '',
-        piso: '',
-        edificio: '',
-        descripcion: '',
-        estado_ambiente: 'Activo',
-      });
+      setForm(INITIAL_FORM);
       setErrores({});
       fetchAmbientes();
     } catch (err) {
@@ -272,7 +236,6 @@ export default function Ambientes() {
       const data = await parseApiResponse(res, 'No se pudo obtener el ambiente');
       setViewAmbiente(data);
       setShowForm(false);
-      // Cargar imágenes del ambiente
       if (data.imagenes) {
         setImagenes(data.imagenes);
       } else {
@@ -289,7 +252,6 @@ export default function Ambientes() {
       const data = await parseApiResponse(res, 'No se pudieron cargar las imágenes');
       setImagenes(data || []);
     } catch (err) {
-      // Silencioso, solo log
       console.error('Error al cargar imágenes:', err);
       setImagenes([]);
     }
@@ -434,16 +396,7 @@ export default function Ambientes() {
                       setShowForm(true);
                       setEditingAmbiente(null);
                       setViewAmbiente(null);
-                      setForm({
-                        codigo_ambiente: '',
-                        nombre_ambiente: '',
-                        tipo_ambiente: 'Aula',
-                        capacidad_personas: '',
-                        piso: '',
-                        edificio: '',
-                        descripcion: '',
-                        estado_ambiente: 'Activo',
-                      });
+                      setForm(INITIAL_FORM);
                       setErrores({});
                     }}
                   >
@@ -488,7 +441,6 @@ export default function Ambientes() {
               </div>
             </div>
 
-          {/* Formulario */}
           {showForm && (
             <div className="card" style={{ marginBottom: '1.5rem' }}>
               <h3>{editingAmbiente ? 'Editar Ambiente' : 'Nuevo Ambiente'}</h3>
@@ -612,7 +564,6 @@ export default function Ambientes() {
             </div>
           )}
 
-          {/* Vista detallada */}
           {viewAmbiente && (
             <div className="ambiente-detail-card" style={{ marginBottom: '1.5rem' }}>
               <div className="ambiente-detail-header">
@@ -629,7 +580,6 @@ export default function Ambientes() {
                 </button>
               </div>
 
-              {/* Estadísticas del ambiente */}
               <div className="ambiente-stats-grid">
                 <div className="ambiente-stat-card stat-total">
                   <div className="stat-icon">
@@ -669,7 +619,6 @@ export default function Ambientes() {
                 </div>
               </div>
 
-              {/* Información del ambiente */}
               <div className="ambiente-info-grid">
                 <div className="ambiente-info-card">
                   <div className="info-item">
@@ -737,7 +686,6 @@ export default function Ambientes() {
                 </div>
               </div>
 
-              {/* Responsables actuales */}
               {viewAmbiente.responsables_actuales && viewAmbiente.responsables_actuales.length > 0 && (
                 <div className="ambiente-responsables">
                   <h4 className="ambiente-section-title">Responsables Actuales</h4>
@@ -760,7 +708,6 @@ export default function Ambientes() {
                 </div>
               )}
 
-              {/* Sección de inventario/elementos */}
               <div className="ambiente-inventario-section">
                 <h4 className="ambiente-section-title">Inventario del Ambiente</h4>
                 {viewAmbiente.equipos && viewAmbiente.equipos.length > 0 ? (
@@ -822,7 +769,6 @@ export default function Ambientes() {
                 )}
               </div>
                 
-              {/* Sección de imágenes */}
               <div className="ambiente-imagenes-section">
                 <div className="ambiente-imagenes-header">
                   <h4 className="ambiente-section-title">Imágenes del Ambiente</h4>
@@ -904,7 +850,6 @@ export default function Ambientes() {
             </div>
           )}
 
-          {/* Lista de ambientes */}
           {loading ? (
             <p>Cargando ambientes...</p>
           ) : filteredAmbientes.length === 0 ? (

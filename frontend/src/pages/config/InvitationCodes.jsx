@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { FiPlus, FiTrash2, FiCopy, FiX, FiCheck, FiAlertCircle } from 'react-icons/fi';
 import Toast from '../../components/Toast';
 import ConfirmModal from '../../components/ConfirmModal';
-import { parseApiResponse, buildErrorMessage } from '../../utils/api';
+import { parseApiResponse, buildErrorMessage, getAuthHeaders } from '../../utils/api';
 import '../../styles/equipos.css';
 import '../../styles/invitationCodes.css';
 
@@ -22,13 +22,6 @@ export default function InvitationCodes() {
   useEffect(() => {
     fetchCodes();
   }, []);
-
-  const getAuthHeaders = () => {
-    const token = localStorage.getItem('token');
-    return token
-      ? { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
-      : { 'Content-Type': 'application/json' };
-  };
 
   async function fetchCodes() {
     setLoading(true);
