@@ -35,6 +35,7 @@ import imagenesEquipoRoutes from './src/routes/imagenesEquipoRoutes.js';
 import imagenesAmbienteRoutes from './src/routes/imagenesAmbienteRoutes.js';
 import schedulerService from './src/services/schedulerService.js';
 import path from 'path';
+import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 
@@ -112,8 +113,6 @@ app.get('/health', (req, res) => {
 // Endpoint de diagnóstico para verificar uso del volumen
 app.get('/api/debug/volumes', (req, res) => {
   try {
-    const fs = require('fs');
-    const path = require('path');
     const uploadsBaseDir = path.join(__dirname, 'uploads');
     
     const getDirectorySize = (dirPath) => {
