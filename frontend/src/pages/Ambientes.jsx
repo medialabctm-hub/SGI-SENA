@@ -949,8 +949,6 @@ export default function Ambientes() {
                           </td>
                           <td>
                             <span className="equip-count">{amb.total_equipos || 0}</span>
-                            {` `}
-                            <small>({amb.equipos_disponibles || 0} disponibles)</small>
                           </td>
                           <td>
                             <select className="cell-select-edit" name="estado_ambiente" value={form.estado_ambiente} onChange={handleChange}>
@@ -979,8 +977,6 @@ export default function Ambientes() {
                           <td>{amb.piso || '-'}</td>
                           <td>
                             <span className="equip-count">{amb.total_equipos || 0}</span>
-                            {` `}
-                            <small>({amb.equipos_disponibles || 0} disponibles)</small>
                           </td>
                           <td>
                             <span

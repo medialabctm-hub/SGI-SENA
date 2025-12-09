@@ -5,13 +5,13 @@ import Toast from '../components/Toast'
 import ConfirmModal from '../components/ConfirmModal'
 import { parseApiResponse, buildErrorMessage } from '../utils/api'
 import { FiDownload, FiSearch, FiList, FiClock, FiEye, FiUpload, FiSettings, FiCheckSquare, FiSquare } from 'react-icons/fi'
-import { useNavigate } from 'react-router-dom'
+import { useHashNavigate } from '../utils/useHashNavigate'
 import * as XLSX from 'xlsx'
 import '../styles/equipos.css'
 import '../styles/consultarEquipo.css'
 
 export default function ConsultarEquipo() {
-  const navigate = useNavigate()
+  const navigate = useHashNavigate()
   const [codigo, setCodigo] = useState('')
   const [loading, setLoading] = useState(false)
   const [equipos, setEquipos] = useState([])

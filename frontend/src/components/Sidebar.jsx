@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react'
-import { useNavigate, useLocation } from 'react-router-dom'
+import { useLocation } from 'react-router-dom'
+import { useHashNavigate } from '../utils/useHashNavigate'
+import { unhashRoute, hasRouteHash } from '../utils/routeHash'
 import {
   FiPlus,
   FiSearch,
@@ -27,7 +29,7 @@ import '../styles/sidebar.css'
 
 export default function Sidebar({ user }) {
   const { isOpen, closeSidebar } = useSidebar()
-  const nav = useNavigate()
+  const nav = useHashNavigate()
   const location = useLocation()
   const userRole = user?.nombre_rol || ''
   const isAdmin = userRole === 'Administrador'
@@ -100,15 +102,20 @@ export default function Sidebar({ user }) {
   }
 
   const isActive = (path) => {
+    // Convertir ruta actual a ruta simple si tiene hash
+    const currentPath = hasRouteHash(location.pathname) 
+      ? unhashRoute(location.pathname) 
+      : location.pathname;
+    
     if (path.includes('?')) {
       const [basePath, query] = path.split('?')
-      if (location.pathname === basePath) {
+      if (currentPath === basePath) {
         const urlParams = new URLSearchParams(location.search)
         const pathParams = new URLSearchParams(query)
         return urlParams.get('section') === pathParams.get('section')
       }
     }
-    return location.pathname === path
+    return currentPath === path
   }
 
   const menuItems = {

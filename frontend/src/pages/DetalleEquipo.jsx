@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
+import { useHashNavigate } from '../utils/useHashNavigate';
 import Header from '../components/Header';
 import Sidebar from '../components/Sidebar';
 import Toast from '../components/Toast';
@@ -12,7 +13,7 @@ import '../styles/ambientes.css';
 
 export default function DetalleEquipo() {
   const { codigoEquipo } = useParams();
-  const navigate = useNavigate();
+  const navigate = useHashNavigate();
   const [equipo, setEquipo] = useState(null);
   const [imagenes, setImagenes] = useState([]);
   const [loading, setLoading] = useState(true);

@@ -31,11 +31,13 @@ import Perfil from './pages/Perfil';
 import ProtectedRoute from './components/ProtectedRoute';
 import RedirectIfAuth from './components/RedirectIfAuth';
 import ErrorBoundary from './components/ErrorBoundary';
+import HashRouteWrapper from './components/HashRouteWrapper';
 
 export default function App() {
   return (
     <ErrorBoundary>
-      <Routes>
+      <HashRouteWrapper>
+        <Routes>
       <Route
         path="/login"
         element={
@@ -85,7 +87,23 @@ export default function App() {
         }
       />
       <Route
+        path={`/:hash/dashboard`}
+        element={
+          <ProtectedRoute>
+            <Dashboard />
+          </ProtectedRoute>
+        }
+      />
+      <Route
         path="/equipos"
+        element={
+          <ProtectedRoute>
+            <Equipos />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path={`/:hash/equipos`}
         element={
           <ProtectedRoute>
             <Equipos />
@@ -101,7 +119,23 @@ export default function App() {
         }
       />
       <Route
+        path={`/:hash/equipos/consultar`}
+        element={
+          <ProtectedRoute>
+            <ConsultarEquipo />
+          </ProtectedRoute>
+        }
+      />
+      <Route
         path="/equipos/verificar"
+        element={
+          <ProtectedRoute>
+            <VerificarInventario />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path={`/:hash/equipos/verificar`}
         element={
           <ProtectedRoute>
             <VerificarInventario />
@@ -117,7 +151,23 @@ export default function App() {
         }
       />
       <Route
+        path={`/:hash/usuarios`}
+        element={
+          <ProtectedRoute>
+            <Usuarios />
+          </ProtectedRoute>
+        }
+      />
+      <Route
         path="/config"
+        element={
+          <ProtectedRoute>
+            <Config />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path={`/:hash/config`}
         element={
           <ProtectedRoute>
             <Config />
@@ -133,7 +183,23 @@ export default function App() {
         }
       />
       <Route
+        path={`/:hash/perfil`}
+        element={
+          <ProtectedRoute>
+            <Perfil />
+          </ProtectedRoute>
+        }
+      />
+      <Route
         path="/novedades"
+        element={
+          <ProtectedRoute>
+            <Novedades />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path={`/:hash/novedades`}
         element={
           <ProtectedRoute>
             <Novedades />
@@ -149,7 +215,23 @@ export default function App() {
         }
       />
       <Route
+        path={`/:hash/novedades/crear`}
+        element={
+          <ProtectedRoute>
+            <CrearNovedad />
+          </ProtectedRoute>
+        }
+      />
+      <Route
         path="/reportes"
+        element={
+          <ProtectedRoute>
+            <Reportes />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path={`/:hash/reportes`}
         element={
           <ProtectedRoute>
             <Reportes />
@@ -165,7 +247,23 @@ export default function App() {
         }
       />
       <Route
+        path={`/:hash/reportes/crear`}
+        element={
+          <ProtectedRoute>
+            <CrearReporte />
+          </ProtectedRoute>
+        }
+      />
+      <Route
         path="/equipos/asignar"
+        element={
+          <ProtectedRoute>
+            <AsignarEquipo />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path={`/:hash/equipos/asignar`}
         element={
           <ProtectedRoute>
             <AsignarEquipo />
@@ -181,7 +279,23 @@ export default function App() {
         }
       />
       <Route
+        path={`/:hash/mis-equipos`}
+        element={
+          <ProtectedRoute>
+            <MisEquipos />
+          </ProtectedRoute>
+        }
+      />
+      <Route
         path="/mantenimientos"
+        element={
+          <ProtectedRoute>
+            <Mantenimientos />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path={`/:hash/mantenimientos`}
         element={
           <ProtectedRoute>
             <Mantenimientos />
@@ -197,7 +311,23 @@ export default function App() {
         }
       />
       <Route
+        path={`/:hash/mantenimientos/crear`}
+        element={
+          <ProtectedRoute>
+            <CrearMantenimiento />
+          </ProtectedRoute>
+        }
+      />
+      <Route
         path="/asignaciones"
+        element={
+          <ProtectedRoute>
+            <Asignaciones />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path={`/:hash/asignaciones`}
         element={
           <ProtectedRoute>
             <Asignaciones />
@@ -213,7 +343,23 @@ export default function App() {
         }
       />
       <Route
+        path={`/:hash/ambientes`}
+        element={
+          <ProtectedRoute>
+            <Ambientes />
+          </ProtectedRoute>
+        }
+      />
+      <Route
         path="/ambientes/asignar"
+        element={
+          <ProtectedRoute>
+            <AsignarAmbientes />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path={`/:hash/ambientes/asignar`}
         element={
           <ProtectedRoute>
             <AsignarAmbientes />
@@ -229,7 +375,23 @@ export default function App() {
         }
       />
       <Route
+        path={`/:hash/horarios`}
+        element={
+          <ProtectedRoute>
+            <Horarios />
+          </ProtectedRoute>
+        }
+      />
+      <Route
         path="/equipos/verificacion/historial"
+        element={
+          <ProtectedRoute>
+            <HistorialVerificacionesGeneral />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path={`/:hash/equipos/verificacion/historial`}
         element={
           <ProtectedRoute>
             <HistorialVerificacionesGeneral />
@@ -245,7 +407,23 @@ export default function App() {
         }
       />
       <Route
+        path={`/:hash/equipos/historial-verificaciones/:codigo`}
+        element={
+          <ProtectedRoute>
+            <HistorialVerificaciones />
+          </ProtectedRoute>
+        }
+      />
+      <Route
         path="/equipos/detalle/:codigoEquipo"
+        element={
+          <ProtectedRoute>
+            <DetalleEquipo />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path={`/:hash/equipos/detalle/:codigoEquipo`}
         element={
           <ProtectedRoute>
             <DetalleEquipo />
@@ -260,9 +438,18 @@ export default function App() {
           </ProtectedRoute>
         }
       />
+      <Route
+        path={`/:hash/equipos/cuentadantes/buscar`}
+        element={
+          <ProtectedRoute>
+            <BuscarCuentadante />
+          </ProtectedRoute>
+        }
+      />
       {/* Ruta 404 */}
       <Route element={<PaginaNoEncontrada />} path="*" />
-      </Routes>
+        </Routes>
+      </HashRouteWrapper>
     </ErrorBoundary>
   );
 }
