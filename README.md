@@ -86,6 +86,13 @@ El servidor se ejecutará en `http://localhost:3000`
 
 El backend está configurado para aceptar peticiones desde `http://localhost:5173` (frontend de desarrollo). Para producción, actualizar la configuración CORS en `server.js`.
 
+## Despliegue en Railway
+
+Este proyecto está configurado para desplegarse en Railway. Para más información sobre:
+
+- **Configuración de volúmenes persistentes**: Ver [RAILWAY_VOLUMES.md](./RAILWAY_VOLUMES.md) para configurar volúmenes que persistan las imágenes entre deploys.
+- **Configuración de variables de entorno**: Consulta `backend/env.example` para ver todas las variables necesarias.
+
 ## Contribución
 
 1. Fork el proyecto
