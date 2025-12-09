@@ -35,7 +35,6 @@ import imagenesEquipoRoutes from './src/routes/imagenesEquipoRoutes.js';
 import imagenesAmbienteRoutes from './src/routes/imagenesAmbienteRoutes.js';
 import schedulerService from './src/services/schedulerService.js';
 import path from 'path';
-import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 
@@ -108,99 +107,6 @@ app.get('/health', (req, res) => {
     env: process.env.NODE_ENV || 'development',
     timestamp: new Date().toISOString(),
   });
-});
-
-// Endpoint de diagnóstico para verificar uso del volumen
-app.get('/api/debug/volumes', (req, res) => {
-  try {
-    const uploadsBaseDir = path.join(__dirname, 'uploads');
-    
-    const getDirectorySize = (dirPath) => {
-      let totalSize = 0;
-      let fileCount = 0;
-      const files = [];
-      
-      if (!fs.existsSync(dirPath)) {
-        return { size: 0, count: 0, files: [] };
-      }
-      
-      const items = fs.readdirSync(dirPath);
-      
-      for (const item of items) {
-        const itemPath = path.join(dirPath, item);
-        const stats = fs.statSync(itemPath);
-        
-        if (stats.isDirectory()) {
-          const subDir = getDirectorySize(itemPath);
-          totalSize += subDir.size;
-          fileCount += subDir.count;
-          files.push(...subDir.files.map(f => ({ ...f, path: `${item}/${f.path}` })));
-        } else {
-          totalSize += stats.size;
-          fileCount++;
-          files.push({
-            name: item,
-            path: item,
-            size: stats.size,
-            modified: stats.mtime,
-            created: stats.birthtime || stats.ctime
-          });
-        }
-      }
-      
-      return { size: totalSize, count: fileCount, files };
-    };
-    
-    const formatBytes = (bytes) => {
-      if (bytes === 0) return '0 B';
-      const k = 1024;
-      const sizes = ['B', 'KB', 'MB', 'GB'];
-      const i = Math.floor(Math.log(bytes) / Math.log(k));
-      return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
-    };
-    
-    const uploadsInfo = getDirectorySize(uploadsBaseDir);
-    
-    // Información por subdirectorio
-    const subdirs = {};
-    if (fs.existsSync(uploadsBaseDir)) {
-      const items = fs.readdirSync(uploadsBaseDir);
-      for (const item of items) {
-        const itemPath = path.join(uploadsBaseDir, item);
-        if (fs.statSync(itemPath).isDirectory()) {
-          subdirs[item] = getDirectorySize(itemPath);
-        }
-      }
-    }
-    
-    // Ordenar archivos por tamaño (más grandes primero)
-    uploadsInfo.files.sort((a, b) => b.size - a.size);
-    
-    res.json({
-      uploadsBaseDir,
-      exists: fs.existsSync(uploadsBaseDir),
-      totalSize: uploadsInfo.size,
-      totalSizeFormatted: formatBytes(uploadsInfo.size),
-      totalFiles: uploadsInfo.count,
-      subdirectories: Object.keys(subdirs).reduce((acc, key) => {
-        acc[key] = {
-          size: subdirs[key].size,
-          sizeFormatted: formatBytes(subdirs[key].size),
-          fileCount: subdirs[key].count,
-          files: subdirs[key].files.slice(0, 20) // Primeros 20 archivos
-        };
-        return acc;
-      }, {}),
-      largestFiles: uploadsInfo.files.slice(0, 10), // Top 10 archivos más grandes
-      timestamp: new Date().toISOString()
-    });
-  } catch (error) {
-    logger.error('Error al obtener información del volumen', { error: error.message, stack: error.stack });
-    res.status(500).json({ 
-      error: 'Error al obtener información del volumen', 
-      detalle: error.message 
-    });
-  }
 });
 
 // API Routes
