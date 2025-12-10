@@ -123,11 +123,20 @@ export const asignarEquipoSchema = z.object({
     z.number().int().positive('El código del equipo debe ser un número positivo'),
   ]),
   id_usuario: z.number().int().positive('El ID del usuario es requerido'),
-  tipo_responsabilidad: z.enum(['Permanente', 'Temporal'], {
-    errorMap: () => ({ message: 'Tipo de responsabilidad inválido' }),
+  tipo_responsabilidad: z.enum(['Principal', 'Secundario'], {
+    errorMap: () => ({ message: 'Tipo de responsabilidad inválido. Debe ser "Principal" o "Secundario"' }),
   }),
   observaciones: z.string().max(500).optional().nullable(),
   fecha_fin: z.string().optional().nullable(), // Para responsabilidades temporales
+  dias_asignados: z.union([
+    z.number().int().positive(),
+    z.string().transform((val) => {
+      if (!val || val === '') return null;
+      const num = parseInt(val, 10);
+      return isNaN(num) || num <= 0 ? null : num;
+    }),
+    z.null()
+  ]).optional().nullable(),
 });
 
 export const verificarInventarioSchema = z.object({

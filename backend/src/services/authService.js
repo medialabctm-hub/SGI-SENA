@@ -202,6 +202,75 @@ export class AuthService {
   }
 
   /**
+   * Autentica un usuario con validación de placa del equipo (para app de escritorio)
+   * @param {string} cedula - Cédula del usuario
+   * @param {string} contrasena - Contraseña del usuario
+   * @param {string} placa - Placa del equipo donde se está intentando iniciar sesión
+   * @returns {Promise<Object>} Token y datos del usuario
+   */
+  async loginUserWithPlaca(cedula, contrasena, placa) {
+    const usuario = await this.userRepository.findByCedula(cedula);
+
+    if (!usuario) {
+      this.logger.warn('Intento de login con placa fallido - Usuario no encontrado', { cedula, placa });
+      throw new AuthenticationError('Credenciales inválidas');
+    }
+
+    const valid = await this.passwordService.compare(contrasena, usuario.contrasena);
+    if (!valid) {
+      this.logger.warn('Intento de login con placa fallido - Contraseña incorrecta', { cedula, placa });
+      throw new AuthenticationError('Credenciales inválidas');
+    }
+
+    // Validar que el usuario tenga un equipo asignado con la placa proporcionada
+    // Usar el repositorio de usuarios para obtener equipos asignados
+    const equiposAsignados = await this.userRepository.getAssignedEquipos(usuario.id_usuario);
+    
+    // Filtrar por placa
+    const equipoConPlaca = equiposAsignados.find(eq => eq.placa === placa);
+
+    if (!equipoConPlaca) {
+      this.logger.warn('Intento de login con placa fallido - Placa no asignada al usuario', { 
+        cedula, 
+        placa,
+        id_usuario: usuario.id_usuario 
+      });
+      throw new AuthenticationError('Este equipo no está asignado a su usuario. Por favor, contacte al administrador.');
+    }
+
+    // Generar token JWT
+    const token = this.jwtService.sign({
+      id: usuario.id_usuario,
+      rol: usuario.id_rol,
+    });
+
+    this.logger.info('Usuario autenticado exitosamente con placa', {
+      cedula,
+      id: usuario.id_usuario,
+      placa,
+    });
+
+    return {
+      token,
+      requiereCambioContrasena: usuario.requiere_cambio_contrasena === 1 || usuario.requiere_cambio_contrasena === true,
+      user: {
+        id_usuario: usuario.id_usuario,
+        nombre_usuario: usuario.nombre_usuario,
+        correo: usuario.correo,
+        telefono: usuario.telefono,
+        cedula: usuario.cedula,
+        nombre_rol: usuario.nombre_rol,
+      },
+      equipo: {
+        codigo_equipo: equipoConPlaca.codigo_equipo,
+        placa: equipoConPlaca.placa,
+        tipo: equipoConPlaca.tipo,
+        modelo: equipoConPlaca.modelo,
+      },
+    };
+  }
+
+  /**
    * Obtiene el perfil del usuario autenticado
    * @param {number} userId - ID del usuario
    * @returns {Promise<Object>} Datos del usuario

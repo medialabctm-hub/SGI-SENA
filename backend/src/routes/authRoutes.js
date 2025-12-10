@@ -1,6 +1,7 @@
 import {
   registerUser,
   loginUser,
+  loginUserWithPlaca,
   deleteUser,
   updateUser,
   me,
@@ -32,6 +33,9 @@ router.post('/register', registerLimiter, validate(registerSchema), registerUser
 
 // Login de usuario (público) - Protegido con rate limiting
 router.post('/login', authLimiter, validate(loginSchema), loginUser);
+
+// Login de usuario con validación de placa (público) - Para app de escritorio
+router.post('/login-placa', authLimiter, loginUserWithPlaca);
 
 // Solicitar recuperación de contraseña (público) - Protegido con rate limiting
 router.post('/recuperar-contrasena', passwordResetLimiter, solicitarRecuperacionContrasena);

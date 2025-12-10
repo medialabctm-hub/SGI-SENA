@@ -44,6 +44,28 @@ export const loginUser = async (req, res, next) => {
 };
 
 /**
+ * Login de usuario con validación de placa (para app de escritorio)
+ */
+export const loginUserWithPlaca = async (req, res, next) => {
+  try {
+    const { cedula, contrasena, placa } = req.body;
+    
+    if (!cedula || !contrasena || !placa) {
+      return res.status(400).json({ 
+        error: 'Faltan campos obligatorios: cedula, contrasena, placa' 
+      });
+    }
+
+    const authService = ServiceFactory.create('authService');
+    const result = await authService.loginUserWithPlaca(cedula, contrasena, placa);
+    return res.json(result);
+  } catch (error) {
+    logger.error('Error en loginUserWithPlaca', { error: error.message });
+    return next(error);
+  }
+};
+
+/**
  * Obtener perfil del usuario autenticado
  */
 export const me = async (req, res, next) => {
