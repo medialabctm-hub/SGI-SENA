@@ -9,7 +9,7 @@ export async function listarEquipos(req, res) {
     const userRole = req.user?.rol;
 
     let query = `
-      SELECT e.codigo_equipo, e.placa AS codigo_inventario, e.tipo, e.marca, e.modelo, e.numero_serie, e.consecutivo, e.descripcion,
+      SELECT e.codigo_equipo, e.placa AS codigo_inventario, e.tipo, e.modelo, e.consecutivo, e.descripcion,
              e.fecha_adquisicion, e.valor_ingreso AS costo, e.vida_util_meses, e.estado_fisico,
              e.specs_completas, e.id_cuentadante, e.cuentadante_principal,
              a.id_ambiente, a.nombre_ambiente, a.codigo_ambiente
@@ -181,17 +181,15 @@ export async function registrarEquipo(req, res) {
     let params;
     if (usaIdTipo) {
       query = `INSERT INTO Elementos
-        (id_categoria, id_tipo, id_ambiente, id_cuentadante, tipo, marca, modelo, numero_serie, descripcion, fecha_adquisicion, valor_ingreso, vida_util_meses, estado_fisico, specs_completas, r_centro, consecutivo, placa, registrado_por)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+        (id_categoria, id_tipo, id_ambiente, id_cuentadante, tipo, modelo, descripcion, fecha_adquisicion, valor_ingreso, vida_util_meses, estado_fisico, specs_completas, r_centro, consecutivo, placa, registrado_por)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
       params = [
         categoria.id_categoria,
         idTipo,
         ambienteId,
         idCuentadante,
         tipo,
-        marca || null,
         modelo,
-        numero_serie || null,
         descripcionFinal,
         fecha_adquisicion,
         valorIngreso ? parseFloat(valorIngreso) : null,
@@ -205,16 +203,14 @@ export async function registrarEquipo(req, res) {
       ];
     } else {
       query = `INSERT INTO Elementos
-        (id_categoria, id_ambiente, id_cuentadante, tipo, marca, modelo, numero_serie, descripcion, fecha_adquisicion, valor_ingreso, vida_util_meses, estado_fisico, specs_completas, r_centro, consecutivo, placa, registrado_por)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+        (id_categoria, id_ambiente, id_cuentadante, tipo, modelo, descripcion, fecha_adquisicion, valor_ingreso, vida_util_meses, estado_fisico, specs_completas, r_centro, consecutivo, placa, registrado_por)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
       params = [
         categoria.id_categoria,
         ambienteId,
         idCuentadante,
         tipo,
-        marca || null,
         modelo,
-        numero_serie || null,
         descripcionFinal,
         fecha_adquisicion,
         valorIngreso ? parseFloat(valorIngreso) : null,
@@ -282,7 +278,7 @@ export async function obtenerEquipoPorCodigo(req, res) {
     if (!codigo) return res.status(400).json({ error: 'codigo requerido' });
 
     const queryBase = `
-      SELECT e.codigo_equipo, e.placa AS codigo_inventario, e.tipo, e.marca, e.modelo, e.numero_serie, e.consecutivo, e.descripcion,
+      SELECT e.codigo_equipo, e.placa AS codigo_inventario, e.tipo, e.modelo, e.consecutivo, e.descripcion,
              e.fecha_adquisicion, e.valor_ingreso AS costo, e.vida_util_meses, e.estado_fisico,
              e.specs_completas, e.id_cuentadante,
              a.id_ambiente, a.nombre_ambiente, a.codigo_ambiente,
@@ -366,7 +362,7 @@ export async function actualizarEquipo(req, res) {
     }
 
     const allowed = [
-      'tipo', 'marca', 'modelo', 'numero_serie', 'descripcion', 'fecha_adquisicion',
+      'tipo', 'modelo', 'descripcion', 'fecha_adquisicion',
       'costo', 'valor_ingreso', 'vida_util_meses', 'estado_fisico', 'specs_completas',
       'consecutivo', 'placa', 'r_centro'
     ];
@@ -535,7 +531,7 @@ export async function asignarEquipo(req, res) {
       message: `Equipo habilitado correctamente para ${usuarioReceptor.nombre_usuario}. El usuario podrá iniciar sesión en la aplicación de escritorio para desbloquear el equipo.`,
       equipo: {
         codigo: equipo.codigo_equipo,
-        descripcion: `${equipo.tipo} ${equipo.marca} ${equipo.modelo}`.trim()
+        descripcion: `${equipo.tipo} ${equipo.modelo || ''}`.trim()
       },
       nota: 'Esta habilitación permite el uso del equipo. El inventario permanece asignado al ambiente.'
     })
@@ -557,9 +553,7 @@ export async function obtenerMisEquipos(req, res) {
         e.codigo_equipo,
         e.placa AS codigo_inventario,
         e.tipo,
-        e.marca,
         e.modelo,
-        e.numero_serie,
         e.consecutivo,
         e.estado_fisico,
         e.descripcion,
@@ -607,9 +601,7 @@ export async function listarAsignaciones(req, res) {
         re.observaciones,
         e.placa AS codigo_inventario,
         e.tipo AS equipo_tipo,
-        e.marca AS equipo_marca,
         e.modelo AS equipo_modelo,
-        e.numero_serie,
         e.consecutivo,
         u.nombre_usuario AS usuario_nombre,
         u.cedula AS usuario_cedula,
@@ -795,9 +787,7 @@ export async function obtenerEquiposAmbientesInstructor(req, res) {
         e.codigo_equipo,
         e.placa AS codigo_inventario,
         e.tipo,
-        e.marca,
         e.modelo,
-        e.numero_serie,
         e.consecutivo,
         e.estado_fisico,
         e.descripcion,
@@ -992,7 +982,6 @@ export async function consultarHistorialVerificaciones(req, res) {
         vi.codigo_equipo,
         e.placa AS codigo_inventario,
         e.tipo AS equipo_tipo,
-        e.marca AS equipo_marca,
         e.modelo AS equipo_modelo,
         e.consecutivo,
         vi.id_ambiente,
@@ -1136,7 +1125,7 @@ export async function obtenerHistorialEquipo(req, res) {
 
     // Obtener información del equipo
     const [[equipo]] = await defaultDb.execute(
-      `SELECT codigo_equipo, placa AS codigo_inventario, tipo, marca, modelo, numero_serie, consecutivo
+      `SELECT codigo_equipo, placa AS codigo_inventario, tipo, modelo, consecutivo
        FROM Elementos
        WHERE codigo_equipo = ?`,
       [codigo]
@@ -1387,9 +1376,7 @@ export async function buscarCuentadantePorDocumento(req, res) {
         e.codigo_equipo,
         e.placa AS codigo_inventario,
         e.tipo,
-        e.marca,
         e.modelo,
-        e.numero_serie,
         e.consecutivo,
         e.descripcion,
         e.fecha_adquisicion,
