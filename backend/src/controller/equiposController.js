@@ -40,6 +40,7 @@ export async function registrarEquipo(req, res) {
       codigo_inventario,
       placa,
       r_centro,
+      centro,
       consecutivo,
       tipo,
       marca,
@@ -58,7 +59,8 @@ export async function registrarEquipo(req, res) {
     } = req.body;
 
     const placaValue = (placa || codigo_inventario || '').toString().trim();
-    const rCentroValue = (r_centro || '').toString().trim() || null;
+    // r_centro es NOT NULL en la BD, usar '00000' como valor por defecto si no se proporciona
+    const rCentroValue = (centro || r_centro || '00000').toString().trim() || '00000';
     const consecutivoValue = (consecutivo || numero_serie || '').toString().trim();
     const valorIngreso = valor_ingreso || costo || null;
 
@@ -251,8 +253,19 @@ export async function registrarEquipo(req, res) {
 
     res.status(201).json({ ok: true, id: result.insertId });
   } catch (err) {
+    logger.error('Error al registrar equipo', { 
+      error: err.message, 
+      stack: err.stack,
+      code: err.code,
+      body: req.body 
+    });
+    
     if (err.code === 'ER_DUP_ENTRY') {
       res.status(409).json({ error: 'El número de serie ya existe' });
+    } else if (err.code === 'ER_BAD_NULL_ERROR') {
+      res.status(400).json({ error: 'Error de validación: campo obligatorio faltante', detalle: err.message });
+    } else if (err.code === 'ER_NO_REFERENCED_ROW_2') {
+      res.status(400).json({ error: 'Error de referencia: el ambiente o categoría no existe', detalle: err.message });
     } else {
       res.status(500).json({ error: 'Error al registrar equipo', detalle: err.message });
     }
@@ -360,6 +373,11 @@ export async function actualizarEquipo(req, res) {
 
     const sets = [];
     const params = [];
+
+    // Manejar 'centro' como alias de 'r_centro'
+    if (Object.prototype.hasOwnProperty.call(body, 'centro') && !Object.prototype.hasOwnProperty.call(body, 'r_centro')) {
+      body.r_centro = body.centro;
+    }
 
     for (const key of allowed) {
       if (Object.prototype.hasOwnProperty.call(body, key)) {

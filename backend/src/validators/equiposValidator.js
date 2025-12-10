@@ -8,6 +8,7 @@ export const registrarEquipoSchema = z.object({
   codigo_inventario: z.string().optional(),
   placa: z.string().max(100).optional().nullable(),
   r_centro: z.string().optional().nullable(),
+  centro: z.string().optional().nullable(), // Alias de r_centro
   consecutivo: z.string().optional().nullable(),
   tipo: z.string().min(1, 'El tipo es requerido').max(100),
   marca: z.string().max(100).optional().nullable(),
@@ -62,6 +63,7 @@ export const registrarEquipoSchema = z.object({
 export const actualizarEquipoSchema = z.object({
   placa: z.string().max(100).optional().nullable(),
   r_centro: z.string().optional().nullable(),
+  centro: z.string().optional().nullable(), // Alias de r_centro
   consecutivo: z.string().optional().nullable(),
   tipo: z.string().max(100).optional().nullable(),
   marca: z.string().max(100).optional().nullable(),

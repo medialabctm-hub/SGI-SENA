@@ -139,7 +139,7 @@ export default function Equipos() {
       })
       const data = await parseApiResponse(resp, 'No se pudo registrar el elemento del inventario')
       setToast({
-        message: `Elemento del inventario registrado correctamente (ID interno: ${data.id})`,
+        message: `Elemento del inventario registrado correctamente`,
         type: 'success'
       })
       setForm({
