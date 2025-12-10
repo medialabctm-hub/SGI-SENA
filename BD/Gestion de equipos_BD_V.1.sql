@@ -1,6 +1,6 @@
-DROP DATABASE IF EXISTS GestionEquipo;
-CREATE DATABASE GestionEquipo;
-USE GestionEquipo;
+DROP DATABASE IF EXISTS railway;
+CREATE DATABASE railway;
+USE railway;
 
 -- ===============
 -- TABLA DE ROLES
@@ -138,7 +138,7 @@ CREATE TABLE Elementos (
   fecha_registro DATETIME DEFAULT NOW(),
   registrado_por INT,
   specs_completas TEXT,
-  r_centro VARCHAR(50) NOT NULL,
+  r_centro VARCHAR(50) NOT NULL COMMENT 'Código del centro (Centro)',
   consecutivo VARCHAR(100),
   placa VARCHAR(100),
   atributos TEXT,

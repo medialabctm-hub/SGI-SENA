@@ -208,7 +208,7 @@ export default function Equipos() {
             {errores.consecutivo && <span className="error-text">{errores.consecutivo}</span>}
           </div>
           <div className="form-row">
-            <label>R Centro</label>
+            <label>Centro</label>
             <input name="r_centro" value="00000" readOnly disabled style={{ backgroundColor: '#f5f5f5', cursor: 'not-allowed' }} />
           </div>
           <div className="form-row">

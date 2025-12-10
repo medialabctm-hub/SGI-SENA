@@ -162,7 +162,7 @@ export default function Sidebar({ user }) {
     const isExpanded = expandedMenus[key]
 
     return (
-      <div key={key} className="sidebar-section">
+      <div key={key} className={`sidebar-section ${isExpanded ? 'expanded' : ''}`}>
         <button
           className="sidebar-section-header"
           onClick={() => toggleMenu(key)}
@@ -171,22 +171,22 @@ export default function Sidebar({ user }) {
             {icon}
             <span>{title}</span>
           </div>
-          {isExpanded ? <FiChevronDown /> : <FiChevronRight />}
+          <span className="sidebar-chevron-wrapper">
+            {isExpanded ? <FiChevronDown /> : <FiChevronRight />}
+          </span>
         </button>
-        {isExpanded && (
-          <div className="sidebar-section-items">
-            {filteredItems.map((item) => (
-              <button
-                key={item.path}
-                className={`sidebar-item ${isActive(item.path) ? 'active' : ''}`}
-                onClick={() => nav(item.path)}
-              >
-                {item.icon}
-                <span>{item.title}</span>
-              </button>
-            ))}
-          </div>
-        )}
+        <div className={`sidebar-section-items ${isExpanded ? 'expanded' : ''}`}>
+          {filteredItems.map((item) => (
+            <button
+              key={item.path}
+              className={`sidebar-item ${isActive(item.path) ? 'active' : ''}`}
+              onClick={() => nav(item.path)}
+            >
+              {item.icon}
+              <span>{item.title}</span>
+            </button>
+          ))}
+        </div>
       </div>
     )
   }

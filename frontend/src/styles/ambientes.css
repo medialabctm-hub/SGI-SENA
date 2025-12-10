@@ -53,6 +53,16 @@
 /* asegurar que los botones estén por encima del fondo de celda */
 .ambientes-page .users-actions { overflow: visible !important; position: relative; z-index: 40; }
 .ambientes-page .users-actions .btn, .ambientes-page .users-table .btn { position: relative; z-index: 50; }
+
+/* Asegurar que el sidebar no se vea afectado por z-index de la página */
+.ambientes-page .dashboard-layout {
+  position: relative;
+  z-index: 1;
+}
+
+.ambientes-page .app-sidebar {
+  z-index: 1000 !important;
+}
 .ambientes-page .users-actions .btn:hover, .ambientes-page .users-table .btn:hover {
   transform: translateY(-2px);
   box-shadow: 0 10px 28px rgba(0,0,0,0.18);
