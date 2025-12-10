@@ -1461,3 +1461,240 @@ export async function listarCategorias(req, res) {
     })
   }
 }
+
+/**
+ * Crear una nueva categoría de equipo
+ */
+export async function crearCategoria(req, res) {
+  try {
+    const { nombre_categoria, descripcion, es_componente } = req.body
+
+    if (!nombre_categoria || !nombre_categoria.trim()) {
+      return res.status(400).json({
+        error: 'El nombre de la categoría es obligatorio',
+        detalle: 'El campo nombre_categoria no puede estar vacío'
+      })
+    }
+
+    // Verificar si ya existe una categoría con el mismo nombre
+    const [[existente]] = await defaultDb.execute(
+      'SELECT id_categoria FROM Categorias_Equipo WHERE nombre_categoria = ? LIMIT 1',
+      [nombre_categoria.trim()]
+    )
+
+    if (existente) {
+      return res.status(409).json({
+        error: 'Ya existe una categoría con ese nombre',
+        detalle: `La categoría "${nombre_categoria}" ya está registrada`
+      })
+    }
+
+    // Insertar la nueva categoría
+    const [result] = await defaultDb.execute(
+      'INSERT INTO Categorias_Equipo (nombre_categoria, descripcion, es_componente) VALUES (?, ?, ?)',
+      [
+        nombre_categoria.trim(),
+        descripcion?.trim() || null,
+        es_componente === true || es_componente === 1 || es_componente === '1' ? 1 : 0
+      ]
+    )
+
+    logger.info(`Categoría creada: ${nombre_categoria} (ID: ${result.insertId})`)
+
+    return res.status(201).json({
+      message: 'Categoría creada correctamente',
+      id_categoria: result.insertId,
+      nombre_categoria: nombre_categoria.trim(),
+      descripcion: descripcion?.trim() || null,
+      es_componente: es_componente === true || es_componente === 1 || es_componente === '1' ? 1 : 0
+    })
+  } catch (err) {
+    logger.error('Error al crear categoría', { error: err.message, stack: err.stack, body: req.body })
+    
+    if (err.code === 'ER_DUP_ENTRY') {
+      return res.status(409).json({
+        error: 'Ya existe una categoría con ese nombre',
+        detalle: 'El nombre de la categoría debe ser único'
+      })
+    }
+
+    return res.status(500).json({
+      error: 'Error al crear categoría',
+      detalle: err.message
+    })
+  }
+}
+
+/**
+ * Actualizar una categoría de equipo existente
+ */
+export async function actualizarCategoria(req, res) {
+  try {
+    const { id_categoria } = req.params
+    const { nombre_categoria, descripcion, es_componente } = req.body
+
+    if (!id_categoria) {
+      return res.status(400).json({
+        error: 'ID de categoría es obligatorio',
+        detalle: 'Debe proporcionar el id_categoria en la URL'
+      })
+    }
+
+    // Verificar que la categoría existe
+    const [[categoria]] = await defaultDb.execute(
+      'SELECT id_categoria, nombre_categoria FROM Categorias_Equipo WHERE id_categoria = ? LIMIT 1',
+      [id_categoria]
+    )
+
+    if (!categoria) {
+      return res.status(404).json({
+        error: 'Categoría no encontrada',
+        detalle: `No existe una categoría con ID ${id_categoria}`
+      })
+    }
+
+    // Si se está cambiando el nombre, verificar que no exista otra con el mismo nombre
+    if (nombre_categoria && nombre_categoria.trim() !== categoria.nombre_categoria) {
+      const [[existente]] = await defaultDb.execute(
+        'SELECT id_categoria FROM Categorias_Equipo WHERE nombre_categoria = ? AND id_categoria != ? LIMIT 1',
+        [nombre_categoria.trim(), id_categoria]
+      )
+
+      if (existente) {
+        return res.status(409).json({
+          error: 'Ya existe otra categoría con ese nombre',
+          detalle: `La categoría "${nombre_categoria}" ya está registrada`
+        })
+      }
+    }
+
+    // Construir la consulta de actualización dinámicamente
+    const updates = []
+    const values = []
+
+    if (nombre_categoria !== undefined) {
+      updates.push('nombre_categoria = ?')
+      values.push(nombre_categoria.trim())
+    }
+
+    if (descripcion !== undefined) {
+      updates.push('descripcion = ?')
+      values.push(descripcion?.trim() || null)
+    }
+
+    if (es_componente !== undefined) {
+      updates.push('es_componente = ?')
+      values.push(es_componente === true || es_componente === 1 || es_componente === '1' ? 1 : 0)
+    }
+
+    if (updates.length === 0) {
+      return res.status(400).json({
+        error: 'No hay campos para actualizar',
+        detalle: 'Debe proporcionar al menos un campo para actualizar'
+      })
+    }
+
+    values.push(id_categoria)
+
+    await defaultDb.execute(
+      `UPDATE Categorias_Equipo SET ${updates.join(', ')} WHERE id_categoria = ?`,
+      values
+    )
+
+    logger.info(`Categoría actualizada: ID ${id_categoria}`)
+
+    // Obtener la categoría actualizada
+    const [[categoriaActualizada]] = await defaultDb.execute(
+      'SELECT id_categoria, nombre_categoria, descripcion, es_componente FROM Categorias_Equipo WHERE id_categoria = ? LIMIT 1',
+      [id_categoria]
+    )
+
+    return res.json({
+      message: 'Categoría actualizada correctamente',
+      categoria: categoriaActualizada
+    })
+  } catch (err) {
+    logger.error('Error al actualizar categoría', { error: err.message, stack: err.stack, params: req.params, body: req.body })
+    
+    if (err.code === 'ER_DUP_ENTRY') {
+      return res.status(409).json({
+        error: 'Ya existe otra categoría con ese nombre',
+        detalle: 'El nombre de la categoría debe ser único'
+      })
+    }
+
+    return res.status(500).json({
+      error: 'Error al actualizar categoría',
+      detalle: err.message
+    })
+  }
+}
+
+/**
+ * Eliminar una categoría de equipo
+ */
+export async function eliminarCategoria(req, res) {
+  try {
+    const { id_categoria } = req.params
+
+    if (!id_categoria) {
+      return res.status(400).json({
+        error: 'ID de categoría es obligatorio',
+        detalle: 'Debe proporcionar el id_categoria en la URL'
+      })
+    }
+
+    // Verificar que la categoría existe
+    const [[categoria]] = await defaultDb.execute(
+      'SELECT id_categoria, nombre_categoria FROM Categorias_Equipo WHERE id_categoria = ? LIMIT 1',
+      [id_categoria]
+    )
+
+    if (!categoria) {
+      return res.status(404).json({
+        error: 'Categoría no encontrada',
+        detalle: `No existe una categoría con ID ${id_categoria}`
+      })
+    }
+
+    // Verificar si hay equipos usando esta categoría
+    const [[equipos]] = await defaultDb.execute(
+      'SELECT COUNT(*) AS total FROM Elementos WHERE id_categoria = ?',
+      [id_categoria]
+    )
+
+    if (equipos.total > 0) {
+      return res.status(409).json({
+        error: 'No se puede eliminar la categoría',
+        detalle: `Existen ${equipos.total} equipo(s) asociado(s) a esta categoría. Debe reasignar o eliminar los equipos primero.`
+      })
+    }
+
+    // Eliminar la categoría
+    await defaultDb.execute(
+      'DELETE FROM Categorias_Equipo WHERE id_categoria = ?',
+      [id_categoria]
+    )
+
+    logger.info(`Categoría eliminada: ${categoria.nombre_categoria} (ID: ${id_categoria})`)
+
+    return res.json({
+      message: 'Categoría eliminada correctamente',
+      id_categoria: parseInt(id_categoria)
+    })
+  } catch (err) {
+    logger.error('Error al eliminar categoría', { error: err.message, stack: err.stack, params: req.params })
+    
+    if (err.code === 'ER_ROW_IS_REFERENCED_2' || err.code === 'ER_NO_REFERENCED_ROW_2') {
+      return res.status(409).json({
+        error: 'No se puede eliminar la categoría',
+        detalle: 'Existen equipos asociados a esta categoría'
+      })
+    }
+
+    return res.status(500).json({
+      error: 'Error al eliminar categoría',
+      detalle: err.message
+    })
+  }
+}

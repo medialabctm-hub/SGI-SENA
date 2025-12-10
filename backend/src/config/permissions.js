@@ -33,6 +33,7 @@ export const PERMISSIONS = {
     DELETE: 'equipos:delete',     // Eliminar equipos
     ASSIGN: 'equipos:assign',     // Asignar equipos a cualquier usuario (Admin)
     ASSIGN_TO_APRENDIZ: 'equipos:assign_to_aprendiz', // Asignar solo a aprendices (Instructor)
+    MANAGE_CATEGORIES: 'equipos:manage_categories', // Gestionar categorías de equipos (Admin)
   },
 
   // Gestión de novedades
@@ -123,6 +124,7 @@ export const ROLE_PERMISSIONS = {
     PERMISSIONS.EQUIPOS.DELETE,
     PERMISSIONS.EQUIPOS.ASSIGN,
     PERMISSIONS.EQUIPOS.ASSIGN_TO_APRENDIZ,
+    PERMISSIONS.EQUIPOS.MANAGE_CATEGORIES,
 
     // Novedades - acceso completo (incluye todos los permisos posibles)
     PERMISSIONS.NOVEDADES.VIEW,

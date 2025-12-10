@@ -9,33 +9,6 @@ import '../styles/equipos.css'
 
 const ESTADOS_FISICOS = ['Nuevo', 'Bueno', 'Regular', 'Malo', 'Dañado']
 
-const TIPOS_EQUIPO = [
-  'ADAPTADOR DE RED',
-  'ACCES POINT',
-  'COMPONENTE ELECTRONICO',
-  'PORTATIL',
-  'CPU',
-  'CPU INTEGRADA CON MONITOR',
-  'GAFAS DE REALIDAD VIRTUAL',
-  'INSUMOS ELECTRICOS',
-  'MODEM',
-  'MODULO DE CIRCUITOS',
-  'MONITOR',
-  'MOTOR',
-  'PROYECTOR',
-  'ROUTER O ENRUTADOR',
-  'SILLA',
-  'SISTEMA DE REALIDAD VIRTUAL',
-  'SWITCH',
-  'TABLET',
-  'TABLETA DIGITALIZADORA',
-  'ESTANTE',
-  'MESA',
-  'MOUSE',
-  'TECLADO',
-  'AIRE ACONDICIONADO'
-]
-
 export default function Equipos() {
   const [activeTab, setActiveTab] = useState('registrar') // 'registrar' o 'importar'
   const [form, setForm] = useState({
@@ -57,6 +30,7 @@ export default function Equipos() {
   const [toast, setToast] = useState(null)
   const [user, setUser] = useState(null)
   const [ambientes, setAmbientes] = useState([])
+  const [categorias, setCategorias] = useState([])
 
   useEffect(() => {
     try {
@@ -85,6 +59,28 @@ export default function Equipos() {
       }
     }
     cargarAmbientes()
+  }, [])
+
+  // Cargar categorías de equipos disponibles
+  useEffect(() => {
+    async function cargarCategorias() {
+      try {
+        const token = localStorage.getItem('token')
+        const res = await fetch('/api/equipos/categorias', {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+        const data = await parseApiResponse(res, 'No se pudieron cargar las categorías')
+        // Extraer solo los nombres de las categorías
+        const nombresCategorias = Array.isArray(data) 
+          ? data.map(cat => cat.nombre_categoria)
+          : []
+        setCategorias(nombresCategorias)
+      } catch (err) {
+        console.error('Error al cargar categorías:', err)
+        setCategorias([])
+      }
+    }
+    cargarCategorias()
   }, [])
 
   // Handler para cambios en el formulario
@@ -219,13 +215,18 @@ export default function Equipos() {
             <label>Tipo *</label>
             <select name="tipo" value={form.tipo} onChange={handleChange}>
               <option value="">Seleccionar tipo</option>
-              {TIPOS_EQUIPO.map(tipo => (
+              {categorias.map(tipo => (
                 <option key={tipo} value={tipo}>
                   {tipo}
                 </option>
               ))}
             </select>
             {errores.tipo && <span className="error-text">{errores.tipo}</span>}
+            {categorias.length === 0 && (
+              <small style={{ color: '#999', fontStyle: 'italic' }}>
+                No hay categorías disponibles. Contacta al administrador.
+              </small>
+            )}
           </div>
           <div className="form-row">
             <label>Placa</label>

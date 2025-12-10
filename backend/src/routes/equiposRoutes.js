@@ -1,10 +1,10 @@
 import express from 'express';
-import { registrarEquipo, obtenerEquipoPorCodigo, listarEquipos, actualizarEquipo, eliminarEquipo, asignarEquipo, obtenerMisEquipos, listarAsignaciones, eliminarAsignacion, obtenerEquiposAmbientesInstructor, registrarVerificacionInventario, consultarHistorialVerificaciones, obtenerHistorialEquipo, actualizarCuentadantePrincipal, obtenerCuentadantePrincipal, buscarCuentadantePorDocumento, listarCategorias } from '../controller/equiposController.js';
+import { registrarEquipo, obtenerEquipoPorCodigo, listarEquipos, actualizarEquipo, eliminarEquipo, asignarEquipo, obtenerMisEquipos, listarAsignaciones, eliminarAsignacion, obtenerEquiposAmbientesInstructor, registrarVerificacionInventario, consultarHistorialVerificaciones, obtenerHistorialEquipo, actualizarCuentadantePrincipal, obtenerCuentadantePrincipal, buscarCuentadantePorDocumento, listarCategorias, crearCategoria, actualizarCategoria, eliminarCategoria } from '../controller/equiposController.js';
 import { authenticate } from '../middleware/authMiddleware.js';
 import { requirePermission, requireAnyPermission } from '../middleware/authorization.js';
 import { PERMISSIONS } from '../config/permissions.js';
 import { writeLimiter, readLimiter, strictLimiter } from '../middleware/rateLimiter.js';
-import { validate, registrarEquipoSchema, actualizarEquipoSchema, asignarEquipoSchema, verificarInventarioSchema } from '../validators/equiposValidator.js';
+import { validate, registrarEquipoSchema, actualizarEquipoSchema, asignarEquipoSchema, verificarInventarioSchema, crearCategoriaSchema, actualizarCategoriaSchema } from '../validators/equiposValidator.js';
 
 const router = express.Router();
 
@@ -27,6 +27,32 @@ router.get('/categorias',
   authenticate,
   readLimiter,
   listarCategorias
+);
+
+// Crear nueva categoría - Solo Admin
+router.post('/categorias',
+  authenticate,
+  writeLimiter,
+  validate(crearCategoriaSchema),
+  requirePermission(PERMISSIONS.EQUIPOS.MANAGE_CATEGORIES),
+  crearCategoria
+);
+
+// Actualizar categoría - Solo Admin
+router.put('/categorias/:id_categoria',
+  authenticate,
+  writeLimiter,
+  validate(actualizarCategoriaSchema),
+  requirePermission(PERMISSIONS.EQUIPOS.MANAGE_CATEGORIES),
+  actualizarCategoria
+);
+
+// Eliminar categoría - Solo Admin
+router.delete('/categorias/:id_categoria',
+  authenticate,
+  strictLimiter,
+  requirePermission(PERMISSIONS.EQUIPOS.MANAGE_CATEGORIES),
+  eliminarCategoria
 );
 
 // Listar equipos

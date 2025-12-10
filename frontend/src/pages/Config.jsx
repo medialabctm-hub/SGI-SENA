@@ -10,6 +10,7 @@ import RolesAreas from './config/RolesAreas'
 import Notifications from './config/Notifications'
 import AppSettings from './config/AppSettings'
 import InvitationCodes from './config/InvitationCodes'
+import TiposEquipo from './config/TiposEquipo'
 import { useNavigate } from 'react-router-dom'
 import '../styles/config.css'
 
@@ -200,6 +201,7 @@ export default function Config() {
           {selected==='roles' && <RolesAreas />}
           {selected==='notifications' && <Notifications />}
           {selected==='app' && <AppSettings />}
+          {selected==='tipos-equipo' && <TiposEquipo />}
         </main>
       </div>
       {showNotifications && <NotificationsModal onClose={() => setShowNotifications(false)} />}

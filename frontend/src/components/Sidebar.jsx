@@ -142,6 +142,7 @@ export default function Sidebar({ user }) {
       { title: 'Personal Registrado', path: '/usuarios', icon: <FiUsers />, roles: ['Administrador', 'Instructor'] },
       { title: 'Seguridad', path: '/config?section=security', icon: <FiShield />, roles: ['all'] },
       { title: 'Códigos de Seguridad', path: '/config?section=invitation-codes', icon: <FiKey />, roles: ['Administrador'] },
+      { title: 'Tipos de Equipos', path: '/config?section=tipos-equipo', icon: <FiPackage />, roles: ['Administrador'] },
       { title: 'Roles y Áreas', path: '/config?section=roles', icon: <FiSettings />, roles: ['Administrador', 'Instructor', 'Aprendiz'] },
       { title: 'Notificaciones', path: '/config?section=notifications', icon: <FiBell />, roles: ['all'] },
       { title: 'Ajustes de la App', path: '/config?section=app', icon: <FiSettings />, roles: ['all'] }

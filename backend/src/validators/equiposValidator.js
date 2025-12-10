@@ -141,6 +141,28 @@ export const verificarInventarioSchema = z.object({
   observaciones: z.string().max(1000).optional().nullable(),
 });
 
+export const crearCategoriaSchema = z.object({
+  nombre_categoria: z.string().min(1, 'El nombre de la categoría es obligatorio').max(50, 'El nombre no puede exceder 50 caracteres'),
+  descripcion: z.string().max(200, 'La descripción no puede exceder 200 caracteres').optional().nullable(),
+  es_componente: z.union([
+    z.boolean(),
+    z.number().int().min(0).max(1),
+    z.string().transform((val) => val === '1' || val === 'true' || val === true),
+    z.null()
+  ]).optional().default(false),
+});
+
+export const actualizarCategoriaSchema = z.object({
+  nombre_categoria: z.string().min(1, 'El nombre de la categoría no puede estar vacío').max(50, 'El nombre no puede exceder 50 caracteres').optional(),
+  descripcion: z.string().max(200, 'La descripción no puede exceder 200 caracteres').optional().nullable(),
+  es_componente: z.union([
+    z.boolean(),
+    z.number().int().min(0).max(1),
+    z.string().transform((val) => val === '1' || val === 'true' || val === true),
+    z.null()
+  ]).optional(),
+});
+
 /**
  * Middleware de validación genérico
  */
