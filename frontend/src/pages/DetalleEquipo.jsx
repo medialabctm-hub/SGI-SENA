@@ -1,12 +1,13 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { useNavigate } from 'react-router-dom';
 import Header from '../components/Header';
 import Sidebar from '../components/Sidebar';
 import Toast from '../components/Toast';
 import ConfirmModal from '../components/ConfirmModal';
+import ImageViewer from '../components/ImageViewer';
 import { parseApiResponse, buildErrorMessage } from '../utils/api';
-import { FiArrowLeft, FiUpload, FiTrash2, FiStar, FiImage, FiX, FiInfo, FiPackage, FiMapPin, FiCalendar, FiDollarSign, FiChevronLeft, FiChevronRight } from 'react-icons/fi';
+import { FiArrowLeft, FiUpload, FiTrash2, FiStar, FiImage, FiX, FiInfo, FiPackage, FiMapPin, FiCalendar, FiDollarSign } from 'react-icons/fi';
 import '../styles/equipos.css';
 import '../styles/detalleEquipo.css';
 import '../styles/ambientes.css';
@@ -25,7 +26,7 @@ export default function DetalleEquipo() {
   const [uploadData, setUploadData] = useState({ tipo_imagen: 'Detalle', descripcion: '', es_principal: false });
   const [user, setUser] = useState(null);
   const [imagenPrincipal, setImagenPrincipal] = useState(null);
-  const [lightboxImage, setLightboxImage] = useState(null);
+  const [viewerImageIndex, setViewerImageIndex] = useState(null);
 
   useEffect(() => {
     try {
@@ -40,29 +41,6 @@ export default function DetalleEquipo() {
     fetchImagenes();
   }, [codigoEquipo]);
 
-  // Ocultar header y sidebar cuando el lightbox esté abierto
-  useEffect(() => {
-    if (lightboxImage) {
-      document.body.classList.add('lightbox-open');
-      const header = document.querySelector('.app-header-wrapper');
-      const sidebar = document.querySelector('.app-sidebar');
-      if (header) header.style.display = 'none';
-      if (sidebar) sidebar.style.display = 'none';
-    } else {
-      document.body.classList.remove('lightbox-open');
-      const header = document.querySelector('.app-header-wrapper');
-      const sidebar = document.querySelector('.app-sidebar');
-      if (header) header.style.display = '';
-      if (sidebar) sidebar.style.display = '';
-    }
-    return () => {
-      document.body.classList.remove('lightbox-open');
-      const header = document.querySelector('.app-header-wrapper');
-      const sidebar = document.querySelector('.app-sidebar');
-      if (header) header.style.display = '';
-      if (sidebar) sidebar.style.display = '';
-    };
-  }, [lightboxImage]);
 
   async function fetchEquipo() {
     setLoading(true);
@@ -229,52 +207,21 @@ export default function DetalleEquipo() {
     }
   }
 
-  const openLightbox = useCallback((imagen) => {
-    setLightboxImage(imagen);
-  }, []);
+  function openImageViewer(index) {
+    setViewerImageIndex(index);
+  }
 
-  const closeLightbox = useCallback(() => {
-    setLightboxImage(null);
-  }, []);
+  function closeImageViewer() {
+    setViewerImageIndex(null);
+  }
 
-  const navigateLightbox = useCallback((direction) => {
-    if (!lightboxImage || imagenes.length === 0) return;
-    const currentIndex = imagenes.findIndex(img => img.id_imagen_equipo === lightboxImage.id_imagen_equipo);
-    if (currentIndex === -1) return;
-    
-    let newIndex;
-    if (direction === 'next') {
-      newIndex = (currentIndex + 1) % imagenes.length;
-    } else {
-      newIndex = (currentIndex - 1 + imagenes.length) % imagenes.length;
-    }
-    setLightboxImage(imagenes[newIndex]);
-  }, [lightboxImage, imagenes]);
-
-  useEffect(() => {
-    function handleKeyPress(e) {
-      if (!lightboxImage) return;
-      if (e.key === 'Escape') {
-        setLightboxImage(null);
-      } else if (e.key === 'ArrowLeft') {
-        if (imagenes.length === 0) return;
-        const currentIndex = imagenes.findIndex(img => img.id_imagen_equipo === lightboxImage.id_imagen_equipo);
-        if (currentIndex === -1) return;
-        const newIndex = (currentIndex - 1 + imagenes.length) % imagenes.length;
-        setLightboxImage(imagenes[newIndex]);
-      } else if (e.key === 'ArrowRight') {
-        if (imagenes.length === 0) return;
-        const currentIndex = imagenes.findIndex(img => img.id_imagen_equipo === lightboxImage.id_imagen_equipo);
-        if (currentIndex === -1) return;
-        const newIndex = (currentIndex + 1) % imagenes.length;
-        setLightboxImage(imagenes[newIndex]);
-      }
-    }
-    if (lightboxImage) {
-      window.addEventListener('keydown', handleKeyPress);
-      return () => window.removeEventListener('keydown', handleKeyPress);
-    }
-  }, [lightboxImage, imagenes]);
+  // Preparar imágenes para el ImageViewer
+  const viewerImages = imagenes.map(img => ({
+    url: img.ruta_imagen,
+    titulo: img.tipo_imagen,
+    descripcion: img.descripcion,
+    es_principal: img.es_principal
+  }));
 
   function getEstadoBadge(estado) {
     const estados = {
@@ -353,80 +300,14 @@ export default function DetalleEquipo() {
             onCancel={() => setDeleteConfirm({ open: false, idImagen: null })}
           />
 
-          {/* Lightbox para ver imágenes en grande */}
-          {lightboxImage && (
-            <div
-              className="detalle-equipo-lightbox-overlay"
-              onClick={closeLightbox}
-            >
-              <div
-                className="detalle-equipo-lightbox-content"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <button
-                  className="detalle-equipo-lightbox-close"
-                  onClick={closeLightbox}
-                  aria-label="Cerrar"
-                >
-                  <FiX size={24} />
-                </button>
-                {imagenes.length > 1 && (
-                  <>
-                    <button
-                      className="detalle-equipo-lightbox-nav detalle-equipo-lightbox-nav-prev"
-                      onClick={() => navigateLightbox('prev')}
-                      aria-label="Imagen anterior"
-                    >
-                      <FiChevronLeft size={32} />
-                    </button>
-                    <button
-                      className="detalle-equipo-lightbox-nav detalle-equipo-lightbox-nav-next"
-                      onClick={() => navigateLightbox('next')}
-                      aria-label="Imagen siguiente"
-                    >
-                      <FiChevronRight size={32} />
-                    </button>
-                  </>
-                )}
-                <div className="detalle-equipo-lightbox-image-container">
-                  <img
-                    src={lightboxImage.ruta_imagen}
-                    alt={lightboxImage.descripcion || 'Imagen del equipo'}
-                    className="detalle-equipo-lightbox-image"
-                    onError={(e) => {
-                      console.error('Error al cargar imagen:', lightboxImage.ruta_imagen);
-                      e.target.style.display = 'none';
-                    }}
-                  />
-                </div>
-                <div className="detalle-equipo-lightbox-info">
-                  <div className="detalle-equipo-lightbox-info-header">
-                    <div className="detalle-equipo-lightbox-title-section">
-                      <h4>Tipo: {lightboxImage.tipo_imagen}</h4>
-                      {lightboxImage.es_principal && (
-                        <span className="detalle-equipo-lightbox-badge">
-                          <FiStar size={14} />
-                          Principal
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  {lightboxImage.descripcion && (
-                    <p className="detalle-equipo-lightbox-description">{lightboxImage.descripcion}</p>
-                  )}
-                  <div className="detalle-equipo-lightbox-meta">
-                    <span className="detalle-equipo-lightbox-meta-item">
-                      Subida: {formatDate(lightboxImage.fecha_subida)}
-                    </span>
-                    {imagenes.length > 1 && (
-                      <span className="detalle-equipo-lightbox-counter">
-                        {imagenes.findIndex(img => img.id_imagen_equipo === lightboxImage.id_imagen_equipo) + 1} / {imagenes.length}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
+          {/* ImageViewer para ver imágenes en tamaño original */}
+          {viewerImageIndex !== null && (
+            <ImageViewer
+              images={viewerImages}
+              currentIndex={viewerImageIndex}
+              onClose={closeImageViewer}
+              onImageChange={setViewerImageIndex}
+            />
           )}
 
           {/* Modal de subida de imágenes - Mejorado */}
@@ -833,14 +714,14 @@ export default function DetalleEquipo() {
               </div>
               {imagenes.length > 0 ? (
                 <div className="detalle-equipo-gallery-thumbnails">
-                  {imagenes.map((imagen) => (
+                  {imagenes.map((imagen, index) => (
                     <div
                       key={imagen.id_imagen_equipo}
                       className="detalle-equipo-gallery-thumbnail"
                       style={{
                         border: imagen.es_principal ? '2px solid var(--success-800)' : '1px solid #e5e7eb',
                       }}
-                      onClick={() => openLightbox(imagen)}
+                      onClick={() => openImageViewer(index)}
                     >
                       <div className="detalle-equipo-gallery-thumbnail-image">
                         <img
