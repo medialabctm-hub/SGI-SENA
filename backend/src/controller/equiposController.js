@@ -1740,13 +1740,33 @@ export async function registrarInicioUso(req, res) {
     // Usar la fecha proporcionada o la fecha actual
     const fechaInicio = fecha_hora_inicio ? new Date(fecha_hora_inicio) : new Date();
 
-    // Insertar nuevo registro de uso
-    const [result] = await defaultDb.execute(
-      `INSERT INTO Historial_Uso_Equipos 
-       (codigo_equipo, id_usuario, nombre_usuario, fecha_hora_inicio, estado, observaciones) 
-       VALUES (?, ?, ?, ?, 'En Uso', ?)`,
-      [codigo_equipo, userId, nombre_usuario, fechaInicio, observaciones || null]
+    // Verificar si la columna nombre_usuario existe en la tabla
+    const [[columnaExiste]] = await defaultDb.execute(
+      `SELECT COUNT(*) AS cnt FROM INFORMATION_SCHEMA.COLUMNS 
+       WHERE TABLE_SCHEMA = DATABASE() 
+       AND TABLE_NAME = 'Historial_Uso_Equipos' 
+       AND COLUMN_NAME = 'nombre_usuario'`
     );
+
+    // Insertar nuevo registro de uso (con o sin nombre_usuario según exista la columna)
+    let result;
+    if (columnaExiste.cnt > 0) {
+      // Si la columna existe, incluirla en el INSERT
+      [result] = await defaultDb.execute(
+        `INSERT INTO Historial_Uso_Equipos 
+         (codigo_equipo, id_usuario, nombre_usuario, fecha_hora_inicio, estado, observaciones) 
+         VALUES (?, ?, ?, ?, 'En Uso', ?)`,
+        [codigo_equipo, userId, nombre_usuario, fechaInicio, observaciones || null]
+      );
+    } else {
+      // Si la columna no existe, insertar sin ella
+      [result] = await defaultDb.execute(
+        `INSERT INTO Historial_Uso_Equipos 
+         (codigo_equipo, id_usuario, fecha_hora_inicio, estado, observaciones) 
+         VALUES (?, ?, ?, 'En Uso', ?)`,
+        [codigo_equipo, userId, fechaInicio, observaciones || null]
+      );
+    }
 
     logger.info('Inicio de uso registrado', {
       id_historial: result.insertId,
@@ -1877,7 +1897,7 @@ export async function consultarHistorialUso(req, res) {
         e.tipo AS equipo_tipo,
         e.modelo AS equipo_modelo,
         hu.id_usuario,
-        COALESCE(hu.nombre_usuario, u.nombre_usuario) AS nombre_usuario,
+        u.nombre_usuario,
         u.cedula AS usuario_cedula,
         u.correo AS usuario_correo,
         hu.fecha_hora_inicio,
@@ -2006,7 +2026,7 @@ export async function obtenerHistorialEquipoUso(req, res) {
         e.tipo AS equipo_tipo,
         e.modelo AS equipo_modelo,
         hu.id_usuario,
-        COALESCE(hu.nombre_usuario, u.nombre_usuario) AS nombre_usuario,
+        u.nombre_usuario,
         u.cedula AS usuario_cedula,
         u.correo AS usuario_correo,
         hu.fecha_hora_inicio,
@@ -2081,7 +2101,7 @@ export async function obtenerSesionesActivas(req, res) {
         e.tipo AS equipo_tipo,
         e.modelo AS equipo_modelo,
         hu.id_usuario,
-        COALESCE(hu.nombre_usuario, u.nombre_usuario) AS nombre_usuario,
+        u.nombre_usuario,
         u.cedula AS usuario_cedula,
         u.correo AS usuario_correo,
         hu.fecha_hora_inicio,
