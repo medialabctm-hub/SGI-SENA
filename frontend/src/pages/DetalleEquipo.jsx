@@ -40,6 +40,30 @@ export default function DetalleEquipo() {
     fetchImagenes();
   }, [codigoEquipo]);
 
+  // Ocultar header y sidebar cuando el lightbox esté abierto
+  useEffect(() => {
+    if (lightboxImage) {
+      document.body.classList.add('lightbox-open');
+      const header = document.querySelector('.app-header-wrapper');
+      const sidebar = document.querySelector('.app-sidebar');
+      if (header) header.style.display = 'none';
+      if (sidebar) sidebar.style.display = 'none';
+    } else {
+      document.body.classList.remove('lightbox-open');
+      const header = document.querySelector('.app-header-wrapper');
+      const sidebar = document.querySelector('.app-sidebar');
+      if (header) header.style.display = '';
+      if (sidebar) sidebar.style.display = '';
+    }
+    return () => {
+      document.body.classList.remove('lightbox-open');
+      const header = document.querySelector('.app-header-wrapper');
+      const sidebar = document.querySelector('.app-sidebar');
+      if (header) header.style.display = '';
+      if (sidebar) sidebar.style.display = '';
+    };
+  }, [lightboxImage]);
+
   async function fetchEquipo() {
     setLoading(true);
     try {

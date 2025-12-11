@@ -877,6 +877,15 @@
   overflow: hidden;
 }
 
+/* Ocultar header y sidebar cuando el lightbox está abierto */
+body.lightbox-open .app-header-wrapper,
+body.lightbox-open .app-sidebar {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
 /* Asegurar que el lightbox esté por encima de todo */
 .detalle-equipo-lightbox-overlay * {
   box-sizing: border-box;
