@@ -868,37 +868,49 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 2000;
+  z-index: 9999;
   animation: fadeIn 0.2s ease-in;
   padding: 20px;
+  width: 100vw;
+  height: 100vh;
+  margin: 0;
+}
+
+/* Asegurar que el lightbox esté por encima de todo */
+.detalle-equipo-lightbox-overlay * {
+  box-sizing: border-box;
 }
 
 .detalle-equipo-lightbox-content {
   position: relative;
-  max-width: 90vw;
-  max-height: 90vh;
+  max-width: 95vw;
+  max-height: 95vh;
   display: flex;
   flex-direction: column;
   align-items: center;
   animation: slideUp 0.3s ease-out;
+  width: 100%;
+  height: 100%;
+  justify-content: center;
 }
 
 .detalle-equipo-lightbox-close {
-  position: absolute;
-  top: -50px;
-  right: 0;
-  background: rgba(255, 255, 255, 0.1);
-  border: 2px solid rgba(255, 255, 255, 0.3);
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  background: rgba(255, 255, 255, 0.15);
+  border: 2px solid rgba(255, 255, 255, 0.4);
   color: white;
-  width: 44px;
-  height: 44px;
+  width: 48px;
+  height: 48px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   transition: all 0.2s;
-  z-index: 10;
+  z-index: 10000;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
 .detalle-equipo-lightbox-close:hover {
@@ -908,21 +920,22 @@
 }
 
 .detalle-equipo-lightbox-nav {
-  position: absolute;
+  position: fixed;
   top: 50%;
   transform: translateY(-50%);
-  background: rgba(255, 255, 255, 0.1);
-  border: 2px solid rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.15);
+  border: 2px solid rgba(255, 255, 255, 0.4);
   color: white;
-  width: 50px;
-  height: 50px;
+  width: 56px;
+  height: 56px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   transition: all 0.2s;
-  z-index: 10;
+  z-index: 10000;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
 .detalle-equipo-lightbox-nav:hover {
@@ -932,16 +945,18 @@
 }
 
 .detalle-equipo-lightbox-nav-prev {
-  left: -70px;
+  left: 20px;
 }
 
 .detalle-equipo-lightbox-nav-next {
-  right: -70px;
+  right: 20px;
 }
 
 .detalle-equipo-lightbox-image-container {
-  max-width: 100%;
-  max-height: 75vh;
+  max-width: 95vw;
+  max-height: 85vh;
+  width: auto;
+  height: auto;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -949,11 +964,12 @@
   border-radius: 12px;
   overflow: hidden;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  margin-bottom: 20px;
 }
 
 .detalle-equipo-lightbox-image {
-  max-width: 100%;
-  max-height: 75vh;
+  max-width: 95vw;
+  max-height: 85vh;
   width: auto;
   height: auto;
   object-fit: contain;
@@ -961,10 +977,12 @@
 }
 
 .detalle-equipo-lightbox-info {
-  margin-top: 20px;
+  margin-top: 24px;
   text-align: center;
   color: white;
-  max-width: 600px;
+  max-width: 800px;
+  width: 100%;
+  padding: 0 20px;
 }
 
 .detalle-equipo-lightbox-info-header {
@@ -973,13 +991,22 @@
   justify-content: center;
   gap: 12px;
   margin-bottom: 12px;
+  width: 100%;
+}
+
+.detalle-equipo-lightbox-title-section {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap;
 }
 
 .detalle-equipo-lightbox-info-header h4 {
   margin: 0;
-  font-size: 20px;
-  font-weight: 700;
-  color: white;
+  font-size: 18px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.95);
 }
 
 .detalle-equipo-lightbox-badge {
@@ -1008,15 +1035,21 @@
   justify-content: center;
   gap: 20px;
   font-size: 13px;
-  color: rgba(255, 255, 255, 0.7);
+  color: rgba(255, 255, 255, 0.75);
   margin-top: 12px;
+  flex-wrap: wrap;
+}
+
+.detalle-equipo-lightbox-meta-item {
+  display: inline-block;
 }
 
 .detalle-equipo-lightbox-counter {
-  background: rgba(255, 255, 255, 0.1);
-  padding: 4px 12px;
-  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.15);
+  padding: 6px 14px;
+  border-radius: 16px;
   font-weight: 600;
+  color: rgba(255, 255, 255, 0.95);
 }
 
 /* Animaciones */
@@ -1056,30 +1089,33 @@
   }
 
   .detalle-equipo-lightbox-close {
-    top: -40px;
-    width: 36px;
-    height: 36px;
+    top: 15px;
+    right: 15px;
+    width: 42px;
+    height: 42px;
   }
 
   .detalle-equipo-lightbox-nav {
-    width: 40px;
-    height: 40px;
+    width: 48px;
+    height: 48px;
   }
 
   .detalle-equipo-lightbox-nav-prev {
-    left: -50px;
+    left: 15px;
   }
 
   .detalle-equipo-lightbox-nav-next {
-    right: -50px;
+    right: 15px;
   }
 
   .detalle-equipo-lightbox-image-container {
-    max-height: 70vh;
+    max-width: 90vw;
+    max-height: 75vh;
   }
 
   .detalle-equipo-lightbox-image {
-    max-height: 70vh;
+    max-width: 90vw;
+    max-height: 75vh;
   }
 
   .detalle-equipo-lightbox-info-header h4 {
@@ -1108,14 +1144,23 @@
   .detalle-equipo-lightbox-close {
     top: 10px;
     right: 10px;
+    width: 40px;
+    height: 40px;
+  }
+
+  .detalle-equipo-lightbox-nav {
+    width: 44px;
+    height: 44px;
   }
 
   .detalle-equipo-lightbox-image-container {
-    max-height: 60vh;
+    max-width: 95vw;
+    max-height: 65vh;
   }
 
   .detalle-equipo-lightbox-image {
-    max-height: 60vh;
+    max-width: 95vw;
+    max-height: 65vh;
   }
 }
 

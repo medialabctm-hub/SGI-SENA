@@ -377,19 +377,23 @@ export default function DetalleEquipo() {
                 </div>
                 <div className="detalle-equipo-lightbox-info">
                   <div className="detalle-equipo-lightbox-info-header">
-                    <h4>{lightboxImage.tipo_imagen}</h4>
-                    {lightboxImage.es_principal && (
-                      <span className="detalle-equipo-lightbox-badge">
-                        <FiStar size={14} />
-                        Principal
-                      </span>
-                    )}
+                    <div className="detalle-equipo-lightbox-title-section">
+                      <h4>Tipo: {lightboxImage.tipo_imagen}</h4>
+                      {lightboxImage.es_principal && (
+                        <span className="detalle-equipo-lightbox-badge">
+                          <FiStar size={14} />
+                          Principal
+                        </span>
+                      )}
+                    </div>
                   </div>
                   {lightboxImage.descripcion && (
                     <p className="detalle-equipo-lightbox-description">{lightboxImage.descripcion}</p>
                   )}
                   <div className="detalle-equipo-lightbox-meta">
-                    <span>Subida: {formatDate(lightboxImage.fecha_subida)}</span>
+                    <span className="detalle-equipo-lightbox-meta-item">
+                      Subida: {formatDate(lightboxImage.fecha_subida)}
+                    </span>
                     {imagenes.length > 1 && (
                       <span className="detalle-equipo-lightbox-counter">
                         {imagenes.findIndex(img => img.id_imagen_equipo === lightboxImage.id_imagen_equipo) + 1} / {imagenes.length}
