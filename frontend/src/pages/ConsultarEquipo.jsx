@@ -31,12 +31,12 @@ export default function ConsultarEquipo() {
     { key: 'tipo', label: 'Tipo', default: true },
     { key: 'modelo', label: 'Modelo', default: true },
     { key: 'consecutivo', label: 'Consecutivo', default: true },
-    { key: 'estado_fisico', label: 'Estado', default: true },
+    { key: 'estado_fisico', label: 'Estado Físico', default: true },
     { key: 'fecha_adquisicion', label: 'Fecha Adquisición', default: true },
-    { key: 'costo', label: 'Costo', default: true },
+    { key: 'costo', label: 'Valor Ingreso', default: true },
     { key: 'nombre_ambiente', label: 'Ambiente', default: true },
     { key: 'descripcion', label: 'Descripción', default: true },
-    { key: 'specs_completas', label: 'Especificaciones', default: true },
+    { key: 'specs_completas', label: 'Atributos', default: true },
   ]
 
   // Estado para columnas visibles (inicializado con las columnas por defecto)
@@ -398,12 +398,12 @@ export default function ConsultarEquipo() {
           'Tipo': eq.tipo || '-',
           'Modelo': eq.modelo || '-',
           'Consecutivo': eq.consecutivo || '-',
-          'Estado': eq.estado_fisico || '-',
+          'Estado Físico': eq.estado_fisico || '-',
           'Fecha Adquisición': eq.fecha_adquisicion ? formatDate(eq.fecha_adquisicion) : '-',
-          'Costo': eq.costo ? formatCurrency(eq.costo) : '-',
+          'Valor Ingreso': eq.costo ? formatCurrency(eq.costo) : '-',
           'Ambiente': eq.nombre_ambiente || '-',
           'Descripción': eq.descripcion || '-',
-          'Especificaciones': eq.specs_completas || '-'
+          'Atributos': eq.specs_completas || '-'
         }
       })
 
@@ -452,12 +452,12 @@ export default function ConsultarEquipo() {
         { wch: 18 }, // Tipo
         { wch: 25 }, // Modelo
         { wch: 18 }, // Consecutivo
-        { wch: 15 }, // Estado
+        { wch: 15 }, // Estado Físico
         { wch: 20 }, // Fecha Adquisición
-        { wch: 18 }, // Costo
+        { wch: 18 }, // Valor Ingreso
         { wch: 25 }, // Ambiente
         { wch: 35 }, // Descripción
-        { wch: 50 }  // Especificaciones
+        { wch: 50 }  // Atributos
       ]
       ws['!cols'] = colWidths
       
@@ -660,12 +660,12 @@ export default function ConsultarEquipo() {
                       {visibleColumns.includes('tipo') && <th>Tipo</th>}
                       {visibleColumns.includes('modelo') && <th>Modelo</th>}
                       {visibleColumns.includes('consecutivo') && <th>Consecutivo</th>}
-                      {visibleColumns.includes('estado_fisico') && <th>Estado</th>}
+                      {visibleColumns.includes('estado_fisico') && <th>Estado Físico</th>}
                       {visibleColumns.includes('fecha_adquisicion') && <th>Fecha Adquisición</th>}
-                      {visibleColumns.includes('costo') && <th>Costo</th>}
+                      {visibleColumns.includes('costo') && <th>Valor Ingreso</th>}
                       {visibleColumns.includes('nombre_ambiente') && <th>Ambiente</th>}
                       {visibleColumns.includes('descripcion') && <th>Descripción</th>}
-                      {visibleColumns.includes('specs_completas') && <th>Especificaciones</th>}
+                      {visibleColumns.includes('specs_completas') && <th>Atributos</th>}
                       <th style={{width: user?.nombre_rol === 'Administrador' ? '280px' : '120px'}}>Acciones</th>
                     </tr>
                   </thead>
