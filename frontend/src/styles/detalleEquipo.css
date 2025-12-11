@@ -901,9 +901,10 @@ body.lightbox-open .app-sidebar {
   animation: slideUp 0.3s ease-out;
   width: 100%;
   height: 100%;
-  justify-content: center;
-  padding: 20px 20px 80px 20px;
+  justify-content: flex-start;
+  padding: 20px;
   box-sizing: border-box;
+  overflow: auto;
 }
 
 .detalle-equipo-lightbox-close {
@@ -965,8 +966,6 @@ body.lightbox-open .app-sidebar {
 }
 
 .detalle-equipo-lightbox-image-container {
-  max-width: calc(100vw - 40px);
-  max-height: calc(100vh - 100px);
   width: auto;
   height: auto;
   display: flex;
@@ -976,17 +975,19 @@ body.lightbox-open .app-sidebar {
   border-radius: 0;
   overflow: visible;
   box-shadow: none;
-  margin-bottom: 16px;
-  flex: 1;
+  margin: 20px 0;
+  flex-shrink: 0;
 }
 
 .detalle-equipo-lightbox-image {
-  max-width: calc(100vw - 40px);
-  max-height: calc(100vh - 100px);
   width: auto;
   height: auto;
+  max-width: none;
+  max-height: none;
   object-fit: contain;
   display: block;
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
 }
 
 .detalle-equipo-lightbox-info {
@@ -1103,7 +1104,7 @@ body.lightbox-open .app-sidebar {
   }
 
   .detalle-equipo-lightbox-content {
-    padding: 15px 15px 70px 15px;
+    padding: 15px;
   }
 
   .detalle-equipo-lightbox-close {
@@ -1127,13 +1128,7 @@ body.lightbox-open .app-sidebar {
   }
 
   .detalle-equipo-lightbox-image-container {
-    max-width: calc(100vw - 30px);
-    max-height: calc(100vh - 90px);
-  }
-
-  .detalle-equipo-lightbox-image {
-    max-width: calc(100vw - 30px);
-    max-height: calc(100vh - 90px);
+    margin: 15px 0;
   }
 
   .detalle-equipo-lightbox-info-header h4 {
@@ -1152,7 +1147,7 @@ body.lightbox-open .app-sidebar {
   }
 
   .detalle-equipo-lightbox-content {
-    padding: 10px 10px 70px 10px;
+    padding: 10px;
   }
 
   .detalle-equipo-lightbox-nav-prev {
@@ -1176,14 +1171,7 @@ body.lightbox-open .app-sidebar {
   }
 
   .detalle-equipo-lightbox-image-container {
-    max-width: calc(100vw - 20px);
-    max-height: calc(100vh - 80px);
-    margin-bottom: 12px;
-  }
-
-  .detalle-equipo-lightbox-image {
-    max-width: calc(100vw - 20px);
-    max-height: calc(100vh - 80px);
+    margin: 10px 0;
   }
 }
 
