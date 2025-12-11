@@ -1975,18 +1975,24 @@ export async function consultarHistorialUso(req, res) {
       params.push(fecha_hasta);
     }
 
-    query += ' ORDER BY hu.fecha_hora_inicio DESC LIMIT ? OFFSET ?';
+    // LIMIT y OFFSET deben ser números literales, no parámetros preparados
     const limitNum = parseInt(limit, 10) || 100;
     const offsetNum = parseInt(offset, 10) || 0;
-    params.push(limitNum, offsetNum);
+    
+    // Validar límites para evitar inyección SQL
+    const safeLimit = Math.min(Math.max(limitNum, 1), 1000); // Entre 1 y 1000
+    const safeOffset = Math.max(offsetNum, 0); // Mínimo 0
+    
+    query += ` ORDER BY hu.fecha_hora_inicio DESC LIMIT ${safeLimit} OFFSET ${safeOffset}`;
 
-    // Validar que los parámetros coincidan con los placeholders
+    // Validar que los parámetros coincidan con los placeholders (sin contar LIMIT/OFFSET)
     const placeholderCount = (query.match(/\?/g) || []).length;
     if (placeholderCount !== params.length) {
       logger.error('Desajuste de parámetros en consulta', {
         placeholderCount,
         paramsCount: params.length,
-        query: query.substring(0, 300)
+        query: query.substring(0, 300),
+        params
       });
       return res.status(500).json({
         error: 'Error interno: desajuste de parámetros en la consulta',
@@ -2126,9 +2132,10 @@ export async function obtenerHistorialEquipoUso(req, res) {
       params.push(fecha_hasta);
     }
 
-    query += ' ORDER BY hu.fecha_hora_inicio DESC LIMIT ?';
+    // LIMIT debe ser número literal, no parámetro preparado
     const limitNum = parseInt(limit, 10) || 50;
-    params.push(limitNum);
+    const safeLimit = Math.min(Math.max(limitNum, 1), 1000); // Entre 1 y 1000
+    query += ` ORDER BY hu.fecha_hora_inicio DESC LIMIT ${safeLimit}`;
 
     const [historial] = await defaultDb.execute(query, params);
 
