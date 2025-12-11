@@ -172,6 +172,38 @@ export const actualizarCategoriaSchema = z.object({
   ]).optional(),
 });
 
+export const registrarUsoEquipoSchema = z.object({
+  codigo_equipo: z.union([
+    z.string().min(1, 'El código del equipo es requerido'),
+    z.number().int().positive('El código del equipo debe ser un número positivo'),
+  ]),
+  id_usuario: z.number().int().positive('El ID del usuario es requerido').optional(),
+  fecha_hora_inicio: z.string().optional().refine((val) => {
+    if (!val) return true; // Opcional
+    const date = new Date(val);
+    return !isNaN(date.getTime());
+  }, { message: 'La fecha de inicio debe ser una fecha válida' }),
+  fecha_hora_fin: z.string().optional().nullable().refine((val) => {
+    if (!val) return true; // Opcional
+    const date = new Date(val);
+    return !isNaN(date.getTime());
+  }, { message: 'La fecha de fin debe ser una fecha válida' }),
+  observaciones: z.string().max(1000, 'Las observaciones no pueden exceder 1000 caracteres').optional().nullable(),
+});
+
+export const actualizarUsoEquipoSchema = z.object({
+  codigo_equipo: z.union([
+    z.string().min(1, 'El código del equipo es requerido'),
+    z.number().int().positive('El código del equipo debe ser un número positivo'),
+  ]).optional(),
+  fecha_hora_fin: z.string().optional().nullable().refine((val) => {
+    if (!val) return true; // Opcional
+    const date = new Date(val);
+    return !isNaN(date.getTime());
+  }, { message: 'La fecha de fin debe ser una fecha válida' }),
+  observaciones: z.string().max(1000, 'Las observaciones no pueden exceder 1000 caracteres').optional().nullable(),
+});
+
 /**
  * Middleware de validación genérico
  */

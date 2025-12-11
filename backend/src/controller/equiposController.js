@@ -1698,3 +1698,423 @@ export async function eliminarCategoria(req, res) {
     })
   }
 }
+
+/**
+ * Registrar inicio de sesión en un equipo (desde app Flutter)
+ * Crea un nuevo registro de uso cuando un usuario inicia sesión
+ */
+export async function registrarInicioUso(req, res) {
+  try {
+    const { codigo_equipo, fecha_hora_inicio, observaciones } = req.body;
+    const userId = req.user?.id; // El usuario viene del token JWT
+
+    if (!codigo_equipo) {
+      return res.status(400).json({ error: 'El código del equipo es obligatorio' });
+    }
+
+    // Validar que el equipo existe
+    const equipo = await obtenerEquipoPorCodigoUtil(defaultDb, codigo_equipo);
+    if (!equipo) {
+      return res.status(404).json({ error: 'Equipo no encontrado' });
+    }
+
+    // Verificar si el usuario tiene una sesión activa en este equipo
+    const [[sesionActiva]] = await defaultDb.execute(
+      `SELECT id_historial FROM Historial_Uso_Equipos 
+       WHERE codigo_equipo = ? AND id_usuario = ? AND estado = 'En Uso' 
+       ORDER BY fecha_hora_inicio DESC LIMIT 1`,
+      [codigo_equipo, userId]
+    );
+
+    if (sesionActiva) {
+      return res.status(409).json({ 
+        error: 'Ya existe una sesión activa para este usuario en este equipo',
+        id_historial: sesionActiva.id_historial
+      });
+    }
+
+    // Usar la fecha proporcionada o la fecha actual
+    const fechaInicio = fecha_hora_inicio ? new Date(fecha_hora_inicio) : new Date();
+
+    // Insertar nuevo registro de uso
+    const [result] = await defaultDb.execute(
+      `INSERT INTO Historial_Uso_Equipos 
+       (codigo_equipo, id_usuario, fecha_hora_inicio, estado, observaciones) 
+       VALUES (?, ?, ?, 'En Uso', ?)`,
+      [codigo_equipo, userId, fechaInicio, observaciones || null]
+    );
+
+    logger.info('Inicio de uso registrado', {
+      id_historial: result.insertId,
+      codigo_equipo,
+      id_usuario: userId,
+      fecha_hora_inicio: fechaInicio
+    });
+
+    return res.status(201).json({
+      ok: true,
+      id_historial: result.insertId,
+      message: 'Inicio de sesión registrado correctamente',
+      fecha_hora_inicio: fechaInicio
+    });
+  } catch (err) {
+    logger.error('Error al registrar inicio de uso', { error: err.message, stack: err.stack });
+    return res.status(500).json({
+      error: 'Error al registrar inicio de uso',
+      detalle: err.message
+    });
+  }
+}
+
+/**
+ * Registrar cierre de sesión en un equipo (desde app Flutter)
+ * Actualiza el registro de uso cuando un usuario cierra sesión
+ */
+export async function registrarFinUso(req, res) {
+  try {
+    const { codigo_equipo, fecha_hora_fin, observaciones } = req.body;
+    const userId = req.user?.id;
+
+    if (!codigo_equipo) {
+      return res.status(400).json({ error: 'El código del equipo es obligatorio' });
+    }
+
+    // Buscar la sesión activa más reciente para este usuario y equipo
+    const [[sesionActiva]] = await defaultDb.execute(
+      `SELECT id_historial, fecha_hora_inicio FROM Historial_Uso_Equipos 
+       WHERE codigo_equipo = ? AND id_usuario = ? AND estado = 'En Uso' 
+       ORDER BY fecha_hora_inicio DESC LIMIT 1`,
+      [codigo_equipo, userId]
+    );
+
+    if (!sesionActiva) {
+      return res.status(404).json({ 
+        error: 'No se encontró una sesión activa para este usuario en este equipo' 
+      });
+    }
+
+    // Usar la fecha proporcionada o la fecha actual
+    const fechaFin = fecha_hora_fin ? new Date(fecha_hora_fin) : new Date();
+
+    // Verificar que la fecha de fin sea posterior a la fecha de inicio
+    const fechaInicio = new Date(sesionActiva.fecha_hora_inicio);
+    if (fechaFin < fechaInicio) {
+      return res.status(400).json({ 
+        error: 'La fecha de fin no puede ser anterior a la fecha de inicio' 
+      });
+    }
+
+    // Actualizar el registro con la fecha de fin
+    await defaultDb.execute(
+      `UPDATE Historial_Uso_Equipos 
+       SET fecha_hora_fin = ?, 
+           estado = 'Finalizado',
+           observaciones = COALESCE(?, observaciones)
+       WHERE id_historial = ?`,
+      [fechaFin, observaciones || null, sesionActiva.id_historial]
+    );
+
+    // Obtener el registro actualizado con la duración calculada
+    const [[registroActualizado]] = await defaultDb.execute(
+      `SELECT id_historial, codigo_equipo, id_usuario, fecha_hora_inicio, 
+              fecha_hora_fin, estado, duracion_minutos, observaciones
+       FROM Historial_Uso_Equipos 
+       WHERE id_historial = ?`,
+      [sesionActiva.id_historial]
+    );
+
+    logger.info('Fin de uso registrado', {
+      id_historial: sesionActiva.id_historial,
+      codigo_equipo,
+      id_usuario: userId,
+      fecha_hora_fin: fechaFin,
+      duracion_minutos: registroActualizado.duracion_minutos
+    });
+
+    return res.json({
+      ok: true,
+      message: 'Cierre de sesión registrado correctamente',
+      historial: registroActualizado
+    });
+  } catch (err) {
+    logger.error('Error al registrar fin de uso', { error: err.message, stack: err.stack });
+    return res.status(500).json({
+      error: 'Error al registrar fin de uso',
+      detalle: err.message
+    });
+  }
+}
+
+/**
+ * Consultar historial de uso de equipos
+ * Permite filtrar por equipo, usuario, fecha, etc.
+ */
+export async function consultarHistorialUso(req, res) {
+  try {
+    const {
+      codigo_equipo,
+      id_usuario,
+      fecha_desde,
+      fecha_hasta,
+      estado,
+      limit = 100,
+      offset = 0
+    } = req.query;
+
+    const userId = req.user?.id;
+    const userRole = req.user?.rol;
+
+    let query = `
+      SELECT 
+        hu.id_historial,
+        hu.codigo_equipo,
+        e.placa AS codigo_inventario,
+        e.tipo AS equipo_tipo,
+        e.modelo AS equipo_modelo,
+        hu.id_usuario,
+        u.nombre_usuario,
+        u.cedula AS usuario_cedula,
+        u.correo AS usuario_correo,
+        hu.fecha_hora_inicio,
+        hu.fecha_hora_fin,
+        hu.estado,
+        hu.duracion_minutos,
+        hu.observaciones,
+        hu.fecha_registro
+      FROM Historial_Uso_Equipos hu
+      INNER JOIN Elementos e ON hu.codigo_equipo = e.codigo_equipo
+      INNER JOIN Usuarios u ON hu.id_usuario = u.id_usuario
+      WHERE 1=1
+    `;
+
+    const params = [];
+
+    // Si es Aprendiz, solo puede ver su propio historial
+    if (userRole === 'Aprendiz') {
+      query += ' AND hu.id_usuario = ?';
+      params.push(userId);
+    }
+
+    // Filtros opcionales
+    if (codigo_equipo) {
+      query += ' AND hu.codigo_equipo = ?';
+      params.push(codigo_equipo);
+    }
+
+    if (id_usuario && (userRole === 'Administrador' || userRole === 'Instructor')) {
+      query += ' AND hu.id_usuario = ?';
+      params.push(id_usuario);
+    }
+
+    if (estado) {
+      query += ' AND hu.estado = ?';
+      params.push(estado);
+    }
+
+    if (fecha_desde) {
+      query += ' AND DATE(hu.fecha_hora_inicio) >= ?';
+      params.push(fecha_desde);
+    }
+
+    if (fecha_hasta) {
+      query += ' AND DATE(hu.fecha_hora_inicio) <= ?';
+      params.push(fecha_hasta);
+    }
+
+    query += ' ORDER BY hu.fecha_hora_inicio DESC LIMIT ? OFFSET ?';
+    params.push(parseInt(limit), parseInt(offset));
+
+    const [historial] = await defaultDb.execute(query, params);
+
+    // Obtener el total de registros (sin paginación)
+    let countQuery = `
+      SELECT COUNT(*) AS total
+      FROM Historial_Uso_Equipos hu
+      WHERE 1=1
+    `;
+    const countParams = [];
+
+    if (userRole === 'Aprendiz') {
+      countQuery += ' AND hu.id_usuario = ?';
+      countParams.push(userId);
+    }
+
+    if (codigo_equipo) {
+      countQuery += ' AND hu.codigo_equipo = ?';
+      countParams.push(codigo_equipo);
+    }
+
+    if (id_usuario && (userRole === 'Administrador' || userRole === 'Instructor')) {
+      countQuery += ' AND hu.id_usuario = ?';
+      countParams.push(id_usuario);
+    }
+
+    if (estado) {
+      countQuery += ' AND hu.estado = ?';
+      countParams.push(estado);
+    }
+
+    if (fecha_desde) {
+      countQuery += ' AND DATE(hu.fecha_hora_inicio) >= ?';
+      countParams.push(fecha_desde);
+    }
+
+    if (fecha_hasta) {
+      countQuery += ' AND DATE(hu.fecha_hora_inicio) <= ?';
+      countParams.push(fecha_hasta);
+    }
+
+    const [[{ total }]] = await defaultDb.execute(countQuery, countParams);
+
+    return res.json({
+      historial,
+      total: total || 0,
+      limit: parseInt(limit),
+      offset: parseInt(offset)
+    });
+  } catch (err) {
+    logger.error('Error al consultar historial de uso', { error: err.message, stack: err.stack });
+    return res.status(500).json({
+      error: 'Error al consultar historial de uso',
+      detalle: err.message
+    });
+  }
+}
+
+/**
+ * Obtener historial de uso de un equipo específico
+ */
+export async function obtenerHistorialEquipoUso(req, res) {
+  try {
+    const { codigo } = req.params;
+    const { fecha_desde, fecha_hasta, limit = 50 } = req.query;
+
+    if (!codigo) {
+      return res.status(400).json({ error: 'El código del equipo es requerido' });
+    }
+
+    let query = `
+      SELECT 
+        hu.id_historial,
+        hu.codigo_equipo,
+        e.placa AS codigo_inventario,
+        e.tipo AS equipo_tipo,
+        e.modelo AS equipo_modelo,
+        hu.id_usuario,
+        u.nombre_usuario,
+        u.cedula AS usuario_cedula,
+        u.correo AS usuario_correo,
+        hu.fecha_hora_inicio,
+        hu.fecha_hora_fin,
+        hu.estado,
+        hu.duracion_minutos,
+        hu.observaciones,
+        hu.fecha_registro
+      FROM Historial_Uso_Equipos hu
+      INNER JOIN Elementos e ON hu.codigo_equipo = e.codigo_equipo
+      INNER JOIN Usuarios u ON hu.id_usuario = u.id_usuario
+      WHERE hu.codigo_equipo = ?
+    `;
+
+    const params = [codigo];
+
+    if (fecha_desde) {
+      query += ' AND DATE(hu.fecha_hora_inicio) >= ?';
+      params.push(fecha_desde);
+    }
+
+    if (fecha_hasta) {
+      query += ' AND DATE(hu.fecha_hora_inicio) <= ?';
+      params.push(fecha_hasta);
+    }
+
+    query += ' ORDER BY hu.fecha_hora_inicio DESC LIMIT ?';
+    params.push(parseInt(limit));
+
+    const [historial] = await defaultDb.execute(query, params);
+
+    // Obtener información del equipo
+    const [[equipo]] = await defaultDb.execute(
+      `SELECT codigo_equipo, placa AS codigo_inventario, tipo, modelo, consecutivo
+       FROM Elementos
+       WHERE codigo_equipo = ?`,
+      [codigo]
+    );
+
+    if (!equipo) {
+      return res.status(404).json({ error: 'Equipo no encontrado' });
+    }
+
+    return res.json({
+      equipo,
+      historial,
+      total: historial.length
+    });
+  } catch (err) {
+    logger.error('Error al obtener historial del equipo', { error: err.message, stack: err.stack });
+    return res.status(500).json({
+      error: 'Error al obtener historial del equipo',
+      detalle: err.message
+    });
+  }
+}
+
+/**
+ * Obtener sesiones activas (en uso) de equipos
+ */
+export async function obtenerSesionesActivas(req, res) {
+  try {
+    const { codigo_equipo } = req.query;
+    const userRole = req.user?.rol;
+    const userId = req.user?.id;
+
+    let query = `
+      SELECT 
+        hu.id_historial,
+        hu.codigo_equipo,
+        e.placa AS codigo_inventario,
+        e.tipo AS equipo_tipo,
+        e.modelo AS equipo_modelo,
+        hu.id_usuario,
+        u.nombre_usuario,
+        u.cedula AS usuario_cedula,
+        u.correo AS usuario_correo,
+        hu.fecha_hora_inicio,
+        hu.estado,
+        TIMESTAMPDIFF(MINUTE, hu.fecha_hora_inicio, NOW()) AS minutos_transcurridos,
+        hu.observaciones
+      FROM Historial_Uso_Equipos hu
+      INNER JOIN Elementos e ON hu.codigo_equipo = e.codigo_equipo
+      INNER JOIN Usuarios u ON hu.id_usuario = u.id_usuario
+      WHERE hu.estado = 'En Uso'
+    `;
+
+    const params = [];
+
+    // Si es Aprendiz, solo puede ver sus propias sesiones activas
+    if (userRole === 'Aprendiz') {
+      query += ' AND hu.id_usuario = ?';
+      params.push(userId);
+    }
+
+    if (codigo_equipo) {
+      query += ' AND hu.codigo_equipo = ?';
+      params.push(codigo_equipo);
+    }
+
+    query += ' ORDER BY hu.fecha_hora_inicio DESC';
+
+    const [sesiones] = await defaultDb.execute(query, params);
+
+    return res.json({
+      sesiones,
+      total: sesiones.length
+    });
+  } catch (err) {
+    logger.error('Error al obtener sesiones activas', { error: err.message, stack: err.stack });
+    return res.status(500).json({
+      error: 'Error al obtener sesiones activas',
+      detalle: err.message
+    });
+  }
+}

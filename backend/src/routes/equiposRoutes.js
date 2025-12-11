@@ -1,10 +1,10 @@
 import express from 'express';
-import { registrarEquipo, obtenerEquipoPorCodigo, listarEquipos, actualizarEquipo, eliminarEquipo, asignarEquipo, obtenerMisEquipos, listarAsignaciones, eliminarAsignacion, obtenerEquiposAmbientesInstructor, registrarVerificacionInventario, consultarHistorialVerificaciones, obtenerHistorialEquipo, actualizarCuentadantePrincipal, obtenerCuentadantePrincipal, buscarCuentadantePorDocumento, listarCategorias, crearCategoria, actualizarCategoria, eliminarCategoria } from '../controller/equiposController.js';
+import { registrarEquipo, obtenerEquipoPorCodigo, listarEquipos, actualizarEquipo, eliminarEquipo, asignarEquipo, obtenerMisEquipos, listarAsignaciones, eliminarAsignacion, obtenerEquiposAmbientesInstructor, registrarVerificacionInventario, consultarHistorialVerificaciones, obtenerHistorialEquipo, actualizarCuentadantePrincipal, obtenerCuentadantePrincipal, buscarCuentadantePorDocumento, listarCategorias, crearCategoria, actualizarCategoria, eliminarCategoria, registrarInicioUso, registrarFinUso, consultarHistorialUso, obtenerHistorialEquipoUso, obtenerSesionesActivas } from '../controller/equiposController.js';
 import { authenticate } from '../middleware/authMiddleware.js';
 import { requirePermission, requireAnyPermission } from '../middleware/authorization.js';
 import { PERMISSIONS } from '../config/permissions.js';
 import { writeLimiter, readLimiter, strictLimiter } from '../middleware/rateLimiter.js';
-import { validate, registrarEquipoSchema, actualizarEquipoSchema, asignarEquipoSchema, verificarInventarioSchema, crearCategoriaSchema, actualizarCategoriaSchema } from '../validators/equiposValidator.js';
+import { validate, registrarEquipoSchema, actualizarEquipoSchema, asignarEquipoSchema, verificarInventarioSchema, crearCategoriaSchema, actualizarCategoriaSchema, registrarUsoEquipoSchema, actualizarUsoEquipoSchema } from '../validators/equiposValidator.js';
 
 const router = express.Router();
 
@@ -204,6 +204,66 @@ router.get('/verificacion/historial',
     PERMISSIONS.EQUIPOS.VIEW_OWN
   ]),
   consultarHistorialVerificaciones
+);
+
+// ============================================
+// RUTAS DE HISTORIAL DE USO DE EQUIPOS
+// ============================================
+
+// Registrar inicio de sesión en un equipo (desde app Flutter)
+// Todos los usuarios autenticados pueden registrar su propio inicio de sesión
+router.post('/uso/inicio', 
+  authenticate,
+  writeLimiter,
+  validate(registrarUsoEquipoSchema),
+  registrarInicioUso
+);
+
+// Registrar cierre de sesión en un equipo (desde app Flutter)
+// Todos los usuarios autenticados pueden registrar su propio cierre de sesión
+router.post('/uso/fin', 
+  authenticate,
+  writeLimiter,
+  validate(actualizarUsoEquipoSchema),
+  registrarFinUso
+);
+
+// Consultar historial de uso de equipos
+// Admin e Instructor: ven todo el historial
+// Aprendiz: solo su propio historial
+router.get('/uso/historial', 
+  authenticate,
+  readLimiter,
+  requireAnyPermission([
+    PERMISSIONS.EQUIPOS.VIEW,
+    PERMISSIONS.EQUIPOS.VIEW_OWN
+  ]),
+  consultarHistorialUso
+);
+
+// Obtener historial de uso de un equipo específico
+// IMPORTANTE: Esta ruta debe ir ANTES de /:codigo para evitar conflictos
+router.get('/:codigo/uso/historial', 
+  authenticate,
+  readLimiter,
+  requireAnyPermission([
+    PERMISSIONS.EQUIPOS.VIEW,
+    PERMISSIONS.EQUIPOS.VIEW_OWN
+  ]),
+  obtenerHistorialEquipoUso
+);
+
+// Obtener sesiones activas (en uso) de equipos
+// Admin e Instructor: ven todas las sesiones activas
+// Aprendiz: solo sus propias sesiones activas
+router.get('/uso/activas', 
+  authenticate,
+  readLimiter,
+  requireAnyPermission([
+    PERMISSIONS.EQUIPOS.VIEW,
+    PERMISSIONS.EQUIPOS.VIEW_OWN
+  ]),
+  obtenerSesionesActivas
 );
 
 export default router;
