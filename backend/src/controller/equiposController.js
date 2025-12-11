@@ -1922,13 +1922,19 @@ export async function consultarHistorialUso(req, res) {
 
     // Filtros opcionales
     if (codigo_equipo) {
-      query += ' AND hu.codigo_equipo = ?';
-      params.push(codigo_equipo);
+      const codigoEquipoNum = parseInt(codigo_equipo, 10);
+      if (!isNaN(codigoEquipoNum)) {
+        query += ' AND hu.codigo_equipo = ?';
+        params.push(codigoEquipoNum);
+      }
     }
 
     if (id_usuario && (userRole === 'Administrador' || userRole === 'Instructor')) {
-      query += ' AND hu.id_usuario = ?';
-      params.push(id_usuario);
+      const idUsuarioNum = parseInt(id_usuario, 10);
+      if (!isNaN(idUsuarioNum)) {
+        query += ' AND hu.id_usuario = ?';
+        params.push(idUsuarioNum);
+      }
     }
 
     if (estado) {
@@ -1947,7 +1953,9 @@ export async function consultarHistorialUso(req, res) {
     }
 
     query += ' ORDER BY hu.fecha_hora_inicio DESC LIMIT ? OFFSET ?';
-    params.push(parseInt(limit), parseInt(offset));
+    const limitNum = parseInt(limit, 10) || 100;
+    const offsetNum = parseInt(offset, 10) || 0;
+    params.push(limitNum, offsetNum);
 
     const [historial] = await defaultDb.execute(query, params);
 
@@ -1965,13 +1973,19 @@ export async function consultarHistorialUso(req, res) {
     }
 
     if (codigo_equipo) {
-      countQuery += ' AND hu.codigo_equipo = ?';
-      countParams.push(codigo_equipo);
+      const codigoEquipoNum = parseInt(codigo_equipo, 10);
+      if (!isNaN(codigoEquipoNum)) {
+        countQuery += ' AND hu.codigo_equipo = ?';
+        countParams.push(codigoEquipoNum);
+      }
     }
 
     if (id_usuario && (userRole === 'Administrador' || userRole === 'Instructor')) {
-      countQuery += ' AND hu.id_usuario = ?';
-      countParams.push(id_usuario);
+      const idUsuarioNum = parseInt(id_usuario, 10);
+      if (!isNaN(idUsuarioNum)) {
+        countQuery += ' AND hu.id_usuario = ?';
+        countParams.push(idUsuarioNum);
+      }
     }
 
     if (estado) {
@@ -1994,8 +2008,8 @@ export async function consultarHistorialUso(req, res) {
     return res.json({
       historial,
       total: total || 0,
-      limit: parseInt(limit),
-      offset: parseInt(offset)
+      limit: limitNum,
+      offset: offsetNum
     });
   } catch (err) {
     logger.error('Error al consultar historial de uso', { error: err.message, stack: err.stack });
@@ -2018,6 +2032,10 @@ export async function obtenerHistorialEquipoUso(req, res) {
       return res.status(400).json({ error: 'El código del equipo es requerido' });
     }
 
+    // Convertir código a número si es posible, sino buscar por placa
+    const codigoNum = parseInt(codigo, 10);
+    const buscarPorPlaca = isNaN(codigoNum);
+
     let query = `
       SELECT 
         hu.id_historial,
@@ -2038,10 +2056,10 @@ export async function obtenerHistorialEquipoUso(req, res) {
       FROM Historial_Uso_Equipos hu
       INNER JOIN Elementos e ON hu.codigo_equipo = e.codigo_equipo
       INNER JOIN Usuarios u ON hu.id_usuario = u.id_usuario
-      WHERE hu.codigo_equipo = ?
+      WHERE ${buscarPorPlaca ? 'e.placa = ?' : 'hu.codigo_equipo = ?'}
     `;
 
-    const params = [codigo];
+    const params = [buscarPorPlaca ? codigo : codigoNum];
 
     if (fecha_desde) {
       query += ' AND DATE(hu.fecha_hora_inicio) >= ?';
@@ -2054,17 +2072,20 @@ export async function obtenerHistorialEquipoUso(req, res) {
     }
 
     query += ' ORDER BY hu.fecha_hora_inicio DESC LIMIT ?';
-    params.push(parseInt(limit));
+    const limitNum = parseInt(limit, 10) || 50;
+    params.push(limitNum);
 
     const [historial] = await defaultDb.execute(query, params);
 
     // Obtener información del equipo
-    const [[equipo]] = await defaultDb.execute(
-      `SELECT codigo_equipo, placa AS codigo_inventario, tipo, modelo, consecutivo
-       FROM Elementos
-       WHERE codigo_equipo = ?`,
-      [codigo]
-    );
+    const equipoQuery = buscarPorPlaca
+      ? `SELECT codigo_equipo, placa AS codigo_inventario, tipo, modelo, consecutivo
+         FROM Elementos
+         WHERE placa = ?`
+      : `SELECT codigo_equipo, placa AS codigo_inventario, tipo, modelo, consecutivo
+         FROM Elementos
+         WHERE codigo_equipo = ?`;
+    const [[equipo]] = await defaultDb.execute(equipoQuery, [buscarPorPlaca ? codigo : codigoNum]);
 
     if (!equipo) {
       return res.status(404).json({ error: 'Equipo no encontrado' });
@@ -2123,8 +2144,11 @@ export async function obtenerSesionesActivas(req, res) {
     }
 
     if (codigo_equipo) {
-      query += ' AND hu.codigo_equipo = ?';
-      params.push(codigo_equipo);
+      const codigoEquipoNum = parseInt(codigo_equipo, 10);
+      if (!isNaN(codigoEquipoNum)) {
+        query += ' AND hu.codigo_equipo = ?';
+        params.push(codigoEquipoNum);
+      }
     }
 
     query += ' ORDER BY hu.fecha_hora_inicio DESC';
