@@ -1705,11 +1705,15 @@ export async function eliminarCategoria(req, res) {
  */
 export async function registrarInicioUso(req, res) {
   try {
-    const { codigo_equipo, fecha_hora_inicio, observaciones } = req.body;
+    const { codigo_equipo, nombre_usuario, fecha_hora_inicio, observaciones } = req.body;
     const userId = req.user?.id; // El usuario viene del token JWT
 
     if (!codigo_equipo) {
       return res.status(400).json({ error: 'El código del equipo es obligatorio' });
+    }
+
+    if (!nombre_usuario) {
+      return res.status(400).json({ error: 'El nombre del usuario es obligatorio' });
     }
 
     // Validar que el equipo existe
@@ -1739,15 +1743,16 @@ export async function registrarInicioUso(req, res) {
     // Insertar nuevo registro de uso
     const [result] = await defaultDb.execute(
       `INSERT INTO Historial_Uso_Equipos 
-       (codigo_equipo, id_usuario, fecha_hora_inicio, estado, observaciones) 
-       VALUES (?, ?, ?, 'En Uso', ?)`,
-      [codigo_equipo, userId, fechaInicio, observaciones || null]
+       (codigo_equipo, id_usuario, nombre_usuario, fecha_hora_inicio, estado, observaciones) 
+       VALUES (?, ?, ?, ?, 'En Uso', ?)`,
+      [codigo_equipo, userId, nombre_usuario, fechaInicio, observaciones || null]
     );
 
     logger.info('Inicio de uso registrado', {
       id_historial: result.insertId,
       codigo_equipo,
       id_usuario: userId,
+      nombre_usuario,
       fecha_hora_inicio: fechaInicio
     });
 
@@ -1872,7 +1877,7 @@ export async function consultarHistorialUso(req, res) {
         e.tipo AS equipo_tipo,
         e.modelo AS equipo_modelo,
         hu.id_usuario,
-        u.nombre_usuario,
+        COALESCE(hu.nombre_usuario, u.nombre_usuario) AS nombre_usuario,
         u.cedula AS usuario_cedula,
         u.correo AS usuario_correo,
         hu.fecha_hora_inicio,
@@ -2001,7 +2006,7 @@ export async function obtenerHistorialEquipoUso(req, res) {
         e.tipo AS equipo_tipo,
         e.modelo AS equipo_modelo,
         hu.id_usuario,
-        u.nombre_usuario,
+        COALESCE(hu.nombre_usuario, u.nombre_usuario) AS nombre_usuario,
         u.cedula AS usuario_cedula,
         u.correo AS usuario_correo,
         hu.fecha_hora_inicio,
@@ -2076,7 +2081,7 @@ export async function obtenerSesionesActivas(req, res) {
         e.tipo AS equipo_tipo,
         e.modelo AS equipo_modelo,
         hu.id_usuario,
-        u.nombre_usuario,
+        COALESCE(hu.nombre_usuario, u.nombre_usuario) AS nombre_usuario,
         u.cedula AS usuario_cedula,
         u.correo AS usuario_correo,
         hu.fecha_hora_inicio,

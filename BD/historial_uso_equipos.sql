@@ -8,6 +8,7 @@ CREATE TABLE IF NOT EXISTS Historial_Uso_Equipos (
   id_historial INT PRIMARY KEY AUTO_INCREMENT,
   codigo_equipo INT NOT NULL,
   id_usuario INT NOT NULL,
+  nombre_usuario VARCHAR(100) NULL COMMENT 'Nombre del usuario en el momento del registro (por si cambia después)',
   fecha_hora_inicio DATETIME NOT NULL COMMENT 'Fecha y hora en que el usuario inició sesión en el equipo',
   fecha_hora_fin DATETIME NULL COMMENT 'Fecha y hora en que el usuario cerró sesión. NULL si aún está en uso',
   estado ENUM('En Uso', 'Finalizado') DEFAULT 'En Uso' COMMENT 'Estado de la sesión',

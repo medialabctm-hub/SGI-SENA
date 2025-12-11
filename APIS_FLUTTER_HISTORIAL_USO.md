@@ -24,6 +24,7 @@ Registra cuando un usuario inicia sesión en un equipo.
 ```json
 {
   "codigo_equipo": 123,  // o "PLACA123"
+  "nombre_usuario": "Juan Pérez",  // REQUERIDO: Nombre del usuario que inicia sesión
   "fecha_hora_inicio": "2024-01-15T10:30:00Z",  // Opcional, si no se envía usa la fecha actual
   "observaciones": "Sesión de práctica"  // Opcional
 }
@@ -256,6 +257,7 @@ GET /api/equipos/uso/activas?codigo_equipo=123
 ## Notas Importantes
 
 - El `id_usuario` se obtiene automáticamente del token JWT, no es necesario enviarlo
+- El `nombre_usuario` es **REQUERIDO** y debe enviarse desde Flutter
 - Las fechas pueden enviarse en formato ISO 8601 o cualquier formato válido de JavaScript Date
 - Si no se envía `fecha_hora_inicio` o `fecha_hora_fin`, se usa la fecha/hora actual del servidor
 - La duración se calcula automáticamente cuando se registra el cierre de sesión

@@ -178,6 +178,7 @@ export const registrarUsoEquipoSchema = z.object({
     z.number().int().positive('El código del equipo debe ser un número positivo'),
   ]),
   id_usuario: z.number().int().positive('El ID del usuario es requerido').optional(),
+  nombre_usuario: z.string().min(1, 'El nombre del usuario es requerido').max(100, 'El nombre no puede exceder 100 caracteres'),
   fecha_hora_inicio: z.string().optional().refine((val) => {
     if (!val) return true; // Opcional
     const date = new Date(val);
