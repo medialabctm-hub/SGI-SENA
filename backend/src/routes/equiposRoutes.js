@@ -231,15 +231,16 @@ router.post('/uso/fin',
 // Consultar historial de uso de equipos
 // Admin e Instructor: ven todo el historial
 // Aprendiz: solo su propio historial
-router.get('/uso/historial', 
-  authenticate,
-  readLimiter,
-  requireAnyPermission([
-    PERMISSIONS.EQUIPOS.VIEW,
-    PERMISSIONS.EQUIPOS.VIEW_OWN
-  ]),
-  consultarHistorialUso
-);
+// RUTA DESACTIVADA
+// router.get('/uso/historial', 
+//   authenticate,
+//   readLimiter,
+//   requireAnyPermission([
+//     PERMISSIONS.EQUIPOS.VIEW,
+//     PERMISSIONS.EQUIPOS.VIEW_OWN
+//   ]),
+//   consultarHistorialUso
+// );
 
 // Obtener historial de uso de un equipo específico
 // IMPORTANTE: Esta ruta debe ir ANTES de /:codigo para evitar conflictos
