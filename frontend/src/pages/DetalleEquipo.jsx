@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { useNavigate } from 'react-router-dom';
 import Header from '../components/Header';
@@ -6,7 +6,7 @@ import Sidebar from '../components/Sidebar';
 import Toast from '../components/Toast';
 import ConfirmModal from '../components/ConfirmModal';
 import { parseApiResponse, buildErrorMessage } from '../utils/api';
-import { FiArrowLeft, FiUpload, FiTrash2, FiStar, FiImage, FiX, FiInfo, FiPackage, FiMapPin, FiCalendar, FiDollarSign } from 'react-icons/fi';
+import { FiArrowLeft, FiUpload, FiTrash2, FiStar, FiImage, FiX, FiInfo, FiPackage, FiMapPin, FiCalendar, FiDollarSign, FiChevronLeft, FiChevronRight } from 'react-icons/fi';
 import '../styles/equipos.css';
 import '../styles/detalleEquipo.css';
 import '../styles/ambientes.css';
@@ -25,6 +25,7 @@ export default function DetalleEquipo() {
   const [uploadData, setUploadData] = useState({ tipo_imagen: 'Detalle', descripcion: '', es_principal: false });
   const [user, setUser] = useState(null);
   const [imagenPrincipal, setImagenPrincipal] = useState(null);
+  const [lightboxImage, setLightboxImage] = useState(null);
 
   useEffect(() => {
     try {
@@ -204,6 +205,53 @@ export default function DetalleEquipo() {
     }
   }
 
+  const openLightbox = useCallback((imagen) => {
+    setLightboxImage(imagen);
+  }, []);
+
+  const closeLightbox = useCallback(() => {
+    setLightboxImage(null);
+  }, []);
+
+  const navigateLightbox = useCallback((direction) => {
+    if (!lightboxImage || imagenes.length === 0) return;
+    const currentIndex = imagenes.findIndex(img => img.id_imagen_equipo === lightboxImage.id_imagen_equipo);
+    if (currentIndex === -1) return;
+    
+    let newIndex;
+    if (direction === 'next') {
+      newIndex = (currentIndex + 1) % imagenes.length;
+    } else {
+      newIndex = (currentIndex - 1 + imagenes.length) % imagenes.length;
+    }
+    setLightboxImage(imagenes[newIndex]);
+  }, [lightboxImage, imagenes]);
+
+  useEffect(() => {
+    function handleKeyPress(e) {
+      if (!lightboxImage) return;
+      if (e.key === 'Escape') {
+        setLightboxImage(null);
+      } else if (e.key === 'ArrowLeft') {
+        if (imagenes.length === 0) return;
+        const currentIndex = imagenes.findIndex(img => img.id_imagen_equipo === lightboxImage.id_imagen_equipo);
+        if (currentIndex === -1) return;
+        const newIndex = (currentIndex - 1 + imagenes.length) % imagenes.length;
+        setLightboxImage(imagenes[newIndex]);
+      } else if (e.key === 'ArrowRight') {
+        if (imagenes.length === 0) return;
+        const currentIndex = imagenes.findIndex(img => img.id_imagen_equipo === lightboxImage.id_imagen_equipo);
+        if (currentIndex === -1) return;
+        const newIndex = (currentIndex + 1) % imagenes.length;
+        setLightboxImage(imagenes[newIndex]);
+      }
+    }
+    if (lightboxImage) {
+      window.addEventListener('keydown', handleKeyPress);
+      return () => window.removeEventListener('keydown', handleKeyPress);
+    }
+  }, [lightboxImage, imagenes]);
+
   function getEstadoBadge(estado) {
     const estados = {
       Bueno: { color: 'var(--success-800)', bg: 'var(--success-50)' },
@@ -280,6 +328,78 @@ export default function DetalleEquipo() {
             onConfirm={handleDeleteImagen}
             onCancel={() => setDeleteConfirm({ open: false, idImagen: null })}
           />
+
+          {/* Lightbox para ver imágenes en grande */}
+          {lightboxImage && (
+            <div
+              className="detalle-equipo-lightbox-overlay"
+              onClick={closeLightbox}
+            >
+              <div
+                className="detalle-equipo-lightbox-content"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <button
+                  className="detalle-equipo-lightbox-close"
+                  onClick={closeLightbox}
+                  aria-label="Cerrar"
+                >
+                  <FiX size={24} />
+                </button>
+                {imagenes.length > 1 && (
+                  <>
+                    <button
+                      className="detalle-equipo-lightbox-nav detalle-equipo-lightbox-nav-prev"
+                      onClick={() => navigateLightbox('prev')}
+                      aria-label="Imagen anterior"
+                    >
+                      <FiChevronLeft size={32} />
+                    </button>
+                    <button
+                      className="detalle-equipo-lightbox-nav detalle-equipo-lightbox-nav-next"
+                      onClick={() => navigateLightbox('next')}
+                      aria-label="Imagen siguiente"
+                    >
+                      <FiChevronRight size={32} />
+                    </button>
+                  </>
+                )}
+                <div className="detalle-equipo-lightbox-image-container">
+                  <img
+                    src={lightboxImage.ruta_imagen}
+                    alt={lightboxImage.descripcion || 'Imagen del equipo'}
+                    className="detalle-equipo-lightbox-image"
+                    onError={(e) => {
+                      console.error('Error al cargar imagen:', lightboxImage.ruta_imagen);
+                      e.target.style.display = 'none';
+                    }}
+                  />
+                </div>
+                <div className="detalle-equipo-lightbox-info">
+                  <div className="detalle-equipo-lightbox-info-header">
+                    <h4>{lightboxImage.tipo_imagen}</h4>
+                    {lightboxImage.es_principal && (
+                      <span className="detalle-equipo-lightbox-badge">
+                        <FiStar size={14} />
+                        Principal
+                      </span>
+                    )}
+                  </div>
+                  {lightboxImage.descripcion && (
+                    <p className="detalle-equipo-lightbox-description">{lightboxImage.descripcion}</p>
+                  )}
+                  <div className="detalle-equipo-lightbox-meta">
+                    <span>Subida: {formatDate(lightboxImage.fecha_subida)}</span>
+                    {imagenes.length > 1 && (
+                      <span className="detalle-equipo-lightbox-counter">
+                        {imagenes.findIndex(img => img.id_imagen_equipo === lightboxImage.id_imagen_equipo) + 1} / {imagenes.length}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Modal de subida de imágenes - Mejorado */}
           {showUploadModal && (
@@ -684,20 +804,20 @@ export default function DetalleEquipo() {
                 </h3>
               </div>
               {imagenes.length > 0 ? (
-                <div className="ambiente-images-grid">
+                <div className="detalle-equipo-gallery-thumbnails">
                   {imagenes.map((imagen) => (
                     <div
                       key={imagen.id_imagen_equipo}
-                      className="ambiente-imagen-card"
+                      className="detalle-equipo-gallery-thumbnail"
                       style={{
                         border: imagen.es_principal ? '2px solid var(--success-800)' : '1px solid #e5e7eb',
                       }}
+                      onClick={() => openLightbox(imagen)}
                     >
-                      <div className="ambiente-imagen-container">
+                      <div className="detalle-equipo-gallery-thumbnail-image">
                         <img
                           src={imagen.ruta_imagen}
                           alt={imagen.descripcion || 'Imagen del equipo'}
-                          className="ambiente-imagen"
                           onError={(e) => {
                             console.error('Error al cargar imagen:', imagen.ruta_imagen);
                             e.target.style.display = 'none';
@@ -707,49 +827,48 @@ export default function DetalleEquipo() {
                             }
                           }}
                         />
-                        <div className="ambiente-imagen-placeholder">
-                          <FiImage size={32} />
+                        <div className="detalle-equipo-gallery-thumbnail-placeholder">
+                          <FiImage size={24} />
                         </div>
                         {imagen.es_principal && (
-                          <div className="ambiente-imagen-badge">
-                            <FiStar size={14} />
+                          <div className="detalle-equipo-gallery-thumbnail-badge">
+                            <FiStar size={12} />
                             Principal
                           </div>
                         )}
                         {(user?.nombre_rol === 'Administrador' || user?.nombre_rol === 'Instructor') && (
-                          <div className="ambiente-imagen-overlay">
+                          <div className="detalle-equipo-gallery-thumbnail-overlay">
                             {!imagen.es_principal && (
                               <button
-                                className="ambiente-imagen-btn"
-                                onClick={() => handleMarcarPrincipal(imagen.id_imagen_equipo)}
+                                className="detalle-equipo-gallery-thumbnail-btn"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleMarcarPrincipal(imagen.id_imagen_equipo);
+                                }}
                                 title="Marcar como principal"
                               >
-                                <FiStar size={16} />
+                                <FiStar size={14} />
                               </button>
                             )}
                             <button
-                              className="ambiente-imagen-btn ambiente-imagen-btn-delete"
-                              onClick={() => setDeleteConfirm({ open: true, idImagen: imagen.id_imagen_equipo })}
+                              className="detalle-equipo-gallery-thumbnail-btn detalle-equipo-gallery-thumbnail-btn-delete"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setDeleteConfirm({ open: true, idImagen: imagen.id_imagen_equipo });
+                              }}
                               title="Eliminar imagen"
                             >
-                              <FiX size={16} />
+                              <FiX size={14} />
                             </button>
                           </div>
                         )}
                       </div>
-                      <div className="ambiente-imagen-info">
-                        <p className="ambiente-imagen-name" title={imagen.tipo_imagen}>
+                      <div className="detalle-equipo-gallery-thumbnail-info">
+                        <p className="detalle-equipo-gallery-thumbnail-type" title={imagen.tipo_imagen}>
                           {imagen.tipo_imagen}
                         </p>
                         {imagen.descripcion && (
-                          <p style={{ 
-                            fontSize: '12px', 
-                            color: '#9ca3af', 
-                            margin: '4px 0 0 0',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            whiteSpace: 'nowrap'
-                          }} title={imagen.descripcion}>
+                          <p className="detalle-equipo-gallery-thumbnail-desc" title={imagen.descripcion}>
                             {imagen.descripcion}
                           </p>
                         )}
