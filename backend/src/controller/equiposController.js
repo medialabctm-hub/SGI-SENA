@@ -1889,6 +1889,29 @@ export async function consultarHistorialUso(req, res) {
     const userId = req.user?.id;
     const userRole = req.user?.rol;
 
+    // Verificar si la tabla existe
+    try {
+      const [[tableExists]] = await defaultDb.execute(
+        `SELECT COUNT(*) AS cnt FROM INFORMATION_SCHEMA.TABLES 
+         WHERE TABLE_SCHEMA = DATABASE() 
+         AND TABLE_NAME = 'Historial_Uso_Equipos'`
+      );
+      
+      if (!tableExists || tableExists.cnt === 0) {
+        logger.warn('Tabla Historial_Uso_Equipos no existe');
+        return res.json({
+          historial: [],
+          total: 0,
+          limit: parseInt(limit, 10) || 100,
+          offset: parseInt(offset, 10) || 0,
+          message: 'La tabla de historial de uso aún no ha sido creada. Ejecuta el script SQL de creación.'
+        });
+      }
+    } catch (tableCheckErr) {
+      logger.error('Error al verificar existencia de tabla', { error: tableCheckErr.message });
+      // Continuar de todas formas, el error real se mostrará en la consulta
+    }
+
     let query = `
       SELECT 
         hu.id_historial,
@@ -1957,6 +1980,20 @@ export async function consultarHistorialUso(req, res) {
     const offsetNum = parseInt(offset, 10) || 0;
     params.push(limitNum, offsetNum);
 
+    // Validar que los parámetros coincidan con los placeholders
+    const placeholderCount = (query.match(/\?/g) || []).length;
+    if (placeholderCount !== params.length) {
+      logger.error('Desajuste de parámetros en consulta', {
+        placeholderCount,
+        paramsCount: params.length,
+        query: query.substring(0, 300)
+      });
+      return res.status(500).json({
+        error: 'Error interno: desajuste de parámetros en la consulta',
+        detalle: `Se esperaban ${placeholderCount} parámetros pero se recibieron ${params.length}`
+      });
+    }
+
     const [historial] = await defaultDb.execute(query, params);
 
     // Obtener el total de registros (sin paginación)
@@ -2012,10 +2049,28 @@ export async function consultarHistorialUso(req, res) {
       offset: offsetNum
     });
   } catch (err) {
-    logger.error('Error al consultar historial de uso', { error: err.message, stack: err.stack });
+    logger.error('Error al consultar historial de uso', { 
+      error: err.message, 
+      stack: err.stack,
+      code: err.code,
+      sqlState: err.sqlState,
+      sqlMessage: err.sqlMessage
+    });
+    
+    // Si la tabla no existe, retornar un mensaje más claro
+    if (err.code === 'ER_NO_SUCH_TABLE' || err.message.includes("doesn't exist") || err.message.includes("Unknown table")) {
+      return res.status(404).json({
+        error: 'Tabla de historial no encontrada',
+        detalle: 'La tabla Historial_Uso_Equipos no existe. Ejecuta el script SQL: BD/historial_uso_equipos.sql',
+        historial: [],
+        total: 0
+      });
+    }
+    
     return res.status(500).json({
       error: 'Error al consultar historial de uso',
-      detalle: err.message
+      detalle: err.message,
+      code: err.code
     });
   }
 }
