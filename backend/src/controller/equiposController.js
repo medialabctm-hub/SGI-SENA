@@ -410,30 +410,61 @@ export async function obtenerEquipoPorCodigo(req, res) {
       [codigoEquipoParaResponsables]
     );
 
-    // Parsear JSON de dias_semana para cada responsable
+    // Parsear JSON de dias_semana para cada responsable y asegurar campos externos
     const responsablesConDias = responsables.map(resp => {
       // Parsear dias_semana si existe
       if (resp.dias_semana) {
         try {
           // Si es string, parsearlo; si ya es array, dejarlo como está
           if (typeof resp.dias_semana === 'string') {
-            resp.dias_semana = JSON.parse(resp.dias_semana);
+            // Intentar parsear como JSON
+            const parsed = JSON.parse(resp.dias_semana);
+            resp.dias_semana = Array.isArray(parsed) ? parsed : null;
+          } else if (!Array.isArray(resp.dias_semana)) {
+            resp.dias_semana = null;
           }
         } catch (e) {
-          logger.warn('Error al parsear dias_semana', { error: e.message, dias_semana: resp.dias_semana });
+          logger.warn('Error al parsear dias_semana', { 
+            error: e.message, 
+            dias_semana: resp.dias_semana,
+            tipo: typeof resp.dias_semana
+          });
           resp.dias_semana = null;
         }
+      } else {
+        resp.dias_semana = null;
       }
       
-      // Asegurar que los campos externos estén presentes
-      if (!resp.nombre_usuario && resp.nombre_externo) {
+      // Asegurar que los campos externos estén presentes y tengan prioridad
+      // Los datos externos son más confiables porque vienen directamente de la página externa
+      if (resp.nombre_externo) {
         resp.nombre_usuario = resp.nombre_externo;
       }
-      if (!resp.cedula && resp.documento_externo) {
+      if (resp.documento_externo) {
         resp.cedula = resp.documento_externo;
       }
       
+      // Formatear horas para mostrar (remover segundos si existen)
+      if (resp.hora_inicio && typeof resp.hora_inicio === 'string') {
+        resp.hora_inicio = resp.hora_inicio.substring(0, 5);
+      }
+      if (resp.hora_fin && typeof resp.hora_fin === 'string') {
+        resp.hora_fin = resp.hora_fin.substring(0, 5);
+      }
+      
       return resp;
+    });
+    
+    logger.info('Responsables obtenidos para equipo', {
+      codigo_equipo: codigoEquipoParaResponsables,
+      cantidad: responsablesConDias.length,
+      responsables: responsablesConDias.map(r => ({
+        id_responsable: r.id_responsable,
+        nombre: r.nombre_usuario || r.nombre_externo,
+        documento: r.cedula || r.documento_externo,
+        ficha: r.ficha,
+        tiene_horarios: !!(r.dias_semana || r.hora_inicio || r.hora_fin)
+      }))
     });
 
     // Agregar responsables al objeto del equipo
@@ -2737,12 +2768,29 @@ export async function registrarUsoEquipoExterno(req, res) {
 
             if (updates.length > 0) {
               valoresUpdate.push(asignacionExistente.id_responsable);
-              await connection.execute(
+              const [updateResult] = await connection.execute(
                 `UPDATE Responsables_Equipo 
                  SET ${updates.join(', ')} 
                  WHERE id_responsable = ?`,
                 valoresUpdate
               );
+              
+              logger.info('Asignación actualizada desde página externa', {
+                id_responsable: asignacionExistente.id_responsable,
+                codigo_equipo: equipo.codigo_equipo,
+                id_usuario: usuario.id_usuario,
+                ficha: ficha.trim(),
+                nombre: nombre.trim(),
+                documento: documento.trim(),
+                filas_afectadas: updateResult.affectedRows,
+                campos_actualizados: updates.length
+              });
+            } else {
+              logger.warn('No se actualizó la asignación - no hay campos para actualizar', {
+                id_responsable: asignacionExistente.id_responsable,
+                codigo_equipo: equipo.codigo_equipo,
+                id_usuario: usuario.id_usuario
+              });
             }
           }
 
@@ -2754,14 +2802,33 @@ export async function registrarUsoEquipoExterno(req, res) {
             [equipo.codigo_equipo, usuario.id_usuario]
           );
 
+          // Si ya existe una sesión activa, no crear otra, pero sí actualizar la asignación con los nuevos datos
+          // y agregar al resultado para que se muestre en el frontend
           if (sesionActiva) {
-            errores.push({
+            logger.info('Sesión activa existente - actualizando asignación con nuevos datos', {
+              id_historial: sesionActiva.id_historial,
+              codigo_equipo: equipo.codigo_equipo,
+              id_usuario: usuario.id_usuario,
               documento: documento.trim(),
-              nombre: nombre.trim(),
-              ficha: ficha.trim(),
-              error: 'Ya existe una sesión activa para este usuario en este equipo',
-              id_historial: sesionActiva.id_historial
+              tiene_asignacion: !!asignacionExistente
             });
+            
+            // La asignación ya se actualizó arriba (si existía) o se creó (si no existía)
+            // Agregar al resultado aunque ya exista sesión activa, para que se muestre en el frontend
+            resultados.push({
+              id_historial: sesionActiva.id_historial,
+              id_usuario: usuario.id_usuario,
+              nombre: nombre.trim(),
+              documento: documento.trim(),
+              ficha: ficha.trim(),
+              fecha_hora_inicio: new Date(), // Usar fecha actual como referencia
+              dias_semana: diasSemanaJson ? (typeof diasSemanaJson === 'string' ? JSON.parse(diasSemanaJson) : diasSemanaJson) : null,
+              hora_inicio: horaInicioTime,
+              hora_fin: horaFinTime,
+              sesion_existente: true // Marcar que es una sesión existente
+            });
+            
+            // Continuar sin crear nuevo historial, pero la asignación ya se actualizó/creó arriba
             continue;
           }
 
