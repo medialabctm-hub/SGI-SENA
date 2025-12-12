@@ -1,7 +1,7 @@
 import defaultDb from '../config/dbconfig.js';
 import { notifyNuevoEquipo } from '../services/notificationService.js';
 import { logger } from '../utils/logger.js';
-import { obtenerEquipoPorCodigo as obtenerEquipoPorCodigoUtil } from '../utils/sqlQueries.js';
+import { obtenerEquipoPorCodigo as obtenerEquipoPorCodigoUtil, obtenerUsuarioPorCedula } from '../utils/sqlQueries.js';
 
 export async function listarEquipos(req, res) {
   try {
@@ -2286,6 +2286,133 @@ export async function obtenerSesionesActivas(req, res) {
     return res.status(500).json({
       error: 'Error al obtener sesiones activas',
       detalle: err.message
+    });
+  }
+}
+
+/**
+ * Registrar uso de equipo desde página externa (público)
+ * Recibe: ficha, placa, nombre, documento
+ * No requiere autenticación, pero valida que el usuario y equipo existan
+ */
+export async function registrarUsoEquipoExterno(req, res) {
+  try {
+    const { ficha, placa, nombre, documento } = req.body;
+
+    // Validar que el equipo existe por placa
+    const [[equipo]] = await defaultDb.execute(
+      `SELECT codigo_equipo, placa, tipo, modelo 
+       FROM Elementos 
+       WHERE placa = ? LIMIT 1`,
+      [placa.trim()]
+    );
+
+    if (!equipo) {
+      return res.status(404).json({ 
+        success: false,
+        error: 'Equipo no encontrado',
+        message: `No se encontró un equipo con la placa "${placa}"` 
+      });
+    }
+
+    // Buscar usuario por documento (cedula)
+    const usuario = await obtenerUsuarioPorCedula(defaultDb, documento.trim());
+
+    if (!usuario) {
+      return res.status(404).json({ 
+        success: false,
+        error: 'Usuario no encontrado',
+        message: `No se encontró un usuario activo con el documento "${documento}". Por favor, regístrate primero en SGI-SENA.` 
+      });
+    }
+
+    // Verificar si el usuario tiene una sesión activa en este equipo
+    const [[sesionActiva]] = await defaultDb.execute(
+      `SELECT id_historial FROM Historial_Uso_Equipos 
+       WHERE codigo_equipo = ? AND id_usuario = ? AND estado = 'En Uso' 
+       ORDER BY fecha_hora_inicio DESC LIMIT 1`,
+      [equipo.codigo_equipo, usuario.id_usuario]
+    );
+
+    if (sesionActiva) {
+      return res.status(409).json({ 
+        success: false,
+        error: 'Sesión activa existente',
+        message: 'Ya existe una sesión activa para este usuario en este equipo',
+        id_historial: sesionActiva.id_historial
+      });
+    }
+
+    // Preparar observaciones con la ficha
+    const observaciones = `Ficha: ${ficha.trim()}`;
+
+    // Verificar si la columna nombre_usuario existe en la tabla
+    const [[columnaExiste]] = await defaultDb.execute(
+      `SELECT COUNT(*) AS cnt FROM INFORMATION_SCHEMA.COLUMNS 
+       WHERE TABLE_SCHEMA = DATABASE() 
+       AND TABLE_NAME = 'Historial_Uso_Equipos' 
+       AND COLUMN_NAME = 'nombre_usuario'`
+    );
+
+    // Insertar nuevo registro de uso
+    const fechaInicio = new Date();
+    let result;
+    
+    if (columnaExiste.cnt > 0) {
+      // Si la columna existe, incluirla en el INSERT
+      [result] = await defaultDb.execute(
+        `INSERT INTO Historial_Uso_Equipos 
+         (codigo_equipo, id_usuario, nombre_usuario, fecha_hora_inicio, estado, observaciones) 
+         VALUES (?, ?, ?, ?, 'En Uso', ?)`,
+        [equipo.codigo_equipo, usuario.id_usuario, nombre.trim(), fechaInicio, observaciones]
+      );
+    } else {
+      // Si la columna no existe, insertar sin ella
+      [result] = await defaultDb.execute(
+        `INSERT INTO Historial_Uso_Equipos 
+         (codigo_equipo, id_usuario, fecha_hora_inicio, estado, observaciones) 
+         VALUES (?, ?, ?, 'En Uso', ?)`,
+        [equipo.codigo_equipo, usuario.id_usuario, fechaInicio, observaciones]
+      );
+    }
+
+    logger.info('Uso de equipo registrado desde página externa', {
+      id_historial: result.insertId,
+      codigo_equipo: equipo.codigo_equipo,
+      placa: equipo.placa,
+      id_usuario: usuario.id_usuario,
+      documento: documento.trim(),
+      nombre: nombre.trim(),
+      ficha: ficha.trim(),
+      fecha_hora_inicio: fechaInicio
+    });
+
+    return res.status(201).json({
+      success: true,
+      message: 'Uso de equipo registrado correctamente',
+      data: {
+        id_historial: result.insertId,
+        codigo_equipo: equipo.codigo_equipo,
+        placa: equipo.placa,
+        tipo: equipo.tipo,
+        modelo: equipo.modelo,
+        nombre_usuario: nombre.trim(),
+        documento: documento.trim(),
+        ficha: ficha.trim(),
+        fecha_hora_inicio: fechaInicio
+      }
+    });
+  } catch (err) {
+    logger.error('Error al registrar uso de equipo externo', { 
+      error: err.message, 
+      stack: err.stack,
+      body: req.body 
+    });
+    return res.status(500).json({
+      success: false,
+      error: 'Error al registrar el uso del equipo',
+      message: 'Ocurrió un error interno. Por favor intenta nuevamente más tarde.',
+      detalle: process.env.NODE_ENV === 'development' ? err.message : undefined
     });
   }
 }

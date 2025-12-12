@@ -206,6 +206,17 @@ export const actualizarUsoEquipoSchema = z.object({
 });
 
 /**
+ * Validador para registro de uso de equipo desde página externa
+ * Recibe: ficha, placa, nombre, documento
+ */
+export const registrarUsoEquipoExternoSchema = z.object({
+  ficha: z.string().min(1, 'La ficha es obligatoria').max(50, 'La ficha no puede exceder 50 caracteres'),
+  placa: z.string().min(1, 'La placa del equipo es obligatoria').max(100, 'La placa no puede exceder 100 caracteres'),
+  nombre: z.string().min(1, 'El nombre es obligatorio').max(200, 'El nombre no puede exceder 200 caracteres'),
+  documento: z.string().min(5, 'El documento de identificación debe tener al menos 5 caracteres').max(20, 'El documento no puede exceder 20 caracteres'),
+});
+
+/**
  * Middleware de validación genérico
  */
 export const validate = (schema) => (req, res, next) => {
