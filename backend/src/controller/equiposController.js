@@ -2412,7 +2412,16 @@ export async function registrarUsoEquipoExterno(req, res) {
     }
 
     // Buscar usuario por documento (cedula)
-    const usuario = await obtenerUsuarioPorCedula(defaultDb, documento.trim());
+    // Usar defaultDb que ya tiene el formato correcto
+    const [[usuarioRow]] = await defaultDb.execute(
+      `SELECT u.id_usuario, u.nombre_usuario, u.cedula, u.correo, u.telefono,
+              r.nombre_rol, r.id_rol
+       FROM Usuarios u
+       LEFT JOIN Roles r ON r.id_rol = u.id_rol
+       WHERE u.cedula = ? AND u.estado = 'Activo'`,
+      [documento.trim()]
+    );
+    const usuario = usuarioRow || null;
 
     if (!usuario) {
       return res.status(404).json({ 
