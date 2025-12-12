@@ -905,6 +905,33 @@ export default function DetalleEquipo() {
                             <strong>Fecha asignación:</strong> {formatDate(responsable.fecha_asignacion)}
                           </div>
                         </div>
+                        {(responsable.dias_semana || responsable.hora_inicio || responsable.hora_fin) && (
+                          <div style={{ marginTop: '12px', padding: '12px', background: '#ffffff', borderRadius: '6px', border: '1px solid #e5e7eb' }}>
+                            <div style={{ fontSize: '13px', fontWeight: 600, color: '#374151', marginBottom: '8px' }}>
+                              Horario de Uso:
+                            </div>
+                            <div style={{ display: 'grid', gap: '6px', fontSize: '13px', color: '#6b7280' }}>
+                              {responsable.dias_semana && Array.isArray(responsable.dias_semana) && responsable.dias_semana.length > 0 && (
+                                <div>
+                                  <strong>Días:</strong> {responsable.dias_semana.join(', ')}
+                                </div>
+                              )}
+                              {(responsable.hora_inicio || responsable.hora_fin) && (
+                                <div>
+                                  <strong>Horario:</strong> {
+                                    responsable.hora_inicio && responsable.hora_fin
+                                      ? `${responsable.hora_inicio.substring(0, 5)} - ${responsable.hora_fin.substring(0, 5)}`
+                                      : responsable.hora_inicio
+                                        ? `Desde ${responsable.hora_inicio.substring(0, 5)}`
+                                        : responsable.hora_fin
+                                          ? `Hasta ${responsable.hora_fin.substring(0, 5)}`
+                                          : '-'
+                                  }
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )}
                         {responsable.observaciones && (
                           <div style={{ marginTop: '8px', padding: '8px', background: '#ffffff', borderRadius: '6px', fontSize: '13px', color: '#374151' }}>
                             <strong>Observaciones:</strong> {responsable.observaciones}

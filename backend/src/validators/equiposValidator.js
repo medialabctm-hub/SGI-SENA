@@ -190,15 +190,6 @@ export const registrarUsoEquipoSchema = z.object({
     return !isNaN(date.getTime());
   }, { message: 'La fecha de fin debe ser una fecha válida' }),
   observaciones: z.string().max(1000, 'Las observaciones no pueden exceder 1000 caracteres').optional().nullable(),
-  id_clase: z.union([
-    z.number().int().positive('El ID de la clase debe ser un número positivo'),
-    z.string().transform((val) => {
-      if (!val || val === '') return null;
-      const num = parseInt(val, 10);
-      return isNaN(num) ? null : num;
-    }),
-    z.null()
-  ]).optional().nullable(),
 });
 
 export const actualizarUsoEquipoSchema = z.object({
@@ -218,12 +209,26 @@ export const actualizarUsoEquipoSchema = z.object({
  * Validador para registro de uso de equipo desde página externa
  * Recibe: placa, ambiente, usuarios (array)
  * Nota: El ambiente debe ser el código numérico que los usuarios conocen (ej: "101", "102")
- * Cada usuario debe tener: ficha, nombre, documento
+ * Cada usuario debe tener: ficha, nombre, documento, dias_semana (opcional), hora_inicio (opcional), hora_fin (opcional)
  */
+const diasSemanaEnum = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+
 const usuarioExternoSchema = z.object({
   ficha: z.string().min(1, 'La ficha es obligatoria').max(50, 'La ficha no puede exceder 50 caracteres'),
   nombre: z.string().min(1, 'El nombre es obligatorio').max(200, 'El nombre no puede exceder 200 caracteres'),
   documento: z.string().min(5, 'El documento de identificación debe tener al menos 5 caracteres').max(20, 'El documento no puede exceder 20 caracteres'),
+  dias_semana: z.array(z.enum(diasSemanaEnum)).optional().nullable(),
+  hora_inicio: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9](:00)?$/, 'Formato de hora inválido (debe ser HH:MM o HH:MM:SS)').optional().nullable(),
+  hora_fin: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9](:00)?$/, 'Formato de hora inválido (debe ser HH:MM o HH:MM:SS)').optional().nullable(),
+}).refine((data) => {
+  // Si se proporciona hora_inicio o hora_fin, ambas deben estar presentes
+  if ((data.hora_inicio && !data.hora_fin) || (!data.hora_inicio && data.hora_fin)) {
+    return false;
+  }
+  return true;
+}, {
+  message: 'Si se especifica horario, tanto hora_inicio como hora_fin son obligatorios',
+  path: ['hora_inicio']
 });
 
 export const registrarUsoEquipoExternoSchema = z.object({

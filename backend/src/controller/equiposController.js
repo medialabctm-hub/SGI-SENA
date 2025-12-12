@@ -357,22 +357,22 @@ export async function obtenerEquipoPorCodigo(req, res) {
       equipoData = rowsInventario.length === 1 ? rowsInventario[0] : rowsInventario[0];
       codigoEquipoParaResponsables = equipoData.codigo_equipo;
     } else {
-      // Si no se encontró por placa, intentar por código_equipo (ID interno)
-      const codigoNumerico = Number.parseInt(codigo, 10);
-      if (Number.isFinite(codigoNumerico)) {
-        // Reconstruir params para búsqueda por código_equipo
-        const paramsId = [codigoNumerico];
-        if (userRole === 'Cuentadante') {
-          paramsId.push(userId);
-        } else if (userRole === 'Instructor') {
-          paramsId.push(userId);
-        }
-        
-        const [rowsId] = await defaultDb.execute(
-          `${queryBase} WHERE e.codigo_equipo = ?${whereClause}`,
-          paramsId
-        );
-        if (rowsId && rowsId.length > 0) {
+    // Si no se encontró por placa, intentar por código_equipo (ID interno)
+    const codigoNumerico = Number.parseInt(codigo, 10);
+    if (Number.isFinite(codigoNumerico)) {
+      // Reconstruir params para búsqueda por código_equipo
+      const paramsId = [codigoNumerico];
+      if (userRole === 'Cuentadante') {
+        paramsId.push(userId);
+      } else if (userRole === 'Instructor') {
+        paramsId.push(userId);
+      }
+      
+      const [rowsId] = await defaultDb.execute(
+        `${queryBase} WHERE e.codigo_equipo = ?${whereClause}`,
+        paramsId
+      );
+      if (rowsId && rowsId.length > 0) {
           equipoData = rowsId.length === 1 ? rowsId[0] : rowsId[0];
           codigoEquipoParaResponsables = equipoData.codigo_equipo;
         }
@@ -380,7 +380,7 @@ export async function obtenerEquipoPorCodigo(req, res) {
     }
 
     if (!equipoData) {
-      return res.status(404).json({ error: 'Equipo no encontrado' });
+    return res.status(404).json({ error: 'Equipo no encontrado' });
     }
 
     // Obtener responsables/usuarios asignados al equipo
@@ -409,14 +409,14 @@ export async function obtenerEquipoPorCodigo(req, res) {
     // Agregar responsables al objeto del equipo
     const equipoConResponsables = {
       ...equipoData,
-      responsables: responsables || []
+      responsables: responsablesConDias || []
     };
 
     // Si había múltiples registros, devolver array con responsables en cada uno
     if (rowsInventario && rowsInventario.length > 1) {
       return res.json(rowsInventario.map(eq => ({
         ...eq,
-        responsables: responsables || []
+        responsables: responsablesConDias || []
       })));
     }
 
@@ -1811,7 +1811,7 @@ export async function eliminarCategoria(req, res) {
  */
 export async function registrarInicioUso(req, res) {
   try {
-    const { codigo_equipo, nombre_usuario, fecha_hora_inicio, observaciones, id_clase } = req.body;
+    const { codigo_equipo, nombre_usuario, fecha_hora_inicio, observaciones } = req.body;
     const userId = req.user?.id; // El usuario viene del token JWT
 
     if (!codigo_equipo) {
@@ -1826,17 +1826,6 @@ export async function registrarInicioUso(req, res) {
     const equipo = await obtenerEquipoPorCodigoUtil(defaultDb, codigo_equipo);
     if (!equipo) {
       return res.status(404).json({ error: 'Equipo no encontrado' });
-    }
-
-    // Si se proporciona id_clase, validar que existe
-    if (id_clase) {
-      const [[claseExiste]] = await defaultDb.execute(
-        `SELECT id_clase FROM Clases WHERE id_clase = ?`,
-        [id_clase]
-      );
-      if (!claseExiste) {
-        return res.status(404).json({ error: 'Clase no encontrada' });
-      }
     }
 
     // Verificar si el usuario tiene una sesión activa en este equipo
@@ -1857,51 +1846,26 @@ export async function registrarInicioUso(req, res) {
     // Usar la fecha proporcionada o la fecha actual
     const fechaInicio = fecha_hora_inicio ? new Date(fecha_hora_inicio) : new Date();
 
-    // Verificar si las columnas existen en la tabla
-    const [[columnaNombreUsuario]] = await defaultDb.execute(
+    // Verificar si la columna nombre_usuario existe en la tabla
+    const [[columnaExiste]] = await defaultDb.execute(
       `SELECT COUNT(*) AS cnt FROM INFORMATION_SCHEMA.COLUMNS 
        WHERE TABLE_SCHEMA = DATABASE() 
        AND TABLE_NAME = 'Historial_Uso_Equipos' 
        AND COLUMN_NAME = 'nombre_usuario'`
     );
-    const [[columnaIdClase]] = await defaultDb.execute(
-      `SELECT COUNT(*) AS cnt FROM INFORMATION_SCHEMA.COLUMNS 
-       WHERE TABLE_SCHEMA = DATABASE() 
-       AND TABLE_NAME = 'Historial_Uso_Equipos' 
-       AND COLUMN_NAME = 'id_clase'`
-    );
 
-    // Insertar nuevo registro de uso
+    // Insertar nuevo registro de uso (con o sin nombre_usuario según exista la columna)
     let result;
-    const tieneNombreUsuario = columnaNombreUsuario.cnt > 0;
-    const tieneIdClase = columnaIdClase.cnt > 0;
-
-    if (tieneNombreUsuario && tieneIdClase) {
-      // Incluir nombre_usuario e id_clase
-      [result] = await defaultDb.execute(
-        `INSERT INTO Historial_Uso_Equipos 
-         (codigo_equipo, id_usuario, nombre_usuario, fecha_hora_inicio, estado, observaciones, id_clase) 
-         VALUES (?, ?, ?, ?, 'En Uso', ?, ?)`,
-        [codigo_equipo, userId, nombre_usuario, fechaInicio, observaciones || null, id_clase || null]
-      );
-    } else if (tieneNombreUsuario) {
-      // Solo incluir nombre_usuario
+    if (columnaExiste.cnt > 0) {
+      // Si la columna existe, incluirla en el INSERT
       [result] = await defaultDb.execute(
         `INSERT INTO Historial_Uso_Equipos 
          (codigo_equipo, id_usuario, nombre_usuario, fecha_hora_inicio, estado, observaciones) 
          VALUES (?, ?, ?, ?, 'En Uso', ?)`,
         [codigo_equipo, userId, nombre_usuario, fechaInicio, observaciones || null]
       );
-    } else if (tieneIdClase) {
-      // Solo incluir id_clase
-      [result] = await defaultDb.execute(
-        `INSERT INTO Historial_Uso_Equipos 
-         (codigo_equipo, id_usuario, fecha_hora_inicio, estado, observaciones, id_clase) 
-         VALUES (?, ?, ?, 'En Uso', ?, ?)`,
-        [codigo_equipo, userId, fechaInicio, observaciones || null, id_clase || null]
-      );
     } else {
-      // Sin columnas adicionales
+      // Si la columna no existe, insertar sin ella
       [result] = await defaultDb.execute(
         `INSERT INTO Historial_Uso_Equipos 
          (codigo_equipo, id_usuario, fecha_hora_inicio, estado, observaciones) 
@@ -1915,16 +1879,14 @@ export async function registrarInicioUso(req, res) {
       codigo_equipo,
       id_usuario: userId,
       nombre_usuario,
-      fecha_hora_inicio: fechaInicio,
-      id_clase: id_clase || null
+      fecha_hora_inicio: fechaInicio
     });
 
     return res.status(201).json({
       ok: true,
       id_historial: result.insertId,
       message: 'Inicio de sesión registrado correctamente',
-      fecha_hora_inicio: fechaInicio,
-      id_clase: id_clase || null
+      fecha_hora_inicio: fechaInicio
     });
   } catch (err) {
     logger.error('Error al registrar inicio de uso', { error: err.message, stack: err.stack });
@@ -2026,7 +1988,6 @@ export async function consultarHistorialUso(req, res) {
       fecha_desde,
       fecha_hasta,
       estado,
-      id_clase,
       limit = 100,
       offset = 0
     } = req.query;
@@ -2057,15 +2018,6 @@ export async function consultarHistorialUso(req, res) {
       // Continuar de todas formas, el error real se mostrará en la consulta
     }
 
-    // Verificar si existe la columna id_clase
-    const [[columnaIdClase]] = await defaultDb.execute(
-      `SELECT COUNT(*) AS cnt FROM INFORMATION_SCHEMA.COLUMNS 
-       WHERE TABLE_SCHEMA = DATABASE() 
-       AND TABLE_NAME = 'Historial_Uso_Equipos' 
-       AND COLUMN_NAME = 'id_clase'`
-    );
-    const tieneIdClase = columnaIdClase.cnt > 0;
-
     let query = `
       SELECT 
         hu.id_historial,
@@ -2083,21 +2035,9 @@ export async function consultarHistorialUso(req, res) {
         hu.duracion_minutos,
         hu.observaciones,
         hu.fecha_registro
-        ${tieneIdClase ? `,
-        hu.id_clase,
-        c.nombre_clase,
-        c.codigo_ficha,
-        c.fecha_clase,
-        c.hora_inicio,
-        c.hora_fin,
-        c.estado_clase,
-        a_clase.nombre_ambiente AS clase_ambiente_nombre,
-        a_clase.codigo_ambiente AS clase_ambiente_codigo` : ''}
       FROM Historial_Uso_Equipos hu
       INNER JOIN Elementos e ON hu.codigo_equipo = e.codigo_equipo
       INNER JOIN Usuarios u ON hu.id_usuario = u.id_usuario
-      ${tieneIdClase ? 'LEFT JOIN Clases c ON hu.id_clase = c.id_clase' : ''}
-      ${tieneIdClase ? 'LEFT JOIN Ambientes a_clase ON c.id_ambiente = a_clase.id_ambiente' : ''}
       WHERE 1=1
     `;
 
@@ -2139,12 +2079,6 @@ export async function consultarHistorialUso(req, res) {
     if (fecha_hasta) {
       query += ' AND DATE(hu.fecha_hora_inicio) <= ?';
       params.push(fecha_hasta);
-    }
-
-    // Filtrar por clase si se proporciona
-    if (tieneIdClase && id_clase) {
-      query += ' AND hu.id_clase = ?';
-      params.push(id_clase);
     }
 
     // LIMIT y OFFSET deben ser números literales, no parámetros preparados
@@ -2218,11 +2152,6 @@ export async function consultarHistorialUso(req, res) {
       countParams.push(fecha_hasta);
     }
 
-    if (tieneIdClase && id_clase) {
-      countQuery += ' AND hu.id_clase = ?';
-      countParams.push(id_clase);
-    }
-
     const [[{ total }]] = await defaultDb.execute(countQuery, countParams);
 
     return res.json({
@@ -2264,7 +2193,7 @@ export async function consultarHistorialUso(req, res) {
 export async function obtenerHistorialEquipoUso(req, res) {
   try {
     const { codigo } = req.params;
-    const { fecha_desde, fecha_hasta, id_clase, limit = 50 } = req.query;
+    const { fecha_desde, fecha_hasta, limit = 50 } = req.query;
 
     if (!codigo) {
       return res.status(400).json({ error: 'El código del equipo es requerido' });
@@ -2273,15 +2202,6 @@ export async function obtenerHistorialEquipoUso(req, res) {
     // Convertir código a número si es posible, sino buscar por placa
     const codigoNum = parseInt(codigo, 10);
     const buscarPorPlaca = isNaN(codigoNum);
-
-    // Verificar si existe la columna id_clase
-    const [[columnaIdClase]] = await defaultDb.execute(
-      `SELECT COUNT(*) AS cnt FROM INFORMATION_SCHEMA.COLUMNS 
-       WHERE TABLE_SCHEMA = DATABASE() 
-       AND TABLE_NAME = 'Historial_Uso_Equipos' 
-       AND COLUMN_NAME = 'id_clase'`
-    );
-    const tieneIdClase = columnaIdClase.cnt > 0;
 
     let query = `
       SELECT 
@@ -2300,21 +2220,9 @@ export async function obtenerHistorialEquipoUso(req, res) {
         hu.duracion_minutos,
         hu.observaciones,
         hu.fecha_registro
-        ${tieneIdClase ? `,
-        hu.id_clase,
-        c.nombre_clase,
-        c.codigo_ficha,
-        c.fecha_clase,
-        c.hora_inicio,
-        c.hora_fin,
-        c.estado_clase,
-        a_clase.nombre_ambiente AS clase_ambiente_nombre,
-        a_clase.codigo_ambiente AS clase_ambiente_codigo` : ''}
       FROM Historial_Uso_Equipos hu
       INNER JOIN Elementos e ON hu.codigo_equipo = e.codigo_equipo
       INNER JOIN Usuarios u ON hu.id_usuario = u.id_usuario
-      ${tieneIdClase ? 'LEFT JOIN Clases c ON hu.id_clase = c.id_clase' : ''}
-      ${tieneIdClase ? 'LEFT JOIN Ambientes a_clase ON c.id_ambiente = a_clase.id_ambiente' : ''}
       WHERE ${buscarPorPlaca ? 'e.placa = ?' : 'hu.codigo_equipo = ?'}
     `;
 
@@ -2328,12 +2236,6 @@ export async function obtenerHistorialEquipoUso(req, res) {
     if (fecha_hasta) {
       query += ' AND DATE(hu.fecha_hora_inicio) <= ?';
       params.push(fecha_hasta);
-    }
-
-    // Filtrar por clase si se proporciona
-    if (tieneIdClase && id_clase) {
-      query += ' AND hu.id_clase = ?';
-      params.push(id_clase);
     }
 
     // LIMIT debe ser número literal, no parámetro preparado
@@ -2619,6 +2521,24 @@ export async function registrarUsoEquipoExterno(req, res) {
          AND TABLE_NAME = 'Responsables_Equipo' 
          AND COLUMN_NAME = 'documento_externo'`
       );
+      const [[colDiasSemana]] = await connection.execute(
+        `SELECT COUNT(*) AS cnt FROM INFORMATION_SCHEMA.COLUMNS 
+         WHERE TABLE_SCHEMA = DATABASE() 
+         AND TABLE_NAME = 'Responsables_Equipo' 
+         AND COLUMN_NAME = 'dias_semana'`
+      );
+      const [[colHoraInicio]] = await connection.execute(
+        `SELECT COUNT(*) AS cnt FROM INFORMATION_SCHEMA.COLUMNS 
+         WHERE TABLE_SCHEMA = DATABASE() 
+         AND TABLE_NAME = 'Responsables_Equipo' 
+         AND COLUMN_NAME = 'hora_inicio'`
+      );
+      const [[colHoraFin]] = await connection.execute(
+        `SELECT COUNT(*) AS cnt FROM INFORMATION_SCHEMA.COLUMNS 
+         WHERE TABLE_SCHEMA = DATABASE() 
+         AND TABLE_NAME = 'Responsables_Equipo' 
+         AND COLUMN_NAME = 'hora_fin'`
+      );
       const [[columnaNombreUsuario]] = await connection.execute(
         `SELECT COUNT(*) AS cnt FROM INFORMATION_SCHEMA.COLUMNS 
          WHERE TABLE_SCHEMA = DATABASE() 
@@ -2629,6 +2549,9 @@ export async function registrarUsoEquipoExterno(req, res) {
       const tieneFicha = colFicha.cnt > 0;
       const tieneNombreExterno = colNombreExterno.cnt > 0;
       const tieneDocumentoExterno = colDocumentoExterno.cnt > 0;
+      const tieneDiasSemana = colDiasSemana.cnt > 0;
+      const tieneHoraInicio = colHoraInicio.cnt > 0;
+      const tieneHoraFin = colHoraFin.cnt > 0;
       const tieneNombreUsuarioHistorial = columnaNombreUsuario.cnt > 0;
 
       // 2. Procesar cada usuario del array
@@ -2636,7 +2559,7 @@ export async function registrarUsoEquipoExterno(req, res) {
       const errores = [];
 
       for (const usuarioData of usuarios) {
-        const { ficha, nombre, documento } = usuarioData;
+        const { ficha, nombre, documento, dias_semana, hora_inicio, hora_fin } = usuarioData;
 
         try {
           // Buscar usuario por documento
@@ -2671,6 +2594,33 @@ export async function registrarUsoEquipoExterno(req, res) {
           // Crear o actualizar asignación
           const observaciones = `Ficha: ${ficha.trim()}, Nombre: ${nombre.trim()}, Documento: ${documento.trim()}`;
 
+          // Preparar datos de horarios
+          let diasSemanaJson = null;
+          if (dias_semana && Array.isArray(dias_semana) && dias_semana.length > 0) {
+            diasSemanaJson = JSON.stringify(dias_semana);
+          }
+
+          // Convertir horas de string a TIME (formato HH:MM:SS)
+          let horaInicioTime = null;
+          let horaFinTime = null;
+          if (hora_inicio) {
+            // Asegurar formato HH:MM:SS
+            const horaInicioParts = hora_inicio.split(':');
+            if (horaInicioParts.length === 2) {
+              horaInicioTime = `${horaInicioParts[0].padStart(2, '0')}:${horaInicioParts[1].padStart(2, '0')}:00`;
+            } else {
+              horaInicioTime = hora_inicio;
+            }
+          }
+          if (hora_fin) {
+            const horaFinParts = hora_fin.split(':');
+            if (horaFinParts.length === 2) {
+              horaFinTime = `${horaFinParts[0].padStart(2, '0')}:${horaFinParts[1].padStart(2, '0')}:00`;
+            } else {
+              horaFinTime = hora_fin;
+            }
+          }
+
           if (!asignacionExistente) {
             // Crear nueva asignación
             let campos = ['codigo_equipo', 'id_usuario', 'tipo_responsabilidad', 'observaciones', 'fecha_asignacion'];
@@ -2690,6 +2640,21 @@ export async function registrarUsoEquipoExterno(req, res) {
             if (tieneDocumentoExterno) {
               campos.push('documento_externo');
               valores.push(documento.trim());
+              placeholders.push('?');
+            }
+            if (tieneDiasSemana && diasSemanaJson) {
+              campos.push('dias_semana');
+              valores.push(diasSemanaJson);
+              placeholders.push('?');
+            }
+            if (tieneHoraInicio && horaInicioTime) {
+              campos.push('hora_inicio');
+              valores.push(horaInicioTime);
+              placeholders.push('?');
+            }
+            if (tieneHoraFin && horaFinTime) {
+              campos.push('hora_fin');
+              valores.push(horaFinTime);
               placeholders.push('?');
             }
 
@@ -2723,6 +2688,18 @@ export async function registrarUsoEquipoExterno(req, res) {
             if (tieneDocumentoExterno) {
               updates.push('documento_externo = ?');
               valoresUpdate.push(documento.trim());
+            }
+            if (tieneDiasSemana) {
+              updates.push('dias_semana = ?');
+              valoresUpdate.push(diasSemanaJson);
+            }
+            if (tieneHoraInicio) {
+              updates.push('hora_inicio = ?');
+              valoresUpdate.push(horaInicioTime);
+            }
+            if (tieneHoraFin) {
+              updates.push('hora_fin = ?');
+              valoresUpdate.push(horaFinTime);
             }
 
             updates.push('observaciones = ?');
