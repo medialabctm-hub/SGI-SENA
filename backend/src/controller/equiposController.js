@@ -2532,7 +2532,7 @@ export async function registrarUsoEquipoExterno(req, res) {
         // Construir query dinámicamente según las columnas disponibles
         let campos = ['codigo_equipo', 'id_usuario', 'tipo_responsabilidad', 'observaciones', 'fecha_asignacion'];
         let valores = [equipo.codigo_equipo, usuario.id_usuario, 'Principal', observaciones];
-        let placeholders = ['?', '?', '?', '?'];
+        let placeholders = ['?', '?', '?', '?', 'NOW()']; // fecha_asignacion usa NOW()
 
         if (tieneFicha) {
           campos.push('ficha');
