@@ -394,6 +394,9 @@ export async function obtenerEquipoPorCodigo(req, res) {
         re.ficha,
         re.nombre_externo,
         re.documento_externo,
+        CAST(re.dias_semana AS CHAR) AS dias_semana,
+        re.hora_inicio,
+        re.hora_fin,
         u.nombre_usuario,
         u.cedula,
         r.nombre_rol,
@@ -405,6 +408,18 @@ export async function obtenerEquipoPorCodigo(req, res) {
        ORDER BY re.fecha_asignacion DESC`,
       [codigoEquipoParaResponsables]
     );
+
+    // Parsear JSON de dias_semana para cada responsable
+    const responsablesConDias = responsables.map(resp => {
+      if (resp.dias_semana) {
+        try {
+          resp.dias_semana = JSON.parse(resp.dias_semana);
+        } catch (e) {
+          resp.dias_semana = null;
+        }
+      }
+      return resp;
+    });
 
     // Agregar responsables al objeto del equipo
     const equipoConResponsables = {
