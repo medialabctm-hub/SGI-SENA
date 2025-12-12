@@ -33,6 +33,28 @@ router.get(
   listarAmbientesActivos
 );
 
+// IMPORTANTE: Las rutas específicas deben ir ANTES de las rutas con parámetros
+// Listar asignaciones permanentes de ambientes
+router.get(
+  '/ambientes/asignaciones',
+  requirePermission(PERMISSIONS.AMBIENTES.VIEW),
+  listarAsignacionesAmbientes
+);
+
+// Asignar ambiente a instructor (permanente)
+router.post(
+  '/ambientes/asignar',
+  requirePermission(PERMISSIONS.AMBIENTES.UPDATE),
+  asignarAmbienteInstructor
+);
+
+// Desasignar ambiente de instructor
+router.delete(
+  '/ambientes/asignaciones/:id_responsabilidad',
+  requirePermission(PERMISSIONS.AMBIENTES.UPDATE),
+  desasignarAmbienteInstructor
+);
+
 // Obtener un ambiente específico con detalles completos
 router.get(
   '/ambientes/:id',
@@ -59,27 +81,6 @@ router.delete(
   '/ambientes/:id',
   requirePermission(PERMISSIONS.AMBIENTES.DELETE),
   eliminarAmbiente
-);
-
-// Asignar ambiente a instructor (permanente)
-router.post(
-  '/ambientes/asignar',
-  requirePermission(PERMISSIONS.AMBIENTES.UPDATE),
-  asignarAmbienteInstructor
-);
-
-// Desasignar ambiente de instructor
-router.delete(
-  '/ambientes/asignaciones/:id_responsabilidad',
-  requirePermission(PERMISSIONS.AMBIENTES.UPDATE),
-  desasignarAmbienteInstructor
-);
-
-// Listar asignaciones permanentes de ambientes
-router.get(
-  '/ambientes/asignaciones',
-  requirePermission(PERMISSIONS.AMBIENTES.VIEW),
-  listarAsignacionesAmbientes
 );
 
 export default router;

@@ -707,23 +707,23 @@ export async function obtenerEquiposAmbientesInstructor(req, res) {
       })
     }
 
-    // Determinar jornada actual basada en la hora
-    const horaActual = new Date().getHours();
-    let jornadaActual = 'Mañana'; // Por defecto
-    if (horaActual >= 6 && horaActual < 12) {
-      jornadaActual = 'Mañana';
-    } else if (horaActual >= 12 && horaActual < 18) {
-      jornadaActual = 'Tarde';
-    } else {
-      jornadaActual = 'Noche';
-    }
+    // Obtener día de la semana actual (0=Domingo, 1=Lunes, ..., 6=Sábado)
+    const ahora = new Date();
+    const diaSemanaActual = ahora.getDay(); // 0-6
+    const diasSemanaNombres = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+    const diaActualNombre = diasSemanaNombres[diaSemanaActual];
+    
+    // Obtener hora actual en formato HH:MM:SS
+    const horaActual = ahora.toTimeString().slice(0, 8); // HH:MM:SS
 
     // Obtener ambientes donde el instructor tiene responsabilidad activa
     // Incluye tanto asignaciones permanentes (id_clase IS NULL) como temporales (con id_clase)
-    // Para permanentes, solo muestra las de la jornada actual
-    // Para temporales (clases), verifica que la clase esté dentro del rango de tiempo actual
+    // Para permanentes con días/horarios: verifica día actual y rango de horas
+    // Para permanentes con jornada (legacy): mantiene compatibilidad
+    // Para temporales (clases): verifica que la clase esté dentro del rango de tiempo actual
     const [ambientes] = await defaultDb.execute(
       `SELECT DISTINCT
+        ra.id_responsabilidad_ambiente,
         ra.id_ambiente,
         a.nombre_ambiente,
         a.codigo_ambiente,
@@ -731,6 +731,9 @@ export async function obtenerEquiposAmbientesInstructor(req, res) {
         ra.fecha_inicio,
         ra.fecha_fin,
         ra.jornada,
+        ra.dias_semana,
+        ra.hora_inicio,
+        ra.hora_fin,
         ra.id_clase,
         c.estado_clase,
         CASE WHEN ra.id_clase IS NULL THEN 'Permanente' ELSE 'Temporal' END AS tipo_asignacion
@@ -742,17 +745,32 @@ export async function obtenerEquiposAmbientesInstructor(req, res) {
         AND ra.fecha_inicio <= NOW()
         AND (ra.fecha_fin IS NULL OR ra.fecha_fin >= NOW())
         AND (
-          (ra.id_clase IS NULL AND ra.jornada = ?)
-          OR (
-            ra.id_clase IS NOT NULL 
-            AND c.estado_clase IN ('Programada', 'En Curso')
-            AND c.fecha_clase = CURDATE()
-            AND CONCAT(c.fecha_clase, ' ', c.hora_inicio) <= NOW()
-            AND CONCAT(c.fecha_clase, ' ', c.hora_fin) >= NOW()
-          )
+          -- Asignaciones permanentes con días y horarios (nuevo sistema)
+          (ra.id_clase IS NULL 
+           AND ra.dias_semana IS NOT NULL 
+           AND JSON_CONTAINS(ra.dias_semana, ?)
+           AND ra.hora_inicio <= ?
+           AND ra.hora_fin >= ?)
+          OR
+          -- Asignaciones permanentes con jornada (sistema legacy - compatibilidad)
+          (ra.id_clase IS NULL 
+           AND ra.jornada IS NOT NULL 
+           AND ra.dias_semana IS NULL
+           AND (
+             (ra.jornada = 'Mañana' AND HOUR(NOW()) >= 6 AND HOUR(NOW()) < 12)
+             OR (ra.jornada = 'Tarde' AND HOUR(NOW()) >= 12 AND HOUR(NOW()) < 18)
+             OR (ra.jornada = 'Noche' AND (HOUR(NOW()) >= 18 OR HOUR(NOW()) < 6))
+           ))
+          OR
+          -- Asignaciones temporales (clases)
+          (ra.id_clase IS NOT NULL 
+           AND c.estado_clase IN ('Programada', 'En Curso')
+           AND c.fecha_clase = CURDATE()
+           AND CONCAT(c.fecha_clase, ' ', c.hora_inicio) <= NOW()
+           AND CONCAT(c.fecha_clase, ' ', c.hora_fin) >= NOW())
         )
       ORDER BY a.nombre_ambiente`,
-      [userId, jornadaActual]
+      [userId, JSON.stringify([diaActualNombre]), horaActual, horaActual]
     )
 
     // Log para debug

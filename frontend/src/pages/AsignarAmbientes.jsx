@@ -19,9 +19,13 @@ export default function AsignarAmbientes() {
   const [form, setForm] = useState({
     id_ambiente: '',
     id_instructor: '',
-    jornada: 'Mañana',
+    dias_semana: [],
+    hora_inicio: '08:00',
+    hora_fin: '12:00',
     observaciones: ''
   })
+  
+  const diasSemana = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes']
   const [confirmDelete, setConfirmDelete] = useState({ open: false, id: null })
 
   useEffect(() => {
@@ -97,10 +101,28 @@ export default function AsignarAmbientes() {
     }
   }
 
+  function handleDiaChange(dia, checked) {
+    if (checked) {
+      setForm({ ...form, dias_semana: [...form.dias_semana, dia] })
+    } else {
+      setForm({ ...form, dias_semana: form.dias_semana.filter(d => d !== dia) })
+    }
+  }
+
   async function handleSubmit(e) {
     e.preventDefault()
-    if (!form.id_ambiente || !form.id_instructor || !form.jornada) {
-      setToast({ message: 'Debes seleccionar un ambiente, un instructor y una jornada', type: 'error' })
+    if (!form.id_ambiente || !form.id_instructor) {
+      setToast({ message: 'Debes seleccionar un ambiente y un instructor', type: 'error' })
+      return
+    }
+    
+    if (form.dias_semana.length === 0) {
+      setToast({ message: 'Debes seleccionar al menos un día de la semana', type: 'error' })
+      return
+    }
+    
+    if (!form.hora_inicio || !form.hora_fin) {
+      setToast({ message: 'Debes especificar hora de inicio y hora de fin', type: 'error' })
       return
     }
 
@@ -117,14 +139,16 @@ export default function AsignarAmbientes() {
         body: JSON.stringify({
           id_ambiente: parseInt(form.id_ambiente),
           id_instructor: parseInt(form.id_instructor),
-          jornada: form.jornada,
+          dias_semana: form.dias_semana,
+          hora_inicio: form.hora_inicio,
+          hora_fin: form.hora_fin,
           observaciones: form.observaciones || null
         })
       })
       const data = await parseApiResponse(res, 'No se pudo asignar el ambiente')
       setToast({ message: data.message || 'Ambiente asignado correctamente', type: 'success' })
       setShowForm(false)
-      setForm({ id_ambiente: '', id_instructor: '', jornada: 'Mañana', observaciones: '' })
+      setForm({ id_ambiente: '', id_instructor: '', dias_semana: [], hora_inicio: '08:00', hora_fin: '12:00', observaciones: '' })
       fetchAsignaciones()
     } catch (err) {
       setToast({ message: buildErrorMessage(err, 'No se pudo asignar el ambiente'), type: 'error' })
@@ -246,7 +270,7 @@ export default function AsignarAmbientes() {
               <div className="verificacion-ambiente-card" style={{ marginTop: '1.5rem', marginBottom: '1.5rem' }}>
                 <h3 style={{ marginTop: 0, marginBottom: '1rem' }}>Nueva Asignación</h3>
                 <form onSubmit={handleSubmit}>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
                     <div>
                       <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>
                         Ambiente *
@@ -295,13 +319,36 @@ export default function AsignarAmbientes() {
                         ))}
                       </select>
                     </div>
+                  </div>
+                  
+                  <div style={{ marginBottom: '1rem' }}>
+                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>
+                      Días de la Semana *
+                    </label>
+                    <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+                      {diasSemana.map(dia => (
+                        <label key={dia} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+                          <input
+                            type="checkbox"
+                            checked={form.dias_semana.includes(dia)}
+                            onChange={e => handleDiaChange(dia, e.target.checked)}
+                            style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                          />
+                          <span>{dia}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                  
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
                     <div>
                       <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>
-                        Jornada *
+                        Hora Inicio *
                       </label>
-                      <select
-                        value={form.jornada}
-                        onChange={e => setForm({ ...form, jornada: e.target.value })}
+                      <input
+                        type="time"
+                        value={form.hora_inicio}
+                        onChange={e => setForm({ ...form, hora_inicio: e.target.value })}
                         required
                         style={{
                           width: '100%',
@@ -310,11 +357,25 @@ export default function AsignarAmbientes() {
                           border: '2px solid var(--neutral-300)',
                           fontSize: '0.95rem'
                         }}
-                      >
-                        <option value="Mañana">Mañana</option>
-                        <option value="Tarde">Tarde</option>
-                        <option value="Noche">Noche</option>
-                      </select>
+                      />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>
+                        Hora Fin *
+                      </label>
+                      <input
+                        type="time"
+                        value={form.hora_fin}
+                        onChange={e => setForm({ ...form, hora_fin: e.target.value })}
+                        required
+                        style={{
+                          width: '100%',
+                          padding: '10px 14px',
+                          borderRadius: '8px',
+                          border: '2px solid var(--neutral-300)',
+                          fontSize: '0.95rem'
+                        }}
+                      />
                     </div>
                   </div>
                   <div style={{ marginBottom: '1rem' }}>
@@ -342,7 +403,7 @@ export default function AsignarAmbientes() {
                       className="btn"
                       onClick={() => {
                         setShowForm(false)
-                        setForm({ id_ambiente: '', id_instructor: '', observaciones: '' })
+                        setForm({ id_ambiente: '', id_instructor: '', dias_semana: [], hora_inicio: '08:00', hora_fin: '12:00', observaciones: '' })
                       }}
                       disabled={loading}
                     >
@@ -375,12 +436,12 @@ export default function AsignarAmbientes() {
               </div>
             ) : (
               <div style={{ marginTop: '1.5rem' }}>
-                {/* Agrupar asignaciones por ambiente y jornada para mejor visualización */}
+                {/* Mostrar asignaciones agrupadas por ambiente */}
                 {(() => {
-                  // Agrupar por ambiente y jornada
+                  // Agrupar por ambiente
                   const agrupadas = {}
                   asignaciones.forEach(asig => {
-                    const key = `${asig.id_ambiente}-${asig.jornada || 'Sin Jornada'}`
+                    const key = `${asig.id_ambiente}`
                     if (!agrupadas[key]) {
                       agrupadas[key] = {
                         ambiente: {
@@ -390,7 +451,6 @@ export default function AsignarAmbientes() {
                           tipo: asig.tipo_ambiente,
                           equipos: asig.total_equipos || 0
                         },
-                        jornada: asig.jornada,
                         instructores: []
                       }
                     }
@@ -401,7 +461,11 @@ export default function AsignarAmbientes() {
                       fecha_inicio: asig.fecha_inicio,
                       fecha_fin: asig.fecha_fin,
                       estado: asig.estado_responsabilidad,
-                      observaciones: asig.observaciones
+                      observaciones: asig.observaciones,
+                      dias_semana: asig.dias_semana || [],
+                      hora_inicio: asig.hora_inicio,
+                      hora_fin: asig.hora_fin,
+                      jornada: asig.jornada // Para compatibilidad con asignaciones antiguas
                     })
                   })
 
@@ -413,18 +477,8 @@ export default function AsignarAmbientes() {
                             <FiMapPin size={20} />
                             {grupo.ambiente.nombre_ambiente}
                           </h3>
-                          <p style={{ margin: '4px 0 0 0', color: '#6b7280', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                          <p style={{ margin: '4px 0 0 0', color: '#6b7280', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
                             <span>Código: {grupo.ambiente.codigo_ambiente} | {grupo.ambiente.tipo}</span>
-                            <span style={{
-                              padding: '4px 10px',
-                              borderRadius: '12px',
-                              fontSize: '0.85rem',
-                              fontWeight: 600,
-                              color: grupo.jornada === 'Mañana' ? 'var(--warning-600)' : grupo.jornada === 'Tarde' ? '#3b82f6' : '#8b5cf6',
-                              background: grupo.jornada === 'Mañana' ? '#fef3c7' : grupo.jornada === 'Tarde' ? '#dbeafe' : '#ede9fe'
-                            }}>
-                              Jornada: {grupo.jornada || 'Sin Jornada'}
-                            </span>
                             <span style={{
                               display: 'inline-flex',
                               alignItems: 'center',
@@ -448,6 +502,8 @@ export default function AsignarAmbientes() {
                           <thead>
                             <tr>
                               <th>Instructor</th>
+                              <th>Días</th>
+                              <th>Horario</th>
                               <th>Fecha Inicio</th>
                               <th>Fecha Fin</th>
                               <th>Estado</th>
@@ -465,6 +521,44 @@ export default function AsignarAmbientes() {
                                       CC: {inst.cedula}
                                     </div>
                                   </div>
+                                </td>
+                                <td>
+                                  {inst.dias_semana && inst.dias_semana.length > 0 ? (
+                                    <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+                                      {inst.dias_semana.map(dia => (
+                                        <span key={dia} style={{
+                                          padding: '2px 8px',
+                                          borderRadius: '6px',
+                                          fontSize: '0.75rem',
+                                          background: '#e0e7ff',
+                                          color: '#4f46e5'
+                                        }}>
+                                          {dia.substring(0, 3)}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  ) : inst.jornada ? (
+                                    <span style={{
+                                      padding: '2px 8px',
+                                      borderRadius: '6px',
+                                      fontSize: '0.75rem',
+                                      background: '#fef3c7',
+                                      color: '#92400e'
+                                    }}>
+                                      {inst.jornada}
+                                    </span>
+                                  ) : (
+                                    '-'
+                                  )}
+                                </td>
+                                <td>
+                                  {inst.hora_inicio && inst.hora_fin ? (
+                                    <span style={{ fontFamily: 'monospace', fontSize: '0.9rem' }}>
+                                      {inst.hora_inicio} - {inst.hora_fin}
+                                    </span>
+                                  ) : (
+                                    '-'
+                                  )}
                                 </td>
                                 <td>{formatDate(inst.fecha_inicio)}</td>
                                 <td>{inst.fecha_fin ? formatDate(inst.fecha_fin) : 'Permanente'}</td>

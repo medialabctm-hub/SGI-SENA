@@ -397,21 +397,61 @@ export async function listarAmbientesActivos(req, res) {
 
 export async function asignarAmbienteInstructor(req, res) {
   try {
-    const { id_ambiente, id_instructor, jornada, observaciones } = req.body;
+    const { id_ambiente, id_instructor, dias_semana, hora_inicio, hora_fin, observaciones } = req.body;
     const asignadoPor = req.user?.id;
 
-    if (!id_ambiente || !id_instructor || !jornada) {
+    // Validar campos obligatorios
+    if (!id_ambiente || !id_instructor) {
       return res.status(400).json({
         error: 'Faltan campos obligatorios',
-        detalle: 'Se requieren: id_ambiente, id_instructor, jornada'
+        detalle: 'Se requieren: id_ambiente, id_instructor'
       });
     }
 
-    const jornadasValidas = ['Mañana', 'Tarde', 'Noche'];
-    if (!jornadasValidas.includes(jornada)) {
+    // Validar días de la semana
+    const diasValidos = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes'];
+    if (!dias_semana || !Array.isArray(dias_semana) || dias_semana.length === 0) {
       return res.status(400).json({
-        error: 'Jornada inválida',
-        detalle: `La jornada debe ser una de: ${jornadasValidas.join(', ')}`
+        error: 'Días de la semana inválidos',
+        detalle: 'Debe seleccionar al menos un día de la semana'
+      });
+    }
+
+    const diasInvalidos = dias_semana.filter(dia => !diasValidos.includes(dia));
+    if (diasInvalidos.length > 0) {
+      return res.status(400).json({
+        error: 'Días de la semana inválidos',
+        detalle: `Días inválidos: ${diasInvalidos.join(', ')}. Días válidos: ${diasValidos.join(', ')}`
+      });
+    }
+
+    // Validar horarios
+    if (!hora_inicio || !hora_fin) {
+      return res.status(400).json({
+        error: 'Horarios requeridos',
+        detalle: 'Se requieren hora_inicio y hora_fin (formato HH:MM)'
+      });
+    }
+
+    // Validar formato de hora (HH:MM)
+    const horaRegex = /^([0-1][0-9]|2[0-3]):[0-5][0-9]$/;
+    if (!horaRegex.test(hora_inicio) || !horaRegex.test(hora_fin)) {
+      return res.status(400).json({
+        error: 'Formato de hora inválido',
+        detalle: 'Las horas deben estar en formato HH:MM (ej: 08:00, 14:30)'
+      });
+    }
+
+    // Validar que hora_inicio < hora_fin
+    const [horaInicioH, horaInicioM] = hora_inicio.split(':').map(Number);
+    const [horaFinH, horaFinM] = hora_fin.split(':').map(Number);
+    const minutosInicio = horaInicioH * 60 + horaInicioM;
+    const minutosFin = horaFinH * 60 + horaFinM;
+
+    if (minutosInicio >= minutosFin) {
+      return res.status(400).json({
+        error: 'Horario inválido',
+        detalle: 'La hora de inicio debe ser menor que la hora de fin'
       });
     }
 
@@ -439,41 +479,61 @@ export async function asignarAmbienteInstructor(req, res) {
       });
     }
 
-    const [[asignacionExistente]] = await defaultDb.execute(
+    // Verificar si existe una asignación que se solape (mismo ambiente, instructor, días y horarios)
+    const diasSemanaJson = JSON.stringify(dias_semana);
+    const horaInicioTime = `${hora_inicio}:00`;
+    const horaFinTime = `${hora_fin}:00`;
+
+    const [asignacionesExistentes] = await defaultDb.execute(
       `SELECT id_responsabilidad_ambiente
        FROM Responsabilidades_Ambiente
        WHERE id_ambiente = ?
          AND id_usuario = ?
-         AND jornada = ?
          AND id_clase IS NULL
          AND estado_responsabilidad = 'Activa'
-         AND (fecha_fin IS NULL OR fecha_fin >= NOW())`,
-      [id_ambiente, id_instructor, jornada]
+         AND (fecha_fin IS NULL OR fecha_fin >= NOW())
+         AND dias_semana IS NOT NULL
+         AND JSON_OVERLAPS(dias_semana, ?)
+         AND (
+           (hora_inicio <= ? AND hora_fin > ?) OR
+           (hora_inicio < ? AND hora_fin >= ?) OR
+           (hora_inicio >= ? AND hora_fin <= ?)
+         )`,
+      [
+        id_ambiente,
+        id_instructor,
+        diasSemanaJson,
+        horaInicioTime, horaInicioTime,
+        horaFinTime, horaFinTime,
+        horaInicioTime, horaFinTime
+      ]
     );
 
-    if (asignacionExistente) {
+    if (asignacionesExistentes.length > 0) {
       return res.status(409).json({
         error: 'Asignación existente',
-        detalle: 'Este instructor ya está asignado a este ambiente en la jornada ' + jornada
+        detalle: 'Este instructor ya tiene una asignación activa para este ambiente en los días y horarios seleccionados'
       });
     }
 
     const [result] = await defaultDb.execute(
       `INSERT INTO Responsabilidades_Ambiente
-       (id_ambiente, id_clase, jornada, id_usuario, tipo_responsabilidad, fecha_inicio, fecha_fin, estado_responsabilidad, observaciones, creado_por)
-       VALUES (?, NULL, ?, ?, 'Principal', NOW(), NULL, 'Activa', ?, ?)`,
-      [id_ambiente, jornada, id_instructor, observaciones || null, asignadoPor]
+       (id_ambiente, id_clase, jornada, dias_semana, hora_inicio, hora_fin, id_usuario, tipo_responsabilidad, fecha_inicio, fecha_fin, estado_responsabilidad, observaciones, creado_por)
+       VALUES (?, NULL, NULL, ?, ?, ?, ?, 'Principal', NOW(), NULL, 'Activa', ?, ?)`,
+      [id_ambiente, diasSemanaJson, horaInicioTime, horaFinTime, id_instructor, observaciones || null, asignadoPor]
     );
 
     return res.status(201).json({
       ok: true,
       id: result.insertId,
-      message: `Ambiente "${ambiente.nombre_ambiente}" asignado correctamente a ${instructor.nombre_usuario} en jornada ${jornada}`,
+      message: `Ambiente "${ambiente.nombre_ambiente}" asignado correctamente a ${instructor.nombre_usuario}`,
       asignacion: {
         id_responsabilidad: result.insertId,
         ambiente: ambiente.nombre_ambiente,
         instructor: instructor.nombre_usuario,
-        jornada: jornada
+        dias_semana: dias_semana,
+        hora_inicio: hora_inicio,
+        hora_fin: hora_fin
       }
     });
   } catch (err) {
@@ -541,6 +601,9 @@ export async function listarAsignacionesAmbientes(req, res) {
         a.codigo_ambiente,
         a.tipo_ambiente,
         ra.jornada,
+        ra.dias_semana,
+        ra.hora_inicio,
+        ra.hora_fin,
         ra.id_usuario,
         u.nombre_usuario AS instructor_nombre,
         u.cedula AS instructor_cedula,
@@ -577,7 +640,16 @@ export async function listarAsignacionesAmbientes(req, res) {
     `;
 
     const [rows] = await defaultDb.execute(query, params);
-    return res.json(rows);
+    
+    // Parsear JSON de dias_semana y formatear horas
+    const rowsFormateados = rows.map(row => ({
+      ...row,
+      dias_semana: row.dias_semana ? JSON.parse(row.dias_semana) : null,
+      hora_inicio: row.hora_inicio ? row.hora_inicio.substring(0, 5) : null, // HH:MM
+      hora_fin: row.hora_fin ? row.hora_fin.substring(0, 5) : null // HH:MM
+    }));
+    
+    return res.json(rowsFormateados);
   } catch (err) {
     logger.error('Error al listar asignaciones de ambientes', { error: err.message, stack: err.stack });
     return res.status(500).json({
