@@ -7,7 +7,7 @@ import Toast from '../components/Toast';
 import ConfirmModal from '../components/ConfirmModal';
 import ImageViewer from '../components/ImageViewer';
 import { parseApiResponse, buildErrorMessage } from '../utils/api';
-import { FiArrowLeft, FiUpload, FiTrash2, FiStar, FiImage, FiX, FiInfo, FiPackage, FiMapPin, FiCalendar, FiDollarSign } from 'react-icons/fi';
+import { FiArrowLeft, FiUpload, FiTrash2, FiStar, FiImage, FiX, FiInfo, FiPackage, FiMapPin, FiCalendar, FiDollarSign, FiUsers, FiUser } from 'react-icons/fi';
 import '../styles/equipos.css';
 import '../styles/detalleEquipo.css';
 import '../styles/ambientes.css';
@@ -823,6 +823,99 @@ export default function DetalleEquipo() {
                 </div>
               )}
             </div>
+
+            {/* Sección de Usuarios Asignados */}
+            {equipo.responsables && equipo.responsables.length > 0 && (
+              <div style={{ 
+                background: 'linear-gradient(135deg, #f9fafb 0%, #ffffff 100%)', 
+                padding: '24px', 
+                borderRadius: '12px',
+                border: '1px solid #e5e7eb',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+                marginTop: '24px'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px', paddingBottom: '16px', borderBottom: '2px solid #e5e7eb' }}>
+                  <FiUsers size={20} color="var(--success-800)" />
+                  <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 700, color: '#111827' }}>
+                    Usuarios Asignados
+                    <span style={{ marginLeft: '12px', fontSize: '16px', fontWeight: 500, color: '#6b7280' }}>
+                      ({equipo.responsables.length})
+                    </span>
+                  </h3>
+                </div>
+                <div style={{ display: 'grid', gap: '12px' }}>
+                  {equipo.responsables.map((responsable) => (
+                    <div
+                      key={responsable.id_responsable}
+                      style={{
+                        padding: '16px',
+                        background: '#f9fafb',
+                        borderRadius: '8px',
+                        border: '1px solid #e5e7eb',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '16px'
+                      }}
+                    >
+                      <div style={{
+                        width: '48px',
+                        height: '48px',
+                        borderRadius: '50%',
+                        background: 'linear-gradient(135deg, var(--success-800) 0%, var(--success-600) 100%)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: 'white',
+                        fontWeight: 700,
+                        fontSize: '18px'
+                      }}>
+                        <FiUser size={24} />
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
+                          <strong style={{ fontSize: '16px', color: '#111827' }}>
+                            {responsable.nombre_usuario || responsable.nombre_externo || 'Usuario sin nombre'}
+                          </strong>
+                          {responsable.nombre_rol && (
+                            <span style={{
+                              padding: '4px 10px',
+                              borderRadius: '12px',
+                              fontSize: '0.75rem',
+                              fontWeight: 600,
+                              background: '#e0e7ff',
+                              color: '#4338ca'
+                            }}>
+                              {responsable.nombre_rol}
+                            </span>
+                          )}
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '8px', fontSize: '14px', color: '#6b7280' }}>
+                          <div>
+                            <strong>Cédula:</strong> {responsable.cedula || responsable.documento_externo || '-'}
+                          </div>
+                          {responsable.ficha && (
+                            <div>
+                              <strong>Ficha:</strong> {responsable.ficha}
+                            </div>
+                          )}
+                          <div>
+                            <strong>Asignado hace:</strong> {responsable.dias_asignado || 0} días
+                          </div>
+                          <div>
+                            <strong>Fecha asignación:</strong> {formatDate(responsable.fecha_asignacion)}
+                          </div>
+                        </div>
+                        {responsable.observaciones && (
+                          <div style={{ marginTop: '8px', padding: '8px', background: '#ffffff', borderRadius: '6px', fontSize: '13px', color: '#374151' }}>
+                            <strong>Observaciones:</strong> {responsable.observaciones}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </main>
       </div>

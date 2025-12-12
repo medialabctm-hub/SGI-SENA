@@ -207,18 +207,23 @@ export const actualizarUsoEquipoSchema = z.object({
 
 /**
  * Validador para registro de uso de equipo desde página externa
- * Recibe: ficha, placa, nombre, documento, ambiente
+ * Recibe: placa, ambiente, usuarios (array)
  * Nota: El ambiente debe ser el código numérico que los usuarios conocen (ej: "101", "102")
+ * Cada usuario debe tener: ficha, nombre, documento
  */
-export const registrarUsoEquipoExternoSchema = z.object({
+const usuarioExternoSchema = z.object({
   ficha: z.string().min(1, 'La ficha es obligatoria').max(50, 'La ficha no puede exceder 50 caracteres'),
-  placa: z.string().min(1, 'La placa del equipo es obligatoria').max(100, 'La placa no puede exceder 100 caracteres'),
   nombre: z.string().min(1, 'El nombre es obligatorio').max(200, 'El nombre no puede exceder 200 caracteres'),
   documento: z.string().min(5, 'El documento de identificación debe tener al menos 5 caracteres').max(20, 'El documento no puede exceder 20 caracteres'),
+});
+
+export const registrarUsoEquipoExternoSchema = z.object({
+  placa: z.string().min(1, 'La placa del equipo es obligatoria').max(100, 'La placa no puede exceder 100 caracteres'),
   ambiente: z.union([
     z.string().min(1, 'El código del ambiente es obligatorio').max(50, 'El código del ambiente no puede exceder 50 caracteres'),
     z.number().int().positive('El código del ambiente debe ser un número positivo')
   ]).transform(val => String(val)), // Normalizar a string para búsqueda
+  usuarios: z.array(usuarioExternoSchema).min(1, 'Debe haber al menos un usuario').max(50, 'No se pueden registrar más de 50 usuarios a la vez'),
 });
 
 /**
