@@ -206,6 +206,22 @@ export const actualizarUsoEquipoSchema = z.object({
 });
 
 /**
+ * Constantes y funciones compartidas para validación de días de la semana y horarios
+ */
+const diasSemanaEnum = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+const diasSemanaEnumLower = ['lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado', 'domingo'];
+
+// Función para normalizar días de la semana
+const normalizarDiasSemana = (dias) => {
+  if (!dias || !Array.isArray(dias)) return null;
+  return dias.map(dia => {
+    const diaLower = dia.toLowerCase();
+    const index = diasSemanaEnumLower.indexOf(diaLower);
+    return index >= 0 ? diasSemanaEnum[index] : dia;
+  });
+};
+
+/**
  * Validador para actualizar una asignación de equipo (Responsables_Equipo)
  */
 export const actualizarAsignacionEquipoSchema = z.object({
@@ -252,18 +268,6 @@ export const actualizarAsignacionEquipoSchema = z.object({
  * Nota: El ambiente debe ser el código numérico que los usuarios conocen (ej: "101", "102")
  * Cada usuario debe tener: ficha, nombre, documento, dias_semana (opcional), hora_inicio (opcional), hora_fin (opcional)
  */
-const diasSemanaEnum = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
-const diasSemanaEnumLower = ['lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado', 'domingo'];
-
-// Función para normalizar días de la semana
-const normalizarDiasSemana = (dias) => {
-  if (!dias || !Array.isArray(dias)) return null;
-  return dias.map(dia => {
-    const diaLower = dia.toLowerCase();
-    const index = diasSemanaEnumLower.indexOf(diaLower);
-    return index >= 0 ? diasSemanaEnum[index] : dia;
-  });
-};
 
 const usuarioExternoSchema = z.object({
   ficha: z.string().min(1, 'La ficha es obligatoria').max(50, 'La ficha no puede exceder 50 caracteres'),
