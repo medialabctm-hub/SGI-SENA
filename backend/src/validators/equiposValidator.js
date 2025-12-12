@@ -190,6 +190,15 @@ export const registrarUsoEquipoSchema = z.object({
     return !isNaN(date.getTime());
   }, { message: 'La fecha de fin debe ser una fecha válida' }),
   observaciones: z.string().max(1000, 'Las observaciones no pueden exceder 1000 caracteres').optional().nullable(),
+  id_clase: z.union([
+    z.number().int().positive('El ID de la clase debe ser un número positivo'),
+    z.string().transform((val) => {
+      if (!val || val === '') return null;
+      const num = parseInt(val, 10);
+      return isNaN(num) ? null : num;
+    }),
+    z.null()
+  ]).optional().nullable(),
 });
 
 export const actualizarUsoEquipoSchema = z.object({

@@ -1811,7 +1811,7 @@ export async function eliminarCategoria(req, res) {
  */
 export async function registrarInicioUso(req, res) {
   try {
-    const { codigo_equipo, nombre_usuario, fecha_hora_inicio, observaciones } = req.body;
+    const { codigo_equipo, nombre_usuario, fecha_hora_inicio, observaciones, id_clase } = req.body;
     const userId = req.user?.id; // El usuario viene del token JWT
 
     if (!codigo_equipo) {
@@ -1826,6 +1826,17 @@ export async function registrarInicioUso(req, res) {
     const equipo = await obtenerEquipoPorCodigoUtil(defaultDb, codigo_equipo);
     if (!equipo) {
       return res.status(404).json({ error: 'Equipo no encontrado' });
+    }
+
+    // Si se proporciona id_clase, validar que existe
+    if (id_clase) {
+      const [[claseExiste]] = await defaultDb.execute(
+        `SELECT id_clase FROM Clases WHERE id_clase = ?`,
+        [id_clase]
+      );
+      if (!claseExiste) {
+        return res.status(404).json({ error: 'Clase no encontrada' });
+      }
     }
 
     // Verificar si el usuario tiene una sesión activa en este equipo
@@ -1846,26 +1857,51 @@ export async function registrarInicioUso(req, res) {
     // Usar la fecha proporcionada o la fecha actual
     const fechaInicio = fecha_hora_inicio ? new Date(fecha_hora_inicio) : new Date();
 
-    // Verificar si la columna nombre_usuario existe en la tabla
-    const [[columnaExiste]] = await defaultDb.execute(
+    // Verificar si las columnas existen en la tabla
+    const [[columnaNombreUsuario]] = await defaultDb.execute(
       `SELECT COUNT(*) AS cnt FROM INFORMATION_SCHEMA.COLUMNS 
        WHERE TABLE_SCHEMA = DATABASE() 
        AND TABLE_NAME = 'Historial_Uso_Equipos' 
        AND COLUMN_NAME = 'nombre_usuario'`
     );
+    const [[columnaIdClase]] = await defaultDb.execute(
+      `SELECT COUNT(*) AS cnt FROM INFORMATION_SCHEMA.COLUMNS 
+       WHERE TABLE_SCHEMA = DATABASE() 
+       AND TABLE_NAME = 'Historial_Uso_Equipos' 
+       AND COLUMN_NAME = 'id_clase'`
+    );
 
-    // Insertar nuevo registro de uso (con o sin nombre_usuario según exista la columna)
+    // Insertar nuevo registro de uso
     let result;
-    if (columnaExiste.cnt > 0) {
-      // Si la columna existe, incluirla en el INSERT
+    const tieneNombreUsuario = columnaNombreUsuario.cnt > 0;
+    const tieneIdClase = columnaIdClase.cnt > 0;
+
+    if (tieneNombreUsuario && tieneIdClase) {
+      // Incluir nombre_usuario e id_clase
+      [result] = await defaultDb.execute(
+        `INSERT INTO Historial_Uso_Equipos 
+         (codigo_equipo, id_usuario, nombre_usuario, fecha_hora_inicio, estado, observaciones, id_clase) 
+         VALUES (?, ?, ?, ?, 'En Uso', ?, ?)`,
+        [codigo_equipo, userId, nombre_usuario, fechaInicio, observaciones || null, id_clase || null]
+      );
+    } else if (tieneNombreUsuario) {
+      // Solo incluir nombre_usuario
       [result] = await defaultDb.execute(
         `INSERT INTO Historial_Uso_Equipos 
          (codigo_equipo, id_usuario, nombre_usuario, fecha_hora_inicio, estado, observaciones) 
          VALUES (?, ?, ?, ?, 'En Uso', ?)`,
         [codigo_equipo, userId, nombre_usuario, fechaInicio, observaciones || null]
       );
+    } else if (tieneIdClase) {
+      // Solo incluir id_clase
+      [result] = await defaultDb.execute(
+        `INSERT INTO Historial_Uso_Equipos 
+         (codigo_equipo, id_usuario, fecha_hora_inicio, estado, observaciones, id_clase) 
+         VALUES (?, ?, ?, 'En Uso', ?, ?)`,
+        [codigo_equipo, userId, fechaInicio, observaciones || null, id_clase || null]
+      );
     } else {
-      // Si la columna no existe, insertar sin ella
+      // Sin columnas adicionales
       [result] = await defaultDb.execute(
         `INSERT INTO Historial_Uso_Equipos 
          (codigo_equipo, id_usuario, fecha_hora_inicio, estado, observaciones) 
@@ -1879,14 +1915,16 @@ export async function registrarInicioUso(req, res) {
       codigo_equipo,
       id_usuario: userId,
       nombre_usuario,
-      fecha_hora_inicio: fechaInicio
+      fecha_hora_inicio: fechaInicio,
+      id_clase: id_clase || null
     });
 
     return res.status(201).json({
       ok: true,
       id_historial: result.insertId,
       message: 'Inicio de sesión registrado correctamente',
-      fecha_hora_inicio: fechaInicio
+      fecha_hora_inicio: fechaInicio,
+      id_clase: id_clase || null
     });
   } catch (err) {
     logger.error('Error al registrar inicio de uso', { error: err.message, stack: err.stack });
@@ -1988,6 +2026,7 @@ export async function consultarHistorialUso(req, res) {
       fecha_desde,
       fecha_hasta,
       estado,
+      id_clase,
       limit = 100,
       offset = 0
     } = req.query;
@@ -2018,6 +2057,15 @@ export async function consultarHistorialUso(req, res) {
       // Continuar de todas formas, el error real se mostrará en la consulta
     }
 
+    // Verificar si existe la columna id_clase
+    const [[columnaIdClase]] = await defaultDb.execute(
+      `SELECT COUNT(*) AS cnt FROM INFORMATION_SCHEMA.COLUMNS 
+       WHERE TABLE_SCHEMA = DATABASE() 
+       AND TABLE_NAME = 'Historial_Uso_Equipos' 
+       AND COLUMN_NAME = 'id_clase'`
+    );
+    const tieneIdClase = columnaIdClase.cnt > 0;
+
     let query = `
       SELECT 
         hu.id_historial,
@@ -2035,9 +2083,21 @@ export async function consultarHistorialUso(req, res) {
         hu.duracion_minutos,
         hu.observaciones,
         hu.fecha_registro
+        ${tieneIdClase ? `,
+        hu.id_clase,
+        c.nombre_clase,
+        c.codigo_ficha,
+        c.fecha_clase,
+        c.hora_inicio,
+        c.hora_fin,
+        c.estado_clase,
+        a_clase.nombre_ambiente AS clase_ambiente_nombre,
+        a_clase.codigo_ambiente AS clase_ambiente_codigo` : ''}
       FROM Historial_Uso_Equipos hu
       INNER JOIN Elementos e ON hu.codigo_equipo = e.codigo_equipo
       INNER JOIN Usuarios u ON hu.id_usuario = u.id_usuario
+      ${tieneIdClase ? 'LEFT JOIN Clases c ON hu.id_clase = c.id_clase' : ''}
+      ${tieneIdClase ? 'LEFT JOIN Ambientes a_clase ON c.id_ambiente = a_clase.id_ambiente' : ''}
       WHERE 1=1
     `;
 
@@ -2079,6 +2139,12 @@ export async function consultarHistorialUso(req, res) {
     if (fecha_hasta) {
       query += ' AND DATE(hu.fecha_hora_inicio) <= ?';
       params.push(fecha_hasta);
+    }
+
+    // Filtrar por clase si se proporciona
+    if (tieneIdClase && id_clase) {
+      query += ' AND hu.id_clase = ?';
+      params.push(id_clase);
     }
 
     // LIMIT y OFFSET deben ser números literales, no parámetros preparados
@@ -2152,6 +2218,11 @@ export async function consultarHistorialUso(req, res) {
       countParams.push(fecha_hasta);
     }
 
+    if (tieneIdClase && id_clase) {
+      countQuery += ' AND hu.id_clase = ?';
+      countParams.push(id_clase);
+    }
+
     const [[{ total }]] = await defaultDb.execute(countQuery, countParams);
 
     return res.json({
@@ -2193,7 +2264,7 @@ export async function consultarHistorialUso(req, res) {
 export async function obtenerHistorialEquipoUso(req, res) {
   try {
     const { codigo } = req.params;
-    const { fecha_desde, fecha_hasta, limit = 50 } = req.query;
+    const { fecha_desde, fecha_hasta, id_clase, limit = 50 } = req.query;
 
     if (!codigo) {
       return res.status(400).json({ error: 'El código del equipo es requerido' });
@@ -2202,6 +2273,15 @@ export async function obtenerHistorialEquipoUso(req, res) {
     // Convertir código a número si es posible, sino buscar por placa
     const codigoNum = parseInt(codigo, 10);
     const buscarPorPlaca = isNaN(codigoNum);
+
+    // Verificar si existe la columna id_clase
+    const [[columnaIdClase]] = await defaultDb.execute(
+      `SELECT COUNT(*) AS cnt FROM INFORMATION_SCHEMA.COLUMNS 
+       WHERE TABLE_SCHEMA = DATABASE() 
+       AND TABLE_NAME = 'Historial_Uso_Equipos' 
+       AND COLUMN_NAME = 'id_clase'`
+    );
+    const tieneIdClase = columnaIdClase.cnt > 0;
 
     let query = `
       SELECT 
@@ -2220,9 +2300,21 @@ export async function obtenerHistorialEquipoUso(req, res) {
         hu.duracion_minutos,
         hu.observaciones,
         hu.fecha_registro
+        ${tieneIdClase ? `,
+        hu.id_clase,
+        c.nombre_clase,
+        c.codigo_ficha,
+        c.fecha_clase,
+        c.hora_inicio,
+        c.hora_fin,
+        c.estado_clase,
+        a_clase.nombre_ambiente AS clase_ambiente_nombre,
+        a_clase.codigo_ambiente AS clase_ambiente_codigo` : ''}
       FROM Historial_Uso_Equipos hu
       INNER JOIN Elementos e ON hu.codigo_equipo = e.codigo_equipo
       INNER JOIN Usuarios u ON hu.id_usuario = u.id_usuario
+      ${tieneIdClase ? 'LEFT JOIN Clases c ON hu.id_clase = c.id_clase' : ''}
+      ${tieneIdClase ? 'LEFT JOIN Ambientes a_clase ON c.id_ambiente = a_clase.id_ambiente' : ''}
       WHERE ${buscarPorPlaca ? 'e.placa = ?' : 'hu.codigo_equipo = ?'}
     `;
 
@@ -2236,6 +2328,12 @@ export async function obtenerHistorialEquipoUso(req, res) {
     if (fecha_hasta) {
       query += ' AND DATE(hu.fecha_hora_inicio) <= ?';
       params.push(fecha_hasta);
+    }
+
+    // Filtrar por clase si se proporciona
+    if (tieneIdClase && id_clase) {
+      query += ' AND hu.id_clase = ?';
+      params.push(id_clase);
     }
 
     // LIMIT debe ser número literal, no parámetro preparado
