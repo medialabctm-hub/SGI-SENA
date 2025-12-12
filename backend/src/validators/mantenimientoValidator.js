@@ -1,39 +1,36 @@
 import { z } from 'zod';
 
 /**
- * Validadores para las rutas de novedades
+ * Validadores para las rutas de mantenimiento
  */
 
-const tiposNovedadValidos = [
-  'Daño',
-  'Pérdida',
-  'Robo',
-  'Mal Funcionamiento',
-  'Daño Físico',
-  'Falta de Componente',
-  'Otro'
-];
-
-export const crearNovedadSchema = z.object({
+export const crearMantenimientoSchema = z.object({
   codigo_equipo: z.union([
     z.string().min(1, 'El código del equipo es requerido'),
     z.number().int().positive('El código del equipo debe ser un número positivo'),
   ]),
-  tipo_novedad: z.enum(tiposNovedadValidos, {
+  tipo_mantenimiento: z.enum(['Preventivo', 'Correctivo', 'Predictivo'], {
     errorMap: () => ({ 
-      message: `Tipo de novedad inválido. Tipos válidos: ${tiposNovedadValidos.join(', ')}` 
+      message: 'Tipo de mantenimiento inválido. Debe ser: Preventivo, Correctivo o Predictivo' 
     }),
   }),
   descripcion: z.string()
     .min(10, 'La descripción debe tener al menos 10 caracteres')
     .max(2000, 'La descripción no puede exceder 2000 caracteres'),
+  fecha_mantenimiento: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Formato de fecha inválido (YYYY-MM-DD)'),
+  fecha_proximo: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Formato de fecha inválido (YYYY-MM-DD)').optional().nullable(),
+  estado_mantenimiento: z.enum(['Programado', 'En Proceso', 'Completado', 'Cancelado']).optional().default('Programado'),
+  observaciones: z.string().max(1000).optional().nullable(),
 });
 
-export const actualizarEstadoNovedadSchema = z.object({
-  estado_resolucion: z.enum(['Pendiente', 'En Proceso', 'Resuelto', 'No Resuelto'], {
-    errorMap: () => ({ message: 'Estado de resolución inválido. Debe ser: Pendiente, En Proceso, Resuelto o No Resuelto' }),
+export const actualizarEstadoMantenimientoSchema = z.object({
+  estado_mantenimiento: z.enum(['Programado', 'En Proceso', 'Completado', 'Cancelado'], {
+    errorMap: () => ({ message: 'Estado de mantenimiento inválido. Debe ser: Programado, En Proceso, Completado o Cancelado' }),
   }),
-  observaciones_resolucion: z.string().max(1000).optional().nullable(),
+});
+
+export const actualizarFechaProximoSchema = z.object({
+  fecha_proximo: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Formato de fecha inválido (YYYY-MM-DD)'),
 });
 
 /**

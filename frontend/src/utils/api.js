@@ -139,11 +139,20 @@ export const parseApiResponse = async (
 ) => {
   const data = await extractJson(response);
   if (!response.ok) {
+    // Si hay detalles de validación, extraer los mensajes
+    if (data?.details && Array.isArray(data.details) && data.details.length > 0) {
+      const validationMessages = data.details
+        .map(d => d.message)
+        .filter(Boolean)
+        .join('. ');
+      const message = validationMessages || data?.error || data?.message || defaultErrorMessage;
+      throw new ApiError(message, response.status, data);
+    }
+    
     const message =
       data?.error ||
       data?.message ||
       data?.detalle ||
-      data?.details ||
       defaultErrorMessage;
 
     throw new ApiError(message, response.status, data);

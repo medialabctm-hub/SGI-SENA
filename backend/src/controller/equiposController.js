@@ -853,17 +853,10 @@ export async function registrarVerificacionInventario(req, res) {
       return res.status(404).json({ error: 'Equipo no encontrado' })
     }
 
-    // Obtener día de la semana actual
-    const ahora = new Date();
-    const diaSemanaActual = ahora.getDay(); // 0=Domingo, 1=Lunes, ..., 6=Sábado
-    const diasSemanaNombres = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
-    const diaActualNombre = diasSemanaNombres[diaSemanaActual];
-
     // Validar que el instructor tiene responsabilidad activa en ese ambiente
-    // Incluye tanto asignaciones permanentes como temporales
-    // Para permanentes con días/horarios: verifica día actual y rango de horas usando TIME(NOW())
-    // Para permanentes con jornada (legacy): mantiene compatibilidad
-    // Para temporales (clases): verifica que la clase esté activa
+    // IMPORTANTE: Permitimos verificar si el instructor tiene una asignación activa,
+    // sin restricción de horario exacto. Esto permite que el instructor verifique
+    // equipos en cualquier momento durante el período de su asignación.
     // Obtener información completa de la responsabilidad para el historial
     const [[responsabilidad]] = await defaultDb.execute(
       `SELECT 
@@ -886,33 +879,17 @@ export async function registrarVerificacionInventario(req, res) {
          AND ra.fecha_inicio <= NOW()
          AND (ra.fecha_fin IS NULL OR ra.fecha_fin >= NOW())
          AND (
-           -- Asignaciones temporales (clases)
+           -- Asignaciones permanentes (con días/horarios o jornada)
+           (ra.id_clase IS NULL)
+           OR
+           -- Asignaciones temporales (clases) que estén programadas o en curso
            (ra.id_clase IS NOT NULL 
             AND c.estado_clase IN ('Programada', 'En Curso')
-            AND c.fecha_clase = CURDATE()
-            AND CONCAT(c.fecha_clase, ' ', c.hora_inicio) <= NOW()
-            AND CONCAT(c.fecha_clase, ' ', c.hora_fin) > NOW())
-           OR
-           -- Asignaciones permanentes con días y horarios (nuevo sistema)
-           (ra.id_clase IS NULL 
-            AND ra.dias_semana IS NOT NULL 
-            AND JSON_CONTAINS(ra.dias_semana, ?)
-            AND TIME(ra.hora_inicio) <= TIME(NOW())
-            AND TIME(ra.hora_fin) > TIME(NOW()))
-           OR
-           -- Asignaciones permanentes con jornada (sistema legacy - compatibilidad)
-           (ra.id_clase IS NULL 
-            AND ra.jornada IS NOT NULL 
-            AND ra.dias_semana IS NULL
-            AND (
-              (ra.jornada = 'Mañana' AND HOUR(NOW()) >= 6 AND HOUR(NOW()) < 12)
-              OR (ra.jornada = 'Tarde' AND HOUR(NOW()) >= 12 AND HOUR(NOW()) < 18)
-              OR (ra.jornada = 'Noche' AND (HOUR(NOW()) >= 18 OR HOUR(NOW()) < 6))
-            ))
+            AND c.fecha_clase >= CURDATE())
          )
        ORDER BY ra.fecha_inicio DESC
        LIMIT 1`,
-      [equipo.id_ambiente, userId, JSON.stringify([diaActualNombre])]
+      [equipo.id_ambiente, userId]
     )
 
     if (!responsabilidad) {

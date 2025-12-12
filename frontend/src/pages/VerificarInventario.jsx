@@ -129,8 +129,13 @@ export default function VerificarInventario() {
       setToast({ message: 'Error: No se ha seleccionado un equipo', type: 'error' })
       return
     }
-    if (!novedadForm.descripcion.trim()) {
+    const descripcionTrimmed = novedadForm.descripcion.trim()
+    if (!descripcionTrimmed) {
       setToast({ message: 'La descripción de la novedad es obligatoria', type: 'error' })
+      return
+    }
+    if (descripcionTrimmed.length < 10) {
+      setToast({ message: 'La descripción debe tener al menos 10 caracteres', type: 'error' })
       return
     }
 
@@ -147,13 +152,13 @@ export default function VerificarInventario() {
         body: JSON.stringify({
           codigo_equipo: selectedEquipo.codigo_equipo,
           tipo_novedad: novedadForm.tipo_novedad,
-          descripcion: novedadForm.descripcion.trim()
+          descripcion: descripcionTrimmed
         })
       })
       await parseApiResponse(res, 'No se pudo reportar la novedad')
       
       // Marcar como verificado con novedad
-      await handleVerificar(selectedEquipo.codigo_equipo, 'Con Novedad', novedadForm.descripcion.trim())
+      await handleVerificar(selectedEquipo.codigo_equipo, 'Con Novedad', descripcionTrimmed)
       
       setShowNovedadModal(false)
       setSelectedEquipo(null)
@@ -325,11 +330,20 @@ export default function VerificarInventario() {
                         width: '100%',
                         padding: '8px 12px',
                         borderRadius: '8px',
-                        border: '2px solid var(--neutral-300)',
+                        border: `2px solid ${novedadForm.descripcion.trim().length > 0 && novedadForm.descripcion.trim().length < 10 ? '#ef4444' : 'var(--neutral-300)'}`,
                         fontSize: '0.95rem',
                         resize: 'vertical'
                       }}
                     />
+                    <div style={{ 
+                      marginTop: '0.25rem', 
+                      fontSize: '0.85rem',
+                      color: novedadForm.descripcion.trim().length > 0 && novedadForm.descripcion.trim().length < 10 ? '#ef4444' : '#6b7280'
+                    }}>
+                      {novedadForm.descripcion.trim().length > 0 && novedadForm.descripcion.trim().length < 10 
+                        ? `Mínimo 10 caracteres (${novedadForm.descripcion.trim().length}/10)`
+                        : `Mínimo 10 caracteres (${novedadForm.descripcion.trim().length} caracteres)`}
+                    </div>
                   </div>
                   <div className="confirm-modal-footer" style={{ marginTop: '1.5rem' }}>
                     <button
