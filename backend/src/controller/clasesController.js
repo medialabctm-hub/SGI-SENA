@@ -58,10 +58,26 @@ export async function crearClase(req, res) {
       return res.status(404).json({ error: 'Instructor no encontrado o no tiene rol de Instructor' });
     }
 
-    // Validar formato de fecha y hora
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha_clase)) {
+    // Validar y normalizar formato de fecha (asegurar YYYY-MM-DD sin conversión de zona horaria)
+    let fechaNormalizada = fecha_clase;
+    if (typeof fecha_clase === 'string') {
+      // Extraer solo la parte de fecha si viene con hora
+      fechaNormalizada = fecha_clase.split('T')[0].split(' ')[0];
+    }
+    
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(fechaNormalizada)) {
+      logger.error('Formato de fecha inválido recibido', { fecha_clase, fechaNormalizada });
       return res.status(400).json({ error: 'Formato de fecha inválido. Use YYYY-MM-DD' });
     }
+    
+    // Log para debugging
+    logger.info('Creando clase con fecha', { 
+      fecha_recibida: fecha_clase, 
+      fecha_normalizada: fechaNormalizada,
+      hora_inicio,
+      hora_fin
+    });
+    
     if (!/^\d{2}:\d{2}(:\d{2})?$/.test(hora_inicio) || !/^\d{2}:\d{2}(:\d{2})?$/.test(hora_fin)) {
       return res.status(400).json({ error: 'Formato de hora inválido. Use HH:MM o HH:MM:SS' });
     }
@@ -103,11 +119,12 @@ export async function crearClase(req, res) {
     }
 
     // Insertar la clase con estado explícito
+    // Usar fechaNormalizada para evitar problemas de zona horaria en MySQL
     const [result] = await defaultDb.execute(
       `INSERT INTO Clases 
        (id_ambiente, id_instructor, nombre_clase, codigo_ficha, descripcion, fecha_clase, hora_inicio, hora_fin, observaciones, estado_clase, creado_por)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'Programada', ?)`,
-      [id_ambiente, instructorId, nombre_clase || null, codigo_ficha || null, descripcion || null, fecha_clase, hora_inicio, hora_fin, observaciones || null, creadoPor]
+       VALUES (?, ?, ?, ?, ?, DATE(?), ?, ?, ?, 'Programada', ?)`,
+      [id_ambiente, instructorId, nombre_clase || null, codigo_ficha || null, descripcion || null, fechaNormalizada, hora_inicio, hora_fin, observaciones || null, creadoPor]
     );
 
     const idClase = result.insertId;
@@ -583,8 +600,22 @@ export async function actualizarClase(req, res) {
 
     for (const key of allowed) {
       if (Object.prototype.hasOwnProperty.call(req.body, key)) {
-        sets.push(`${key} = ?`);
-        params.push(req.body[key]);
+        let value = req.body[key];
+        
+        // Normalizar fecha_clase para evitar problemas de zona horaria
+        if (key === 'fecha_clase' && value) {
+          if (typeof value === 'string') {
+            value = value.split('T')[0].split(' ')[0];
+            if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+              return res.status(400).json({ error: 'Formato de fecha inválido. Use YYYY-MM-DD' });
+            }
+          }
+          // Usar DATE() en MySQL para asegurar que se almacene correctamente
+          sets.push(`${key} = DATE(?)`);
+        } else {
+          sets.push(`${key} = ?`);
+        }
+        params.push(value);
       }
     }
 

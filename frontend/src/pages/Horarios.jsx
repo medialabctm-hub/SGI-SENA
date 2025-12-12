@@ -217,18 +217,32 @@ export default function Horarios() {
       
       // Asegurar que la fecha se envíe en formato YYYY-MM-DD sin conversión de zona horaria
       if (bodyData.fecha_clase) {
-        // Si el input type="date" devuelve YYYY-MM-DD, usarlo directamente
-        // Si por alguna razón viene como Date object, convertirlo sin zona horaria
+        // El input type="date" siempre devuelve YYYY-MM-DD como string
+        // Asegurarnos de que no haya ninguna conversión
         if (bodyData.fecha_clase instanceof Date) {
+          // Si por alguna razón viene como Date, convertir manualmente sin zona horaria
           const year = bodyData.fecha_clase.getFullYear()
           const month = String(bodyData.fecha_clase.getMonth() + 1).padStart(2, '0')
           const day = String(bodyData.fecha_clase.getDate()).padStart(2, '0')
           bodyData.fecha_clase = `${year}-${month}-${day}`
         } else if (typeof bodyData.fecha_clase === 'string') {
-          // Asegurar que solo tenga la parte de la fecha (YYYY-MM-DD)
-          bodyData.fecha_clase = bodyData.fecha_clase.split('T')[0].split(' ')[0]
+          // Extraer solo la parte de la fecha (YYYY-MM-DD) si viene con hora
+          const fechaParte = bodyData.fecha_clase.split('T')[0].split(' ')[0]
+          // Validar que tenga el formato correcto
+          if (/^\d{4}-\d{2}-\d{2}$/.test(fechaParte)) {
+            bodyData.fecha_clase = fechaParte
+          } else {
+            console.error('Formato de fecha inválido:', bodyData.fecha_clase)
+          }
         }
       }
+      
+      // Log para debugging
+      console.log('Actualizando clase - Enviando datos al backend:', {
+        fecha_clase: bodyData.fecha_clase,
+        hora_inicio: bodyData.hora_inicio,
+        hora_fin: bodyData.hora_fin
+      })
       
       const res = await fetch(`/api/clases/${editingClase.id_clase}`, {
         method: 'PUT',
@@ -399,6 +413,12 @@ export default function Horarios() {
 
   function formatDate(dateStr) {
     if (!dateStr) return '-'
+    // Si viene en formato YYYY-MM-DD, extraer directamente sin conversión de zona horaria
+    if (typeof dateStr === 'string' && /^\d{4}-\d{2}-\d{2}/.test(dateStr)) {
+      const [year, month, day] = dateStr.split('T')[0].split(' ')[0].split('-')
+      return `${day}/${month}/${year}`
+    }
+    // Si viene como Date object o otro formato, usar el método anterior
     const date = new Date(dateStr)
     return date.toLocaleDateString('es-ES', { year: 'numeric', month: '2-digit', day: '2-digit' })
   }
