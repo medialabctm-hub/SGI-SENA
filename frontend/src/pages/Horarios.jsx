@@ -170,6 +170,22 @@ export default function Horarios() {
       if (user?.nombre_rol === 'Instructor') {
         delete bodyData.id_instructor
       }
+      
+      // Asegurar que la fecha se envíe en formato YYYY-MM-DD sin conversión de zona horaria
+      if (bodyData.fecha_clase) {
+        // Si el input type="date" devuelve YYYY-MM-DD, usarlo directamente
+        // Si por alguna razón viene como Date object, convertirlo sin zona horaria
+        if (bodyData.fecha_clase instanceof Date) {
+          const year = bodyData.fecha_clase.getFullYear()
+          const month = String(bodyData.fecha_clase.getMonth() + 1).padStart(2, '0')
+          const day = String(bodyData.fecha_clase.getDate()).padStart(2, '0')
+          bodyData.fecha_clase = `${year}-${month}-${day}`
+        } else if (typeof bodyData.fecha_clase === 'string') {
+          // Asegurar que solo tenga la parte de la fecha (YYYY-MM-DD)
+          bodyData.fecha_clase = bodyData.fecha_clase.split('T')[0].split(' ')[0]
+        }
+      }
+      
       const res = await fetch('/api/clases', {
         method: 'POST',
         headers: {
@@ -195,13 +211,32 @@ export default function Horarios() {
     setToast(null)
     try {
       const token = localStorage.getItem('token')
+      
+      // Preparar datos asegurando formato correcto de fecha
+      const bodyData = { ...form }
+      
+      // Asegurar que la fecha se envíe en formato YYYY-MM-DD sin conversión de zona horaria
+      if (bodyData.fecha_clase) {
+        // Si el input type="date" devuelve YYYY-MM-DD, usarlo directamente
+        // Si por alguna razón viene como Date object, convertirlo sin zona horaria
+        if (bodyData.fecha_clase instanceof Date) {
+          const year = bodyData.fecha_clase.getFullYear()
+          const month = String(bodyData.fecha_clase.getMonth() + 1).padStart(2, '0')
+          const day = String(bodyData.fecha_clase.getDate()).padStart(2, '0')
+          bodyData.fecha_clase = `${year}-${month}-${day}`
+        } else if (typeof bodyData.fecha_clase === 'string') {
+          // Asegurar que solo tenga la parte de la fecha (YYYY-MM-DD)
+          bodyData.fecha_clase = bodyData.fecha_clase.split('T')[0].split(' ')[0]
+        }
+      }
+      
       const res = await fetch(`/api/clases/${editingClase.id_clase}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`
         },
-        body: JSON.stringify(form)
+        body: JSON.stringify(bodyData)
       })
       const data = await parseApiResponse(res, 'No se pudo actualizar la clase')
       setToast({ message: data.message || 'Clase actualizada correctamente', type: 'success' })
@@ -238,15 +273,34 @@ export default function Horarios() {
 
   function handleEdit(clase) {
     setEditingClase(clase)
+    // Convertir fecha a formato YYYY-MM-DD para el input type="date"
+    // Evitar problemas de zona horaria
+    let fechaFormateada = clase.fecha_clase
+    if (fechaFormateada) {
+      // Si viene como string con hora, extraer solo la fecha
+      if (fechaFormateada.includes('T')) {
+        fechaFormateada = fechaFormateada.split('T')[0]
+      } else if (fechaFormateada.includes(' ')) {
+        fechaFormateada = fechaFormateada.split(' ')[0]
+      }
+      // Si viene como Date object, convertir a YYYY-MM-DD
+      if (fechaFormateada instanceof Date) {
+        const year = fechaFormateada.getFullYear()
+        const month = String(fechaFormateada.getMonth() + 1).padStart(2, '0')
+        const day = String(fechaFormateada.getDate()).padStart(2, '0')
+        fechaFormateada = `${year}-${month}-${day}`
+      }
+    }
+    
     setForm({
       id_ambiente: clase.id_ambiente,
       id_instructor: clase.id_instructor,
       nombre_clase: clase.nombre_clase || '',
       codigo_ficha: clase.codigo_ficha || '',
       descripcion: clase.descripcion || '',
-      fecha_clase: clase.fecha_clase,
-      hora_inicio: clase.hora_inicio,
-      hora_fin: clase.hora_fin,
+      fecha_clase: fechaFormateada || '',
+      hora_inicio: clase.hora_inicio ? clase.hora_inicio.substring(0, 5) : '',
+      hora_fin: clase.hora_fin ? clase.hora_fin.substring(0, 5) : '',
       observaciones: clase.observaciones || ''
     })
     setShowForm(true)
