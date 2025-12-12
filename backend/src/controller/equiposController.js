@@ -384,6 +384,7 @@ export async function obtenerEquipoPorCodigo(req, res) {
     }
 
     // Obtener responsables/usuarios asignados al equipo
+    // Usar LEFT JOIN para incluir registros externos incluso si el usuario no existe en Usuarios
     const [responsables] = await defaultDb.execute(
       `SELECT 
         re.id_responsable,
@@ -397,12 +398,12 @@ export async function obtenerEquipoPorCodigo(req, res) {
         CAST(re.dias_semana AS CHAR) AS dias_semana,
         re.hora_inicio,
         re.hora_fin,
-        u.nombre_usuario,
-        u.cedula,
+        COALESCE(u.nombre_usuario, re.nombre_externo) AS nombre_usuario,
+        COALESCE(u.cedula, re.documento_externo) AS cedula,
         r.nombre_rol,
         DATEDIFF(NOW(), re.fecha_asignacion) AS dias_asignado
        FROM Responsables_Equipo re
-       INNER JOIN Usuarios u ON re.id_usuario = u.id_usuario
+       LEFT JOIN Usuarios u ON re.id_usuario = u.id_usuario
        LEFT JOIN Roles r ON u.id_rol = r.id_rol
        WHERE re.codigo_equipo = ? AND re.estado_responsabilidad = 'Activo'
        ORDER BY re.fecha_asignacion DESC`,
@@ -411,13 +412,27 @@ export async function obtenerEquipoPorCodigo(req, res) {
 
     // Parsear JSON de dias_semana para cada responsable
     const responsablesConDias = responsables.map(resp => {
+      // Parsear dias_semana si existe
       if (resp.dias_semana) {
         try {
-          resp.dias_semana = JSON.parse(resp.dias_semana);
+          // Si es string, parsearlo; si ya es array, dejarlo como está
+          if (typeof resp.dias_semana === 'string') {
+            resp.dias_semana = JSON.parse(resp.dias_semana);
+          }
         } catch (e) {
+          logger.warn('Error al parsear dias_semana', { error: e.message, dias_semana: resp.dias_semana });
           resp.dias_semana = null;
         }
       }
+      
+      // Asegurar que los campos externos estén presentes
+      if (!resp.nombre_usuario && resp.nombre_externo) {
+        resp.nombre_usuario = resp.nombre_externo;
+      }
+      if (!resp.cedula && resp.documento_externo) {
+        resp.cedula = resp.documento_externo;
+      }
+      
       return resp;
     });
 
