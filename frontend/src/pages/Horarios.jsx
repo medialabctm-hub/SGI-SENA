@@ -17,7 +17,9 @@ import {
   FiUsers,
   FiX,
   FiCheck,
-  FiAlertCircle
+  FiAlertCircle,
+  FiPlay,
+  FiSquare
 } from 'react-icons/fi'
 import { parseApiResponse, buildErrorMessage } from '../utils/api'
 import '../styles/equipos.css'
@@ -280,6 +282,50 @@ export default function Horarios() {
       fetchClases()
     } catch (err) {
       setToast({ message: buildErrorMessage(err, 'No se pudo cancelar la clase'), type: 'error' })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function handleIniciarClase(idClase) {
+    setLoading(true)
+    setToast(null)
+    try {
+      const token = localStorage.getItem('token')
+      const res = await fetch(`/api/clases/${idClase}/iniciar`, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}` 
+        }
+      })
+      const data = await parseApiResponse(res, 'No se pudo iniciar la clase')
+      setToast({ message: data.message || 'Clase iniciada correctamente', type: 'success' })
+      fetchClases()
+    } catch (err) {
+      setToast({ message: buildErrorMessage(err, 'No se pudo iniciar la clase'), type: 'error' })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function handleFinalizarClase(idClase) {
+    setLoading(true)
+    setToast(null)
+    try {
+      const token = localStorage.getItem('token')
+      const res = await fetch(`/api/clases/${idClase}/finalizar`, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}` 
+        }
+      })
+      const data = await parseApiResponse(res, 'No se pudo finalizar la clase')
+      setToast({ message: data.message || 'Clase finalizada correctamente', type: 'success' })
+      fetchClases()
+    } catch (err) {
+      setToast({ message: buildErrorMessage(err, 'No se pudo finalizar la clase'), type: 'error' })
     } finally {
       setLoading(false)
     }
@@ -794,6 +840,15 @@ export default function Horarios() {
                           {clase.estado_clase === 'Programada' && (
                             <>
                               <button
+                                className="btn btn-verde"
+                                onClick={() => handleIniciarClase(clase.id_clase)}
+                                disabled={loading}
+                                style={{ fontSize: '0.85rem', padding: '6px 12px' }}
+                                title="Iniciar Clase"
+                              >
+                                <FiPlay size={14} />
+                              </button>
+                              <button
                                 className="btn btn-edit"
                                 onClick={() => handleEdit(clase)}
                                 disabled={loading}
@@ -812,6 +867,17 @@ export default function Horarios() {
                                 <FiTrash2 size={14} />
                               </button>
                             </>
+                          )}
+                          {clase.estado_clase === 'En Curso' && (
+                            <button
+                              className="btn btn-verde"
+                              onClick={() => handleFinalizarClase(clase.id_clase)}
+                              disabled={loading}
+                              style={{ fontSize: '0.85rem', padding: '6px 12px' }}
+                              title="Finalizar Clase"
+                            >
+                              <FiSquare size={14} />
+                            </button>
                           )}
                         </div>
                       </td>

@@ -952,15 +952,15 @@ export async function sincronizarResponsabilidadesHorarios(req, res) {
     }
 
     // Finalizar responsabilidades de clases que ya terminaron
+    // Buscar clases de cualquier fecha que hayan terminado (no solo del día actual)
     const [clasesFinalizadas] = await defaultDb.execute(
       `SELECT DISTINCT c.id_clase
        FROM Clases c
        INNER JOIN Responsabilidades_Ambiente ra ON c.id_clase = ra.id_clase
-       WHERE c.fecha_clase = ?
-         AND CONCAT(c.fecha_clase, ' ', c.hora_fin) < NOW()
+       WHERE TIMESTAMP(c.fecha_clase, c.hora_fin) < NOW()
          AND c.estado_clase = 'En Curso'
          AND ra.estado_responsabilidad = 'Activa'`,
-      [fechaActual]
+      []
     );
 
     let finalizadas = 0;

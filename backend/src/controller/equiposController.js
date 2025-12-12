@@ -1,4 +1,4 @@
-import defaultDb from '../config/dbconfig.js';
+import defaultDb, { pool } from '../config/dbconfig.js';
 import { notifyNuevoEquipo } from '../services/notificationService.js';
 import { logger } from '../utils/logger.js';
 import { obtenerEquipoPorCodigo as obtenerEquipoPorCodigoUtil, obtenerUsuarioPorCedula } from '../utils/sqlQueries.js';
@@ -2292,16 +2292,31 @@ export async function obtenerSesionesActivas(req, res) {
 
 /**
  * Registrar uso de equipo desde página externa (público)
- * Recibe: ficha, placa, nombre, documento
+ * Recibe: ficha, placa, nombre, documento, ambiente
  * No requiere autenticación, pero valida que el usuario y equipo existan
+ * 
+ * Acciones:
+ * 1. Actualiza el ambiente del equipo en el inventario (tabla Elementos)
+ * 2. Asigna el equipo al usuario en Responsables_Equipo con ficha, nombre y documento
+ * 3. Registra el uso en Historial_Uso_Equipos
  */
 export async function registrarUsoEquipoExterno(req, res) {
   try {
-    const { ficha, placa, nombre, documento } = req.body;
+    const { ficha, placa, nombre, documento, ambiente } = req.body;
+
+    // Log de los datos recibidos para debugging
+    logger.info('Datos recibidos en registro externo', {
+      ficha: ficha?.substring(0, 10), // Solo primeros caracteres por seguridad
+      placa: placa?.substring(0, 20),
+      nombre: nombre?.substring(0, 30),
+      documento: documento?.substring(0, 15),
+      ambiente: ambiente,
+      tiene_ambiente: !!ambiente
+    });
 
     // Validar que el equipo existe por placa
     const [[equipo]] = await defaultDb.execute(
-      `SELECT codigo_equipo, placa, tipo, modelo 
+      `SELECT codigo_equipo, placa, tipo, modelo, id_ambiente 
        FROM Elementos 
        WHERE placa = ? LIMIT 1`,
       [placa.trim()]
@@ -2312,6 +2327,87 @@ export async function registrarUsoEquipoExterno(req, res) {
         success: false,
         error: 'Equipo no encontrado',
         message: `No se encontró un equipo con la placa "${placa}"` 
+      });
+    }
+
+    // Buscar ambiente por código
+    // Los usuarios pueden enviar:
+    // - Solo el número: "101", "102", etc.
+    // - Con prefijo: "Ambiente 101", "Ambiente 102", etc. (como se muestra en la interfaz)
+    let ambienteId = null;
+    let ambienteInfo = null;
+    
+    if (ambiente) {
+      const ambienteTrimmed = ambiente.trim();
+      
+      // Extraer el número del código si viene con prefijo "Ambiente "
+      let codigoBusqueda = ambienteTrimmed;
+      if (ambienteTrimmed.toLowerCase().startsWith('ambiente ')) {
+        codigoBusqueda = ambienteTrimmed.substring(9).trim(); // Remover "Ambiente "
+      }
+      
+      logger.info('Buscando ambiente', {
+        ambiente_recibido: ambienteTrimmed,
+        codigo_busqueda: codigoBusqueda
+      });
+      
+      // Intentar buscar primero por codigo_ambiente (lo que los usuarios conocen: "101", "102", etc.)
+      const [[amb]] = await defaultDb.execute(
+        `SELECT id_ambiente, nombre_ambiente, codigo_ambiente 
+         FROM Ambientes 
+         WHERE codigo_ambiente = ? OR codigo_ambiente = CAST(? AS UNSIGNED)
+         LIMIT 1`,
+        [codigoBusqueda, codigoBusqueda]
+      );
+      
+      ambienteInfo = amb || null;
+      ambienteId = amb?.id_ambiente || null;
+
+      // Si no se encontró por codigo_ambiente, intentar por nombre_ambiente (ej: "Ambiente 101")
+      if (!ambienteId) {
+        const [[ambPorNombre]] = await defaultDb.execute(
+          `SELECT id_ambiente, nombre_ambiente, codigo_ambiente 
+           FROM Ambientes 
+           WHERE nombre_ambiente = ? OR nombre_ambiente LIKE ? 
+           LIMIT 1`,
+          [ambienteTrimmed, `%${codigoBusqueda}%`]
+        );
+        ambienteInfo = ambPorNombre || null;
+        ambienteId = ambPorNombre?.id_ambiente || null;
+      }
+
+      // Si aún no se encontró y el código es numérico, intentar por id_ambiente
+      if (!ambienteId) {
+        const ambienteNumerico = Number.parseInt(codigoBusqueda, 10);
+        if (Number.isFinite(ambienteNumerico) && ambienteNumerico > 0) {
+          const [[ambPorId]] = await defaultDb.execute(
+            `SELECT id_ambiente, nombre_ambiente, codigo_ambiente 
+             FROM Ambientes 
+             WHERE id_ambiente = ? 
+             LIMIT 1`,
+            [ambienteNumerico]
+          );
+          ambienteInfo = ambPorId || null;
+          ambienteId = ambPorId?.id_ambiente || null;
+        }
+      }
+
+      if (!ambienteId) {
+        logger.warn('Ambiente no encontrado', {
+          ambiente_recibido: ambienteTrimmed,
+          codigo_busqueda: codigoBusqueda
+        });
+        return res.status(404).json({ 
+          success: false,
+          error: 'Ambiente no encontrado',
+          message: `No se encontró un ambiente con el código "${ambiente}". Puedes usar el código numérico (ej: "101", "102") o el nombre completo (ej: "Ambiente 101").` 
+        });
+      }
+      
+      logger.info('Ambiente encontrado', {
+        id_ambiente: ambienteId,
+        codigo_ambiente: ambienteInfo?.codigo_ambiente,
+        nombre_ambiente: ambienteInfo?.nombre_ambiente
       });
     }
 
@@ -2326,82 +2422,266 @@ export async function registrarUsoEquipoExterno(req, res) {
       });
     }
 
-    // Verificar si el usuario tiene una sesión activa en este equipo
-    const [[sesionActiva]] = await defaultDb.execute(
-      `SELECT id_historial FROM Historial_Uso_Equipos 
-       WHERE codigo_equipo = ? AND id_usuario = ? AND estado = 'En Uso' 
-       ORDER BY fecha_hora_inicio DESC LIMIT 1`,
-      [equipo.codigo_equipo, usuario.id_usuario]
-    );
+    // Obtener conexión del pool para transacción
+    const connection = await pool.getConnection();
 
-    if (sesionActiva) {
-      return res.status(409).json({ 
-        success: false,
-        error: 'Sesión activa existente',
-        message: 'Ya existe una sesión activa para este usuario en este equipo',
-        id_historial: sesionActiva.id_historial
-      });
-    }
+    try {
+      await connection.beginTransaction();
 
-    // Preparar observaciones con la ficha
-    const observaciones = `Ficha: ${ficha.trim()}`;
-
-    // Verificar si la columna nombre_usuario existe en la tabla
-    const [[columnaExiste]] = await defaultDb.execute(
-      `SELECT COUNT(*) AS cnt FROM INFORMATION_SCHEMA.COLUMNS 
-       WHERE TABLE_SCHEMA = DATABASE() 
-       AND TABLE_NAME = 'Historial_Uso_Equipos' 
-       AND COLUMN_NAME = 'nombre_usuario'`
-    );
-
-    // Insertar nuevo registro de uso
-    const fechaInicio = new Date();
-    let result;
-    
-    if (columnaExiste.cnt > 0) {
-      // Si la columna existe, incluirla en el INSERT
-      [result] = await defaultDb.execute(
-        `INSERT INTO Historial_Uso_Equipos 
-         (codigo_equipo, id_usuario, nombre_usuario, fecha_hora_inicio, estado, observaciones) 
-         VALUES (?, ?, ?, ?, 'En Uso', ?)`,
-        [equipo.codigo_equipo, usuario.id_usuario, nombre.trim(), fechaInicio, observaciones]
-      );
-    } else {
-      // Si la columna no existe, insertar sin ella
-      [result] = await defaultDb.execute(
-        `INSERT INTO Historial_Uso_Equipos 
-         (codigo_equipo, id_usuario, fecha_hora_inicio, estado, observaciones) 
-         VALUES (?, ?, ?, 'En Uso', ?)`,
-        [equipo.codigo_equipo, usuario.id_usuario, fechaInicio, observaciones]
-      );
-    }
-
-    logger.info('Uso de equipo registrado desde página externa', {
-      id_historial: result.insertId,
-      codigo_equipo: equipo.codigo_equipo,
-      placa: equipo.placa,
-      id_usuario: usuario.id_usuario,
-      documento: documento.trim(),
-      nombre: nombre.trim(),
-      ficha: ficha.trim(),
-      fecha_hora_inicio: fechaInicio
-    });
-
-    return res.status(201).json({
-      success: true,
-      message: 'Uso de equipo registrado correctamente',
-      data: {
-        id_historial: result.insertId,
+      // 1. Actualizar el ambiente del equipo en el inventario
+      // Convertir ambos a números para comparación correcta
+      const ambienteAnterior = equipo.id_ambiente ? Number(equipo.id_ambiente) : null;
+      const ambienteNuevo = ambienteId ? Number(ambienteId) : null;
+      
+      logger.info('Verificando actualización de ambiente', {
         codigo_equipo: equipo.codigo_equipo,
         placa: equipo.placa,
-        tipo: equipo.tipo,
-        modelo: equipo.modelo,
-        nombre_usuario: nombre.trim(),
-        documento: documento.trim(),
-        ficha: ficha.trim(),
-        fecha_hora_inicio: fechaInicio
+        ambiente_anterior: ambienteAnterior,
+        ambiente_nuevo: ambienteNuevo,
+        ambiente_recibido: ambiente,
+        ambienteId_encontrado: ambienteId,
+        debe_actualizar: ambienteId && ambienteNuevo !== ambienteAnterior
+      });
+      
+      if (ambienteId && ambienteNuevo !== ambienteAnterior) {
+        const [updateResult] = await connection.execute(
+          `UPDATE Elementos 
+           SET id_ambiente = ? 
+           WHERE codigo_equipo = ?`,
+          [ambienteId, equipo.codigo_equipo]
+        );
+        
+        logger.info('Ambiente actualizado para equipo', {
+          codigo_equipo: equipo.codigo_equipo,
+          placa: equipo.placa,
+          ambiente_anterior: ambienteAnterior,
+          ambiente_nuevo: ambienteNuevo,
+          filas_afectadas: updateResult.affectedRows
+        });
+        
+        // Verificar que la actualización se realizó correctamente
+        if (updateResult.affectedRows === 0) {
+          logger.warn('No se actualizó el ambiente del equipo - ninguna fila afectada', {
+            codigo_equipo: equipo.codigo_equipo,
+            placa: equipo.placa,
+            ambienteId: ambienteId
+          });
+        }
+      } else if (ambienteId) {
+        logger.info('Ambiente no actualizado - ya tiene el mismo ambiente', {
+          codigo_equipo: equipo.codigo_equipo,
+          placa: equipo.placa,
+          ambiente_actual: ambienteAnterior,
+          ambiente_solicitado: ambienteNuevo
+        });
+      } else {
+        logger.warn('No se actualizó el ambiente - ambienteId es null o undefined', {
+          codigo_equipo: equipo.codigo_equipo,
+          placa: equipo.placa,
+          ambiente_recibido: ambiente,
+          ambienteId: ambienteId
+        });
       }
-    });
+
+      // 2. Verificar si ya existe una asignación activa para este equipo y usuario
+      const [[asignacionExistente]] = await connection.execute(
+        `SELECT id_responsable FROM Responsables_Equipo 
+         WHERE codigo_equipo = ? AND id_usuario = ? AND estado_responsabilidad = 'Activo' 
+         LIMIT 1`,
+        [equipo.codigo_equipo, usuario.id_usuario]
+      );
+
+      // Verificar si las columnas adicionales existen en Responsables_Equipo
+      const [[colFicha]] = await connection.execute(
+        `SELECT COUNT(*) AS cnt FROM INFORMATION_SCHEMA.COLUMNS 
+         WHERE TABLE_SCHEMA = DATABASE() 
+         AND TABLE_NAME = 'Responsables_Equipo' 
+         AND COLUMN_NAME = 'ficha'`
+      );
+      const [[colNombreExterno]] = await connection.execute(
+        `SELECT COUNT(*) AS cnt FROM INFORMATION_SCHEMA.COLUMNS 
+         WHERE TABLE_SCHEMA = DATABASE() 
+         AND TABLE_NAME = 'Responsables_Equipo' 
+         AND COLUMN_NAME = 'nombre_externo'`
+      );
+      const [[colDocumentoExterno]] = await connection.execute(
+        `SELECT COUNT(*) AS cnt FROM INFORMATION_SCHEMA.COLUMNS 
+         WHERE TABLE_SCHEMA = DATABASE() 
+         AND TABLE_NAME = 'Responsables_Equipo' 
+         AND COLUMN_NAME = 'documento_externo'`
+      );
+
+      const tieneFicha = colFicha.cnt > 0;
+      const tieneNombreExterno = colNombreExterno.cnt > 0;
+      const tieneDocumentoExterno = colDocumentoExterno.cnt > 0;
+
+      // Si no existe asignación, crear una nueva
+      if (!asignacionExistente) {
+        // Construir observaciones con la información adicional
+        const observaciones = `Ficha: ${ficha.trim()}, Nombre: ${nombre.trim()}, Documento: ${documento.trim()}`;
+
+        // Construir query dinámicamente según las columnas disponibles
+        let campos = ['codigo_equipo', 'id_usuario', 'tipo_responsabilidad', 'observaciones', 'fecha_asignacion'];
+        let valores = [equipo.codigo_equipo, usuario.id_usuario, 'Principal', observaciones];
+        let placeholders = ['?', '?', '?', '?'];
+
+        if (tieneFicha) {
+          campos.push('ficha');
+          valores.push(ficha.trim());
+          placeholders.push('?');
+        }
+        if (tieneNombreExterno) {
+          campos.push('nombre_externo');
+          valores.push(nombre.trim());
+          placeholders.push('?');
+        }
+        if (tieneDocumentoExterno) {
+          campos.push('documento_externo');
+          valores.push(documento.trim());
+          placeholders.push('?');
+        }
+
+        const [resultAsignacion] = await connection.execute(
+          `INSERT INTO Responsables_Equipo (${campos.join(', ')}) 
+           VALUES (${placeholders.join(', ')})`,
+          valores
+        );
+
+        logger.info('Equipo asignado al usuario desde página externa', {
+          id_responsable: resultAsignacion.insertId,
+          codigo_equipo: equipo.codigo_equipo,
+          id_usuario: usuario.id_usuario,
+          ficha: ficha.trim(),
+          nombre: nombre.trim(),
+          documento: documento.trim()
+        });
+      } else {
+        // Si ya existe, actualizar con los nuevos datos
+        let updates = [];
+        let valoresUpdate = [];
+
+        if (tieneFicha) {
+          updates.push('ficha = ?');
+          valoresUpdate.push(ficha.trim());
+        }
+        if (tieneNombreExterno) {
+          updates.push('nombre_externo = ?');
+          valoresUpdate.push(nombre.trim());
+        }
+        if (tieneDocumentoExterno) {
+          updates.push('documento_externo = ?');
+          valoresUpdate.push(documento.trim());
+        }
+
+        // Actualizar observaciones siempre
+        const observaciones = `Ficha: ${ficha.trim()}, Nombre: ${nombre.trim()}, Documento: ${documento.trim()}`;
+        updates.push('observaciones = ?');
+        valoresUpdate.push(observaciones);
+
+        if (updates.length > 0) {
+          valoresUpdate.push(asignacionExistente.id_responsable);
+          await connection.execute(
+            `UPDATE Responsables_Equipo 
+             SET ${updates.join(', ')} 
+             WHERE id_responsable = ?`,
+            valoresUpdate
+          );
+        }
+      }
+
+      // 3. Verificar si el usuario tiene una sesión activa en este equipo
+      const [[sesionActiva]] = await connection.execute(
+        `SELECT id_historial FROM Historial_Uso_Equipos 
+         WHERE codigo_equipo = ? AND id_usuario = ? AND estado = 'En Uso' 
+         ORDER BY fecha_hora_inicio DESC LIMIT 1`,
+        [equipo.codigo_equipo, usuario.id_usuario]
+      );
+
+      if (sesionActiva) {
+        await connection.rollback();
+        connection.release();
+        return res.status(409).json({ 
+          success: false,
+          error: 'Sesión activa existente',
+          message: 'Ya existe una sesión activa para este usuario en este equipo',
+          id_historial: sesionActiva.id_historial
+        });
+      }
+
+      // 4. Preparar observaciones con la ficha para el historial
+      const observacionesHistorial = `Ficha: ${ficha.trim()}`;
+
+      // Verificar si la columna nombre_usuario existe en Historial_Uso_Equipos
+      const [[columnaNombreUsuario]] = await connection.execute(
+        `SELECT COUNT(*) AS cnt FROM INFORMATION_SCHEMA.COLUMNS 
+         WHERE TABLE_SCHEMA = DATABASE() 
+         AND TABLE_NAME = 'Historial_Uso_Equipos' 
+         AND COLUMN_NAME = 'nombre_usuario'`
+      );
+
+      // Insertar nuevo registro de uso
+      const fechaInicio = new Date();
+      let resultHistorial;
+      
+      if (columnaNombreUsuario.cnt > 0) {
+        [resultHistorial] = await connection.execute(
+          `INSERT INTO Historial_Uso_Equipos 
+           (codigo_equipo, id_usuario, nombre_usuario, fecha_hora_inicio, estado, observaciones) 
+           VALUES (?, ?, ?, ?, 'En Uso', ?)`,
+          [equipo.codigo_equipo, usuario.id_usuario, nombre.trim(), fechaInicio, observacionesHistorial]
+        );
+      } else {
+        [resultHistorial] = await connection.execute(
+          `INSERT INTO Historial_Uso_Equipos 
+           (codigo_equipo, id_usuario, fecha_hora_inicio, estado, observaciones) 
+           VALUES (?, ?, ?, 'En Uso', ?)`,
+          [equipo.codigo_equipo, usuario.id_usuario, fechaInicio, observacionesHistorial]
+        );
+      }
+
+      // Confirmar transacción
+      await connection.commit();
+
+      logger.info('Uso de equipo registrado desde página externa', {
+        id_historial: resultHistorial.insertId,
+        codigo_equipo: equipo.codigo_equipo,
+        placa: equipo.placa,
+        id_usuario: usuario.id_usuario,
+        documento: documento.trim(),
+        nombre: nombre.trim(),
+        ficha: ficha.trim(),
+        ambiente_id: ambienteId,
+        ambiente_codigo: ambienteInfo?.codigo_ambiente,
+        fecha_hora_inicio: fechaInicio
+      });
+
+      connection.release();
+
+      return res.status(201).json({
+        success: true,
+        message: 'Uso de equipo registrado y asignación realizada correctamente',
+        data: {
+          id_historial: resultHistorial.insertId,
+          codigo_equipo: equipo.codigo_equipo,
+          placa: equipo.placa,
+          tipo: equipo.tipo,
+          modelo: equipo.modelo,
+          ambiente: ambienteInfo ? {
+            id: ambienteInfo.id_ambiente,
+            nombre: ambienteInfo.nombre_ambiente,
+            codigo: ambienteInfo.codigo_ambiente
+          } : null,
+          nombre_usuario: nombre.trim(),
+          documento: documento.trim(),
+          ficha: ficha.trim(),
+          fecha_hora_inicio: fechaInicio
+        }
+      });
+    } catch (transactionError) {
+      await connection.rollback();
+      connection.release();
+      throw transactionError;
+    }
   } catch (err) {
     logger.error('Error al registrar uso de equipo externo', { 
       error: err.message, 
