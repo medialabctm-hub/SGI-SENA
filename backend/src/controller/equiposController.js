@@ -2770,29 +2770,59 @@ export async function registrarUsoEquipoExterno(req, res) {
           const fechaInicio = new Date();
           let resultHistorial;
           
-          if (tieneNombreUsuarioHistorial) {
-            [resultHistorial] = await connection.execute(
-              `INSERT INTO Historial_Uso_Equipos 
-               (codigo_equipo, id_usuario, nombre_usuario, fecha_hora_inicio, estado, observaciones) 
-               VALUES (?, ?, ?, ?, 'En Uso', ?)`,
-              [equipo.codigo_equipo, usuario.id_usuario, nombre.trim(), fechaInicio, observacionesHistorial]
-            );
-          } else {
-            [resultHistorial] = await connection.execute(
-              `INSERT INTO Historial_Uso_Equipos 
-               (codigo_equipo, id_usuario, fecha_hora_inicio, estado, observaciones) 
-               VALUES (?, ?, ?, 'En Uso', ?)`,
-              [equipo.codigo_equipo, usuario.id_usuario, fechaInicio, observacionesHistorial]
-            );
+          try {
+            if (tieneNombreUsuarioHistorial) {
+              [resultHistorial] = await connection.execute(
+                `INSERT INTO Historial_Uso_Equipos 
+                 (codigo_equipo, id_usuario, nombre_usuario, fecha_hora_inicio, estado, observaciones) 
+                 VALUES (?, ?, ?, ?, 'En Uso', ?)`,
+                [equipo.codigo_equipo, usuario.id_usuario, nombre.trim(), fechaInicio, observacionesHistorial]
+              );
+            } else {
+              [resultHistorial] = await connection.execute(
+                `INSERT INTO Historial_Uso_Equipos 
+                 (codigo_equipo, id_usuario, fecha_hora_inicio, estado, observaciones) 
+                 VALUES (?, ?, ?, 'En Uso', ?)`,
+                [equipo.codigo_equipo, usuario.id_usuario, fechaInicio, observacionesHistorial]
+              );
+            }
+            
+            logger.info('Historial de uso creado exitosamente', {
+              id_historial: resultHistorial.insertId,
+              codigo_equipo: equipo.codigo_equipo,
+              id_usuario: usuario.id_usuario
+            });
+          } catch (historialError) {
+            logger.error('Error al crear historial de uso', {
+              error: historialError.message,
+              stack: historialError.stack,
+              codigo_equipo: equipo.codigo_equipo,
+              id_usuario: usuario.id_usuario
+            });
+            throw historialError; // Re-lanzar para que sea capturado por el catch externo
           }
 
+          // Parsear dias_semana si existe
+          let diasSemanaParsed = null;
+          if (diasSemanaJson) {
+            try {
+              diasSemanaParsed = typeof diasSemanaJson === 'string' ? JSON.parse(diasSemanaJson) : diasSemanaJson;
+            } catch (e) {
+              logger.warn('Error al parsear diasSemanaJson en resultados', { error: e.message });
+              diasSemanaParsed = null;
+            }
+          }
+          
           resultados.push({
             id_historial: resultHistorial.insertId,
             id_usuario: usuario.id_usuario,
             nombre: nombre.trim(),
             documento: documento.trim(),
             ficha: ficha.trim(),
-            fecha_hora_inicio: fechaInicio
+            fecha_hora_inicio: fechaInicio,
+            dias_semana: diasSemanaParsed,
+            hora_inicio: horaInicioTime,
+            hora_fin: horaFinTime
           });
 
           logger.info('Uso de equipo registrado para usuario', {
@@ -2807,6 +2837,7 @@ export async function registrarUsoEquipoExterno(req, res) {
         } catch (usuarioError) {
           logger.error('Error al procesar usuario', {
             error: usuarioError.message,
+            stack: usuarioError.stack,
             documento: documento?.trim(),
             nombre: nombre?.trim(),
             ficha: ficha?.trim()
@@ -2822,6 +2853,11 @@ export async function registrarUsoEquipoExterno(req, res) {
 
       // Si no se procesó ningún usuario exitosamente, hacer rollback
       if (resultados.length === 0 && errores.length > 0) {
+        logger.warn('No se procesó ningún usuario exitosamente', {
+          codigo_equipo: equipo.codigo_equipo,
+          cantidad_errores: errores.length,
+          errores: errores
+        });
         await connection.rollback();
         connection.release();
         return res.status(400).json({
@@ -2831,6 +2867,13 @@ export async function registrarUsoEquipoExterno(req, res) {
           errores: errores
         });
       }
+      
+      // Log antes de commit para verificar estado
+      logger.info('Estado antes de commit', {
+        codigo_equipo: equipo.codigo_equipo,
+        resultados_count: resultados.length,
+        errores_count: errores.length
+      });
 
       // Confirmar transacción
       await connection.commit();
