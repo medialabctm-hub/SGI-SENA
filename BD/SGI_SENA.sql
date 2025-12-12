@@ -1,6 +1,15 @@
+-- ============================================
+-- SISTEMA DE GESTIÓN DE INVENTARIO SENA (SGI-SENA)
+-- Base de Datos Principal
+-- ============================================
+
 DROP DATABASE IF EXISTS railway;
 CREATE DATABASE railway;
 USE railway;
+
+-- ============================================
+-- TABLAS PRINCIPALES
+-- ============================================
 
 -- ===============
 -- TABLA DE ROLES
@@ -220,13 +229,24 @@ CREATE TABLE Responsables_Equipo (
   tipo_responsabilidad ENUM('Principal', 'Secundario') DEFAULT 'Principal',
   observaciones TEXT,
   asignado_por INT,
+  -- Campos para registros externos
+  ficha VARCHAR(50) NULL COMMENT 'Número de ficha del aprendiz (registro externo)',
+  nombre_externo VARCHAR(200) NULL COMMENT 'Nombre completo del usuario (registro externo)',
+  documento_externo VARCHAR(20) NULL COMMENT 'Documento de identificación (registro externo)',
+  -- Campos para horarios de uso
+  dias_semana JSON NULL COMMENT 'Array de días de la semana: ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"]',
+  hora_inicio TIME NULL COMMENT 'Hora de inicio del horario (formato HH:MM:SS)',
+  hora_fin TIME NULL COMMENT 'Hora de fin del horario (formato HH:MM:SS)',
   FOREIGN KEY (codigo_equipo) REFERENCES Elementos(codigo_equipo) ON DELETE CASCADE,
   FOREIGN KEY (id_usuario) REFERENCES Usuarios(id_usuario) ON DELETE CASCADE,
   FOREIGN KEY (asignado_por) REFERENCES Usuarios(id_usuario),
   INDEX idx_equipo_activo (codigo_equipo, estado_responsabilidad),
   INDEX idx_usuario (id_usuario),
-  INDEX idx_responsables_activos (estado_responsabilidad, fecha_asignacion)
-) COMMENT = 'Gestión de múltiples responsables por equipo';
+  INDEX idx_responsables_activos (estado_responsabilidad, fecha_asignacion),
+  INDEX idx_ficha (ficha),
+  INDEX idx_documento_externo (documento_externo),
+  INDEX idx_horarios (hora_inicio, hora_fin, estado_responsabilidad)
+) COMMENT = 'Gestión de múltiples responsables por equipo con información de horarios';
 
 -- ================================
 -- TABLA DE CLASES/PROGRAMACIONES
@@ -289,6 +309,10 @@ CREATE TABLE Responsabilidades_Ambiente (
   observaciones TEXT,
   creado_por INT,
   fecha_creacion DATETIME DEFAULT NOW(),
+  -- Campos para horarios
+  dias_semana JSON NULL COMMENT 'Array de días de la semana: ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes"]',
+  hora_inicio TIME NULL COMMENT 'Hora de inicio del horario (formato HH:MM:SS)',
+  hora_fin TIME NULL COMMENT 'Hora de fin del horario (formato HH:MM:SS)',
   FOREIGN KEY (id_ambiente) REFERENCES Ambientes(id_ambiente) ON DELETE CASCADE,
   FOREIGN KEY (id_clase) REFERENCES Clases(id_clase) ON DELETE SET NULL,
   FOREIGN KEY (id_usuario) REFERENCES Usuarios(id_usuario) ON DELETE CASCADE,
@@ -296,7 +320,9 @@ CREATE TABLE Responsabilidades_Ambiente (
   INDEX idx_ambiente_fecha_activa (id_ambiente, fecha_inicio, fecha_fin, estado_responsabilidad),
   INDEX idx_clase (id_clase),
   INDEX idx_usuario (id_usuario),
-  INDEX idx_ambiente_jornada (id_ambiente, jornada, estado_responsabilidad)
+  INDEX idx_ambiente_jornada (id_ambiente, jornada, estado_responsabilidad),
+  INDEX idx_ambiente_horas (id_ambiente, hora_inicio, hora_fin, estado_responsabilidad),
+  INDEX idx_usuario_horas (id_usuario, hora_inicio, hora_fin, estado_responsabilidad)
 ) COMMENT = 'Responsabilidades temporales sobre el inventario de un ambiente durante clases';
 
 -- =======================
@@ -363,6 +389,34 @@ CREATE TABLE Historial_Equipos (
   INDEX idx_historial_fecha (codigo_equipo, fecha_evento),
   INDEX idx_tipo (tipo_evento)
 ) COMMENT = 'Registro histórico de eventos de equipos (reemplaza rastreo temporal)';
+
+-- ============================================
+-- TABLA DE HISTORIAL DE USO DE EQUIPOS
+-- ============================================
+CREATE TABLE Historial_Uso_Equipos (
+  id_historial INT PRIMARY KEY AUTO_INCREMENT,
+  codigo_equipo INT NOT NULL,
+  id_usuario INT NOT NULL,
+  nombre_usuario VARCHAR(100) NULL COMMENT 'Nombre del usuario en el momento del registro (por si cambia después)',
+  fecha_hora_inicio DATETIME NOT NULL COMMENT 'Fecha y hora en que el usuario inició sesión en el equipo',
+  fecha_hora_fin DATETIME NULL COMMENT 'Fecha y hora en que el usuario cerró sesión. NULL si aún está en uso',
+  estado ENUM('En Uso', 'Finalizado') DEFAULT 'En Uso' COMMENT 'Estado de la sesión',
+  duracion_minutos INT NULL COMMENT 'Duración calculada en minutos (se calcula automáticamente)',
+  observaciones TEXT NULL COMMENT 'Observaciones adicionales sobre el uso',
+  id_clase INT NULL COMMENT 'ID de la clase/horario asociado al uso del equipo',
+  fecha_registro DATETIME DEFAULT NOW() COMMENT 'Fecha en que se registró el historial',
+  FOREIGN KEY (codigo_equipo) REFERENCES Elementos(codigo_equipo) ON DELETE CASCADE,
+  FOREIGN KEY (id_usuario) REFERENCES Usuarios(id_usuario) ON DELETE CASCADE,
+  FOREIGN KEY (id_clase) REFERENCES Clases(id_clase) ON DELETE SET NULL,
+  INDEX idx_equipo (codigo_equipo),
+  INDEX idx_usuario (id_usuario),
+  INDEX idx_fecha_inicio (fecha_hora_inicio),
+  INDEX idx_estado (estado),
+  INDEX idx_equipo_fecha (codigo_equipo, fecha_hora_inicio),
+  INDEX idx_usuario_fecha (id_usuario, fecha_hora_inicio),
+  INDEX idx_clase (id_clase)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+COMMENT = 'Historial de uso de equipos: registra quién inició sesión y de qué hora a qué hora';
 
 -- ===================
 -- TABLA DE AUDITORÍA
@@ -459,7 +513,10 @@ CREATE TABLE Verificaciones_Inventario (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
 COMMENT = 'Historial completo de verificaciones de inventario con contexto de horarios y responsabilidades';
 
-CREATE TABLE IF NOT EXISTS pedidos_externos (
+-- ============================================
+-- TABLA DE PEDIDOS EXTERNOS
+-- ============================================
+CREATE TABLE pedidos_externos (
   id INT AUTO_INCREMENT PRIMARY KEY,
   usuario VARCHAR(255) NOT NULL COMMENT 'Usuario que realiza el pedido (identificador externo)',
   id_ambiente INT NOT NULL COMMENT 'ID del ambiente donde se realiza el pedido',
@@ -472,36 +529,12 @@ CREATE TABLE IF NOT EXISTS pedidos_externos (
   INDEX idx_ficha (ficha),
   INDEX idx_estado (estado),
   INDEX idx_fecha_recepcion (fecha_recepcion)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Tabla para almacenar pedidos recibidos de sistemas externos';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci 
+COMMENT='Tabla para almacenar pedidos recibidos de sistemas externos';
 
 -- ============================================
--- TABLA DE HISTORIAL DE USO DE EQUIPOS
--- ============================================
-CREATE TABLE Historial_Uso_Equipos (
-  id_historial INT PRIMARY KEY AUTO_INCREMENT,
-  codigo_equipo INT NOT NULL,
-  id_usuario INT NOT NULL,
-  nombre_usuario VARCHAR(100) NULL COMMENT 'Nombre del usuario en el momento del registro (por si cambia después)',
-  fecha_hora_inicio DATETIME NOT NULL COMMENT 'Fecha y hora en que el usuario inició sesión en el equipo',
-  fecha_hora_fin DATETIME NULL COMMENT 'Fecha y hora en que el usuario cerró sesión. NULL si aún está en uso',
-  estado ENUM('En Uso', 'Finalizado') DEFAULT 'En Uso' COMMENT 'Estado de la sesión',
-  duracion_minutos INT NULL COMMENT 'Duración calculada en minutos (se calcula automáticamente)',
-  observaciones TEXT NULL COMMENT 'Observaciones adicionales sobre el uso',
-  fecha_registro DATETIME DEFAULT NOW() COMMENT 'Fecha en que se registró el historial',
-  FOREIGN KEY (codigo_equipo) REFERENCES Elementos(codigo_equipo) ON DELETE CASCADE,
-  FOREIGN KEY (id_usuario) REFERENCES Usuarios(id_usuario) ON DELETE CASCADE,
-  INDEX idx_equipo (codigo_equipo),
-  INDEX idx_usuario (id_usuario),
-  INDEX idx_fecha_inicio (fecha_hora_inicio),
-  INDEX idx_estado (estado),
-  INDEX idx_equipo_fecha (codigo_equipo, fecha_hora_inicio),
-  INDEX idx_usuario_fecha (id_usuario, fecha_hora_inicio)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-COMMENT = 'Historial de uso de equipos: registra quién inició sesión y de qué hora a qué hora';
-
--- =========
 -- TRIGGERS
--- =========
+-- ============================================
 
 DELIMITER //
 
@@ -643,9 +676,9 @@ END;
 
 DELIMITER ;
 
--- ========
---  VISTAS
--- ========
+-- ============================================
+-- VISTAS
+-- ============================================
 
 CREATE VIEW Vista_Equipos_Con_Responsables AS
 SELECT 
@@ -736,9 +769,9 @@ LEFT JOIN Roles r ON u.id_rol = r.id_rol
 LEFT JOIN Clases c ON ra.id_clase = c.id_clase
 WHERE ra.estado_responsabilidad = 'Activa';
 
--- ===========================
+-- ============================================
 -- PROCEDIMIENTOS ALMACENADOS
--- ===========================
+-- ============================================
 
 DELIMITER //
 
@@ -1000,9 +1033,9 @@ END;
 
 DELIMITER ;
 
--- ======================
+-- ============================================
 -- DATOS INICIALES
--- ======================
+-- ============================================
 
 INSERT INTO Roles (nombre_rol, descripcion) VALUES
 ('Administrador', 'Acceso total al sistema'),
@@ -1055,4 +1088,3 @@ INSERT INTO Criterios_Asignacion (nombre_criterio, prioridad, descripcion, param
 INSERT INTO Usuarios (nombre_usuario, cedula, telefono, correo, contrasena, id_rol, estado) VALUES 
 ('Administrador Sistema', '1000000000', '3001234567', 'admin@sena.edu.co',
  '$2a$12$zz2nWS1PBuSGeX4gNQS5..Jk8Juo5gb8r8ZYDNZreGcND1jrHlVzq', 1, 'Activo');
-
