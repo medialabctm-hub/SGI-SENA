@@ -841,6 +841,7 @@ export async function sincronizarResponsabilidadesHorarios(req, res) {
     // Buscar clases que deberían estar activas pero no tienen responsabilidades asignadas
     // Buscar clases del día actual y también clases pasadas que no se iniciaron
     // Usar TIMESTAMP para comparar correctamente fecha y hora
+    // Cambiar >= por > para hora_fin para evitar iniciar clases que ya terminaron
     const [clasesSinResponsabilidades] = await defaultDb.execute(
       `SELECT 
         c.id_clase,
@@ -853,7 +854,7 @@ export async function sincronizarResponsabilidadesHorarios(req, res) {
        FROM Clases c
        WHERE c.estado_clase = 'Programada'
          AND TIMESTAMP(c.fecha_clase, c.hora_inicio) <= NOW()
-         AND TIMESTAMP(c.fecha_clase, c.hora_fin) >= NOW()
+         AND TIMESTAMP(c.fecha_clase, c.hora_fin) > NOW()
          AND NOT EXISTS (
            SELECT 1 FROM Responsabilidades_Ambiente ra
            WHERE ra.id_clase = c.id_clase
