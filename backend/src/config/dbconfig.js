@@ -67,6 +67,3 @@ export const dbWrapper = {
 
 // Exportar como default para compatibilidad con healthcheck y controladores legacy
 export default dbWrapper;
-
-// Exportar pool para transacciones
-export { pool };

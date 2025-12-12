@@ -57,6 +57,39 @@ EXECUTE stmt;
 DEALLOCATE PREPARE stmt;
 
 -- Agregar índices para mejorar búsquedas
-CREATE INDEX IF NOT EXISTS idx_ficha ON Responsables_Equipo(ficha);
-CREATE INDEX IF NOT EXISTS idx_documento_externo ON Responsables_Equipo(documento_externo);
+-- Verificar y crear índice 'idx_ficha' si no existe
+SET @idx_exists = (
+    SELECT COUNT(*) 
+    FROM INFORMATION_SCHEMA.STATISTICS 
+    WHERE TABLE_SCHEMA = DATABASE() 
+    AND TABLE_NAME = 'Responsables_Equipo' 
+    AND INDEX_NAME = 'idx_ficha'
+);
+
+SET @sql = IF(@idx_exists = 0,
+    'CREATE INDEX idx_ficha ON Responsables_Equipo(ficha)',
+    'SELECT ''Índice idx_ficha ya existe'' AS mensaje'
+);
+
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+-- Verificar y crear índice 'idx_documento_externo' si no existe
+SET @idx_exists = (
+    SELECT COUNT(*) 
+    FROM INFORMATION_SCHEMA.STATISTICS 
+    WHERE TABLE_SCHEMA = DATABASE() 
+    AND TABLE_NAME = 'Responsables_Equipo' 
+    AND INDEX_NAME = 'idx_documento_externo'
+);
+
+SET @sql = IF(@idx_exists = 0,
+    'CREATE INDEX idx_documento_externo ON Responsables_Equipo(documento_externo)',
+    'SELECT ''Índice idx_documento_externo ya existe'' AS mensaje'
+);
+
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
 
