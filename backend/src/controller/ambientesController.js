@@ -601,7 +601,7 @@ export async function listarAsignacionesAmbientes(req, res) {
         a.codigo_ambiente,
         a.tipo_ambiente,
         ra.jornada,
-        ra.dias_semana,
+        CAST(ra.dias_semana AS CHAR) AS dias_semana,
         ra.hora_inicio,
         ra.hora_fin,
         ra.id_usuario,
@@ -642,12 +642,36 @@ export async function listarAsignacionesAmbientes(req, res) {
     const [rows] = await defaultDb.execute(query, params);
     
     // Parsear JSON de dias_semana y formatear horas
-    const rowsFormateados = rows.map(row => ({
-      ...row,
-      dias_semana: row.dias_semana ? JSON.parse(row.dias_semana) : null,
-      hora_inicio: row.hora_inicio ? row.hora_inicio.substring(0, 5) : null, // HH:MM
-      hora_fin: row.hora_fin ? row.hora_fin.substring(0, 5) : null // HH:MM
-    }));
+    const rowsFormateados = rows.map(row => {
+      let diasSemanaParsed = null;
+      
+      // Manejar diferentes formatos de dias_semana
+      if (row.dias_semana) {
+        if (Array.isArray(row.dias_semana)) {
+          // Ya es un array (puede venir parseado del driver)
+          diasSemanaParsed = row.dias_semana;
+        } else if (typeof row.dias_semana === 'string') {
+          try {
+            // Intentar parsear como JSON
+            diasSemanaParsed = JSON.parse(row.dias_semana);
+          } catch (parseError) {
+            // Si falla el parse, intentar como string simple
+            logger.warn('Error al parsear dias_semana', { 
+              valor: row.dias_semana, 
+              error: parseError.message 
+            });
+            diasSemanaParsed = null;
+          }
+        }
+      }
+      
+      return {
+        ...row,
+        dias_semana: diasSemanaParsed,
+        hora_inicio: row.hora_inicio ? (typeof row.hora_inicio === 'string' ? row.hora_inicio.substring(0, 5) : row.hora_inicio) : null, // HH:MM
+        hora_fin: row.hora_fin ? (typeof row.hora_fin === 'string' ? row.hora_fin.substring(0, 5) : row.hora_fin) : null // HH:MM
+      };
+    });
     
     return res.json(rowsFormateados);
   } catch (err) {
