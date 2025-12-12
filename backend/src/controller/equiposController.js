@@ -712,69 +712,138 @@ export async function obtenerEquiposAmbientesInstructor(req, res) {
     const diaSemanaActual = ahora.getDay(); // 0-6
     const diasSemanaNombres = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
     const diaActualNombre = diasSemanaNombres[diaSemanaActual];
+    const horaActualStr = ahora.toTimeString().slice(0, 8); // HH:MM:SS
 
     // Obtener ambientes donde el instructor tiene responsabilidad activa
     // Incluye tanto asignaciones permanentes (id_clase IS NULL) como temporales (con id_clase)
     // Para permanentes con días/horarios: verifica día actual y rango de horas usando TIME(NOW())
     // Para permanentes con jornada (legacy): mantiene compatibilidad
     // Para temporales (clases): verifica que la clase esté dentro del rango de tiempo actual
-    const [ambientes] = await defaultDb.execute(
-      `SELECT DISTINCT
-        ra.id_responsabilidad_ambiente,
-        ra.id_ambiente,
-        a.nombre_ambiente,
-        a.codigo_ambiente,
-        ra.tipo_responsabilidad,
-        ra.fecha_inicio,
-        ra.fecha_fin,
-        ra.jornada,
-        ra.dias_semana,
-        ra.hora_inicio,
-        ra.hora_fin,
-        ra.id_clase,
-        c.estado_clase,
-        CASE WHEN ra.id_clase IS NULL THEN 'Permanente' ELSE 'Temporal' END AS tipo_asignacion
-      FROM Responsabilidades_Ambiente ra
-      INNER JOIN Ambientes a ON ra.id_ambiente = a.id_ambiente
-      LEFT JOIN Clases c ON ra.id_clase = c.id_clase
-      WHERE ra.id_usuario = ?
-        AND ra.estado_responsabilidad = 'Activa'
-        AND ra.fecha_inicio <= NOW()
-        AND (ra.fecha_fin IS NULL OR ra.fecha_fin >= NOW())
-        AND (
-          -- Asignaciones permanentes con días y horarios (nuevo sistema)
-          (ra.id_clase IS NULL 
-           AND ra.dias_semana IS NOT NULL 
-           AND JSON_CONTAINS(ra.dias_semana, ?)
-           AND TIME(ra.hora_inicio) <= TIME(NOW())
-           AND TIME(ra.hora_fin) > TIME(NOW()))
-          OR
-          -- Asignaciones permanentes con jornada (sistema legacy - compatibilidad)
-          (ra.id_clase IS NULL 
-           AND ra.jornada IS NOT NULL 
-           AND ra.dias_semana IS NULL
-           AND (
-             (ra.jornada = 'Mañana' AND HOUR(NOW()) >= 6 AND HOUR(NOW()) < 12)
-             OR (ra.jornada = 'Tarde' AND HOUR(NOW()) >= 12 AND HOUR(NOW()) < 18)
-             OR (ra.jornada = 'Noche' AND (HOUR(NOW()) >= 18 OR HOUR(NOW()) < 6))
-           ))
-          OR
-          -- Asignaciones temporales (clases)
-          (ra.id_clase IS NOT NULL 
-           AND c.estado_clase IN ('Programada', 'En Curso')
-           AND c.fecha_clase = CURDATE()
-           AND CONCAT(c.fecha_clase, ' ', c.hora_inicio) <= NOW()
-           AND CONCAT(c.fecha_clase, ' ', c.hora_fin) > NOW())
-        )
-      ORDER BY a.nombre_ambiente`,
-      [userId, JSON.stringify([diaActualNombre])]
-    )
+    
+    let ambientes = [];
+    try {
+      // Primero intentar con el nuevo sistema (días y horarios)
+      const diaJson = JSON.stringify([diaActualNombre]);
+      logger.debug('Buscando ambientes', { 
+        userId, 
+        diaActual: diaActualNombre, 
+        diaJson,
+        horaActual: horaActualStr 
+      });
+      const [result] = await defaultDb.execute(
+        `SELECT DISTINCT
+          ra.id_responsabilidad_ambiente,
+          ra.id_ambiente,
+          a.nombre_ambiente,
+          a.codigo_ambiente,
+          ra.tipo_responsabilidad,
+          ra.fecha_inicio,
+          ra.fecha_fin,
+          ra.jornada,
+          CAST(ra.dias_semana AS CHAR) AS dias_semana,
+          ra.hora_inicio,
+          ra.hora_fin,
+          ra.id_clase,
+          c.estado_clase,
+          CASE WHEN ra.id_clase IS NULL THEN 'Permanente' ELSE 'Temporal' END AS tipo_asignacion
+        FROM Responsabilidades_Ambiente ra
+        INNER JOIN Ambientes a ON ra.id_ambiente = a.id_ambiente
+        LEFT JOIN Clases c ON ra.id_clase = c.id_clase
+        WHERE ra.id_usuario = ?
+          AND ra.estado_responsabilidad = 'Activa'
+          AND ra.fecha_inicio <= NOW()
+          AND (ra.fecha_fin IS NULL OR ra.fecha_fin >= NOW())
+          AND (
+            -- Asignaciones permanentes con días y horarios (nuevo sistema)
+            (ra.id_clase IS NULL 
+             AND ra.dias_semana IS NOT NULL 
+             AND JSON_CONTAINS(ra.dias_semana, ?)
+             AND TIME(ra.hora_inicio) <= TIME(NOW())
+             AND TIME(ra.hora_fin) > TIME(NOW()))
+            OR
+            -- Asignaciones permanentes con jornada (sistema legacy - compatibilidad)
+            (ra.id_clase IS NULL 
+             AND ra.jornada IS NOT NULL 
+             AND ra.dias_semana IS NULL
+             AND (
+               (ra.jornada = 'Mañana' AND HOUR(NOW()) >= 6 AND HOUR(NOW()) < 12)
+               OR (ra.jornada = 'Tarde' AND HOUR(NOW()) >= 12 AND HOUR(NOW()) < 18)
+               OR (ra.jornada = 'Noche' AND (HOUR(NOW()) >= 18 OR HOUR(NOW()) < 6))
+             ))
+            OR
+            -- Asignaciones temporales (clases)
+            (ra.id_clase IS NOT NULL 
+             AND c.estado_clase IN ('Programada', 'En Curso')
+             AND c.fecha_clase = CURDATE()
+             AND CONCAT(c.fecha_clase, ' ', c.hora_inicio) <= NOW()
+             AND CONCAT(c.fecha_clase, ' ', c.hora_fin) > NOW())
+          )
+        ORDER BY a.nombre_ambiente`,
+        [userId, diaJson]
+      );
+      ambientes = result;
+      logger.debug('Resultado consulta principal', { 
+        cantidad: result.length,
+        primeros: result.slice(0, 2).map(r => ({
+          ambiente: r.nombre_ambiente,
+          jornada: r.jornada,
+          dias_semana: r.dias_semana,
+          hora_inicio: r.hora_inicio,
+          hora_fin: r.hora_fin
+        }))
+      });
+    } catch (err) {
+      logger.error('Error al obtener ambientes del instructor', { 
+        error: err.message, 
+        stack: err.stack,
+        userId,
+        diaActual: diaActualNombre
+      });
+      // En caso de error, intentar al menos con asignaciones legacy
+      try {
+        const [resultLegacy] = await defaultDb.execute(
+          `SELECT DISTINCT
+            ra.id_responsabilidad_ambiente,
+            ra.id_ambiente,
+            a.nombre_ambiente,
+            a.codigo_ambiente,
+            ra.tipo_responsabilidad,
+            ra.fecha_inicio,
+            ra.fecha_fin,
+            ra.jornada,
+            NULL AS dias_semana,
+            NULL AS hora_inicio,
+            NULL AS hora_fin,
+            ra.id_clase,
+            c.estado_clase,
+            CASE WHEN ra.id_clase IS NULL THEN 'Permanente' ELSE 'Temporal' END AS tipo_asignacion
+          FROM Responsabilidades_Ambiente ra
+          INNER JOIN Ambientes a ON ra.id_ambiente = a.id_ambiente
+          LEFT JOIN Clases c ON ra.id_clase = c.id_clase
+          WHERE ra.id_usuario = ?
+            AND ra.estado_responsabilidad = 'Activa'
+            AND ra.fecha_inicio <= NOW()
+            AND (ra.fecha_fin IS NULL OR ra.fecha_fin >= NOW())
+            AND ra.jornada IS NOT NULL
+            AND (
+              (ra.jornada = 'Mañana' AND HOUR(NOW()) >= 6 AND HOUR(NOW()) < 12)
+              OR (ra.jornada = 'Tarde' AND HOUR(NOW()) >= 12 AND HOUR(NOW()) < 18)
+              OR (ra.jornada = 'Noche' AND (HOUR(NOW()) >= 18 OR HOUR(NOW()) < 6))
+            )
+          ORDER BY a.nombre_ambiente`,
+          [userId]
+        );
+        ambientes = resultLegacy;
+      } catch (legacyErr) {
+        logger.error('Error al obtener ambientes legacy', { error: legacyErr.message });
+      }
+    }
 
     // Log para debug
     logger.debug('Verificación Inventario', { 
       instructor: userId, 
       dia_actual: diaActualNombre,
-      hora_actual: horaActual,
+      hora_actual: horaActualStr,
       ambientesEncontrados: ambientes.length 
     })
     if (ambientes.length > 0) {
