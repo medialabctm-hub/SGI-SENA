@@ -2652,9 +2652,6 @@ export async function registrarUsoEquipoExterno(req, res) {
             [equipo.codigo_equipo, usuario.id_usuario]
           );
 
-          // Crear o actualizar asignación
-          const observaciones = `Ficha: ${ficha.trim()}, Nombre: ${nombre.trim()}, Documento: ${documento.trim()}`;
-
           // Preparar datos de horarios
           let diasSemanaJson = null;
           if (dias_semana && Array.isArray(dias_semana) && dias_semana.length > 0) {
@@ -2681,6 +2678,106 @@ export async function registrarUsoEquipoExterno(req, res) {
               horaFinTime = hora_fin;
             }
           }
+
+          // Validar conflictos de horario: no puede haber dos usuarios con el mismo equipo
+          // en los mismos días y horarios que se solapen
+          if (diasSemanaJson && horaInicioTime && horaFinTime) {
+            // Construir la consulta para verificar conflictos
+            let conflictQuery = `
+              SELECT 
+                re.id_responsable,
+                re.id_usuario,
+                COALESCE(u.nombre_usuario, re.nombre_externo) AS nombre_usuario,
+                COALESCE(u.cedula, re.documento_externo) AS cedula,
+                re.dias_semana,
+                re.hora_inicio,
+                re.hora_fin
+              FROM Responsables_Equipo re
+              LEFT JOIN Usuarios u ON re.id_usuario = u.id_usuario
+              WHERE re.codigo_equipo = ?
+                AND re.estado_responsabilidad = 'Activo'
+                AND re.dias_semana IS NOT NULL
+                AND re.hora_inicio IS NOT NULL
+                AND re.hora_fin IS NOT NULL
+            `;
+            
+            let conflictParams = [equipo.codigo_equipo];
+            
+            // Si estamos actualizando una asignación existente, excluirla de la búsqueda
+            if (asignacionExistente) {
+              conflictQuery += ` AND re.id_responsable != ?`;
+              conflictParams.push(asignacionExistente.id_responsable);
+            }
+            
+            // Verificar solapamiento de días usando JSON_OVERLAPS
+            conflictQuery += ` AND JSON_OVERLAPS(re.dias_semana, ?)`;
+            conflictParams.push(diasSemanaJson);
+            
+            // Verificar solapamiento de horarios
+            // Dos horarios se solapan si: (inicio_nuevo < fin_existente AND fin_nuevo > inicio_existente)
+            conflictQuery += ` AND (
+              (re.hora_inicio < ? AND re.hora_fin > ?) OR
+              (re.hora_inicio < ? AND re.hora_fin >= ?) OR
+              (re.hora_inicio >= ? AND re.hora_fin <= ?)
+            )`;
+            conflictParams.push(
+              horaFinTime, horaInicioTime,  // inicio_nuevo < fin_existente
+              horaFinTime, horaInicioTime,  // inicio_nuevo < fin_existente (con >=)
+              horaInicioTime, horaFinTime   // nuevo horario está dentro del existente
+            );
+            
+            const [conflictos] = await connection.execute(conflictQuery, conflictParams);
+            
+            if (conflictos.length > 0) {
+              const conflicto = conflictos[0];
+              let diasConflicto = [];
+              try {
+                if (typeof conflicto.dias_semana === 'string') {
+                  diasConflicto = JSON.parse(conflicto.dias_semana);
+                } else if (Array.isArray(conflicto.dias_semana)) {
+                  diasConflicto = conflicto.dias_semana;
+                }
+              } catch (e) {
+                // Ignorar error de parseo
+              }
+              
+              errores.push({
+                documento: documento.trim(),
+                nombre: nombre.trim(),
+                ficha: ficha.trim(),
+                error: `Conflicto de horario: Ya existe otro usuario (${conflicto.nombre_usuario || 'Sin nombre'}, ${conflicto.cedula || 'Sin documento'}) asignado a este equipo en los días ${Array.isArray(diasConflicto) ? diasConflicto.join(', ') : 'N/A'} de ${conflicto.hora_inicio ? conflicto.hora_inicio.substring(0, 5) : 'N/A'} a ${conflicto.hora_fin ? conflicto.hora_fin.substring(0, 5) : 'N/A'}`,
+                conflicto_con: {
+                  id_usuario: conflicto.id_usuario,
+                  nombre: conflicto.nombre_usuario,
+                  documento: conflicto.cedula,
+                  dias: diasConflicto,
+                  horario: `${conflicto.hora_inicio ? conflicto.hora_inicio.substring(0, 5) : ''} - ${conflicto.hora_fin ? conflicto.hora_fin.substring(0, 5) : ''}`
+                }
+              });
+              
+              logger.warn('Conflicto de horario detectado', {
+                codigo_equipo: equipo.codigo_equipo,
+                usuario_nuevo: {
+                  documento: documento.trim(),
+                  nombre: nombre.trim(),
+                  dias: dias_semana,
+                  horario: `${horaInicioTime} - ${horaFinTime}`
+                },
+                conflicto_con: {
+                  id_usuario: conflicto.id_usuario,
+                  nombre: conflicto.nombre_usuario,
+                  documento: conflicto.cedula,
+                  dias: diasConflicto,
+                  horario: `${conflicto.hora_inicio} - ${conflicto.hora_fin}`
+                }
+              });
+              
+              continue;
+            }
+          }
+
+          // Crear o actualizar asignación
+          const observaciones = `Ficha: ${ficha.trim()}, Nombre: ${nombre.trim()}, Documento: ${documento.trim()}`;
 
           if (!asignacionExistente) {
             // Crear nueva asignación
