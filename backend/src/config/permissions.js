@@ -185,10 +185,9 @@ export const ROLE_PERMISSIONS = {
     PERMISSIONS.EQUIPOS.VIEW_DETAIL,
     PERMISSIONS.EQUIPOS.ASSIGN_TO_APRENDIZ,
 
-    // Novedades - ver todas, crear nuevas, no eliminar
+    // Novedades - ver todas, crear nuevas, no puede cambiar estado ni eliminar
     PERMISSIONS.NOVEDADES.VIEW,
     PERMISSIONS.NOVEDADES.CREATE,
-    PERMISSIONS.NOVEDADES.UPDATE, // Puede editar para agregar observaciones
 
     // Mantenimiento - consulta completa
     PERMISSIONS.MANTENIMIENTO.VIEW,
@@ -250,12 +249,10 @@ export const ROLE_PERMISSIONS = {
     // PERMISSIONS.EQUIPOS.ASSIGN, // NO incluido
     // PERMISSIONS.EQUIPOS.ASSIGN_TO_APRENDIZ, // NO incluido
 
-    // Novedades - de su inventario
+    // Novedades - de su inventario, no puede cambiar estado
     PERMISSIONS.NOVEDADES.VIEW_OWN,
     PERMISSIONS.NOVEDADES.CREATE_OWN,
-    PERMISSIONS.NOVEDADES.UPDATE,
     PERMISSIONS.NOVEDADES.DELETE,
-    PERMISSIONS.NOVEDADES.RESOLVE,
     // PERMISSIONS.NOVEDADES.VIEW, // NO incluido - no puede ver todas las novedades
 
     // Mantenimiento - de su inventario

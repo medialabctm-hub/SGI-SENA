@@ -280,6 +280,13 @@ export async function actualizarEstadoNovedad(req, res) {
       return res.status(400).json({ error: 'Estado de resolución inválido' })
     }
 
+    // Solo Administrador puede actualizar el estado de las novedades
+    if (userRole !== 'Administrador') {
+      return res.status(403).json({ 
+        error: 'Solo el Administrador puede actualizar el estado de las novedades' 
+      })
+    }
+
     // Obtener la novedad
     const [[novedad]] = await defaultDb.execute(
       'SELECT codigo_equipo, estado_resolucion FROM Novedades WHERE id_novedad = ?',
@@ -288,19 +295,6 @@ export async function actualizarEstadoNovedad(req, res) {
 
     if (!novedad) {
       return res.status(404).json({ error: 'Novedad no encontrada' })
-    }
-
-    // Si es Instructor o Aprendiz, validar que el equipo le esté asignado
-    if (userRole === 'Instructor' || userRole === 'Aprendiz') {
-      const [[asignacion]] = await defaultDb.execute(
-        `SELECT id_responsable FROM Responsables_Equipo 
-         WHERE codigo_equipo = ? AND id_usuario = ? AND estado_responsabilidad = 'Activo'`,
-        [novedad.codigo_equipo, userId]
-      )
-
-      if (!asignacion) {
-        return res.status(403).json({ error: 'No tienes permiso para actualizar esta novedad' })
-      }
     }
 
     // Actualizar el estado

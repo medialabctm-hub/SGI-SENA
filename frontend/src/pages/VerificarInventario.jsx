@@ -68,12 +68,12 @@ export default function VerificarInventario() {
       setAmbientes(data.ambientes || [])
       setEquipos(data.equipos || [])
       
-      // Inicializar verificaciones con estado por defecto
+      // Inicializar verificaciones con el estado real desde el backend
       const verificacionesIniciales = {}
       data.equipos?.forEach(eq => {
         verificacionesIniciales[eq.codigo_equipo] = {
-          estado: 'No Verificado',
-          observaciones: ''
+          estado: eq.estado_verificacion_actual || 'No Verificado',
+          observaciones: eq.observaciones_verificacion || ''
         }
       })
       setVerificaciones(verificacionesIniciales)

@@ -33,8 +33,13 @@ export default function Mantenimientos() {
   }, [])
 
   useEffect(() => {
+    // Verificar permisos: solo Administrador y Cuentadante pueden acceder
+    if (user && user.nombre_rol !== 'Administrador' && user.nombre_rol !== 'Cuentadante') {
+      navigate('/dashboard')
+      return
+    }
     fetchMantenimientos()
-  }, [])
+  }, [user, navigate])
 
   async function fetchMantenimientos() {
     setLoading(true)
@@ -226,14 +231,16 @@ export default function Mantenimientos() {
                 Historial de mantenimientos realizados en los equipos
               </p>
             </div>
-            <button
-              onClick={() => navigate('/mantenimientos/crear')}
-              className="btn-primary btn-modern"
-              style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 20px' }}
-            >
-              <FiPlus size={18} />
-              Nuevo Mantenimiento
-            </button>
+            {(isAdmin || user?.nombre_rol === 'Cuentadante') && (
+              <button
+                onClick={() => navigate('/mantenimientos/crear')}
+                className="btn-primary btn-modern"
+                style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 20px' }}
+              >
+                <FiPlus size={18} />
+                Nuevo Mantenimiento
+              </button>
+            )}
           </div>
 
           <div className="form-divider"></div>

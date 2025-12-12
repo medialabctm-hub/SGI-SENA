@@ -102,11 +102,11 @@ export async function crearClase(req, res) {
       });
     }
 
-    // Insertar la clase
+    // Insertar la clase con estado explícito
     const [result] = await defaultDb.execute(
       `INSERT INTO Clases 
-       (id_ambiente, id_instructor, nombre_clase, codigo_ficha, descripcion, fecha_clase, hora_inicio, hora_fin, observaciones, creado_por)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       (id_ambiente, id_instructor, nombre_clase, codigo_ficha, descripcion, fecha_clase, hora_inicio, hora_fin, observaciones, estado_clase, creado_por)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'Programada', ?)`,
       [id_ambiente, instructorId, nombre_clase || null, codigo_ficha || null, descripcion || null, fecha_clase, hora_inicio, hora_fin, observaciones || null, creadoPor]
     );
 
@@ -808,7 +808,8 @@ export async function sincronizarResponsabilidadesHorarios(req, res) {
     const fechaActual = ahora.toISOString().split('T')[0];
 
     // Buscar clases que deberían estar activas pero no tienen responsabilidades asignadas
-    // Usar NOW() para comparar con la fecha y hora completa
+    // Buscar clases del día actual y también clases pasadas que no se iniciaron
+    // Usar TIMESTAMP para comparar correctamente fecha y hora
     const [clasesSinResponsabilidades] = await defaultDb.execute(
       `SELECT 
         c.id_clase,
@@ -819,25 +820,28 @@ export async function sincronizarResponsabilidadesHorarios(req, res) {
         c.hora_fin,
         c.estado_clase
        FROM Clases c
-       WHERE c.fecha_clase = ?
-         AND c.estado_clase IN ('Programada', 'En Curso')
-         AND CONCAT(c.fecha_clase, ' ', c.hora_inicio) <= NOW()
-         AND CONCAT(c.fecha_clase, ' ', c.hora_fin) >= NOW()
+       WHERE c.estado_clase = 'Programada'
+         AND TIMESTAMP(c.fecha_clase, c.hora_inicio) <= NOW()
+         AND TIMESTAMP(c.fecha_clase, c.hora_fin) >= NOW()
          AND NOT EXISTS (
            SELECT 1 FROM Responsabilidades_Ambiente ra
            WHERE ra.id_clase = c.id_clase
              AND ra.estado_responsabilidad = 'Activa'
              AND ra.tipo_responsabilidad = 'Principal'
          )`,
-      [fechaActual]
+      []
     );
 
     let asignadas = 0;
     const errores = [];
 
+    logger.info(`Sincronizando responsabilidades: ${clasesSinResponsabilidades.length} clases encontradas para iniciar`);
+
     // eslint-disable-next-line no-await-in-loop
     for (const clase of clasesSinResponsabilidades) {
       try {
+        logger.info(`Procesando clase ${clase.id_clase} - Estado: ${clase.estado_clase}`);
+        
         // Finalizar responsabilidades anteriores del ambiente que se solapen
         // Convertir fecha_clase a string en formato YYYY-MM-DD
         const fechaClaseStr = clase.fecha_clase instanceof Date
@@ -845,15 +849,21 @@ export async function sincronizarResponsabilidadesHorarios(req, res) {
           : String(clase.fecha_clase).split('T')[0];
         
         // Asegurar formato correcto de hora (puede venir con o sin segundos)
-        const horaInicio = String(clase.hora_inicio).includes(':') && String(clase.hora_inicio).split(':').length === 2
-          ? `${clase.hora_inicio}:00`
-          : String(clase.hora_inicio);
-        const horaFin = String(clase.hora_fin).includes(':') && String(clase.hora_fin).split(':').length === 2
-          ? `${clase.hora_fin}:00`
-          : String(clase.hora_fin);
+        let horaInicio = String(clase.hora_inicio);
+        if (horaInicio.split(':').length === 2) {
+          horaInicio = `${horaInicio}:00`;
+        }
         
+        let horaFin = String(clase.hora_fin);
+        if (horaFin.split(':').length === 2) {
+          horaFin = `${horaFin}:00`;
+        }
+        
+        // Construir fecha/hora de inicio y fin usando la fecha y hora programadas
         const fechaInicioClase = `${fechaClaseStr} ${horaInicio}`;
         const fechaFinClase = `${fechaClaseStr} ${horaFin}`;
+        
+        logger.info(`Clase ${clase.id_clase}: Inicio programado=${fechaInicioClase}, Fin programado=${fechaFinClase}`);
 
         await defaultDb.execute(
           `UPDATE Responsabilidades_Ambiente

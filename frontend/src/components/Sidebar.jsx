@@ -132,7 +132,7 @@ export default function Sidebar({ user }) {
       { title: 'Reportes', path: '/reportes', icon: <FiFileText />, roles: ['Administrador', 'Instructor', 'Cuentadante'] }
     ],
     mantenimiento: [
-      { title: 'Historial de Mantenimientos', path: '/mantenimientos', icon: <FiTool />, roles: ['all'] }
+      { title: 'Historial de Mantenimientos', path: '/mantenimientos', icon: <FiTool />, roles: ['Administrador', 'Cuentadante'] }
     ],
     horarios: [
       { title: 'Mis Horarios', path: '/horarios', icon: <FiCalendar />, roles: ['Instructor'] },

@@ -22,6 +22,27 @@ export async function listarEquipos(req, res) {
     if (userRole === 'Cuentadante') {
       query += ` WHERE e.id_cuentadante = ?`;
       params.push(userId);
+    } else if (userRole === 'Instructor') {
+      // Los instructores solo ven equipos de sus ambientes asignados
+      query += ` WHERE e.id_ambiente IN (
+        SELECT DISTINCT ra.id_ambiente
+        FROM Responsabilidades_Ambiente ra
+        LEFT JOIN Clases c ON ra.id_clase = c.id_clase
+        WHERE ra.id_usuario = ?
+          AND ra.estado_responsabilidad = 'Activa'
+          AND ra.fecha_inicio <= NOW()
+          AND (ra.fecha_fin IS NULL OR ra.fecha_fin >= NOW())
+          AND (
+            -- Asignaciones permanentes (con días/horarios o jornada)
+            (ra.id_clase IS NULL)
+            OR
+            -- Asignaciones temporales (clases) que estén programadas o en curso
+            (ra.id_clase IS NOT NULL 
+             AND c.estado_clase IN ('Programada', 'En Curso')
+             AND c.fecha_clase >= CURDATE())
+          )
+      )`;
+      params.push(userId);
     }
 
     query += ` ORDER BY e.codigo_equipo ASC`;
@@ -292,9 +313,35 @@ export async function obtenerEquipoPorCodigo(req, res) {
       LEFT JOIN Ambientes a ON a.id_ambiente = e.id_ambiente
     `;
 
-    // Si es Cuentadante, solo puede ver equipos de su inventario
-    const whereClause = userRole === 'Cuentadante' ? ' AND e.id_cuentadante = ?' : '';
-    const params = userRole === 'Cuentadante' ? [codigo, userId] : [codigo];
+    // Construir cláusula WHERE según el rol
+    let whereClause = '';
+    let params = [codigo];
+    
+    if (userRole === 'Cuentadante') {
+      whereClause = ' AND e.id_cuentadante = ?';
+      params.push(userId);
+    } else if (userRole === 'Instructor') {
+      // Los instructores solo pueden ver equipos de sus ambientes asignados
+      whereClause = ` AND e.id_ambiente IN (
+        SELECT DISTINCT ra.id_ambiente
+        FROM Responsabilidades_Ambiente ra
+        LEFT JOIN Clases c ON ra.id_clase = c.id_clase
+        WHERE ra.id_usuario = ?
+          AND ra.estado_responsabilidad = 'Activa'
+          AND ra.fecha_inicio <= NOW()
+          AND (ra.fecha_fin IS NULL OR ra.fecha_fin >= NOW())
+          AND (
+            -- Asignaciones permanentes (con días/horarios o jornada)
+            (ra.id_clase IS NULL)
+            OR
+            -- Asignaciones temporales (clases) que estén programadas o en curso
+            (ra.id_clase IS NOT NULL 
+             AND c.estado_clase IN ('Programada', 'En Curso')
+             AND c.fecha_clase >= CURDATE())
+          )
+      )`;
+      params.push(userId);
+    }
 
     // Buscar por placa - ahora devuelve TODOS los registros con la misma placa (permite duplicados)
     const [rowsInventario] = await defaultDb.execute(
@@ -310,7 +357,14 @@ export async function obtenerEquipoPorCodigo(req, res) {
     // Si no se encontró por placa, intentar por código_equipo (ID interno)
     const codigoNumerico = Number.parseInt(codigo, 10);
     if (Number.isFinite(codigoNumerico)) {
-      const paramsId = userRole === 'Cuentadante' ? [codigoNumerico, userId] : [codigoNumerico];
+      // Reconstruir params para búsqueda por código_equipo
+      const paramsId = [codigoNumerico];
+      if (userRole === 'Cuentadante') {
+        paramsId.push(userId);
+      } else if (userRole === 'Instructor') {
+        paramsId.push(userId);
+      }
+      
       const [rowsId] = await defaultDb.execute(
         `${queryBase} WHERE e.codigo_equipo = ?${whereClause}`,
         paramsId
@@ -776,7 +830,7 @@ export async function obtenerEquiposAmbientesInstructor(req, res) {
 
     const ambienteIds = ambientes.map(a => a.id_ambiente)
 
-    // Obtener todos los equipos de esos ambientes
+    // Obtener todos los equipos de esos ambientes con su última verificación
     const [equipos] = await defaultDb.execute(
       `SELECT 
         e.codigo_equipo,
@@ -793,12 +847,24 @@ export async function obtenerEquiposAmbientesInstructor(req, res) {
         (SELECT MAX(fecha_verificacion) 
          FROM Verificaciones_Inventario 
          WHERE codigo_equipo = e.codigo_equipo 
-         AND id_usuario = ?) AS ultima_verificacion
+         AND id_usuario = ?) AS ultima_verificacion,
+        (SELECT estado_verificacion 
+         FROM Verificaciones_Inventario 
+         WHERE codigo_equipo = e.codigo_equipo 
+         AND id_usuario = ?
+         ORDER BY fecha_verificacion DESC 
+         LIMIT 1) AS estado_verificacion_actual,
+        (SELECT observaciones 
+         FROM Verificaciones_Inventario 
+         WHERE codigo_equipo = e.codigo_equipo 
+         AND id_usuario = ?
+         ORDER BY fecha_verificacion DESC 
+         LIMIT 1) AS observaciones_verificacion
       FROM Elementos e
       INNER JOIN Ambientes a ON e.id_ambiente = a.id_ambiente
       WHERE e.id_ambiente IN (${ambienteIds.map(() => '?').join(',')})
       ORDER BY a.nombre_ambiente, e.placa`,
-      [userId, ...ambienteIds]
+      [userId, userId, userId, ...ambienteIds]
     )
 
     return res.json({
