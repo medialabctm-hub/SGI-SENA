@@ -206,6 +206,47 @@ export const actualizarUsoEquipoSchema = z.object({
 });
 
 /**
+ * Validador para actualizar una asignación de equipo (Responsables_Equipo)
+ */
+export const actualizarAsignacionEquipoSchema = z.object({
+  ficha: z.string().min(1, 'La ficha es obligatoria').max(50, 'La ficha no puede exceder 50 caracteres').optional().nullable(),
+  nombre_externo: z.string().min(1, 'El nombre es obligatorio').max(200, 'El nombre no puede exceder 200 caracteres').optional().nullable(),
+  documento_externo: z.string().min(5, 'El documento de identificación debe tener al menos 5 caracteres').max(20, 'El documento no puede exceder 20 caracteres').optional().nullable(),
+  dias_semana: z.array(z.union([
+    z.enum(diasSemanaEnum),
+    z.enum(diasSemanaEnumLower)
+  ])).optional().nullable().transform(normalizarDiasSemana),
+  diasSemana: z.array(z.union([
+    z.enum(diasSemanaEnum),
+    z.enum(diasSemanaEnumLower)
+  ])).optional().nullable().transform(normalizarDiasSemana),
+  hora_inicio: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9](:00)?$/, 'Formato de hora inválido (debe ser HH:MM o HH:MM:SS)').optional().nullable(),
+  horaInicio: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9](:00)?$/, 'Formato de hora inválido (debe ser HH:MM o HH:MM:SS)').optional().nullable(),
+  hora_fin: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9](:00)?$/, 'Formato de hora inválido (debe ser HH:MM o HH:MM:SS)').optional().nullable(),
+  horaFin: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9](:00)?$/, 'Formato de hora inválido (debe ser HH:MM o HH:MM:SS)').optional().nullable(),
+  observaciones: z.string().max(1000, 'Las observaciones no pueden exceder 1000 caracteres').optional().nullable(),
+}).transform((data) => {
+  return {
+    ficha: data.ficha,
+    nombre_externo: data.nombre_externo,
+    documento_externo: data.documento_externo,
+    dias_semana: data.dias_semana || data.diasSemana || null,
+    hora_inicio: data.hora_inicio || data.horaInicio || null,
+    hora_fin: data.hora_fin || data.horaFin || null,
+    observaciones: data.observaciones,
+  };
+}).refine((data) => {
+  // Si se especifica horario, tanto hora_inicio como hora_fin son obligatorios
+  if ((data.hora_inicio && !data.hora_fin) || (!data.hora_inicio && data.hora_fin)) {
+    return false;
+  }
+  return true;
+}, {
+  message: 'Si se especifica horario, tanto hora_inicio como hora_fin son obligatorios',
+  path: ['hora_inicio']
+});
+
+/**
  * Validador para registro de uso de equipo desde página externa
  * Recibe: placa, ambiente, usuarios (array)
  * Nota: El ambiente debe ser el código numérico que los usuarios conocen (ej: "101", "102")

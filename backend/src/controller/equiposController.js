@@ -853,6 +853,269 @@ export async function eliminarAsignacion(req, res) {
 }
 
 /**
+ * Actualizar una asignación de equipo (Responsables_Equipo)
+ * Permite actualizar: ficha, nombre_externo, documento_externo, dias_semana, hora_inicio, hora_fin, observaciones
+ * Solo Administrador e Instructor pueden actualizar asignaciones
+ * Instructor solo puede actualizar asignaciones de Aprendices
+ */
+export async function actualizarAsignacionEquipo(req, res) {
+  try {
+    const { id } = req.params;
+    const { ficha, nombre_externo, documento_externo, dias_semana, hora_inicio, hora_fin, observaciones } = req.body;
+    const userRole = req.user?.rol;
+
+    // Obtener la asignación actual
+    const [[asignacion]] = await defaultDb.execute(
+      `SELECT 
+        re.id_responsable,
+        re.id_usuario,
+        re.codigo_equipo,
+        re.ficha,
+        re.nombre_externo,
+        re.documento_externo,
+        CAST(re.dias_semana AS CHAR) AS dias_semana,
+        re.hora_inicio,
+        re.hora_fin,
+        re.observaciones,
+        r.nombre_rol AS usuario_rol
+      FROM Responsables_Equipo re
+      INNER JOIN Usuarios u ON re.id_usuario = u.id_usuario
+      LEFT JOIN Roles r ON u.id_rol = r.id_rol
+      WHERE re.id_responsable = ? AND re.estado_responsabilidad = 'Activo'`,
+      [id]
+    );
+
+    if (!asignacion) {
+      return res.status(404).json({ error: 'Asignación no encontrada o ya está inactiva' });
+    }
+
+    // Si es Instructor, solo puede actualizar asignaciones de Aprendices
+    if (userRole === 'Instructor' && asignacion.usuario_rol !== 'Aprendiz') {
+      return res.status(403).json({ 
+        error: 'Solo puedes actualizar asignaciones de aprendices' 
+      });
+    }
+
+    // Verificar columnas disponibles en la tabla
+    const [colFicha] = await defaultDb.execute(
+      `SELECT COUNT(*) AS cnt FROM INFORMATION_SCHEMA.COLUMNS 
+       WHERE TABLE_SCHEMA = DATABASE() 
+       AND TABLE_NAME = 'Responsables_Equipo' 
+       AND COLUMN_NAME = 'ficha'`
+    );
+    const tieneFicha = colFicha[0].cnt > 0;
+
+    const [colNombreExterno] = await defaultDb.execute(
+      `SELECT COUNT(*) AS cnt FROM INFORMATION_SCHEMA.COLUMNS 
+       WHERE TABLE_SCHEMA = DATABASE() 
+       AND TABLE_NAME = 'Responsables_Equipo' 
+       AND COLUMN_NAME = 'nombre_externo'`
+    );
+    const tieneNombreExterno = colNombreExterno[0].cnt > 0;
+
+    const [colDocumentoExterno] = await defaultDb.execute(
+      `SELECT COUNT(*) AS cnt FROM INFORMATION_SCHEMA.COLUMNS 
+       WHERE TABLE_SCHEMA = DATABASE() 
+       AND TABLE_NAME = 'Responsables_Equipo' 
+       AND COLUMN_NAME = 'documento_externo'`
+    );
+    const tieneDocumentoExterno = colDocumentoExterno[0].cnt > 0;
+
+    const [colDiasSemana] = await defaultDb.execute(
+      `SELECT COUNT(*) AS cnt FROM INFORMATION_SCHEMA.COLUMNS 
+       WHERE TABLE_SCHEMA = DATABASE() 
+       AND TABLE_NAME = 'Responsables_Equipo' 
+       AND COLUMN_NAME = 'dias_semana'`
+    );
+    const tieneDiasSemana = colDiasSemana[0].cnt > 0;
+
+    const [colHoraInicio] = await defaultDb.execute(
+      `SELECT COUNT(*) AS cnt FROM INFORMATION_SCHEMA.COLUMNS 
+       WHERE TABLE_SCHEMA = DATABASE() 
+       AND TABLE_NAME = 'Responsables_Equipo' 
+       AND COLUMN_NAME = 'hora_inicio'`
+    );
+    const tieneHoraInicio = colHoraInicio[0].cnt > 0;
+
+    const [colHoraFin] = await defaultDb.execute(
+      `SELECT COUNT(*) AS cnt FROM INFORMATION_SCHEMA.COLUMNS 
+       WHERE TABLE_SCHEMA = DATABASE() 
+       AND TABLE_NAME = 'Responsables_Equipo' 
+       AND COLUMN_NAME = 'hora_fin'`
+    );
+    const tieneHoraFin = colHoraFin[0].cnt > 0;
+
+    // Preparar datos de horarios
+    let diasSemanaJson = null;
+    if (dias_semana !== undefined) {
+      if (dias_semana && Array.isArray(dias_semana) && dias_semana.length > 0) {
+        diasSemanaJson = JSON.stringify(dias_semana);
+      } else {
+        diasSemanaJson = null;
+      }
+    }
+
+    // Convertir horas de string a TIME (formato HH:MM:SS)
+    let horaInicioTime = null;
+    let horaFinTime = null;
+    if (hora_inicio !== undefined) {
+      if (hora_inicio) {
+        const horaInicioParts = hora_inicio.split(':');
+        if (horaInicioParts.length === 2) {
+          horaInicioTime = `${horaInicioParts[0].padStart(2, '0')}:${horaInicioParts[1].padStart(2, '0')}:00`;
+        } else {
+          horaInicioTime = hora_inicio;
+        }
+      } else {
+        horaInicioTime = null;
+      }
+    }
+    if (hora_fin !== undefined) {
+      if (hora_fin) {
+        const horaFinParts = hora_fin.split(':');
+        if (horaFinParts.length === 2) {
+          horaFinTime = `${horaFinParts[0].padStart(2, '0')}:${horaFinParts[1].padStart(2, '0')}:00`;
+        } else {
+          horaFinTime = hora_fin;
+        }
+      } else {
+        horaFinTime = null;
+      }
+    }
+
+    // Validar conflictos de horario si se están actualizando días y horarios
+    if (diasSemanaJson !== null && horaInicioTime !== null && horaFinTime !== null) {
+      let conflictQuery = `
+        SELECT 
+          re.id_responsable,
+          re.id_usuario,
+          COALESCE(u.nombre_usuario, re.nombre_externo) AS nombre_usuario,
+          COALESCE(u.cedula, re.documento_externo) AS cedula,
+          re.dias_semana,
+          re.hora_inicio,
+          re.hora_fin
+        FROM Responsables_Equipo re
+        LEFT JOIN Usuarios u ON re.id_usuario = u.id_usuario
+        WHERE re.codigo_equipo = ?
+          AND re.estado_responsabilidad = 'Activo'
+          AND re.id_responsable != ?
+          AND re.dias_semana IS NOT NULL
+          AND re.hora_inicio IS NOT NULL
+          AND re.hora_fin IS NOT NULL
+          AND JSON_OVERLAPS(re.dias_semana, ?)
+          AND (
+            (re.hora_inicio < ? AND re.hora_fin > ?) OR
+            (re.hora_inicio < ? AND re.hora_fin >= ?) OR
+            (re.hora_inicio >= ? AND re.hora_fin <= ?)
+          )
+      `;
+      
+      const [conflictos] = await defaultDb.execute(conflictQuery, [
+        asignacion.codigo_equipo,
+        id,
+        diasSemanaJson,
+        horaFinTime, horaInicioTime,
+        horaFinTime, horaInicioTime,
+        horaInicioTime, horaFinTime
+      ]);
+      
+      if (conflictos.length > 0) {
+        const conflicto = conflictos[0];
+        let diasConflicto = [];
+        try {
+          if (typeof conflicto.dias_semana === 'string') {
+            diasConflicto = JSON.parse(conflicto.dias_semana);
+          } else if (Array.isArray(conflicto.dias_semana)) {
+            diasConflicto = conflicto.dias_semana;
+          }
+        } catch (e) {
+          // Ignorar error de parseo
+        }
+        
+        return res.status(409).json({
+          error: 'Conflicto de horario',
+          detalle: `Ya existe otro usuario (${conflicto.nombre_usuario || 'Sin nombre'}, ${conflicto.cedula || 'Sin documento'}) asignado a este equipo en los días ${Array.isArray(diasConflicto) ? diasConflicto.join(', ') : 'N/A'} de ${conflicto.hora_inicio ? conflicto.hora_inicio.substring(0, 5) : 'N/A'} a ${conflicto.hora_fin ? conflicto.hora_fin.substring(0, 5) : 'N/A'}`,
+          conflicto_con: {
+            id_usuario: conflicto.id_usuario,
+            nombre: conflicto.nombre_usuario,
+            documento: conflicto.cedula,
+            dias: diasConflicto,
+            horario: `${conflicto.hora_inicio ? conflicto.hora_inicio.substring(0, 5) : ''} - ${conflicto.hora_fin ? conflicto.hora_fin.substring(0, 5) : ''}`
+          }
+        });
+      }
+    }
+
+    // Construir la consulta de actualización
+    const updates = [];
+    const valores = [];
+
+    if (ficha !== undefined && tieneFicha) {
+      updates.push('ficha = ?');
+      valores.push(ficha || null);
+    }
+    if (nombre_externo !== undefined && tieneNombreExterno) {
+      updates.push('nombre_externo = ?');
+      valores.push(nombre_externo || null);
+    }
+    if (documento_externo !== undefined && tieneDocumentoExterno) {
+      updates.push('documento_externo = ?');
+      valores.push(documento_externo || null);
+    }
+    if (diasSemanaJson !== null && tieneDiasSemana) {
+      updates.push('dias_semana = ?');
+      valores.push(diasSemanaJson);
+    } else if (diasSemanaJson === null && tieneDiasSemana && dias_semana === null) {
+      // Permitir establecer a null explícitamente
+      updates.push('dias_semana = NULL');
+    }
+    if (horaInicioTime !== null && tieneHoraInicio) {
+      updates.push('hora_inicio = ?');
+      valores.push(horaInicioTime);
+    } else if (horaInicioTime === null && tieneHoraInicio && hora_inicio === null) {
+      updates.push('hora_inicio = NULL');
+    }
+    if (horaFinTime !== null && tieneHoraFin) {
+      updates.push('hora_fin = ?');
+      valores.push(horaFinTime);
+    } else if (horaFinTime === null && tieneHoraFin && hora_fin === null) {
+      updates.push('hora_fin = NULL');
+    }
+    if (observaciones !== undefined) {
+      updates.push('observaciones = ?');
+      valores.push(observaciones || null);
+    }
+
+    if (updates.length === 0) {
+      return res.status(400).json({ error: 'No se proporcionaron campos para actualizar' });
+    }
+
+    valores.push(id);
+    await defaultDb.execute(
+      `UPDATE Responsables_Equipo 
+       SET ${updates.join(', ')} 
+       WHERE id_responsable = ?`,
+      valores
+    );
+
+    logger.info('Asignación de equipo actualizada', {
+      id_responsable: id,
+      codigo_equipo: asignacion.codigo_equipo,
+      id_usuario: asignacion.id_usuario,
+      campos_actualizados: updates.length
+    });
+
+    return res.json({
+      ok: true,
+      message: 'Asignación actualizada correctamente'
+    });
+  } catch (err) {
+    logger.error('Error al actualizar asignación', { error: err.message, stack: err.stack });
+    return res.status(500).json({ error: 'Error al actualizar la asignación', details: err.message });
+  }
+}
+
+/**
  * Obtener equipos de ambientes asignados al instructor actual
  * Solo para instructores: muestra equipos de ambientes donde tienen responsabilidad activa
  */

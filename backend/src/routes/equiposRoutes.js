@@ -1,10 +1,10 @@
 import express from 'express';
-import { registrarEquipo, obtenerEquipoPorCodigo, listarEquipos, actualizarEquipo, eliminarEquipo, asignarEquipo, obtenerMisEquipos, listarAsignaciones, eliminarAsignacion, obtenerEquiposAmbientesInstructor, registrarVerificacionInventario, consultarHistorialVerificaciones, obtenerHistorialEquipo, actualizarCuentadantePrincipal, obtenerCuentadantePrincipal, buscarCuentadantePorDocumento, listarCategorias, crearCategoria, actualizarCategoria, eliminarCategoria, registrarInicioUso, registrarFinUso, consultarHistorialUso, obtenerHistorialEquipoUso, obtenerSesionesActivas, registrarUsoEquipoExterno } from '../controller/equiposController.js';
+import { registrarEquipo, obtenerEquipoPorCodigo, listarEquipos, actualizarEquipo, eliminarEquipo, asignarEquipo, obtenerMisEquipos, listarAsignaciones, eliminarAsignacion, actualizarAsignacionEquipo, obtenerEquiposAmbientesInstructor, registrarVerificacionInventario, consultarHistorialVerificaciones, obtenerHistorialEquipo, actualizarCuentadantePrincipal, obtenerCuentadantePrincipal, buscarCuentadantePorDocumento, listarCategorias, crearCategoria, actualizarCategoria, eliminarCategoria, registrarInicioUso, registrarFinUso, consultarHistorialUso, obtenerHistorialEquipoUso, obtenerSesionesActivas, registrarUsoEquipoExterno } from '../controller/equiposController.js';
 import { authenticate } from '../middleware/authMiddleware.js';
 import { requirePermission, requireAnyPermission } from '../middleware/authorization.js';
 import { PERMISSIONS } from '../config/permissions.js';
 import { writeLimiter, readLimiter, strictLimiter, webhookLimiter } from '../middleware/rateLimiter.js';
-import { validate, registrarEquipoSchema, actualizarEquipoSchema, asignarEquipoSchema, verificarInventarioSchema, crearCategoriaSchema, actualizarCategoriaSchema, registrarUsoEquipoSchema, actualizarUsoEquipoSchema, registrarUsoEquipoExternoSchema } from '../validators/equiposValidator.js';
+import { validate, registrarEquipoSchema, actualizarEquipoSchema, asignarEquipoSchema, verificarInventarioSchema, crearCategoriaSchema, actualizarCategoriaSchema, registrarUsoEquipoSchema, actualizarUsoEquipoSchema, registrarUsoEquipoExternoSchema, actualizarAsignacionEquipoSchema } from '../validators/equiposValidator.js';
 
 const router = express.Router();
 
@@ -177,6 +177,19 @@ router.post('/asignar',
     PERMISSIONS.EQUIPOS.ASSIGN_TO_APRENDIZ
   ]),
   asignarEquipo
+);
+
+// Actualizar una asignación de equipo
+// Solo Admin e Instructor pueden actualizar asignaciones
+router.put('/asignaciones/:id', 
+  authenticate,
+  writeLimiter,
+  validate(actualizarAsignacionEquipoSchema),
+  requireAnyPermission([
+    PERMISSIONS.EQUIPOS.ASSIGN,
+    PERMISSIONS.EQUIPOS.ASSIGN_TO_APRENDIZ
+  ]),
+  actualizarAsignacionEquipo
 );
 
 // Eliminar/Desactivar una asignación
