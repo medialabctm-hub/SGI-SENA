@@ -144,8 +144,8 @@ export const verificarInventarioSchema = z.object({
     z.string().min(1),
     z.number().int().positive(),
   ]),
-  estado_verificado: z.enum(['Presente', 'Ausente', 'Dañado'], {
-    errorMap: () => ({ message: 'Estado verificado inválido' }),
+  estado_verificacion: z.enum(['Verificado', 'Con Novedad', 'No Verificado'], {
+    errorMap: () => ({ message: 'Estado de verificación inválido. Debe ser: Verificado, Con Novedad o No Verificado' }),
   }),
   observaciones: z.string().max(1000).optional().nullable(),
 });

@@ -712,13 +712,10 @@ export async function obtenerEquiposAmbientesInstructor(req, res) {
     const diaSemanaActual = ahora.getDay(); // 0-6
     const diasSemanaNombres = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
     const diaActualNombre = diasSemanaNombres[diaSemanaActual];
-    
-    // Obtener hora actual en formato HH:MM:SS
-    const horaActual = ahora.toTimeString().slice(0, 8); // HH:MM:SS
 
     // Obtener ambientes donde el instructor tiene responsabilidad activa
     // Incluye tanto asignaciones permanentes (id_clase IS NULL) como temporales (con id_clase)
-    // Para permanentes con días/horarios: verifica día actual y rango de horas
+    // Para permanentes con días/horarios: verifica día actual y rango de horas usando TIME(NOW())
     // Para permanentes con jornada (legacy): mantiene compatibilidad
     // Para temporales (clases): verifica que la clase esté dentro del rango de tiempo actual
     const [ambientes] = await defaultDb.execute(
@@ -749,8 +746,8 @@ export async function obtenerEquiposAmbientesInstructor(req, res) {
           (ra.id_clase IS NULL 
            AND ra.dias_semana IS NOT NULL 
            AND JSON_CONTAINS(ra.dias_semana, ?)
-           AND ra.hora_inicio <= ?
-           AND ra.hora_fin >= ?)
+           AND TIME(ra.hora_inicio) <= TIME(NOW())
+           AND TIME(ra.hora_fin) > TIME(NOW()))
           OR
           -- Asignaciones permanentes con jornada (sistema legacy - compatibilidad)
           (ra.id_clase IS NULL 
@@ -767,10 +764,10 @@ export async function obtenerEquiposAmbientesInstructor(req, res) {
            AND c.estado_clase IN ('Programada', 'En Curso')
            AND c.fecha_clase = CURDATE()
            AND CONCAT(c.fecha_clase, ' ', c.hora_inicio) <= NOW()
-           AND CONCAT(c.fecha_clase, ' ', c.hora_fin) >= NOW())
+           AND CONCAT(c.fecha_clase, ' ', c.hora_fin) > NOW())
         )
       ORDER BY a.nombre_ambiente`,
-      [userId, JSON.stringify([diaActualNombre]), horaActual, horaActual]
+      [userId, JSON.stringify([diaActualNombre])]
     )
 
     // Log para debug
@@ -876,16 +873,15 @@ export async function registrarVerificacionInventario(req, res) {
       return res.status(404).json({ error: 'Equipo no encontrado' })
     }
 
-    // Obtener día de la semana actual y hora actual
+    // Obtener día de la semana actual
     const ahora = new Date();
     const diaSemanaActual = ahora.getDay(); // 0=Domingo, 1=Lunes, ..., 6=Sábado
     const diasSemanaNombres = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
     const diaActualNombre = diasSemanaNombres[diaSemanaActual];
-    const horaActual = ahora.toTimeString().slice(0, 8); // HH:MM:SS
 
     // Validar que el instructor tiene responsabilidad activa en ese ambiente
     // Incluye tanto asignaciones permanentes como temporales
-    // Para permanentes con días/horarios: verifica día actual y rango de horas
+    // Para permanentes con días/horarios: verifica día actual y rango de horas usando TIME(NOW())
     // Para permanentes con jornada (legacy): mantiene compatibilidad
     // Para temporales (clases): verifica que la clase esté activa
     // Obtener información completa de la responsabilidad para el historial
@@ -915,14 +911,14 @@ export async function registrarVerificacionInventario(req, res) {
             AND c.estado_clase IN ('Programada', 'En Curso')
             AND c.fecha_clase = CURDATE()
             AND CONCAT(c.fecha_clase, ' ', c.hora_inicio) <= NOW()
-            AND CONCAT(c.fecha_clase, ' ', c.hora_fin) >= NOW())
+            AND CONCAT(c.fecha_clase, ' ', c.hora_fin) > NOW())
            OR
            -- Asignaciones permanentes con días y horarios (nuevo sistema)
            (ra.id_clase IS NULL 
             AND ra.dias_semana IS NOT NULL 
             AND JSON_CONTAINS(ra.dias_semana, ?)
-            AND ra.hora_inicio <= ?
-            AND ra.hora_fin >= ?)
+            AND TIME(ra.hora_inicio) <= TIME(NOW())
+            AND TIME(ra.hora_fin) > TIME(NOW()))
            OR
            -- Asignaciones permanentes con jornada (sistema legacy - compatibilidad)
            (ra.id_clase IS NULL 
@@ -936,7 +932,7 @@ export async function registrarVerificacionInventario(req, res) {
          )
        ORDER BY ra.fecha_inicio DESC
        LIMIT 1`,
-      [equipo.id_ambiente, userId, JSON.stringify([diaActualNombre]), horaActual, horaActual]
+      [equipo.id_ambiente, userId, JSON.stringify([diaActualNombre])]
     )
 
     if (!responsabilidad) {

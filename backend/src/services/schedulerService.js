@@ -191,6 +191,7 @@ class SchedulerService {
         }
       }
 
+
       if (asignadas > 0 || finalizadas > 0) {
         logger.info(`Sincronización automática: ${asignadas} clase(s) iniciada(s), ${finalizadas} clase(s) finalizada(s)`);
       }

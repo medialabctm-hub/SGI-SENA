@@ -45,13 +45,13 @@ export const validate = (schema) => (req, res, next) => {
     req.body = validated;
     next();
   } catch (error) {
-    if (error instanceof z.ZodError) {
+    if (error instanceof z.ZodError && error.errors && Array.isArray(error.errors)) {
       return res.status(400).json({
         success: false,
         error: 'Error de validación',
         details: error.errors.map((e) => ({
-          path: e.path.join('.'),
-          message: e.message,
+          path: e.path && Array.isArray(e.path) ? e.path.join('.') : 'unknown',
+          message: e.message || 'Error de validación',
         })),
       });
     }
