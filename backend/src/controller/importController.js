@@ -56,7 +56,6 @@ async function inicializarTablaDuplicados() {
  * OPCIONALES:
  * - Centro (o R Centro, r_centro): Código del centro
  * - Tipo (o tipo, TIPO): Tipo de equipo
- * - Marca (o marca, MARCA): Marca del equipo
  * - Modelo (o modelo, MODELO): Modelo del equipo
  * - Consecutivo (o consecutivo, numero_serie, Número Serie): Número de serie o consecutivo
  * - Descripción (o descripcion, Descripción): Descripción del equipo
@@ -110,7 +109,6 @@ export async function importarEquipos(req, res) {
         const placa = String(row['Placa'] || row['placa'] || row['PLACA'] || '').trim();
         const codigoInventario = String(row['Centro'] || row['R Centro'] || row['r_centro'] || row['codigo_inventario'] || row['Código Inventario'] || row['CODIGO_INVENTARIO'] || '').trim();
         const tipo = String(row['Tipo'] || row['tipo'] || row['TIPO'] || '').trim();
-        const marca = String(row['Marca'] || row['marca'] || row['MARCA'] || '').trim();
         const modelo = String(row['Modelo'] || row['modelo'] || row['MODELO'] || '').trim();
         const numeroSerie = String(row['Consecutivo'] || row['consecutivo'] || row['numero_serie'] || row['Número Serie'] || row['NUMERO_SERIE'] || '').trim();
         const descripcion = row['Descripcion'] || row['descripcion'] || row['Descripción'] || row['DESCRIPCION'] || null;
@@ -280,7 +278,6 @@ export async function importarEquipos(req, res) {
             const datosExcel = {
               placa,
               tipo,
-              marca: marca || null,
               modelo,
               consecutivo: numeroSerie || null,
               descripcion: descripcion || null,
@@ -302,7 +299,6 @@ export async function importarEquipos(req, res) {
               codigo_equipo: equipoExistente.codigo_equipo,
               placa: equipoExistente.placa,
               tipo: equipoExistente.tipo,
-              marca: equipoExistente.marca || null,
               modelo: equipoExistente.modelo,
               consecutivo: equipoExistente.consecutivo || null,
               descripcion: equipoExistente.descripcion || null,
@@ -374,17 +370,16 @@ export async function importarEquipos(req, res) {
 
         // Insertar equipo con nuevos campos
         const query = `INSERT INTO Elementos
-          (id_categoria, id_ambiente, id_cuentadante, tipo, marca, modelo, descripcion, 
+          (id_categoria, id_ambiente, id_cuentadante, tipo, modelo, descripcion, 
            fecha_adquisicion, costo, vida_util_meses, estado_fisico, specs_completas, registrado_por,
            r_centro, consecutivo, placa, atributos, valor_ingreso)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
 
         await defaultDb.execute(query, [
           categoriaId,
           ambienteId,
           idCuentadante,
           tipo,
-          marca || null,
           modelo,
           descripcionFinal,
           fechaAdq || null,
@@ -557,10 +552,10 @@ export async function procesarDuplicado(req, res) {
       const idCuentadante = userRoleInfo?.nombre_rol === 'Cuentadante' ? userId : null;
 
       const query = `INSERT INTO Elementos
-        (id_categoria, id_ambiente, id_cuentadante, tipo, marca, modelo, descripcion, 
+        (id_categoria, id_ambiente, id_cuentadante, tipo, modelo, descripcion, 
          fecha_adquisicion, costo, vida_util_meses, estado_fisico, specs_completas, registrado_por,
          r_centro, consecutivo, placa, atributos, valor_ingreso)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
 
       // Calcular costo (usar valor_ingreso si existe, sino null)
       const costoValue = datosExcel.valor_ingreso ? parseFloat(datosExcel.valor_ingreso) : null;
@@ -570,7 +565,6 @@ export async function procesarDuplicado(req, res) {
         datosExcel.ambiente_id,
         idCuentadante,
         datosExcel.tipo,
-        datosExcel.marca || null,
         datosExcel.modelo,
         datosExcel.descripcion || null,
         datosExcel.fecha_adquisicion || null,
@@ -698,10 +692,10 @@ export async function procesarDuplicadosMasivo(req, res) {
         if (accion === 'aprobar') {
           // Insertar el equipo
           const query = `INSERT INTO Elementos
-            (id_categoria, id_ambiente, id_cuentadante, tipo, marca, modelo, descripcion, 
+            (id_categoria, id_ambiente, id_cuentadante, tipo, modelo, descripcion, 
              fecha_adquisicion, costo, vida_util_meses, estado_fisico, specs_completas, registrado_por,
              r_centro, consecutivo, placa, atributos, valor_ingreso)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
 
           // Calcular costo (usar valor_ingreso si existe, sino null)
           const costoValue = datosExcel.valor_ingreso ? parseFloat(datosExcel.valor_ingreso) : null;
@@ -711,7 +705,6 @@ export async function procesarDuplicadosMasivo(req, res) {
             datosExcel.ambiente_id,
             idCuentadante,
             datosExcel.tipo,
-            datosExcel.marca || null,
             datosExcel.modelo,
             datosExcel.descripcion || null,
             datosExcel.fecha_adquisicion || null,
