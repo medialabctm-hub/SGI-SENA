@@ -776,7 +776,8 @@ export async function obtenerEquiposAmbientesInstructor(req, res) {
     // Log para debug
     logger.debug('Verificación Inventario', { 
       instructor: userId, 
-      jornada: jornadaActual, 
+      dia_actual: diaActualNombre,
+      hora_actual: horaActual,
       ambientesEncontrados: ambientes.length 
     })
     if (ambientes.length > 0) {
@@ -875,29 +876,30 @@ export async function registrarVerificacionInventario(req, res) {
       return res.status(404).json({ error: 'Equipo no encontrado' })
     }
 
-    // Determinar jornada actual
-    const horaActual = new Date().getHours();
-    let jornadaActual = 'Mañana';
-    if (horaActual >= 6 && horaActual < 12) {
-      jornadaActual = 'Mañana';
-    } else if (horaActual >= 12 && horaActual < 18) {
-      jornadaActual = 'Tarde';
-    } else {
-      jornadaActual = 'Noche';
-    }
+    // Obtener día de la semana actual y hora actual
+    const ahora = new Date();
+    const diaSemanaActual = ahora.getDay(); // 0=Domingo, 1=Lunes, ..., 6=Sábado
+    const diasSemanaNombres = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+    const diaActualNombre = diasSemanaNombres[diaSemanaActual];
+    const horaActual = ahora.toTimeString().slice(0, 8); // HH:MM:SS
 
     // Validar que el instructor tiene responsabilidad activa en ese ambiente
     // Incluye tanto asignaciones permanentes como temporales
-    // Para permanentes, valida que sea de la jornada actual
+    // Para permanentes con días/horarios: verifica día actual y rango de horas
+    // Para permanentes con jornada (legacy): mantiene compatibilidad
+    // Para temporales (clases): verifica que la clase esté activa
     // Obtener información completa de la responsabilidad para el historial
     const [[responsabilidad]] = await defaultDb.execute(
       `SELECT 
         ra.id_responsabilidad_ambiente,
         ra.id_clase,
         ra.jornada,
+        ra.dias_semana,
+        ra.hora_inicio,
+        ra.hora_fin,
         c.fecha_clase,
-        c.hora_inicio,
-        c.hora_fin,
+        c.hora_inicio AS clase_hora_inicio,
+        c.hora_fin AS clase_hora_fin,
         c.nombre_clase,
         c.codigo_ficha
        FROM Responsabilidades_Ambiente ra
@@ -908,12 +910,33 @@ export async function registrarVerificacionInventario(req, res) {
          AND ra.fecha_inicio <= NOW()
          AND (ra.fecha_fin IS NULL OR ra.fecha_fin >= NOW())
          AND (
-           ra.id_clase IS NOT NULL 
-           OR (ra.id_clase IS NULL AND ra.jornada = ?)
+           -- Asignaciones temporales (clases)
+           (ra.id_clase IS NOT NULL 
+            AND c.estado_clase IN ('Programada', 'En Curso')
+            AND c.fecha_clase = CURDATE()
+            AND CONCAT(c.fecha_clase, ' ', c.hora_inicio) <= NOW()
+            AND CONCAT(c.fecha_clase, ' ', c.hora_fin) >= NOW())
+           OR
+           -- Asignaciones permanentes con días y horarios (nuevo sistema)
+           (ra.id_clase IS NULL 
+            AND ra.dias_semana IS NOT NULL 
+            AND JSON_CONTAINS(ra.dias_semana, ?)
+            AND ra.hora_inicio <= ?
+            AND ra.hora_fin >= ?)
+           OR
+           -- Asignaciones permanentes con jornada (sistema legacy - compatibilidad)
+           (ra.id_clase IS NULL 
+            AND ra.jornada IS NOT NULL 
+            AND ra.dias_semana IS NULL
+            AND (
+              (ra.jornada = 'Mañana' AND HOUR(NOW()) >= 6 AND HOUR(NOW()) < 12)
+              OR (ra.jornada = 'Tarde' AND HOUR(NOW()) >= 12 AND HOUR(NOW()) < 18)
+              OR (ra.jornada = 'Noche' AND (HOUR(NOW()) >= 18 OR HOUR(NOW()) < 6))
+            ))
          )
        ORDER BY ra.fecha_inicio DESC
        LIMIT 1`,
-      [equipo.id_ambiente, userId, jornadaActual]
+      [equipo.id_ambiente, userId, JSON.stringify([diaActualNombre]), horaActual, horaActual]
     )
 
     if (!responsabilidad) {
