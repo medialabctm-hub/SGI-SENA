@@ -169,7 +169,7 @@ export default function HistorialVerificacionesGeneral() {
                 value={filtros.codigo_equipo}
                 onChange={e => setFiltros({ ...filtros, codigo_equipo: e.target.value })}
                 placeholder="Buscar por código..."
-                style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '2px solid var(--neutral-300)' }}
+                style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '2px solid var(--success-800)' }}
               />
             </div>
             {user?.nombre_rol === 'Administrador' && (
@@ -178,7 +178,7 @@ export default function HistorialVerificacionesGeneral() {
                 <select
                   value={filtros.id_ambiente}
                   onChange={e => setFiltros({ ...filtros, id_ambiente: e.target.value })}
-                  style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '2px solid var(--neutral-300)' }}
+                  style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '2px solid var(--success-800)' }}
                 >
                   <option value="">Todos</option>
                   {ambientes.map(amb => (
@@ -195,7 +195,7 @@ export default function HistorialVerificacionesGeneral() {
                 type="date"
                 value={filtros.fecha_desde}
                 onChange={e => setFiltros({ ...filtros, fecha_desde: e.target.value })}
-                style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '2px solid var(--neutral-300)' }}
+                style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '2px solid var(--success-800)' }}
               />
             </div>
             <div>
@@ -204,7 +204,7 @@ export default function HistorialVerificacionesGeneral() {
                 type="date"
                 value={filtros.fecha_hasta}
                 onChange={e => setFiltros({ ...filtros, fecha_hasta: e.target.value })}
-                style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '2px solid var(--neutral-300)' }}
+                style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '2px solid var(--success-800)' }}
               />
             </div>
             <div>
@@ -212,7 +212,7 @@ export default function HistorialVerificacionesGeneral() {
               <select
                 value={filtros.estado_verificacion}
                 onChange={e => setFiltros({ ...filtros, estado_verificacion: e.target.value })}
-                style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '2px solid var(--neutral-300)' }}
+                style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '2px solid var(--success-800)' }}
               >
                 <option value="">Todos</option>
                 <option value="Verificado">Verificado</option>

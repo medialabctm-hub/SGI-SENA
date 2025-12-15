@@ -597,7 +597,7 @@
 .cell-select-edit {
   width: 100%;
   padding: 8px 12px;
-  border: 2px solid var(--success-800);
+  border: 1px solid var(--success-800);
   border-radius: 8px;
   font-size: 0.95rem;
   background: white;

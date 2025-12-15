@@ -231,7 +231,7 @@ export const ROLE_PERMISSIONS = {
   ],
 
   Cuentadante: [
-    // Usuarios - NO tiene acceso (no puede ver personal registrado ni gestionar usuarios)
+    // Usuarios - NO tiene acceso (no puede ver Usuarios ni gestionar usuarios)
     // PERMISSIONS.USERS.VIEW, // NO incluido
     // PERMISSIONS.USERS.VIEW_DETAIL, // NO incluido
     // PERMISSIONS.USERS.CREATE, // NO incluido

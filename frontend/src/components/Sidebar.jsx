@@ -140,7 +140,7 @@ export default function Sidebar({ user }) {
       /*{ title: 'Consultar Responsables', path: '/horarios/responsables', icon: <FiClock />, roles: ['all'] }*/
     ],
     config: [
-      { title: 'Personal Registrado', path: '/usuarios', icon: <FiUsers />, roles: ['Administrador', 'Instructor'] },
+      { title: 'Usuarios', path: '/usuarios', icon: <FiUsers />, roles: ['Administrador', 'Instructor'] },
       { title: 'Seguridad', path: '/config?section=security', icon: <FiShield />, roles: ['all'] },
       { title: 'Códigos de Seguridad', path: '/config?section=invitation-codes', icon: <FiKey />, roles: ['Administrador'] },
       { title: 'Tipos de Equipos', path: '/config?section=tipos-equipo', icon: <FiPackage />, roles: ['Administrador'] },

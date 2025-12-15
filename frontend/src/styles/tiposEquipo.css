@@ -219,7 +219,7 @@
 
 .tipos-equipo-badge.equipo {
   background: #e3f2fd;
-  color: #1976d2;
+  color: var(--info-600);
 }
 
 .tipos-equipo-badge.componente {
@@ -244,7 +244,7 @@
 }
 
 .tipos-equipo-btn-edit {
-  background: #2196f3;
+      background: var(--success-800);
   color: white;
 }
 
@@ -253,7 +253,7 @@
 }
 
 .tipos-equipo-btn-delete {
-  background: #f44336;
+  background: var(--error-500);
   color: white;
 }
 

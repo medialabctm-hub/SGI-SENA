@@ -283,7 +283,7 @@ export default function AsignarAmbientes() {
                           width: '100%',
                           padding: '10px 14px',
                           borderRadius: '8px',
-                          border: '2px solid var(--neutral-300)',
+                          border: '2px solid var(--success-800)',
                           fontSize: '0.95rem'
                         }}
                       >
@@ -307,7 +307,7 @@ export default function AsignarAmbientes() {
                           width: '100%',
                           padding: '10px 14px',
                           borderRadius: '8px',
-                          border: '2px solid var(--neutral-300)',
+                          border: '2px solid var(--success-800)',
                           fontSize: '0.95rem'
                         }}
                       >
@@ -354,7 +354,7 @@ export default function AsignarAmbientes() {
                           width: '100%',
                           padding: '10px 14px',
                           borderRadius: '8px',
-                          border: '2px solid var(--neutral-300)',
+                          border: '2px solid var(--success-800)',
                           fontSize: '0.95rem'
                         }}
                       />
@@ -372,7 +372,7 @@ export default function AsignarAmbientes() {
                           width: '100%',
                           padding: '10px 14px',
                           borderRadius: '8px',
-                          border: '2px solid var(--neutral-300)',
+                          border: '2px solid var(--success-800)',
                           fontSize: '0.95rem'
                         }}
                       />
@@ -391,7 +391,7 @@ export default function AsignarAmbientes() {
                         width: '100%',
                         padding: '10px 14px',
                         borderRadius: '8px',
-                        border: '2px solid var(--neutral-300)',
+                        border: '2px solid var(--success-800)',
                         fontSize: '0.95rem',
                         resize: 'vertical'
                       }}

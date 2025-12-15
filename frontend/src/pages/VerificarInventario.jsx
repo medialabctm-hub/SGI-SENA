@@ -303,7 +303,7 @@ export default function VerificarInventario() {
                         width: '100%',
                         padding: '8px 12px',
                         borderRadius: '8px',
-                        border: '2px solid var(--neutral-300)',
+                        border: '2px solid var(--success-800)',
                         fontSize: '0.95rem'
                       }}
                       disabled={loading}

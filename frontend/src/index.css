@@ -209,7 +209,7 @@ body::after {
 /* Scrollbar para Firefox */
 * {
   scrollbar-width: thin;
-  scrollbar-color: var(--success-900) var(--neutral-100);
+  scrollbar-color: var(--success-800) var(--neutral-100);
 }
 
 .sidebar-content,

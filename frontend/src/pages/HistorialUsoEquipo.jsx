@@ -142,7 +142,7 @@ export default function HistorialUsoEquipo() {
                 Historial de Uso
               </h2>
               {equipo && (
-                <p style={{ margin: '8px 0 0 0', color: '#6b7280', fontSize: '0.9rem' }}>
+                <p style={{ margin: '8px 0 0 0', border: '1px solid var(--success-700)', fontSize: '0.9rem' }}>
                   Equipo: {equipo.codigo_inventario || equipo.codigo_equipo} - {equipo.tipo} {equipo.modelo}
                 </p>
               )}
@@ -167,7 +167,7 @@ export default function HistorialUsoEquipo() {
                 type="date"
                 value={filtros.fecha_desde}
                 onChange={e => setFiltros({ ...filtros, fecha_desde: e.target.value })}
-                style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '2px solid var(--neutral-300)' }}
+                style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--success-700)' }}
               />
             </div>
             <div>
@@ -176,7 +176,7 @@ export default function HistorialUsoEquipo() {
                 type="date"
                 value={filtros.fecha_hasta}
                 onChange={e => setFiltros({ ...filtros, fecha_hasta: e.target.value })}
-                style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '2px solid var(--neutral-300)' }}
+                style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--success-700)' }}
               />
             </div>
             <div style={{ display: 'flex', alignItems: 'flex-end' }}>

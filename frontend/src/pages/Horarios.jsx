@@ -547,7 +547,7 @@ export default function Horarios() {
               <select
                 value={filtros.id_ambiente}
                 onChange={e => setFiltros({ ...filtros, id_ambiente: e.target.value })}
-                style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '2px solid var(--neutral-300)' }}
+                style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '2px solid var(--success-800)' }}
               >
                 <option value="">Todos</option>
                 {ambientes.map(amb => (
@@ -563,7 +563,7 @@ export default function Horarios() {
                 <select
                   value={filtros.id_instructor}
                   onChange={e => setFiltros({ ...filtros, id_instructor: e.target.value })}
-                  style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '2px solid var(--neutral-300)' }}
+                  style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '2px solid var(--success-800)' }}
                 >
                   <option value="">Todos</option>
                   {instructores.map(inst => (
@@ -580,7 +580,7 @@ export default function Horarios() {
                 type="date"
                 value={filtros.fecha}
                 onChange={e => setFiltros({ ...filtros, fecha: e.target.value })}
-                style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '2px solid var(--neutral-300)' }}
+                style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '2px solid var(--success-800)' }}
               />
             </div>
             <div>
@@ -588,7 +588,7 @@ export default function Horarios() {
               <select
                 value={filtros.estado_clase}
                 onChange={e => setFiltros({ ...filtros, estado_clase: e.target.value })}
-                style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '2px solid var(--neutral-300)' }}
+                style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '2px solid var(--success-800)' }}
               >
                 <option value="">Todos</option>
                 <option value="Programada">Programada</option>
@@ -621,7 +621,7 @@ export default function Horarios() {
                       value={form.id_ambiente}
                       onChange={e => setForm({ ...form, id_ambiente: e.target.value })}
                       required
-                      style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '2px solid var(--neutral-300)' }}
+                      style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '2px solid var(--success-800)' }}
                     >
                       <option value="">Seleccione...</option>
                       {ambientes.map(amb => (
@@ -638,7 +638,7 @@ export default function Horarios() {
                         value={form.id_instructor}
                         onChange={e => setForm({ ...form, id_instructor: e.target.value })}
                         required
-                        style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '2px solid var(--neutral-300)' }}
+                        style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '2px solid var(--success-800)' }}
                       >
                         <option value="">Seleccione...</option>
                         {instructores.map(inst => (
@@ -656,7 +656,7 @@ export default function Horarios() {
                         type="text"
                         value={user.nombre_usuario}
                         disabled
-                        style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '2px solid var(--neutral-300)', background: '#f3f4f6' }}
+                        style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '2px solid var(--success-800)', background: '#f3f4f6' }}
                       />
                     </div>
                   )}
@@ -666,7 +666,7 @@ export default function Horarios() {
                       type="text"
                       value={form.codigo_ficha}
                       onChange={e => setForm({ ...form, codigo_ficha: e.target.value })}
-                      style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '2px solid var(--neutral-300)' }}
+                      style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '2px solid var(--success-800)' }}
                       placeholder="Ej: 123456"
                     />
                   </div>
@@ -676,7 +676,7 @@ export default function Horarios() {
                       type="text"
                       value={form.nombre_clase}
                       onChange={e => setForm({ ...form, nombre_clase: e.target.value })}
-                      style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '2px solid var(--neutral-300)' }}
+                      style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '2px solid var(--success-800)' }}
                       placeholder="Ej: Programación Web"
                     />
                   </div>
@@ -687,7 +687,7 @@ export default function Horarios() {
                       value={form.fecha_clase}
                       onChange={e => setForm({ ...form, fecha_clase: e.target.value })}
                       required
-                      style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '2px solid var(--neutral-300)' }}
+                      style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '2px solid var(--success-800)' }}
                     />
                   </div>
                   <div>
@@ -697,7 +697,7 @@ export default function Horarios() {
                       value={form.hora_inicio}
                       onChange={e => setForm({ ...form, hora_inicio: e.target.value })}
                       required
-                      style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '2px solid var(--neutral-300)' }}
+                      style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '2px solid var(--success-800)' }}
                     />
                   </div>
                   <div>
@@ -707,7 +707,7 @@ export default function Horarios() {
                       value={form.hora_fin}
                       onChange={e => setForm({ ...form, hora_fin: e.target.value })}
                       required
-                      style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '2px solid var(--neutral-300)' }}
+                      style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '2px solid var(--success-800)' }}
                     />
                   </div>
                 </div>
@@ -717,7 +717,7 @@ export default function Horarios() {
                     value={form.descripcion}
                     onChange={e => setForm({ ...form, descripcion: e.target.value })}
                     rows={3}
-                    style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '2px solid var(--neutral-300)', resize: 'vertical' }}
+                    style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '2px solid var(--success-800)', resize: 'vertical' }}
                     placeholder="Descripción de la clase..."
                   />
                 </div>
@@ -763,7 +763,7 @@ export default function Horarios() {
                   type="file"
                   accept=".xlsx,.xls,.csv"
                   onChange={e => setImportFile(e.target.files[0])}
-                  style={{ marginBottom: '1rem', width: '100%', padding: '10px', borderRadius: '8px', border: '2px solid var(--neutral-300)' }}
+                  style={{ marginBottom: '1rem', width: '100%', padding: '10px', borderRadius: '8px', border: '2px solid var(--success-800)' }}
                 />
                 <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
                   <button
