@@ -522,17 +522,7 @@ export default function Ambientes() {
                             onChange={handleChange}
                         />
                     </div>
-                    
-                    <div className="form-row">
-                        <label>Edificio</label>
-                        <input
-                            className="form-control"
-                            name="edificio"
-                            value={form.edificio}
-                            onChange={handleChange}
-                        />
-                    </div>
-
+                  
                     <div className="form-row">
                         <label>Estado</label>
                         <select
