@@ -87,7 +87,7 @@ html,
 body {
   font-family: urbanist;
   margin: 0;
-  background: linear-gradient(135deg, #f5f9f7 0%, #f0f5f2 25%, #f5f9f7 50%, #f0f5f2 75%, #f5f9f7 100%);
+  background: #fff;
   background-size: 400% 400%;
   animation: bodyGradientShift 20s ease infinite;
   color: var(--neutral-900);
@@ -318,8 +318,8 @@ body::after {
 }
 
 .cat_404 {
-  width: 15%;
-  height: 35%;
+  width: auto;
+  height: auto;
 
 }
 
@@ -378,11 +378,11 @@ body::after {
 
 }
 .pagina-no-encontrada__boton {
-  background: var(--neutral-50);
-  color: var(--neutral-900);
+  background: var(--success-800);
+  color: white;
   padding: 1rem 2.5rem;
   border-radius: 0.8rem;
-  border: solid 1px var(--neutral-300);
+  border: solid 1px var(--success-800);
   font-size: 1.3rem;
   font-weight: 600;
   text-decoration: none;
@@ -391,8 +391,8 @@ body::after {
   display: inline-block;
 }
 .pagina-no-encontrada__boton:hover {
-  background: var(--success-800);
-  color: var(--neutral-100);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(28, 185, 129, 0.3); 
 }
 
 .carrito-burbuja-cantidad {

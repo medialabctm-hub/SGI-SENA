@@ -59,7 +59,7 @@ function NotificationsModal({
       </div>
 
       {loading ? (
-        <div className="notifications-loading">Cargando notificaciones...</div>
+        <div className="notifications-loading">Cargando</div>
       ) : notifications.length === 0 ? (
         <div className="notifications-empty">
           No tienes notificaciones pendientes.
