@@ -383,7 +383,7 @@ export default function VerificarInventario() {
               </div>
               <button
                 type="button"
-                className="btn btn-verde"
+                className="btn-act"
                 onClick={fetchEquiposAmbientes}
                 disabled={loading}
                 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}

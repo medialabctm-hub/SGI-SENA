@@ -149,7 +149,7 @@ export default function HistorialUsoEquipo() {
             </div>
             <button
               type="button"
-              className="btn"
+              className="btn-act"
               onClick={fetchHistorial}
               disabled={loading}
               style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
