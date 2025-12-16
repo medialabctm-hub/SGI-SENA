@@ -796,6 +796,11 @@
   white-space: nowrap;
 }
 
+.btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(28, 185, 129, 0.3);
+}
+
 .btn-secondary {
   display: inline-flex;
   align-items: center;
@@ -803,11 +808,16 @@
   padding: 0.6rem 1.25rem;
   background: var(--card-shadow);
   color: var(--neutral-900);
-  border: none;
+  border: 1px var(--neutral-200);
   border-radius: 6px;
   font-size: 0.95rem;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
   white-space: nowrap;
+}
+
+.btn-secondary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(28, 185, 129, 0.3); 
 }

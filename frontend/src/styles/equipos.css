@@ -1751,7 +1751,7 @@
   padding: 0.6rem 1.25rem;
   background: white;
   color: var(--neutral-700);
-  border: none;
+  border: solid 1px var(--neutral-300);
   border-radius: 6px;
   font-size: 0.95rem;
   font-weight: 600;
