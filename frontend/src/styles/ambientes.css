@@ -1,9 +1,3 @@
-/* Overrides específicos para la página de Ambientes
-   - Corrige hover de filas (evita fondo verde heredado)
-   - Ajusta padding de celdas para reducir espacio vertical
-   - Asegura que los botones mantengan su efecto de hover visible
-*/
-
 .ambientes-page .users-panel {
   /* asegurar fondo blanco y padding consistente */
   background: white !important;
