@@ -184,7 +184,7 @@ export default function AsignarEquipo() {
 
   async function buscarUsuario() {
     if (!cedulaUsuario.trim()) {
-      setToast({ message: 'Ingresa una cédula', type: 'error' })
+      setToast({ message: 'Ingresa una Documento', type: 'error' })
       return
     }
 
@@ -499,7 +499,7 @@ export default function AsignarEquipo() {
 
               <div className="form-group">
                 <label>
-                  Cédula del Usuario {isInstructor ? '(Aprendiz) ' : ''}*
+                  Documento del Usuario {isInstructor ? '(Aprendiz) ' : ''}*
                 </label>
                 <div className="search-equipo-wrapper">
                   <input
@@ -512,7 +512,7 @@ export default function AsignarEquipo() {
                         buscarUsuario()
                       }
                     }}
-                    placeholder="Ingresa la cédula del usuario"
+                    placeholder="Ingresa la Documento del usuario"
                     className="search-equipo-input"
                   />
                   <button
@@ -541,7 +541,7 @@ export default function AsignarEquipo() {
                   </div>
                   <div className="equipo-found-info">
                     <div><strong>Nombre:</strong> {usuarioEncontrado.nombre_usuario}</div>
-                    <div><strong>Cédula:</strong> {usuarioEncontrado.cedula}</div>
+                    <div><strong>Documento:</strong> {usuarioEncontrado.cedula}</div>
                     <div><strong>Rol:</strong> {usuarioEncontrado.nombre_rol}</div>
                     {usuarioEncontrado.equipos_asignados !== undefined && (
                       <div><strong>Equipos asignados:</strong> {usuarioEncontrado.equipos_asignados}</div>
@@ -673,7 +673,7 @@ export default function AsignarEquipo() {
                             <div>
                               <strong>{asig.usuario_nombre}</strong>
                               <div style={{ fontSize: '0.85rem', color: '#666', marginTop: '4px' }}>
-                                Cédula: {asig.usuario_cedula}
+                                Documento: {asig.usuario_cedula}
                                 {asig.usuario_rol && (
                                   <span style={{
                                     marginLeft: '8px',

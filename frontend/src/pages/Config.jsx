@@ -136,7 +136,7 @@ export default function Config() {
               <input name="telefono" value={form.telefono || ''} onChange={onChange} readOnly={!editing} />
             </div>
             <div className="form-row">
-              <label>Cédula</label>
+              <label>Documento</label>
               <input name="cedula" value={form.cedula || ''} onChange={onChange} readOnly={!editing} />
             </div>
             <div className="form-row">

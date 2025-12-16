@@ -87,7 +87,7 @@ export default function CrearMantenimiento() {
 
   async function buscarTecnico() {
     if (!cedulaTecnico.trim()) {
-      setToast({ message: 'Ingresa una cédula', type: 'error' })
+      setToast({ message: 'Ingresa una Documento', type: 'error' })
       return
     }
 
@@ -392,7 +392,7 @@ export default function CrearMantenimiento() {
               
               <div className="form-group">
                 <label>
-                  Cédula del Técnico
+                  Documento del Técnico
                 </label>
                 <div className="search-equipo-wrapper">
                   <input
@@ -405,7 +405,7 @@ export default function CrearMantenimiento() {
                         buscarTecnico()
                       }
                     }}
-                    placeholder="Ingresa la cédula del técnico"
+                    placeholder="Ingresa la Documento del técnico"
                     className="search-equipo-input"
                   />
                   <button
@@ -434,7 +434,7 @@ export default function CrearMantenimiento() {
                   </div>
                   <div className="equipo-found-info">
                     <div><strong>Nombre:</strong> {tecnicoEncontrado.nombre_usuario}</div>
-                    <div><strong>Cédula:</strong> {tecnicoEncontrado.cedula}</div>
+                    <div><strong>Documento:</strong> {tecnicoEncontrado.cedula}</div>
                     <div><strong>Rol:</strong> {tecnicoEncontrado.nombre_rol}</div>
                   </div>
                   <button

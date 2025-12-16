@@ -441,109 +441,127 @@ export default function Ambientes() {
               </div>
             </div>
 
-          {showForm && (
-            <div className="card" style={{ marginBottom: '1.5rem' }}>
-              <h3>{editingAmbiente ? 'Editar Ambiente' : 'Nuevo Ambiente'}</h3>
-              <form onSubmit={handleSubmit}>
-                <div className="form-grid">
-                  <div className="form-row">
-                    <label>Código Ambiente *</label>
-                    <input
-                      className="form-control"
-                      name="codigo_ambiente"
-                      value={form.codigo_ambiente}
-                      onChange={handleChange}
-                      disabled={!!editingAmbiente}
-                    />
-                    {errores.codigo_ambiente && (
-                      <span className="error-text">{errores.codigo_ambiente}</span>
-                    )}
-                  </div>
-                  <div className="form-row">
-                    <label>Nombre Ambiente *</label>
-                    <input
-                      className="form-control"
-                      name="nombre_ambiente"
-                      value={form.nombre_ambiente}
-                      onChange={handleChange}
-                    />
-                    {errores.nombre_ambiente && (
-                      <span className="error-text">{errores.nombre_ambiente}</span>
-                    )}
-                  </div>
-                  <div className="form-row">
-                    <label>Tipo Ambiente *</label>
-                    <select
-                      className="form-control"
-                      name="tipo_ambiente"
-                      value={form.tipo_ambiente}
-                      onChange={handleChange}
-                    >
-                      {TIPOS_AMBIENTE.map((tipo) => (
-                        <option key={tipo} value={tipo}>
-                          {tipo}
-                        </option>
-                      ))}
-                    </select>
-                    {errores.tipo_ambiente && (
-                      <span className="error-text">{errores.tipo_ambiente}</span>
-                    )}
-                  </div>
-                  <div className="form-row">
-                    <label>Capacidad de Personas</label>
-                    <input
-                      className="form-control"
-                      type="number"
-                      name="capacidad_personas"
-                      value={form.capacidad_personas}
-                      onChange={handleChange}
-                      min="1"
-                    />
-                  </div>
-                  <div className="form-row">
-                    <label>Piso</label>
-                    <input
-                      className="form-control"
-                      name="piso"
-                      value={form.piso}
-                      onChange={handleChange}
-                    />
-                  </div>
-                  <div className="form-row">
-                    <label>Edificio</label>
-                    <input
-                      className="form-control"
-                      name="edificio"
-                      value={form.edificio}
-                      onChange={handleChange}
-                    />
-                  </div>
-                  <div className="form-row">
-                    <label>Estado</label>
-                    <select
-                      className="form-control"
-                      name="estado_ambiente"
-                      value={form.estado_ambiente}
-                      onChange={handleChange}
-                    >
-                      {ESTADOS_AMBIENTE.map((est) => (
-                        <option key={est} value={est}>
-                          {est}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="form-row" style={{ gridColumn: '1 / -1' }}>
-                    <label>Descripción</label>
-                    <textarea
-                      className="form-control"
-                      name="descripcion"
-                      value={form.descripcion}
-                      onChange={handleChange}
-                      rows="3"
-                    />
-                  </div>
+            {showForm && (
+    <div className="card ambiente-form-card" style={{ marginBottom: '1.5rem' }}>
+        <h3>{editingAmbiente ? 'Editar Ambiente' : 'Nuevo Ambiente'}</h3>
+        <form onSubmit={handleSubmit}>
+            {/* INICIO: Estructura del formulario mejorada */}
+            <div className="form-grid-columns">
+                {/* Columna 1 */}
+                <div className="form-group-column">
+                    <div className="form-row">
+                        <label>Código Ambiente *</label>
+                        <input
+                            className="form-control"
+                            name="codigo_ambiente"
+                            value={form.codigo_ambiente}
+                            onChange={handleChange}
+                            disabled={!!editingAmbiente}
+                            aria-required="true"
+                        />
+                        {errores.codigo_ambiente && (
+                            <span className="error-text">{errores.codigo_ambiente}</span>
+                        )}
+                    </div>
+                    
+                    <div className="form-row">
+                        <label>Nombre Ambiente *</label>
+                        <input
+                            className="form-control"
+                            name="nombre_ambiente"
+                            value={form.nombre_ambiente}
+                            onChange={handleChange}
+                            aria-required="true"
+                        />
+                        {errores.nombre_ambiente && (
+                            <span className="error-text">{errores.nombre_ambiente}</span>
+                        )}
+                    </div>
+
+                    <div className="form-row">
+                        <label>Tipo Ambiente *</label>
+                        <select
+                            className="form-control"
+                            name="tipo_ambiente"
+                            value={form.tipo_ambiente}
+                            onChange={handleChange}
+                            aria-required="true"
+                        >
+                            {TIPOS_AMBIENTE.map((tipo) => (
+                                <option key={tipo} value={tipo}>
+                                    {tipo}
+                                </option>
+                            ))}
+                        </select>
+                        {errores.tipo_ambiente && (
+                            <span className="error-text">{errores.tipo_ambiente}</span>
+                        )}
+                    </div>
                 </div>
+
+                {/* Columna 2 */}
+                <div className="form-group-column">
+                    <div className="form-row">
+                        <label>Capacidad de Personas</label>
+                        <input
+                            className="form-control"
+                            type="number"
+                            name="capacidad_personas"
+                            value={form.capacidad_personas}
+                            onChange={handleChange}
+                            min="1"
+                        />
+                    </div>
+                    
+                    <div className="form-row">
+                        <label>Piso</label>
+                        <input
+                            className="form-control"
+                            name="piso"
+                            value={form.piso}
+                            onChange={handleChange}
+                        />
+                    </div>
+                    
+                    <div className="form-row">
+                        <label>Edificio</label>
+                        <input
+                            className="form-control"
+                            name="edificio"
+                            value={form.edificio}
+                            onChange={handleChange}
+                        />
+                    </div>
+
+                    <div className="form-row">
+                        <label>Estado</label>
+                        <select
+                            className="form-control"
+                            name="estado_ambiente"
+                            value={form.estado_ambiente}
+                            onChange={handleChange}
+                        >
+                            {ESTADOS_AMBIENTE.map((est) => (
+                                <option key={est} value={est}>
+                                    {est}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            {/* Fila de Descripción a ancho completo */}
+            <div className="form-row form-full-width">
+                <label>Descripción</label>
+                <textarea
+                    className="form-control"
+                    name="descripcion"
+                    value={form.descripcion}
+                    onChange={handleChange}
+                    rows="3"
+                />
+            </div>
                 <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
                   <button type="submit" className="btn-primary">
                     {editingAmbiente ? 'Actualizar' : 'Crear'}

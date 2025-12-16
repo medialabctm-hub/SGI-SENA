@@ -52,7 +52,7 @@ export default function UsersManagement() {
       // Definir columnas en orden específico con nombres amigables
       const columnMapping = [
         { key: 'id_usuario', label: 'ID Usuario' },
-        { key: 'cedula', label: 'Cédula' },
+        { key: 'cedula', label: 'Documento' },
         { key: 'nombre_usuario', label: 'Nombre Completo' },
         { key: 'correo', label: 'Correo Electrónico' },
         { key: 'telefono', label: 'Teléfono' },

@@ -1011,7 +1011,7 @@ export default function DetalleEquipo() {
                         </div>
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '8px', fontSize: '14px', color: '#6b7280' }}>
                           <div>
-                            <strong>Cédula:</strong> {responsable.cedula || responsable.documento_externo || '-'}
+                            <strong>Documento:</strong> {responsable.cedula || responsable.documento_externo || '-'}
                           </div>
                           {responsable.ficha && (
                             <div>

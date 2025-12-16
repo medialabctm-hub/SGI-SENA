@@ -45,7 +45,7 @@ export default function ImportarEquipos({ onImportComplete }) {
       })
       const data = await parseApiResponse(res, 'Error al obtener cuentadante principal')
       setCuentadanteActual(data.cuentadante_principal || '')
-      // Mostrar la cédula si está disponible, sino el nombre
+      // Mostrar la Documento si está disponible, sino el nombre
       setCuentadantePrincipal(data.cuentadante_cedula || data.cuentadante_principal || '')
     } catch (err) {
       console.error('Error al obtener cuentadante principal:', err)
@@ -56,7 +56,7 @@ export default function ImportarEquipos({ onImportComplete }) {
 
   const buscarCuentadante = async () => {
     if (!cuentadantePrincipal.trim()) {
-      setError('Ingresa la cédula del cuentadante')
+      setError('Ingresa la Documento del cuentadante')
       return
     }
 
@@ -83,7 +83,7 @@ export default function ImportarEquipos({ onImportComplete }) {
         setError(null)
       } else {
         const errorData = await res.json().catch(() => ({}))
-        setError(errorData.error || 'No se encontró un usuario con esa cédula')
+        setError(errorData.error || 'No se encontró un usuario con esa Documento')
         setCuentadanteEncontrado(null)
       }
     } catch (err) {
@@ -96,7 +96,7 @@ export default function ImportarEquipos({ onImportComplete }) {
 
   const handleSaveCuentadante = async () => {
     if (!cuentadantePrincipal.trim()) {
-      setError('La cédula del cuentadante es obligatoria')
+      setError('La Documento del cuentadante es obligatoria')
       return
     }
 
@@ -375,7 +375,7 @@ export default function ImportarEquipos({ onImportComplete }) {
           </h4>
           <p style={{ color: '#666', marginBottom: '1rem', fontSize: '0.9rem' }}>
             El cuentadante principal es la persona responsable permanente de todo el inventario. 
-            Debe ingresarse después de importar los equipos. Ingrese la <strong>cédula</strong> del cuentadante.
+            Debe ingresarse después de importar los equipos. Ingrese la <strong>Documento</strong> del cuentadante.
           </p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
             <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-start' }}>
@@ -384,7 +384,7 @@ export default function ImportarEquipos({ onImportComplete }) {
                 value={cuentadantePrincipal}
                 onChange={(e) => {
                   setCuentadantePrincipal(e.target.value)
-                  setCuentadanteEncontrado(null) // Limpiar resultado al cambiar la cédula
+                  setCuentadanteEncontrado(null) // Limpiar resultado al cambiar la Documento
                 }}
                 onKeyPress={(e) => {
                   if (e.key === 'Enter') {
@@ -392,7 +392,7 @@ export default function ImportarEquipos({ onImportComplete }) {
                     buscarCuentadante()
                   }
                 }}
-                placeholder="Cédula del cuentadante principal"
+                placeholder="Documento del cuentadante principal"
                 style={{
                   flex: 1,
                   padding: '0.75rem',
@@ -436,7 +436,7 @@ export default function ImportarEquipos({ onImportComplete }) {
               }}>
                 <FiCheckCircle size={18} style={{ color: 'var(--success-800)' }} />
                 <div style={{ flex: 1 }}>
-                  <strong>{cuentadanteEncontrado.nombre_usuario}</strong> - Cédula: {cuentadanteEncontrado.cedula}
+                  <strong>{cuentadanteEncontrado.nombre_usuario}</strong> - Documento: {cuentadanteEncontrado.cedula}
                 </div>
               </div>
             )}

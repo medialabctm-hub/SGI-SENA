@@ -529,7 +529,7 @@ export default function Horarios() {
               )}
               <button
                 type="button"
-                className="btn"
+                className="btn-act"
                 onClick={fetchClases}
                 disabled={loading}
                 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}

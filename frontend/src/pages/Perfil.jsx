@@ -342,7 +342,7 @@ export default function Perfil() {
                     <div className="perfil-form-row">
                       <label>
                         <FiCreditCard size={18} />
-                        Cédula
+                        Documento
                       </label>
                       <input
                         name="cedula"

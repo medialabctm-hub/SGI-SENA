@@ -164,7 +164,7 @@ export default function BuscarCuentadante() {
                         </div>
                       </div>
                       <div>
-                        <strong style={{ color: '#666', fontSize: '0.9rem' }}>Cédula:</strong>
+                        <strong style={{ color: '#666', fontSize: '0.9rem' }}>Documento:</strong>
                         <div style={{ fontSize: '1.1rem', fontWeight: 600, marginTop: '0.25rem' }}>
                           {cuentadante.cedula}
                         </div>
