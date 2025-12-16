@@ -12,15 +12,17 @@ import '../styles/imageViewer.css';
  * @param {Function} props.onImageChange - Función opcional que se ejecuta al cambiar de imagen (recibe el nuevo índice)
  */
 
-const [zoomed, setZoomed] = useState(false);
 
-const handleImageClick = () => {
-  setZoomed(!zoomed);
-};
+
 
 export default function ImageViewer({ images = [], currentIndex = 0, onClose, onImageChange }) {
   const [currentImgIndex, setCurrentImgIndex] = useState(currentIndex);
   const [imageLoaded, setImageLoaded] = useState(false);
+  const [zoomed, setZoomed] = useState(false);
+
+  const handleImageClick = () => {
+    setZoomed(!zoomed);
+  };
 
   useEffect(() => {
     setCurrentImgIndex(currentIndex);
@@ -137,6 +139,7 @@ export default function ImageViewer({ images = [], currentIndex = 0, onClose, on
             src={currentImage.url}
             alt={currentImage.titulo || currentImage.descripcion || 'Imagen'}
             className={`image-viewer-image ${zoomed ? 'zoomed' : ''}`}
+            onClick={handleImageClick} 
             onLoad={() => setImageLoaded(true)}
             onError={(e) => {
               console.error('Error al cargar imagen:', currentImage.url);
