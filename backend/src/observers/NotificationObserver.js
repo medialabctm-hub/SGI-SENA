@@ -64,7 +64,7 @@ export class Subject {
       } catch (error) {
         // Importar logger dinámicamente para evitar dependencia circular
         try {
-          const { logger } = import('../utils/logger.js');
+          const { logger } = await import('../utils/logger.js');
           logger.error('Error al notificar observador', { 
             error: error.message,
             stack: process.env.NODE_ENV === 'development' ? error.stack : undefined,
