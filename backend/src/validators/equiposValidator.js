@@ -273,15 +273,41 @@ export const actualizarAsignacionEquipoSchema = z.object({
 const usuarioExternoSchema = z.object({
   ficha: z.string().min(1, 'La ficha es obligatoria').max(50, 'La ficha no puede exceder 50 caracteres'),
   documento: z.string().min(5, 'El documento de identificación debe tener al menos 5 caracteres').max(20, 'El documento no puede exceder 20 caracteres'),
-  // Aceptar tanto snake_case como camelCase
-  dias_semana: z.array(z.union([
-    z.enum(diasSemanaEnum),
-    z.enum(diasSemanaEnumLower)
-  ])).optional().nullable().transform(normalizarDiasSemana),
-  diasSemana: z.array(z.union([
-    z.enum(diasSemanaEnum),
-    z.enum(diasSemanaEnumLower)
-  ])).optional().nullable().transform(normalizarDiasSemana),
+  // Aceptar tanto snake_case como camelCase, y también strings que puedan ser parseados
+  dias_semana: z.union([
+    z.array(z.union([
+      z.enum(diasSemanaEnum),
+      z.enum(diasSemanaEnumLower)
+    ])),
+    z.string().transform((val) => {
+      try {
+        const parsed = JSON.parse(val);
+        return Array.isArray(parsed) ? parsed : [parsed];
+      } catch {
+        return [val];
+      }
+    }).pipe(z.array(z.union([
+      z.enum(diasSemanaEnum),
+      z.enum(diasSemanaEnumLower)
+    ])))
+  ]).optional().nullable().transform(normalizarDiasSemana),
+  diasSemana: z.union([
+    z.array(z.union([
+      z.enum(diasSemanaEnum),
+      z.enum(diasSemanaEnumLower)
+    ])),
+    z.string().transform((val) => {
+      try {
+        const parsed = JSON.parse(val);
+        return Array.isArray(parsed) ? parsed : [parsed];
+      } catch {
+        return [val];
+      }
+    }).pipe(z.array(z.union([
+      z.enum(diasSemanaEnum),
+      z.enum(diasSemanaEnumLower)
+    ])))
+  ]).optional().nullable().transform(normalizarDiasSemana),
   hora_inicio: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9](:00)?$/, 'Formato de hora inválido (debe ser HH:MM o HH:MM:SS)').optional().nullable(),
   horaInicio: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9](:00)?$/, 'Formato de hora inválido (debe ser HH:MM o HH:MM:SS)').optional().nullable(),
   hora_fin: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9](:00)?$/, 'Formato de hora inválido (debe ser HH:MM o HH:MM:SS)').optional().nullable(),
@@ -363,7 +389,21 @@ const schemaFormatoNuevo = z.object({
     z.string().min(1, 'El código del ambiente es obligatorio').max(50, 'El código del ambiente no puede exceder 50 caracteres'),
     z.number().int().positive('El código del ambiente debe ser un número positivo')
   ]).transform(val => String(val)),
-  usuarios: z.array(usuarioExternoSchema).min(1, 'Debe haber al menos un usuario').max(50, 'No se pueden registrar más de 50 usuarios a la vez'),
+  usuarios: z.union([
+    z.array(usuarioExternoSchema),
+    z.string().transform((val) => {
+      try {
+        const parsed = JSON.parse(val);
+        return Array.isArray(parsed) ? parsed : [parsed];
+      } catch {
+        throw new z.ZodError([{
+          code: 'custom',
+          path: ['usuarios'],
+          message: 'usuarios debe ser un array válido o un string JSON válido'
+        }]);
+      }
+    }).pipe(z.array(usuarioExternoSchema))
+  ]).min(1, 'Debe haber al menos un usuario').max(50, 'No se pueden registrar más de 50 usuarios a la vez'),
 });
 
 // Schema que acepta ambos formatos

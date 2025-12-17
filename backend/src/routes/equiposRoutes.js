@@ -6,6 +6,7 @@ import { PERMISSIONS } from '../config/permissions.js';
 import { writeLimiter, readLimiter, strictLimiter, webhookLimiter } from '../middleware/rateLimiter.js';
 import { validate, registrarEquipoSchema, actualizarEquipoSchema, asignarEquipoSchema, verificarInventarioSchema, crearCategoriaSchema, actualizarCategoriaSchema, registrarUsoEquipoSchema, actualizarUsoEquipoSchema, registrarUsoEquipoExternoSchema, actualizarAsignacionEquipoSchema } from '../validators/equiposValidator.js';
 import { uploadEquipoImagePublico, handleUploadError } from '../middleware/uploadMiddleware.js';
+import { parseFormData } from '../middleware/parseFormData.js';
 
 const router = express.Router();
 
@@ -21,6 +22,7 @@ router.post('/uso/registro-externo',
   webhookLimiter,
   uploadEquipoImagePublico.array('imagenes', 10), // Aceptar hasta 10 imágenes
   handleUploadError,
+  parseFormData, // Parsear datos de multipart/form-data antes de validar
   validate(registrarUsoEquipoExternoSchema),
   registrarUsoEquipoExterno
 );
