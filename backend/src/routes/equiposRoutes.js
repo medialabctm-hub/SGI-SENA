@@ -149,7 +149,7 @@ router.get('/:codigo',
 );
 
 // Actualizar equipo - Solo Admin - Protegido con rate limiting y validación
-router.put('/detalle/:codigo', 
+router.put('/:codigo', 
   authenticate,
   writeLimiter,
   validate(actualizarEquipoSchema),
