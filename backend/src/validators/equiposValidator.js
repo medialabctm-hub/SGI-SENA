@@ -390,7 +390,7 @@ const schemaFormatoNuevo = z.object({
     z.number().int().positive('El código del ambiente debe ser un número positivo')
   ]).transform(val => String(val)),
   usuarios: z.union([
-    z.array(usuarioExternoSchema),
+    z.array(usuarioExternoSchema).min(1, 'Debe haber al menos un usuario').max(50, 'No se pueden registrar más de 50 usuarios a la vez'),
     z.string().transform((val) => {
       try {
         const parsed = JSON.parse(val);
@@ -402,8 +402,8 @@ const schemaFormatoNuevo = z.object({
           message: 'usuarios debe ser un array válido o un string JSON válido'
         }]);
       }
-    }).pipe(z.array(usuarioExternoSchema))
-  ]).min(1, 'Debe haber al menos un usuario').max(50, 'No se pueden registrar más de 50 usuarios a la vez'),
+    }).pipe(z.array(usuarioExternoSchema).min(1, 'Debe haber al menos un usuario').max(50, 'No se pueden registrar más de 50 usuarios a la vez'))
+  ]),
 });
 
 // Schema que acepta ambos formatos
