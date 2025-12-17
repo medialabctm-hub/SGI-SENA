@@ -266,12 +266,12 @@ export const actualizarAsignacionEquipoSchema = z.object({
  * Validador para registro de uso de equipo desde página externa
  * Recibe: placa, ambiente, usuarios (array)
  * Nota: El ambiente debe ser el código numérico que los usuarios conocen (ej: "101", "102")
- * Cada usuario debe tener: ficha, nombre, documento, dias_semana (opcional), hora_inicio (opcional), hora_fin (opcional)
+ * Cada usuario debe tener: ficha, documento, dias_semana (opcional), hora_inicio (opcional), hora_fin (opcional)
+ * El nombre se obtiene automáticamente buscando el usuario por documento en la base de datos
  */
 
 const usuarioExternoSchema = z.object({
   ficha: z.string().min(1, 'La ficha es obligatoria').max(50, 'La ficha no puede exceder 50 caracteres'),
-  nombre: z.string().min(1, 'El nombre es obligatorio').max(200, 'El nombre no puede exceder 200 caracteres'),
   documento: z.string().min(5, 'El documento de identificación debe tener al menos 5 caracteres').max(20, 'El documento no puede exceder 20 caracteres'),
   // Aceptar tanto snake_case como camelCase
   dias_semana: z.array(z.union([
@@ -290,7 +290,6 @@ const usuarioExternoSchema = z.object({
   // Normalizar a snake_case y unificar campos
   return {
     ficha: data.ficha,
-    nombre: data.nombre,
     documento: data.documento,
     dias_semana: data.dias_semana || data.diasSemana || null,
     hora_inicio: data.hora_inicio || data.horaInicio || null,
@@ -316,7 +315,6 @@ const schemaFormatoAntiguo = z.object({
   ]).transform(val => String(val)),
   // Campos de usuario en el nivel raíz (formato antiguo)
   ficha: z.string().min(1, 'La ficha es obligatoria').max(50, 'La ficha no puede exceder 50 caracteres'),
-  nombre: z.string().min(1, 'El nombre es obligatorio').max(200, 'El nombre no puede exceder 200 caracteres'),
   documento: z.string().min(5, 'El documento de identificación debe tener al menos 5 caracteres').max(20, 'El documento no puede exceder 20 caracteres'),
   // Aceptar tanto snake_case como camelCase para horarios
   dias_semana: z.array(z.union([
@@ -338,7 +336,6 @@ const schemaFormatoAntiguo = z.object({
     ambiente: data.ambiente,
     usuarios: [{
       ficha: data.ficha,
-      nombre: data.nombre,
       documento: data.documento,
       dias_semana: data.dias_semana || data.diasSemana || null,
       hora_inicio: data.hora_inicio || data.horaInicio || null,

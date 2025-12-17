@@ -5,6 +5,7 @@ import { requirePermission, requireAnyPermission } from '../middleware/authoriza
 import { PERMISSIONS } from '../config/permissions.js';
 import { writeLimiter, readLimiter, strictLimiter, webhookLimiter } from '../middleware/rateLimiter.js';
 import { validate, registrarEquipoSchema, actualizarEquipoSchema, asignarEquipoSchema, verificarInventarioSchema, crearCategoriaSchema, actualizarCategoriaSchema, registrarUsoEquipoSchema, actualizarUsoEquipoSchema, registrarUsoEquipoExternoSchema, actualizarAsignacionEquipoSchema } from '../validators/equiposValidator.js';
+import { uploadEquipoImagePublico, handleUploadError } from '../middleware/uploadMiddleware.js';
 
 const router = express.Router();
 
@@ -13,9 +14,13 @@ const router = express.Router();
 // ============================================
 
 // Registrar uso de equipo desde página externa (público)
-// Endpoint para recibir datos de páginas externas: ficha, placa, nombre, documento
+// Endpoint para recibir datos de páginas externas: ficha, placa, documento, imagenes (opcional)
+// El nombre se obtiene automáticamente buscando el usuario por documento en la BD
+// Las imágenes se guardan en Imagenes_Equipo asociadas al equipo identificado por la placa
 router.post('/uso/registro-externo', 
   webhookLimiter,
+  uploadEquipoImagePublico.array('imagenes', 10), // Aceptar hasta 10 imágenes
+  handleUploadError,
   validate(registrarUsoEquipoExternoSchema),
   registrarUsoEquipoExterno
 );

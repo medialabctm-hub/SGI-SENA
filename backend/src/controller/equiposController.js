@@ -2,6 +2,11 @@ import defaultDb, { pool } from '../config/dbconfig.js';
 import { notifyNuevoEquipo } from '../services/notificationService.js';
 import { logger } from '../utils/logger.js';
 import { obtenerEquipoPorCodigo as obtenerEquipoPorCodigoUtil, obtenerUsuarioPorCedula } from '../utils/sqlQueries.js';
+import { getImagePath, deleteImageFile } from '../middleware/uploadMiddleware.js';
+import path from 'path';
+import fs from 'fs';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
 
 export async function listarEquipos(req, res) {
   try {
@@ -2662,17 +2667,22 @@ export async function obtenerSesionesActivas(req, res) {
 
 /**
  * Registrar uso de equipo desde página externa (público)
- * Recibe: ficha, placa, nombre, documento, ambiente
+ * Recibe: ficha, placa, documento, ambiente, imagenes (opcional)
  * No requiere autenticación, pero valida que el usuario y equipo existan
  * 
  * Acciones:
- * 1. Actualiza el ambiente del equipo en el inventario (tabla Elementos)
- * 2. Asigna el equipo al usuario en Responsables_Equipo con ficha, nombre y documento
- * 3. Registra el uso en Historial_Uso_Equipos
+ * 1. Busca el usuario por documento en la base de datos
+ * 2. Actualiza el ambiente del equipo en el inventario (tabla Elementos)
+ * 3. Asigna el equipo al usuario en Responsables_Equipo con ficha, nombre (obtenido de BD) y documento
+ * 4. Registra el uso en Historial_Uso_Equipos
+ * 5. Si hay imágenes, las guarda en Imagenes_Equipo asociadas al equipo
  */
 export async function registrarUsoEquipoExterno(req, res) {
+  const uploadedFiles = []; // Para limpiar archivos en caso de error
+  
   try {
     const { placa, ambiente, usuarios } = req.body;
+    const files = req.files || (req.file ? [req.file] : []);
 
     // Log de los datos recibidos para debugging
     logger.info('Datos recibidos en registro externo', {
@@ -2692,11 +2702,94 @@ export async function registrarUsoEquipoExterno(req, res) {
     );
 
     if (!equipo) {
+      // Eliminar archivos subidos si el equipo no existe
+      if (files && files.length > 0) {
+        files.forEach((file) => {
+          deleteImageFile(file.filename);
+        });
+      }
       return res.status(404).json({ 
         success: false,
         error: 'Equipo no encontrado',
         message: `No se encontró un equipo con la placa "${placa}"` 
       });
+    }
+
+    const codigoEquipo = equipo.codigo_equipo;
+    
+    // Procesar imágenes si se enviaron
+    const imagenesSubidas = [];
+    if (files && files.length > 0) {
+      try {
+        // Renombrar archivos con el codigo_equipo correcto
+        const __filename = fileURLToPath(import.meta.url);
+        const __dirname = dirname(__filename);
+        const uploadsDir = path.join(__dirname, '../../uploads/equipos');
+        
+        for (const file of files) {
+          if (!file || !file.filename) {
+            logger.warn('Archivo inválido en registro externo', { file });
+            continue;
+          }
+
+          // Generar nuevo nombre con codigo_equipo
+          const timestamp = Date.now();
+          const ext = path.extname(file.originalname);
+          const nameWithoutExt = path.basename(file.originalname, ext);
+          const sanitizedName = nameWithoutExt.replace(/[^a-zA-Z0-9]/g, '_');
+          const nuevoFilename = `${timestamp}-${codigoEquipo}-${sanitizedName}${ext}`;
+          
+          // Renombrar archivo físico
+          const oldPath = path.join(uploadsDir, file.filename);
+          const newPath = path.join(uploadsDir, nuevoFilename);
+          
+          if (fs.existsSync(oldPath)) {
+            fs.renameSync(oldPath, newPath);
+            file.filename = nuevoFilename;
+            uploadedFiles.push(nuevoFilename);
+          } else {
+            logger.warn('Archivo no encontrado para renombrar', { filename: file.filename });
+            continue;
+          }
+
+          // Guardar en la base de datos
+          const rutaImagen = getImagePath(nuevoFilename);
+          const tipoImagen = 'Detalle'; // Por defecto
+          const descripcion = `Imagen subida desde registro externo - Placa: ${placa}`;
+
+          const [resultImagen] = await defaultDb.execute(
+            `INSERT INTO Imagenes_Equipo 
+             (codigo_equipo, ruta_imagen, nombre_archivo, tipo_imagen, descripcion, subida_por, es_principal)
+             VALUES (?, ?, ?, ?, ?, NULL, FALSE)`,
+            [codigoEquipo, rutaImagen, nuevoFilename, tipoImagen, descripcion]
+          );
+
+          imagenesSubidas.push({
+            id_imagen_equipo: resultImagen.insertId,
+            codigo_equipo: codigoEquipo,
+            ruta_imagen: rutaImagen,
+            nombre_archivo: nuevoFilename,
+            tipo_imagen: tipoImagen,
+            descripcion: descripcion,
+            es_principal: false,
+          });
+
+          logger.info('Imagen guardada desde registro externo', {
+            id_imagen: resultImagen.insertId,
+            codigo_equipo: codigoEquipo,
+            placa: placa,
+            filename: nuevoFilename
+          });
+        }
+      } catch (imagenError) {
+        logger.error('Error al procesar imágenes en registro externo', {
+          error: imagenError.message,
+          stack: imagenError.stack,
+          codigo_equipo: codigoEquipo
+        });
+        // Continuar con el proceso aunque haya error en las imágenes
+        // Las imágenes ya subidas se mantendrán
+      }
     }
 
     // Buscar ambiente por código
@@ -2785,7 +2878,7 @@ export async function registrarUsoEquipoExterno(req, res) {
       return res.status(400).json({ 
         success: false,
         error: 'Usuarios requeridos',
-        message: 'Debe proporcionar al menos un usuario con ficha, nombre y documento' 
+        message: 'Debe proporcionar al menos un usuario con ficha y documento' 
       });
     }
 
@@ -2883,7 +2976,7 @@ export async function registrarUsoEquipoExterno(req, res) {
       const errores = [];
 
       for (const usuarioData of usuarios) {
-        const { ficha, nombre, documento, dias_semana, hora_inicio, hora_fin } = usuarioData;
+        const { ficha, documento, dias_semana, hora_inicio, hora_fin } = usuarioData;
 
         try {
           // Buscar usuario por documento
@@ -2900,12 +2993,14 @@ export async function registrarUsoEquipoExterno(req, res) {
           if (!usuario) {
             errores.push({
               documento: documento.trim(),
-              nombre: nombre.trim(),
               ficha: ficha.trim(),
               error: `Usuario no encontrado con documento "${documento}". Debe registrarse primero en SGI-SENA.`
             });
             continue;
           }
+
+          // Obtener el nombre del usuario desde la base de datos
+          const nombreUsuario = usuario.nombre_usuario || null;
 
           // Verificar si ya existe una asignación activa para este equipo y usuario
           const [[asignacionExistente]] = await connection.execute(
@@ -3006,7 +3101,7 @@ export async function registrarUsoEquipoExterno(req, res) {
               
               errores.push({
                 documento: documento.trim(),
-                nombre: nombre.trim(),
+                nombre: nombreUsuario,
                 ficha: ficha.trim(),
                 error: `Conflicto de horario: Ya existe otro usuario (${conflicto.nombre_usuario || 'Sin nombre'}, ${conflicto.cedula || 'Sin documento'}) asignado a este equipo en los días ${Array.isArray(diasConflicto) ? diasConflicto.join(', ') : 'N/A'} de ${conflicto.hora_inicio ? conflicto.hora_inicio.substring(0, 5) : 'N/A'} a ${conflicto.hora_fin ? conflicto.hora_fin.substring(0, 5) : 'N/A'}`,
                 conflicto_con: {
@@ -3022,7 +3117,7 @@ export async function registrarUsoEquipoExterno(req, res) {
                 codigo_equipo: equipo.codigo_equipo,
                 usuario_nuevo: {
                   documento: documento.trim(),
-                  nombre: nombre.trim(),
+                  nombre: nombreUsuario,
                   dias: dias_semana,
                   horario: `${horaInicioTime} - ${horaFinTime}`
                 },
@@ -3040,7 +3135,7 @@ export async function registrarUsoEquipoExterno(req, res) {
           }
 
           // Crear o actualizar asignación
-          const observaciones = `Ficha: ${ficha.trim()}, Nombre: ${nombre.trim()}, Documento: ${documento.trim()}`;
+          const observaciones = `Ficha: ${ficha.trim()}, Nombre: ${nombreUsuario || 'N/A'}, Documento: ${documento.trim()}`;
 
           if (!asignacionExistente) {
             // Crear nueva asignación
@@ -3053,9 +3148,9 @@ export async function registrarUsoEquipoExterno(req, res) {
               valores.push(ficha.trim());
               placeholders.push('?');
             }
-            if (tieneNombreExterno) {
+            if (tieneNombreExterno && nombreUsuario) {
               campos.push('nombre_externo');
-              valores.push(nombre.trim());
+              valores.push(nombreUsuario.trim());
               placeholders.push('?');
             }
             if (tieneDocumentoExterno) {
@@ -3090,7 +3185,7 @@ export async function registrarUsoEquipoExterno(req, res) {
               codigo_equipo: equipo.codigo_equipo,
               id_usuario: usuario.id_usuario,
               ficha: ficha.trim(),
-              nombre: nombre.trim(),
+              nombre: nombreUsuario,
               documento: documento.trim()
             });
           } else {
@@ -3102,9 +3197,9 @@ export async function registrarUsoEquipoExterno(req, res) {
               updates.push('ficha = ?');
               valoresUpdate.push(ficha.trim());
             }
-            if (tieneNombreExterno) {
+            if (tieneNombreExterno && nombreUsuario) {
               updates.push('nombre_externo = ?');
-              valoresUpdate.push(nombre.trim());
+              valoresUpdate.push(nombreUsuario.trim());
             }
             if (tieneDocumentoExterno) {
               updates.push('documento_externo = ?');
@@ -3140,7 +3235,7 @@ export async function registrarUsoEquipoExterno(req, res) {
                 codigo_equipo: equipo.codigo_equipo,
                 id_usuario: usuario.id_usuario,
                 ficha: ficha.trim(),
-                nombre: nombre.trim(),
+                nombre: nombreUsuario,
                 documento: documento.trim(),
                 filas_afectadas: updateResult.affectedRows,
                 campos_actualizados: updates.length
@@ -3178,7 +3273,7 @@ export async function registrarUsoEquipoExterno(req, res) {
             resultados.push({
               id_historial: sesionActiva.id_historial,
               id_usuario: usuario.id_usuario,
-              nombre: nombre.trim(),
+              nombre: nombreUsuario,
               documento: documento.trim(),
               ficha: ficha.trim(),
               fecha_hora_inicio: new Date(), // Usar fecha actual como referencia
@@ -3203,7 +3298,7 @@ export async function registrarUsoEquipoExterno(req, res) {
                 `INSERT INTO Historial_Uso_Equipos 
                  (codigo_equipo, id_usuario, nombre_usuario, fecha_hora_inicio, estado, observaciones) 
                  VALUES (?, ?, ?, ?, 'En Uso', ?)`,
-                [equipo.codigo_equipo, usuario.id_usuario, nombre.trim(), fechaInicio, observacionesHistorial]
+                [equipo.codigo_equipo, usuario.id_usuario, nombreUsuario || 'N/A', fechaInicio, observacionesHistorial]
               );
             } else {
               [resultHistorial] = await connection.execute(
@@ -3243,7 +3338,7 @@ export async function registrarUsoEquipoExterno(req, res) {
           resultados.push({
             id_historial: resultHistorial.insertId,
             id_usuario: usuario.id_usuario,
-            nombre: nombre.trim(),
+            nombre: nombreUsuario,
             documento: documento.trim(),
             ficha: ficha.trim(),
             fecha_hora_inicio: fechaInicio,
@@ -3257,7 +3352,7 @@ export async function registrarUsoEquipoExterno(req, res) {
             codigo_equipo: equipo.codigo_equipo,
             id_usuario: usuario.id_usuario,
             documento: documento.trim(),
-            nombre: nombre.trim(),
+            nombre: nombreUsuario,
             ficha: ficha.trim()
           });
 
@@ -3266,12 +3361,10 @@ export async function registrarUsoEquipoExterno(req, res) {
             error: usuarioError.message,
             stack: usuarioError.stack,
             documento: documento?.trim(),
-            nombre: nombre?.trim(),
             ficha: ficha?.trim()
           });
           errores.push({
             documento: documento?.trim() || 'N/A',
-            nombre: nombre?.trim() || 'N/A',
             ficha: ficha?.trim() || 'N/A',
             error: usuarioError.message || 'Error al procesar usuario'
           });
@@ -3318,7 +3411,7 @@ export async function registrarUsoEquipoExterno(req, res) {
       return res.status(201).json({
         success: true,
         message: resultados.length > 0 
-          ? `${resultados.length} usuario(s) registrado(s) correctamente${errores.length > 0 ? `, ${errores.length} con errores` : ''}`
+          ? `${resultados.length} usuario(s) registrado(s) correctamente${errores.length > 0 ? `, ${errores.length} con errores` : ''}${imagenesSubidas.length > 0 ? `, ${imagenesSubidas.length} imagen(es) guardada(s)` : ''}`
           : 'Procesamiento completado con errores',
         data: {
           codigo_equipo: equipo.codigo_equipo,
@@ -3332,6 +3425,7 @@ export async function registrarUsoEquipoExterno(req, res) {
           } : null,
           usuarios_procesados: resultados.length,
           usuarios: resultados,
+          imagenes_subidas: imagenesSubidas.length > 0 ? imagenesSubidas : undefined,
           errores: errores.length > 0 ? errores : undefined
         }
       });
@@ -3341,6 +3435,13 @@ export async function registrarUsoEquipoExterno(req, res) {
       throw transactionError;
     }
   } catch (err) {
+    // Limpiar archivos subidos en caso de error
+    if (uploadedFiles.length > 0) {
+      uploadedFiles.forEach((filename) => {
+        deleteImageFile(filename);
+      });
+    }
+    
     logger.error('Error al registrar uso de equipo externo', { 
       error: err.message, 
       stack: err.stack,
