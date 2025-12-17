@@ -528,6 +528,7 @@
 
 
 .form-equipos {
+  border: solid .5px var(--success-700);
   background: white;
   border-radius: 12px;
   box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.01);
@@ -1514,7 +1515,7 @@
   padding: 4rem 2rem;
   background: var(--neutral-50);
   border-radius: 16px;
-  border: 2px solid var(--neutral-200);
+  border: solid 2px var(--neutral-200);
 }
 
 .empty-icon-wrapper {
