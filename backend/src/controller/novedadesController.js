@@ -349,16 +349,24 @@ export async function crearNovedad(req, res) {
                     box-shadow: 0 4px 6px rgba(0,0,0,0.1);
                   }
                   .header {
-                    background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+                    background: #dc2626;
                     color: white;
-                    padding: 32px 28px;
+                    padding: 28px 24px 32px;
                     text-align: center;
                     position: relative;
                   }
+                  .header::after {
+                    content: "";
+                    position: absolute;
+                    bottom: 0;
+                    left: 0;
+                    height: 6px;
+                    width: 100%;
+                    background: #dc2626;
+                  }
                   .header-icon {
-                    font-size: 48px;
-                    margin-bottom: 12px;
-                    display: block;
+                    font-size: 42px;
+                    margin-bottom: 10px;
                   }
                   .header h1 {
                     margin: 0 0 8px 0;
@@ -383,16 +391,14 @@ export async function crearNovedad(req, res) {
                     font-weight: 600;
                   }
                   .alert-badge {
-                    background: #fee2e2;
-                    border: 2px solid #dc2626;
-                    padding: 16px 20px;
-                    margin: 24px;
-                    border-radius: 8px;
+                    margin: 20px 24px;
+                    padding: 14px 18px;
+                    border-radius: 10px;
+                    background: #fff5f5;
+
                     display: flex;
-                    align-items: center;
                     justify-content: space-between;
-                    flex-wrap: wrap;
-                    gap: 12px;
+                    align-items: center;
                   }
                   .badge-label {
                     font-weight: 600;
@@ -438,6 +444,7 @@ export async function crearNovedad(req, res) {
                     display: flex;
                     flex-direction: column;
                     gap: 6px;
+                    padding: 8px 0;
                   }
                   .info-group-full {
                     grid-column: 1 / -1;
@@ -454,15 +461,16 @@ export async function crearNovedad(req, res) {
                     font-size: 1rem;
                     font-weight: 500;
                   }
-                  .info-value-highlight {
-                    color: #dc2626;
-                    font-size: 1.15rem;
-                    font-weight: 700;
-                  }
                   .info-value-large {
-                    font-size: 1.25rem;
-                    font-weight: 700;
-                    color: #1a2a3a;
+                    font-size: 1.4rem;
+                    font-weight: 800;
+                    letter-spacing: 0.3px;
+                  }
+
+                  .info-value-highlight {
+                    color: #b91c1c;
+                    font-size: 1.3rem;
+                    font-weight: 800;
                   }
                   .specs-box {
                     background: #f8f9fa;
@@ -481,32 +489,23 @@ export async function crearNovedad(req, res) {
                     margin-bottom: 6px;
                   }
                   .description-box {
-                    background: #f8f9fa;
-                    border: 1px solid #e5e7eb;
-                    padding: 16px;
+                    background: #f9fafb;
+                    border-left: 4px solid #dc2626;
+                    padding: 16px 18px;
                     border-radius: 8px;
-                    margin-top: 12px;
-                    white-space: pre-wrap;
-                    color: #374151;
-                    line-height: 1.7;
                     font-size: 0.95rem;
                   }
                   .cta-button {
-                    display: inline-block;
-                    background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
-                    color: white;
-                    padding: 14px 28px;
-                    border-radius: 8px;
+                    background: #dc2626;
+                    padding: 16px 36px;
+                    border-radius: 10px;
+                    font-size: 1.05rem;
+                    letter-spacing: 0.4px;
                     text-decoration: none;
-                    font-weight: 600;
-                    font-size: 1rem;
-                    margin: 24px 0;
-                    text-align: center;
-                    box-shadow: 0 2px 4px rgba(220,38,38,0.3);
-                    transition: transform 0.2s;
+                    color: white;
                   }
                   .cta-button:hover {
-                    transform: translateY(-1px);
+                    transform: translateY(2px);
                     box-shadow: 0 4px 6px rgba(220,38,38,0.4);
                   }
                   .footer {
@@ -514,10 +513,16 @@ export async function crearNovedad(req, res) {
                     padding: 24px;
                     text-align: center;
                     border-top: 1px solid #e5e7eb;
-                    color: #6b7280;
-                    font-size: 0.875rem;
+                    color: #9ca3af;
+                    font-size: 0.8rem;
                     line-height: 1.6;
                   }
+                  .section-divider {
+                    height: 1px;
+                    background: linear-gradient(to right, transparent, #e5e7eb, transparent);
+                    margin: 28px 0;
+                  }
+  
                   .footer-contact {
                     margin-top: 16px;
                     padding-top: 16px;
@@ -542,7 +547,6 @@ export async function crearNovedad(req, res) {
               <body>
                 <div class="container">
                   <div class="header">
-                    <span class="header-id">ID: ${result.insertId}</span>
                     <span class="header-icon">⚠️</span>
                     <h1>Novedad Crítica Registrada</h1>
                     <p class="header-subtitle">${resumenInmediato}</p>
@@ -552,6 +556,8 @@ export async function crearNovedad(req, res) {
                     <span class="badge-label">Tipo de Novedad:</span>
                     <span class="badge-critical">${tipoNovedadNormalizado}</span>
                   </div>
+
+                  <div class="section-divider"></div>
 
                   <div class="card">
                     <h2 class="card-title">📋 Información del Equipo</h2>
@@ -650,6 +656,10 @@ export async function crearNovedad(req, res) {
                   <div style="text-align: center; padding: 0 24px 24px 24px;">
                     <a href="${config.frontendUrl || 'https://sgi-sena.up.railway.app'}/novedades" class="cta-button" style="display: inline-block;">Ver Reporte Completo en el Sistema</a>
                   </div>
+
+                    <p style="font-size:0.8rem;color:#6b7280;margin-top:8px;text-align:center;">
+                      Accede al sistema para gestionar esta incidencia
+                    </p>
 
                   <div class="footer">
                     <p><strong>Sistema de Gestión de Inventarios SENA</strong></p>

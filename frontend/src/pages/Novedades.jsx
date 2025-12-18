@@ -326,7 +326,7 @@ export default function Novedades() {
                             <td>
                               <div>
                                 <strong>{novedad.equipo_tipo} {novedad.equipo_marca} {novedad.equipo_modelo}</strong>
-                                {novedad.consecutivo && <div className="novedades-serie-numero">Consecutivo: {novedad.consecutivo}</div>}
+                                {novedad.placa && <div className="novedades-serie-numero">Placa: {novedad.placa}</div>}
                               </div>
                             </td>
                             <td>{novedad.tipo_novedad}</td>
@@ -509,7 +509,7 @@ export default function Novedades() {
                   </div>
                   <div>
                     <strong>Equipo:</strong> {selectedNovedad.equipo_tipo} {selectedNovedad.equipo_marca} {selectedNovedad.equipo_modelo}
-                    {selectedNovedad.consecutivo && <span> (Consecutivo: {selectedNovedad.consecutivo})</span>}
+                    {selectedNovedad.placa && <span> (Placa: {selectedNovedad.placa})</span>}
                   </div>
                   <div>
                     <strong>Tipo de Novedad:</strong> {selectedNovedad.tipo_novedad}
@@ -564,7 +564,7 @@ export default function Novedades() {
                             className="btn-primary btn-modern novedades-editar-btn"
                             disabled={loading}
                           >
-                            {loading ? 'Guardando...' : 'Guardar'}
+                            {loading ? 'Guardando' : 'Guardar'}
                           </button>
                           <button
                             onClick={cancelarEditarEstado}
