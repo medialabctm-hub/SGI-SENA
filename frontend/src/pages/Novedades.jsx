@@ -8,7 +8,6 @@ import '../styles/equipos.css'
 import '../styles/novedades.css'
 
 export default function Novedades() {
-  const [equipos, setEquipos] = useState([])
   const [activeTab, setActiveTab] = useState('ver') // 'ver' o 'crear'
   const [novedades, setNovedades] = useState([])
   const [loading, setLoading] = useState(false)
@@ -21,7 +20,7 @@ export default function Novedades() {
   
   // Estados para crear novedad
   const [form, setForm] = useState({
-    codigo_equipo: '',
+    codigo_inventario: '',
     tipo_novedad: 'Mal Funcionamiento',
     descripcion: '',
   })
