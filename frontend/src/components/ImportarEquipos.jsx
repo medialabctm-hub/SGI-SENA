@@ -4,7 +4,7 @@ import * as XLSX from 'xlsx'
 import { parseApiResponse, buildErrorMessage, handleError } from '../utils/api'
 import RevisarDuplicados from './RevisarDuplicados'
 
-export default function ImportarEquipos({ onImportComplete }) {
+export default function ImportarEquipos({ onImportComplete, onEstadoDuplicadosChange }) {
   const [archivo, setArchivo] = useState(null)
   const [loading, setLoading] = useState(false)
   const [resultado, setResultado] = useState(null)
@@ -29,6 +29,32 @@ export default function ImportarEquipos({ onImportComplete }) {
       console.error('Error al obtener datos del usuario:', error)
     }
   }, [])
+
+  // Notificar al componente padre cuando haya o no duplicados pendientes
+  useEffect(() => {
+    if (typeof onEstadoDuplicadosChange === 'function') {
+      onEstadoDuplicadosChange(mostrarDuplicados)
+    }
+  }, [mostrarDuplicados, onEstadoDuplicadosChange])
+
+  // Evitar que el usuario cierre o recargue la página mientras tiene duplicados sin resolver
+  useEffect(() => {
+    const handleBeforeUnload = (event) => {
+      if (mostrarDuplicados) {
+        event.preventDefault()
+        // Algunos navegadores requieren asignar un valor a returnValue
+        event.returnValue = ''
+      }
+    }
+
+    if (mostrarDuplicados) {
+      window.addEventListener('beforeunload', handleBeforeUnload)
+    }
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload)
+    }
+  }, [mostrarDuplicados])
 
   useEffect(() => {
     if (user?.nombre_rol === 'Administrador') {

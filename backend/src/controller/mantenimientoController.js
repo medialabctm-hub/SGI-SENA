@@ -14,19 +14,37 @@ async function actualizarEstadosAutomaticos() {
       `SELECT id_mantenimiento, codigo_equipo, fecha_mantenimiento 
        FROM Mantenimiento 
        WHERE estado_mantenimiento = 'Programado' 
-       AND fecha_mantenimiento <= NOW()`
+       -- Pequeña ventana de gracia de 1 minuto para evitar marcar "En Proceso" antes de tiempo
+       AND fecha_mantenimiento <= DATE_SUB(NOW(), INTERVAL 1 MINUTE)`
     )
 
     if (mantenimientosProgramados.length > 0) {
       const ids = mantenimientosProgramados.map(m => m.id_mantenimiento)
-      const placeholders = ids.map(() => '?').join(',')
-      
+      const placeholdersIds = ids.map(() => '?').join(',')
+
+      // Actualizar estado del mantenimiento
       await defaultDb.execute(
         `UPDATE Mantenimiento 
          SET estado_mantenimiento = 'En Proceso' 
-         WHERE id_mantenimiento IN (${placeholders})`,
+         WHERE id_mantenimiento IN (${placeholdersIds})`,
         ids
       )
+
+      // Marcar los equipos asociados como "En Mantenimiento" en el inventario general
+      const codigosUnicos = [
+        ...new Set(mantenimientosProgramados.map(m => m.codigo_equipo).filter(Boolean))
+      ]
+
+      if (codigosUnicos.length > 0) {
+        const placeholdersCodigos = codigosUnicos.map(() => '?').join(',')
+
+        await defaultDb.execute(
+          `UPDATE Estado_Equipo 
+           SET estado_operativo = 'En Mantenimiento' 
+           WHERE codigo_equipo IN (${placeholdersCodigos})`,
+          codigosUnicos
+        )
+      }
 
       logger.info('Mantenimientos actualizados a estado "En Proceso"', { cantidad: mantenimientosProgramados.length })
     }
@@ -447,7 +465,7 @@ export async function actualizarEstadoMantenimiento(req, res) {
       }
     }
 
-    // Actualizar el estado
+    // Actualizar el estado del mantenimiento
     await defaultDb.execute(
       `UPDATE Mantenimiento 
        SET estado_mantenimiento = ?
@@ -455,7 +473,34 @@ export async function actualizarEstadoMantenimiento(req, res) {
       [estado_mantenimiento, id]
     )
 
-    return res.json({ 
+    // Sincronizar estado operativo del equipo en el inventario general
+    try {
+      let nuevoEstadoOperativo = null
+
+      if (estado_mantenimiento === 'En Proceso') {
+        nuevoEstadoOperativo = 'En Mantenimiento'
+      } else if (estado_mantenimiento === 'Completado' || estado_mantenimiento === 'Cancelado') {
+        // Si el mantenimiento ya no está en curso, el equipo vuelve a estar disponible
+        nuevoEstadoOperativo = 'Disponible'
+      }
+
+      if (nuevoEstadoOperativo) {
+        await defaultDb.execute(
+          `UPDATE Estado_Equipo 
+           SET estado_operativo = ? 
+           WHERE codigo_equipo = ?`,
+          [nuevoEstadoOperativo, mantenimiento.codigo_equipo]
+        )
+      }
+    } catch (syncErr) {
+      // No romper la actualización del mantenimiento si falla la sincronización de estado operativo
+      logger.error('Error al sincronizar estado_operativo del equipo con el mantenimiento', { 
+        error: syncErr.message, 
+        stack: syncErr.stack 
+      })
+    }
+
+    return res.json({
       ok: true,
       message: 'Estado de mantenimiento actualizado correctamente',
       estado_mantenimiento

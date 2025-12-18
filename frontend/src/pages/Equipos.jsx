@@ -31,6 +31,7 @@ export default function Equipos() {
   const [user, setUser] = useState(null)
   const [ambientes, setAmbientes] = useState([])
   const [categorias, setCategorias] = useState([])
+  const [tieneDuplicadosPendientes, setTieneDuplicadosPendientes] = useState(false)
 
   useEffect(() => {
     try {
@@ -82,6 +83,18 @@ export default function Equipos() {
     }
     cargarCategorias()
   }, [])
+
+  // Cambio de pestaña respetando el bloqueo por duplicados
+  const handleChangeTab = (tab) => {
+    if (tieneDuplicadosPendientes && activeTab === 'importar' && tab !== 'importar') {
+      setToast({
+        message: 'Debes aprobar o rechazar todos los equipos con placa duplicada antes de salir de esta sección.',
+        type: 'error'
+      })
+      return
+    }
+    setActiveTab(tab)
+  }
 
   // Handler para cambios en el formulario
   const handleChange = e => {
@@ -173,14 +186,14 @@ export default function Equipos() {
             {/* Pestañas */}
             <div className="form-tabs">
               <button
-                onClick={() => setActiveTab('registrar')}
+                onClick={() => handleChangeTab('registrar')}
                 className={`form-tab ${activeTab === 'registrar' ? 'active' : ''}`}
               >
                 <FiPlus size={18} />
                 Registrar Inventario
               </button>
               <button
-                onClick={() => setActiveTab('importar')}
+                onClick={() => handleChangeTab('importar')}
                 className={`form-tab ${activeTab === 'importar' ? 'active' : ''}`}
               >
                 <FiUpload size={18} />
@@ -280,6 +293,9 @@ export default function Equipos() {
                     message: `Importación completada: ${resultados.exitosos} exitosos, ${resultados.fallidos} fallidos`,
                     type: resultados.fallidos === 0 ? 'success' : 'warning'
                   })
+                }}
+                onEstadoDuplicadosChange={(hayDuplicados) => {
+                  setTieneDuplicadosPendientes(hayDuplicados)
                 }}
               />
             )}
