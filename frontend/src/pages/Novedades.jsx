@@ -8,6 +8,7 @@ import '../styles/equipos.css'
 import '../styles/novedades.css'
 
 export default function Novedades() {
+  const [equipos, setEquipos] = useState([])
   const [activeTab, setActiveTab] = useState('ver') // 'ver' o 'crear'
   const [novedades, setNovedades] = useState([])
   const [loading, setLoading] = useState(false)
@@ -326,7 +327,7 @@ export default function Novedades() {
                             <td>
                               <div>
                                 <strong>{novedad.equipo_tipo} {novedad.equipo_marca} {novedad.equipo_modelo}</strong>
-                                {novedad.Placa && <div className="novedades-serie-numero">Placa: {novedad.Placa}</div>}
+                                {eq.Placa && <div className="novedades-serie-numero">Placa: {eq.Placa}</div>}
                               </div>
                             </td>
                             <td>{novedad.tipo_novedad}</td>
