@@ -20,7 +20,7 @@ export default function Novedades() {
   
   // Estados para crear novedad
   const [form, setForm] = useState({
-    codigo_inventario: '',
+    codigo_equipo: '',
     tipo_novedad: 'Mal Funcionamiento',
     descripcion: '',
   })
@@ -326,7 +326,7 @@ export default function Novedades() {
                             <td>
                               <div>
                                 <strong>{novedad.equipo_tipo} {novedad.equipo_marca} {novedad.equipo_modelo}</strong>
-                                {novedad.codigo_inventario && <div className="novedades-serie-numero">Placa: {novedad.codigo_inventario}</div>}
+                                {novedad.codigo_equipo && <div className="novedades-serie-numero">codigo_equipo: {novedad.codigo_equipo}</div>}
                               </div>
                             </td>
                             <td>{novedad.tipo_novedad}</td>
@@ -509,7 +509,7 @@ export default function Novedades() {
                   </div>
                   <div>
                     <strong>Equipo:</strong> {selectedNovedad.equipo_tipo} {selectedNovedad.equipo_marca} {selectedNovedad.equipo_modelo}
-                    {selectedNovedad.codigoInventario && <span> (codigoInventario: {selectedNovedad.codigoInventario})</span>}
+                    {selectedNovedad.codigo_equipo && <span> (codigo_equipo: {selectedNovedad.codigo_equipo})</span>}
                   </div>
                   <div>
                     <strong>Tipo de Novedad:</strong> {selectedNovedad.tipo_novedad}
