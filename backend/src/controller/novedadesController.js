@@ -3,6 +3,7 @@ import { createForUsers, createForRole } from '../services/notificationService.j
 import { logger } from '../utils/logger.js'
 import { obtenerEquipoPorCodigo, obtenerUsuarioActivo } from '../utils/sqlQueries.js'
 import emailService from '../services/emailService.js'
+import { config } from '../config/config.js'
 
 /**
  * Crear una nueva novedad
@@ -152,6 +153,63 @@ export async function crearNovedad(req, res) {
         tipoLower.includes('robo')
 
       if (esCritica) {
+        // Actualizar estado del equipo según el tipo de novedad crítica
+        try {
+          let nuevoEstadoOperativo = null
+          let nuevoEstadoFisico = null
+
+          if (tipoLower.includes('daño') || tipoLower.includes('dano')) {
+            nuevoEstadoOperativo = 'Dañado'
+            nuevoEstadoFisico = 'Dañado'
+          } else if (tipoLower.includes('pérdida') || tipoLower.includes('perdida') || tipoLower.includes('robo')) {
+            nuevoEstadoOperativo = 'Dado de Baja'
+            // Para pérdida/robo no cambiamos estado_fisico, solo estado_operativo
+          }
+
+          if (nuevoEstadoOperativo) {
+            // Actualizar o insertar en Estado_Equipo
+            await defaultDb.execute(
+              `INSERT INTO Estado_Equipo (codigo_equipo, estado_operativo, fecha_actualizacion, actualizado_por, detalles)
+               VALUES (?, ?, NOW(), ?, ?)
+               ON DUPLICATE KEY UPDATE
+                 estado_operativo = VALUES(estado_operativo),
+                 fecha_actualizacion = NOW(),
+                 actualizado_por = VALUES(actualizado_por),
+                 detalles = VALUES(detalles)`,
+              [
+                codigo_equipo,
+                nuevoEstadoOperativo,
+                userId,
+                `Equipo deshabilitado por novedad: ${tipoNovedadNormalizado}. ${descripcion.trim().substring(0, 200)}`
+              ]
+            )
+
+            // Actualizar estado_fisico en Elementos si es daño
+            if (nuevoEstadoFisico) {
+              await defaultDb.execute(
+                `UPDATE Elementos 
+                 SET estado_fisico = ?
+                 WHERE codigo_equipo = ?`,
+                [nuevoEstadoFisico, codigo_equipo]
+              )
+            }
+
+            logger.info('Estado del equipo actualizado por novedad crítica', {
+              codigo_equipo,
+              tipo_novedad: tipoNovedadNormalizado,
+              nuevo_estado_operativo: nuevoEstadoOperativo,
+              nuevo_estado_fisico: nuevoEstadoFisico || 'sin cambio'
+            })
+          }
+        } catch (estadoErr) {
+          // No fallar el registro de la novedad si falla la actualización de estado
+          logger.error('Error al actualizar estado del equipo por novedad crítica', {
+            error: estadoErr.message,
+            stack: estadoErr.stack,
+            codigo_equipo
+          })
+        }
+
         const destinatariosIds = new Set()
 
         // 1. Cuentadante principal del equipo (columna id_cuentadante en Elementos)
@@ -224,22 +282,45 @@ export async function crearNovedad(req, res) {
           )
           const nombreReportador = usuarioReportador?.nombre_usuario || 'Usuario del sistema'
 
-          // Formatear fecha de adquisición
+          // Formatear fecha de adquisición (formato corto en español)
           const fechaAdq = equipo.fecha_adquisicion
             ? new Date(equipo.fecha_adquisicion).toLocaleDateString('es-ES', {
                 year: 'numeric',
-                month: 'long',
+                month: 'short',
                 day: 'numeric'
               })
             : 'No registrada'
 
-          // Formatear valor
+          // Formatear valor con resalte
           const valorFormateado = equipo.valor_ingreso || equipo.costo
             ? new Intl.NumberFormat('es-CO', {
                 style: 'currency',
                 currency: 'COP'
               }).format(equipo.valor_ingreso || equipo.costo)
             : 'No registrado'
+
+          // Resumen inmediato para el header
+          const resumenInmediato = equipo.modelo && equipo.placa
+            ? `Se ha reportado ${tipoNovedadNormalizado.toLowerCase()} de un equipo ${equipo.modelo} (Placa: ${equipo.placa.substring(0, 8)}...)`
+            : `Se ha reportado ${tipoNovedadNormalizado.toLowerCase()} del equipo ${equipoDesc}`
+
+          // Formatear fecha de registro
+          const fechaRegistro = new Date().toLocaleDateString('es-ES', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+          })
+
+          // Parsear especificaciones si existen
+          const specsArray = []
+          if (equipo.specs_completas) {
+            specsArray.push(...equipo.specs_completas.split(/[,\n]/).map(s => s.trim()).filter(Boolean))
+          }
+          if (equipo.atributos && !equipo.specs_completas) {
+            specsArray.push(...equipo.atributos.split(/[,\n]/).map(s => s.trim()).filter(Boolean))
+          }
 
           for (const usuario of usuariosDestino) {
             const subject = `⚠️ Novedad crítica: ${tipoNovedadNormalizado} - ${equipoDesc}`
@@ -249,227 +330,335 @@ export async function crearNovedad(req, res) {
               <html>
               <head>
                 <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
                 <style>
+                  * { box-sizing: border-box; }
                   body {
-                    font-family: Arial, sans-serif;
+                    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
                     line-height: 1.6;
-                    color: #333;
-                    max-width: 700px;
+                    color: #1a2a3a;
+                    max-width: 720px;
                     margin: 0 auto;
                     padding: 20px;
                     background: #f5f5f5;
                   }
                   .container {
                     background: white;
-                    border-radius: 8px;
-                    padding: 30px;
-                    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                    border-radius: 12px;
+                    overflow: hidden;
+                    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
                   }
                   .header {
                     background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
                     color: white;
-                    padding: 20px;
-                    border-radius: 8px 8px 0 0;
-                    margin: -30px -30px 20px -30px;
+                    padding: 32px 28px;
                     text-align: center;
+                    position: relative;
+                  }
+                  .header-icon {
+                    font-size: 48px;
+                    margin-bottom: 12px;
+                    display: block;
                   }
                   .header h1 {
+                    margin: 0 0 8px 0;
+                    font-size: 28px;
+                    font-weight: 700;
+                    letter-spacing: -0.5px;
+                  }
+                  .header-subtitle {
                     margin: 0;
-                    font-size: 24px;
+                    font-size: 15px;
+                    opacity: 0.95;
+                    font-weight: 400;
                   }
-                  .alert-box {
-                    background: #fef2f2;
-                    border-left: 4px solid #dc2626;
-                    padding: 15px;
-                    margin: 20px 0;
-                    border-radius: 4px;
+                  .header-id {
+                    position: absolute;
+                    top: 16px;
+                    right: 20px;
+                    background: rgba(255,255,255,0.2);
+                    padding: 6px 12px;
+                    border-radius: 20px;
+                    font-size: 0.85rem;
+                    font-weight: 600;
                   }
-                  .info-section {
-                    background: #f8f9fa;
-                    padding: 20px;
+                  .alert-badge {
+                    background: #fee2e2;
+                    border: 2px solid #dc2626;
+                    padding: 16px 20px;
+                    margin: 24px;
                     border-radius: 8px;
-                    margin: 20px 0;
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                    flex-wrap: wrap;
+                    gap: 12px;
                   }
-                  .info-section h2 {
-                    margin-top: 0;
+                  .badge-label {
+                    font-weight: 600;
+                    color: #6b7280;
+                    font-size: 0.9rem;
+                  }
+                  .badge-critical {
+                    background: #dc2626;
+                    color: white;
+                    padding: 8px 16px;
+                    border-radius: 20px;
+                    font-size: 0.95rem;
+                    font-weight: 700;
+                    text-transform: uppercase;
+                    letter-spacing: 0.5px;
+                  }
+                  .card {
+                    background: #ffffff;
+                    border: 1px solid #e5e7eb;
+                    border-radius: 10px;
+                    padding: 24px;
+                    margin: 0 24px 24px 24px;
+                    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+                  }
+                  .card-title {
+                    margin: 0 0 20px 0;
                     color: #1a2a3a;
                     font-size: 18px;
+                    font-weight: 700;
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                    padding-bottom: 12px;
                     border-bottom: 2px solid #e5e7eb;
-                    padding-bottom: 10px;
                   }
                   .info-grid {
                     display: grid;
                     grid-template-columns: 1fr 1fr;
-                    gap: 15px;
-                    margin-top: 15px;
+                    gap: 20px 24px;
+                    margin-top: 8px;
                   }
-                  .info-item {
+                  .info-group {
                     display: flex;
                     flex-direction: column;
+                    gap: 6px;
+                  }
+                  .info-group-full {
+                    grid-column: 1 / -1;
                   }
                   .info-label {
                     font-weight: 600;
                     color: #6b7280;
-                    font-size: 0.9rem;
-                    margin-bottom: 4px;
+                    font-size: 0.85rem;
+                    text-transform: uppercase;
+                    letter-spacing: 0.3px;
                   }
                   .info-value {
                     color: #1a2a3a;
                     font-size: 1rem;
+                    font-weight: 500;
+                  }
+                  .info-value-highlight {
+                    color: #dc2626;
+                    font-size: 1.15rem;
+                    font-weight: 700;
+                  }
+                  .info-value-large {
+                    font-size: 1.25rem;
+                    font-weight: 700;
+                    color: #1a2a3a;
+                  }
+                  .specs-box {
+                    background: #f8f9fa;
+                    border-left: 3px solid #6b7280;
+                    padding: 14px 16px;
+                    border-radius: 6px;
+                    margin-top: 12px;
+                  }
+                  .specs-list {
+                    margin: 8px 0 0 0;
+                    padding-left: 20px;
+                    color: #4b5563;
+                    font-size: 0.95rem;
+                  }
+                  .specs-list li {
+                    margin-bottom: 6px;
                   }
                   .description-box {
-                    background: #fff;
+                    background: #f8f9fa;
                     border: 1px solid #e5e7eb;
-                    padding: 15px;
-                    border-radius: 6px;
-                    margin: 15px 0;
+                    padding: 16px;
+                    border-radius: 8px;
+                    margin-top: 12px;
                     white-space: pre-wrap;
+                    color: #374151;
+                    line-height: 1.7;
+                    font-size: 0.95rem;
+                  }
+                  .cta-button {
+                    display: inline-block;
+                    background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+                    color: white;
+                    padding: 14px 28px;
+                    border-radius: 8px;
+                    text-decoration: none;
+                    font-weight: 600;
+                    font-size: 1rem;
+                    margin: 24px 0;
+                    text-align: center;
+                    box-shadow: 0 2px 4px rgba(220,38,38,0.3);
+                    transition: transform 0.2s;
+                  }
+                  .cta-button:hover {
+                    transform: translateY(-1px);
+                    box-shadow: 0 4px 6px rgba(220,38,38,0.4);
                   }
                   .footer {
+                    background: #f8f9fa;
+                    padding: 24px;
                     text-align: center;
-                    margin-top: 30px;
-                    padding-top: 20px;
                     border-top: 1px solid #e5e7eb;
                     color: #6b7280;
-                    font-size: 0.9rem;
+                    font-size: 0.875rem;
+                    line-height: 1.6;
                   }
-                  .badge {
-                    display: inline-block;
-                    padding: 4px 12px;
-                    border-radius: 12px;
-                    font-size: 0.85rem;
-                    font-weight: 600;
-                    margin-left: 8px;
+                  .footer-contact {
+                    margin-top: 16px;
+                    padding-top: 16px;
+                    border-top: 1px solid #e5e7eb;
+                    color: #9ca3af;
+                    font-size: 0.8rem;
                   }
-                  .badge-critical {
-                    background: #fee2e2;
-                    color: #991b1b;
+                  @media (max-width: 600px) {
+                    .info-grid {
+                      grid-template-columns: 1fr;
+                    }
+                    .header {
+                      padding: 24px 20px;
+                    }
+                    .card {
+                      margin: 0 16px 16px 16px;
+                      padding: 20px;
+                    }
                   }
                 </style>
               </head>
               <body>
                 <div class="container">
                   <div class="header">
-                    <h1>⚠️ Novedad Crítica Registrada</h1>
+                    <span class="header-id">ID: ${result.insertId}</span>
+                    <span class="header-icon">⚠️</span>
+                    <h1>Novedad Crítica Registrada</h1>
+                    <p class="header-subtitle">${resumenInmediato}</p>
                   </div>
 
-                  <div class="alert-box">
-                    <strong>Tipo de Novedad:</strong> <span class="badge badge-critical">${tipoNovedadNormalizado}</span>
-                    <p style="margin: 10px 0 0 0;">Se ha registrado una novedad crítica que requiere tu atención inmediata.</p>
+                  <div class="alert-badge">
+                    <span class="badge-label">Tipo de Novedad:</span>
+                    <span class="badge-critical">${tipoNovedadNormalizado}</span>
                   </div>
 
-                  <div class="info-section">
-                    <h2>📋 Información del Equipo</h2>
+                  <div class="card">
+                    <h2 class="card-title">📋 Información del Equipo</h2>
                     <div class="info-grid">
-                      <div class="info-item">
-                        <span class="info-label">Código de Equipo:</span>
-                        <span class="info-value">${equipo.codigo_equipo || 'N/A'}</span>
+                      <div class="info-group">
+                        <span class="info-label">Identificación del Activo</span>
+                        <div style="margin-top: 4px;">
+                          ${equipo.placa ? `<div class="info-value-large">Placa: ${equipo.placa}</div>` : ''}
+                          ${equipo.codigo_equipo ? `<div class="info-value" style="margin-top: 4px;">Código: ${equipo.codigo_equipo}</div>` : ''}
+                        </div>
                       </div>
-                      <div class="info-item">
-                        <span class="info-label">Tipo:</span>
-                        <span class="info-value">${equipo.tipo || 'N/A'}</span>
+                      <div class="info-group">
+                        <span class="info-label">Modelo y Tipo</span>
+                        <div style="margin-top: 4px;">
+                          ${equipo.modelo ? `<div class="info-value-large">${equipo.modelo}</div>` : ''}
+                          ${equipo.tipo ? `<div class="info-value" style="margin-top: 4px;">${equipo.tipo}</div>` : ''}
+                        </div>
                       </div>
-                      ${equipo.placa ? `
-                      <div class="info-item">
-                        <span class="info-label">Placa / Código Inventario:</span>
-                        <span class="info-value">${equipo.placa}</span>
-                      </div>
-                      ` : ''}
                       ${equipo.consecutivo ? `
-                      <div class="info-item">
-                        <span class="info-label">Consecutivo:</span>
+                      <div class="info-group">
+                        <span class="info-label">Consecutivo</span>
                         <span class="info-value">${equipo.consecutivo}</span>
                       </div>
                       ` : ''}
-                      ${equipo.modelo ? `
-                      <div class="info-item">
-                        <span class="info-label">Modelo:</span>
-                        <span class="info-value">${equipo.modelo}</span>
-                      </div>
-                      ` : ''}
-                      ${equipo.r_centro ? `
-                      <div class="info-item">
-                        <span class="info-label">Centro:</span>
-                        <span class="info-value">${equipo.r_centro}</span>
-                      </div>
-                      ` : ''}
                       ${equipo.nombre_ambiente ? `
-                      <div class="info-item">
-                        <span class="info-label">Ambiente:</span>
+                      <div class="info-group">
+                        <span class="info-label">Ambiente</span>
                         <span class="info-value">${equipo.codigo_ambiente || ''} - ${equipo.nombre_ambiente}</span>
                       </div>
                       ` : ''}
                       ${equipo.estado_fisico ? `
-                      <div class="info-item">
-                        <span class="info-label">Estado Físico:</span>
+                      <div class="info-group">
+                        <span class="info-label">Estado Físico</span>
                         <span class="info-value">${equipo.estado_fisico}</span>
                       </div>
                       ` : ''}
+                      ${equipo.r_centro ? `
+                      <div class="info-group">
+                        <span class="info-label">Centro</span>
+                        <span class="info-value">${equipo.r_centro}</span>
+                      </div>
+                      ` : ''}
                       ${equipo.fecha_adquisicion ? `
-                      <div class="info-item">
-                        <span class="info-label">Fecha de Adquisición:</span>
+                      <div class="info-group">
+                        <span class="info-label">Adquisición</span>
                         <span class="info-value">${fechaAdq}</span>
                       </div>
                       ` : ''}
                       ${(equipo.valor_ingreso || equipo.costo) ? `
-                      <div class="info-item">
-                        <span class="info-label">Valor de Ingreso:</span>
-                        <span class="info-value">${valorFormateado}</span>
+                      <div class="info-group">
+                        <span class="info-label">Valor de Ingreso</span>
+                        <span class="info-value-highlight">${valorFormateado}</span>
                       </div>
                       ` : ''}
                       ${equipo.vida_util_meses ? `
-                      <div class="info-item">
-                        <span class="info-label">Vida Útil:</span>
+                      <div class="info-group">
+                        <span class="info-label">Vida Útil</span>
                         <span class="info-value">${equipo.vida_util_meses} meses</span>
                       </div>
                       ` : ''}
                     </div>
                     ${equipo.descripcion ? `
-                    <div style="margin-top: 15px;">
-                      <span class="info-label">Descripción del Equipo:</span>
-                      <div style="margin-top: 8px; padding: 10px; background: #fff; border-radius: 4px; border: 1px solid #e5e7eb;">
-                        ${equipo.descripcion}
-                      </div>
+                    <div style="margin-top: 20px;">
+                      <span class="info-label">Descripción del Equipo</span>
+                      <div class="description-box">${equipo.descripcion}</div>
                     </div>
                     ` : ''}
-                    ${equipo.specs_completas || equipo.atributos ? `
-                    <div style="margin-top: 15px;">
-                      <span class="info-label">Especificaciones / Atributos:</span>
-                      <div style="margin-top: 8px; padding: 10px; background: #fff; border-radius: 4px; border: 1px solid #e5e7eb; white-space: pre-wrap; font-family: monospace; font-size: 0.9rem;">
-                        ${equipo.specs_completas || equipo.atributos}
-                      </div>
+                    ${specsArray.length > 0 ? `
+                    <div class="specs-box">
+                      <span class="info-label">Especificaciones Rápidas</span>
+                      <ul class="specs-list">
+                        ${specsArray.map(spec => `<li>${spec}</li>`).join('')}
+                      </ul>
                     </div>
                     ` : ''}
                   </div>
 
-                  <div class="info-section">
-                    <h2>📝 Detalle de la Novedad</h2>
-                    <div style="margin-top: 15px;">
-                      <span class="info-label">Descripción:</span>
-                      <div class="description-box">${descripcion.trim().replace(/\n/g, '<br>')}</div>
+                  <div class="card">
+                    <h2 class="card-title">📝 Detalle de la Novedad</h2>
+                    <div class="info-grid">
+                      <div class="info-group-full">
+                        <span class="info-label">Descripción</span>
+                        <div class="description-box">${descripcion.trim().replace(/\n/g, '<br>')}</div>
+                      </div>
+                      <div class="info-group">
+                        <span class="info-label">Reportado por</span>
+                        <span class="info-value">${nombreReportador}</span>
+                      </div>
+                      <div class="info-group">
+                        <span class="info-label">Fecha de registro</span>
+                        <span class="info-value">${fechaRegistro}</span>
+                      </div>
                     </div>
-                    <div style="margin-top: 15px;">
-                      <span class="info-label">Reportado por:</span>
-                      <span class="info-value">${nombreReportador}</span>
-                    </div>
-                    <div style="margin-top: 15px;">
-                      <span class="info-label">Fecha de registro:</span>
-                      <span class="info-value">${new Date().toLocaleDateString('es-ES', {
-                        year: 'numeric',
-                        month: 'long',
-                        day: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit'
-                      })}</span>
-                    </div>
+                  </div>
+
+                  <div style="text-align: center; padding: 0 24px 24px 24px;">
+                    <a href="${config.frontendUrl || 'https://sgi-sena.up.railway.app'}/novedades" class="cta-button" style="display: inline-block;">Ver Reporte Completo en el Sistema</a>
                   </div>
 
                   <div class="footer">
-                    <p>Este es un correo automático del Sistema de Gestión de Equipos SENA.</p>
-                    <p>Puedes revisar el detalle completo en el módulo de Novedades del sistema.</p>
-                    <p style="margin-top: 15px; color: #9ca3af; font-size: 0.85rem;">
-                      Por favor, no respondas a este correo. Si necesitas más información, contacta al administrador del sistema.
-                    </p>
+                    <p><strong>Sistema de Gestión de Inventarios SENA</strong></p>
+                    <p>Este correo fue enviado automáticamente a los responsables del equipo afectado.</p>
+                    <p style="margin-top: 12px;">Puedes revisar el detalle completo y gestionar esta incidencia en el módulo de Novedades del sistema.</p>
+                    <div class="footer-contact">
+                      <p style="margin: 0;">Este correo es de solo lectura. No respondas a este mensaje.</p>
+                      <p style="margin: 8px 0 0 0;">Para más información, contacta al administrador o al área de soporte técnico.</p>
+                    </div>
                   </div>
                 </div>
               </body>
@@ -477,38 +666,40 @@ export async function crearNovedad(req, res) {
             `
 
             const textContent =
-              `⚠️ NOVEDAD CRÍTICA REGISTRADA\n` +
-              `================================\n\n` +
-              `Tipo de Novedad: ${tipoNovedadNormalizado}\n\n` +
+              `⚠️ NOVEDAD CRÍTICA REGISTRADA - ID: ${result.insertId}\n` +
+              `${'='.repeat(50)}\n\n` +
+              `${resumenInmediato}\n\n` +
+              `TIPO DE NOVEDAD: ${tipoNovedadNormalizado.toUpperCase()}\n\n` +
               `INFORMACIÓN DEL EQUIPO\n` +
-              `----------------------\n` +
-              `Código de Equipo: ${equipo.codigo_equipo || 'N/A'}\n` +
-              `Tipo: ${equipo.tipo || 'N/A'}\n` +
-              (equipo.placa ? `Placa / Código Inventario: ${equipo.placa}\n` : '') +
-              (equipo.consecutivo ? `Consecutivo: ${equipo.consecutivo}\n` : '') +
-              (equipo.modelo ? `Modelo: ${equipo.modelo}\n` : '') +
-              (equipo.r_centro ? `Centro: ${equipo.r_centro}\n` : '') +
-              (equipo.nombre_ambiente ? `Ambiente: ${equipo.codigo_ambiente || ''} - ${equipo.nombre_ambiente}\n` : '') +
-              (equipo.estado_fisico ? `Estado Físico: ${equipo.estado_fisico}\n` : '') +
-              (equipo.fecha_adquisicion ? `Fecha de Adquisición: ${fechaAdq}\n` : '') +
-              ((equipo.valor_ingreso || equipo.costo) ? `Valor de Ingreso: ${valorFormateado}\n` : '') +
-              (equipo.vida_util_meses ? `Vida Útil: ${equipo.vida_util_meses} meses\n` : '') +
+              `${'-'.repeat(50)}\n` +
+              `IDENTIFICACIÓN DEL ACTIVO:\n` +
+              (equipo.placa ? `  Placa: ${equipo.placa}\n` : '') +
+              (equipo.codigo_equipo ? `  Código: ${equipo.codigo_equipo}\n` : '') +
+              (equipo.consecutivo ? `  Consecutivo: ${equipo.consecutivo}\n` : '') +
+              `\nMODELO Y TIPO:\n` +
+              (equipo.modelo ? `  Modelo: ${equipo.modelo}\n` : '') +
+              (equipo.tipo ? `  Tipo: ${equipo.tipo}\n` : '') +
+              `\nDATOS FINANCIEROS:\n` +
+              ((equipo.valor_ingreso || equipo.costo) ? `  Valor de Ingreso: ${valorFormateado}\n` : '') +
+              (equipo.fecha_adquisicion ? `  Adquisición: ${fechaAdq}\n` : '') +
+              (equipo.vida_util_meses ? `  Vida Útil: ${equipo.vida_util_meses} meses\n` : '') +
+              `\nUBICACIÓN Y ESTADO:\n` +
+              (equipo.nombre_ambiente ? `  Ambiente: ${equipo.codigo_ambiente || ''} - ${equipo.nombre_ambiente}\n` : '') +
+              (equipo.r_centro ? `  Centro: ${equipo.r_centro}\n` : '') +
+              (equipo.estado_fisico ? `  Estado Físico: ${equipo.estado_fisico}\n` : '') +
               (equipo.descripcion ? `\nDescripción del Equipo:\n${equipo.descripcion}\n` : '') +
-              ((equipo.specs_completas || equipo.atributos) ? `\nEspecificaciones / Atributos:\n${equipo.specs_completas || equipo.atributos}\n` : '') +
+              (specsArray.length > 0 ? `\nEspecificaciones Rápidas:\n${specsArray.map(spec => `  • ${spec}`).join('\n')}\n` : '') +
               `\nDETALLE DE LA NOVEDAD\n` +
-              `----------------------\n` +
-              `Descripción: ${descripcion.trim()}\n` +
+              `${'-'.repeat(50)}\n` +
+              `Descripción:\n${descripcion.trim()}\n\n` +
               `Reportado por: ${nombreReportador}\n` +
-              `Fecha de registro: ${new Date().toLocaleDateString('es-ES', {
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit'
-              })}\n\n` +
-              `Este es un correo automático del Sistema de Gestión de Equipos SENA.\n` +
-              `Puedes revisar el detalle completo en el módulo de Novedades del sistema.\n\n` +
-              `Por favor, no respondas a este correo. Si necesitas más información, contacta al administrador del sistema.`
+              `Fecha de registro: ${fechaRegistro}\n\n` +
+              `${'='.repeat(50)}\n` +
+              `Sistema de Gestión de Inventarios SENA\n\n` +
+              `Este correo fue enviado automáticamente a los responsables del equipo afectado.\n` +
+              `Puedes revisar el detalle completo y gestionar esta incidencia en el módulo de Novedades del sistema.\n\n` +
+              `Este correo es de solo lectura. No respondas a este mensaje.\n` +
+              `Para más información, contacta al administrador del sistema o al área de soporte técnico.`
 
             try {
               await emailService.sendEmail(usuario.correo, subject, htmlContent, textContent)
