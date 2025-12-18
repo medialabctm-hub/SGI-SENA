@@ -326,7 +326,7 @@ export default function Novedades() {
                             <td>
                               <div>
                                 <strong>{novedad.equipo_tipo} {novedad.equipo_marca} {novedad.equipo_modelo}</strong>
-                                {novedad.codigoInventario && <div className="novedades-serie-numero">codigoInventario: {novedad.codigoInventario}</div>}
+                                {novedad.codigo_inventario && <div className="novedades-serie-numero">Placa: {novedad.codigo_inventario}</div>}
                               </div>
                             </td>
                             <td>{novedad.tipo_novedad}</td>
@@ -509,7 +509,7 @@ export default function Novedades() {
                   </div>
                   <div>
                     <strong>Equipo:</strong> {selectedNovedad.equipo_tipo} {selectedNovedad.equipo_marca} {selectedNovedad.equipo_modelo}
-                    {selectedNovedad.codigoInventario && <span> (codigoInventario: {selectedNovedad.codigoInventario})</span>}
+                    {selectedNovedad.codigo_inventario && <span> (Placa: {selectedNovedad.codigo_inventario})</span>}
                   </div>
                   <div>
                     <strong>Tipo de Novedad:</strong> {selectedNovedad.tipo_novedad}
