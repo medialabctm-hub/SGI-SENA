@@ -1,5 +1,13 @@
 import defaultDb from '../config/dbconfig.js';
 import { logger } from '../utils/logger.js';
+import {
+  expandirAsignacionesPorFechas,
+  convertirNombresDiasANumeros,
+  validarRangoHoras,
+  validarRangoFechas,
+  calcularCantidadAsignaciones,
+  obtenerNombreDia
+} from '../services/ambientesService.js';
 
 /**
  * Listar todos los ambientes con filtros opcionales
@@ -431,27 +439,64 @@ export async function listarAmbientesActivos(req, res) {
 }
 
 /**
- * Asignar ambiente a instructor (asignación permanente)
- * Solo Administrador puede asignar ambientes
+ * Asignar ambiente a instructor con rango de fechas y días de la semana
+ * 
+ * Parámetros esperados:
+ * - id_ambiente: ID del ambiente
+ * - id_instructor: ID del instructor
+ * - fecha_inicio: Fecha de inicio del rango (YYYY-MM-DD)
+ * - fecha_fin: Fecha de fin del rango (YYYY-MM-DD)
+ * - dias_semana: Array de nombres de días (["Lunes", "Viernes"])
+ * - hora_inicio: Hora de inicio (HH:mm)
+ * - hora_fin: Hora de fin (HH:mm)
+ * - observaciones: Observaciones opcionales
  */
 export async function asignarAmbienteInstructor(req, res) {
   try {
-    const { id_ambiente, id_instructor, jornada, observaciones } = req.body;
+    const {
+      id_ambiente,
+      id_instructor,
+      fecha_inicio,
+      fecha_fin,
+      dias_semana,
+      hora_inicio,
+      hora_fin,
+      observaciones
+    } = req.body;
+
     const asignadoPor = req.user?.id;
 
-    if (!id_ambiente || !id_instructor || !jornada) {
+    // Validar campos obligatorios
+    if (!id_ambiente || !id_instructor || !fecha_inicio || !fecha_fin || !dias_semana || !hora_inicio || !hora_fin) {
       return res.status(400).json({
         error: 'Faltan campos obligatorios',
-        detalle: 'Se requieren: id_ambiente, id_instructor, jornada'
+        detalle: 'Se requieren: id_ambiente, id_instructor, fecha_inicio, fecha_fin, dias_semana, hora_inicio, hora_fin'
       });
     }
 
-    // Validar jornada
-    const jornadasValidas = ['Mañana', 'Tarde', 'Noche'];
-    if (!jornadasValidas.includes(jornada)) {
+    // Validar que dias_semana es un array no vacío
+    if (!Array.isArray(dias_semana) || dias_semana.length === 0) {
       return res.status(400).json({
-        error: 'Jornada inválida',
-        detalle: `La jornada debe ser una de: ${jornadasValidas.join(', ')}`
+        error: 'Días de la semana inválidos',
+        detalle: 'Debes seleccionar al menos un día de la semana'
+      });
+    }
+
+    // Validar rango de fechas
+    const validacionFechas = validarRangoFechas(fecha_inicio, fecha_fin);
+    if (!validacionFechas.valid) {
+      return res.status(400).json({
+        error: 'Rango de fechas inválido',
+        detalle: validacionFechas.error
+      });
+    }
+
+    // Validar rango de horas
+    const validacionHoras = validarRangoHoras(hora_inicio, hora_fin);
+    if (!validacionHoras.valid) {
+      return res.status(400).json({
+        error: 'Rango de horas inválido',
+        detalle: validacionHoras.error
       });
     }
 
@@ -481,45 +526,109 @@ export async function asignarAmbienteInstructor(req, res) {
       });
     }
 
-    // Verificar si ya existe una asignación permanente activa para este instructor en esta jornada
-    // Permitimos múltiples instructores en la misma jornada, pero no duplicados del mismo instructor
-    const [[asignacionExistente]] = await defaultDb.execute(
-      `SELECT id_responsabilidad_ambiente
-       FROM Responsabilidades_Ambiente
-       WHERE id_ambiente = ?
-         AND id_usuario = ?
-         AND jornada = ?
-         AND id_clase IS NULL
-         AND estado_responsabilidad = 'Activa'
-         AND (fecha_fin IS NULL OR fecha_fin >= NOW())`,
-      [id_ambiente, id_instructor, jornada]
-    );
-
-    if (asignacionExistente) {
-      return res.status(409).json({
-        error: 'Asignación existente',
-        detalle: 'Este instructor ya está asignado a este ambiente en la jornada ' + jornada
+    // Convertir nombres de días a números
+    const numeroDias = convertirNombresDiasANumeros(dias_semana);
+    if (numeroDias.length === 0) {
+      return res.status(400).json({
+        error: 'Días de la semana inválidos',
+        detalle: 'Los días seleccionados no son válidos'
       });
     }
 
-    // Crear nueva asignación permanente (id_clase = NULL indica asignación permanente)
-    const [result] = await defaultDb.execute(
-      `INSERT INTO Responsabilidades_Ambiente
-       (id_ambiente, id_clase, jornada, id_usuario, tipo_responsabilidad, fecha_inicio, fecha_fin, estado_responsabilidad, observaciones, creado_por)
-       VALUES (?, NULL, ?, ?, 'Principal', NOW(), NULL, 'Activa', ?, ?)`,
-      [id_ambiente, jornada, id_instructor, observaciones || null, asignadoPor]
+    // Expandir asignaciones por fecha y días
+    const asignacionesExpandidas = expandirAsignacionesPorFechas(
+      fecha_inicio,
+      fecha_fin,
+      numeroDias,
+      hora_inicio,
+      hora_fin
     );
+
+    if (asignacionesExpandidas.length === 0) {
+      return res.status(400).json({
+        error: 'Sin asignaciones generadas',
+        detalle: 'No hay fechas dentro del rango seleccionado para los días especificados'
+      });
+    }
+
+    // Verificar conflictos: no permitir asignaciones solapadas para el mismo instructor y ambiente
+    const fechasConflicto = [];
+    for (const asignacion of asignacionesExpandidas) {
+      const [[conflicto]] = await defaultDb.execute(
+        `SELECT ra.id_responsabilidad_ambiente
+         FROM Responsabilidades_Ambiente ra
+         WHERE ra.id_ambiente = ?
+           AND ra.id_usuario = ?
+           AND ra.estado_responsabilidad = 'Activa'
+           AND DATE(ra.fecha_inicio) = ?
+           AND ra.id_clase IS NULL`,
+        [id_ambiente, id_instructor, asignacion.fecha_asignacion.toISOString().split('T')[0]]
+      );
+
+      if (conflicto) {
+        fechasConflicto.push(asignacion.fecha_asignacion.toISOString().split('T')[0]);
+      }
+    }
+
+    if (fechasConflicto.length > 0) {
+      return res.status(409).json({
+        error: 'Conflicto de asignaciones',
+        detalle: `Este instructor ya tiene asignaciones en los siguientes días: ${fechasConflicto.join(', ')}`
+      });
+    }
+
+    // Crear todas las asignaciones
+    const asignacionesCreadas = [];
+    const connection = await defaultDb.pool.getConnection();
+
+    try {
+      await connection.beginTransaction();
+
+      for (const asignacion of asignacionesExpandidas) {
+        const fechaAsignacion = asignacion.fecha_asignacion.toISOString().split('T')[0];
+        const [result] = await connection.execute(
+          `INSERT INTO Responsabilidades_Ambiente
+           (id_ambiente, id_usuario, tipo_responsabilidad, fecha_inicio, hora_inicio, hora_fin, estado_responsabilidad, observaciones, creado_por, dia_semana, asignacion_automatica)
+           VALUES (?, ?, 'Principal', ?, ?, ?, 'Activa', ?, ?, ?, TRUE)`,
+          [
+            id_ambiente,
+            id_instructor,
+            `${fechaAsignacion} ${hora_inicio}`,
+            hora_inicio,
+            hora_fin,
+            observaciones || null,
+            asignadoPor,
+            asignacion.dia_semana
+          ]
+        );
+
+        asignacionesCreadas.push({
+          id: result.insertId,
+          fecha: fechaAsignacion,
+          dia: asignacion.nombre_dia,
+          hora_inicio,
+          hora_fin
+        });
+      }
+
+      await connection.commit();
+    } catch (error) {
+      await connection.rollback();
+      throw error;
+    } finally {
+      connection.release();
+    }
 
     return res.status(201).json({
       ok: true,
-      id: result.insertId,
-      message: `Ambiente "${ambiente.nombre_ambiente}" asignado correctamente a ${instructor.nombre_usuario} en jornada ${jornada}`,
-      asignacion: {
-        id_responsabilidad: result.insertId,
-        ambiente: ambiente.nombre_ambiente,
-        instructor: instructor.nombre_usuario,
-        jornada: jornada
-      }
+      message: `Ambiente "${ambiente.nombre_ambiente}" asignado correctamente a ${instructor.nombre_usuario} para ${asignacionesCreadas.length} fechas`,
+      cantidad_asignaciones: asignacionesCreadas.length,
+      fecha_inicio,
+      fecha_fin,
+      dias_semana,
+      hora_inicio,
+      hora_fin,
+      asignaciones: asignacionesCreadas
     });
   } catch (err) {
     logger.error('Error al asignar ambiente a instructor', { error: err.message, stack: err.stack });
@@ -580,7 +689,7 @@ export async function desasignarAmbienteInstructor(req, res) {
 }
 
 /**
- * Listar asignaciones permanentes de ambientes a instructores
+ * Listar asignaciones de ambientes a instructores
  */
 export async function listarAsignacionesAmbientes(req, res) {
   try {
@@ -600,8 +709,11 @@ export async function listarAsignacionesAmbientes(req, res) {
         ra.tipo_responsabilidad,
         ra.fecha_inicio,
         ra.fecha_fin,
+        ra.hora_inicio,
+        ra.hora_fin,
         ra.estado_responsabilidad,
         ra.observaciones,
+        ra.asignacion_automatica,
         COUNT(DISTINCT e.codigo_equipo) AS total_equipos,
         u_asignador.nombre_usuario AS asignado_por_nombre
       FROM Responsabilidades_Ambiente ra
