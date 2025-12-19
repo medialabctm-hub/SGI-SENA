@@ -438,12 +438,12 @@ export default function AsignarAmbientes() {
                         <label key={dia.valor} style={{
                           display: 'flex',
                           alignItems: 'center',
-                          padding: '8px 12px',
+                          padding: '10px 14px',
                           borderRadius: '8px',
-                          border: '2px solid var(--neutral-300)',
+                          border: '2px solid var(--success-800)',
                           cursor: 'pointer',
                           backgroundColor: form.dias_semana.includes(dia.valor) ? '#d1fae5' : 'white',
-                          borderColor: form.dias_semana.includes(dia.valor) ? 'var(--success-600)' : 'var(--neutral-300)',
+                          borderColor: form.dias_semana.includes(dia.valor) ? 'var(--success-800)' : 'var(--success-800)',
                           transition: 'all 0.2s'
                         }}>
                           <input

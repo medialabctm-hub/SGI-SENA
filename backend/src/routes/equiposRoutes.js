@@ -226,17 +226,17 @@ router.post('/verificacion',
   registrarVerificacionInventario
 );
 
-// Consultar historial de verificaciones
+// Consultar historial de verificaciones - DESACTIVADO
 // Admin: ve todas las verificaciones
 // Instructor: solo sus propias verificaciones
-router.get('/verificacion/historial', 
+/* router.get('/verificacion/historial', 
   authenticate,
   requireAnyPermission([
     PERMISSIONS.EQUIPOS.VIEW,
     PERMISSIONS.EQUIPOS.VIEW_OWN
   ]),
   consultarHistorialVerificaciones
-);
+); */
 
 // ============================================
 // RUTAS DE HISTORIAL DE USO DE EQUIPOS

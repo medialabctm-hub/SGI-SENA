@@ -231,14 +231,15 @@ export default function App() {
           </ProtectedRoute>
         }
       />
-      <Route
+      {/* RUTAS DESACTIVADAS - Historial de Verificaciones */}
+      {/* <Route
         path="/equipos/verificacion/historial"
         element={
           <ProtectedRoute>
             <HistorialVerificacionesGeneral />
           </ProtectedRoute>
         }
-      />
+      /> */}
       {/* RUTAS DESACTIVADAS - Historial de Uso */}
       {/* <Route
         path="/equipos/uso/historial"

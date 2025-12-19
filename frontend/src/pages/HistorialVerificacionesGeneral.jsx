@@ -46,7 +46,7 @@ export default function HistorialVerificacionesGeneral() {
 
   useEffect(() => {
     if (user) {
-      fetchHistorial()
+      // fetchHistorial() // DESACTIVADO - Módulo de Historial de Verificaciones desactivado
       fetchAmbientes()
     }
   }, [user, filtros])
@@ -148,7 +148,7 @@ export default function HistorialVerificacionesGeneral() {
               <FiClock size={24} />
               Historial de Verificaciones de Inventario
             </h2>
-            <button
+            {/* <button
               type="button"
               className="btn-act"
               onClick={fetchHistorial}
@@ -157,7 +157,7 @@ export default function HistorialVerificacionesGeneral() {
             >
               <FiRefreshCw size={16} />
               Actualizar
-            </button>
+            </button> */}
           </div>
 
           {/* Filtros */}
