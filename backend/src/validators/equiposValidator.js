@@ -273,63 +273,14 @@ export const actualizarAsignacionEquipoSchema = z.object({
 const usuarioExternoSchema = z.object({
   ficha: z.string().min(1, 'La ficha es obligatoria').max(50, 'La ficha no puede exceder 50 caracteres'),
   documento: z.string().min(5, 'El documento de identificación debe tener al menos 5 caracteres').max(20, 'El documento no puede exceder 20 caracteres'),
-  // Aceptar tanto snake_case como camelCase, y también strings que puedan ser parseados
-  dias_semana: z.union([
-    z.array(z.union([
-      z.enum(diasSemanaEnum),
-      z.enum(diasSemanaEnumLower)
-    ])),
-    z.string().transform((val) => {
-      try {
-        const parsed = JSON.parse(val);
-        return Array.isArray(parsed) ? parsed : [parsed];
-      } catch {
-        return [val];
-      }
-    }).pipe(z.array(z.union([
-      z.enum(diasSemanaEnum),
-      z.enum(diasSemanaEnumLower)
-    ])))
-  ]).optional().nullable().transform(normalizarDiasSemana),
-  diasSemana: z.union([
-    z.array(z.union([
-      z.enum(diasSemanaEnum),
-      z.enum(diasSemanaEnumLower)
-    ])),
-    z.string().transform((val) => {
-      try {
-        const parsed = JSON.parse(val);
-        return Array.isArray(parsed) ? parsed : [parsed];
-      } catch {
-        return [val];
-      }
-    }).pipe(z.array(z.union([
-      z.enum(diasSemanaEnum),
-      z.enum(diasSemanaEnumLower)
-    ])))
-  ]).optional().nullable().transform(normalizarDiasSemana),
-  hora_inicio: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9](:00)?$/, 'Formato de hora inválido (debe ser HH:MM o HH:MM:SS)').optional().nullable(),
-  horaInicio: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9](:00)?$/, 'Formato de hora inválido (debe ser HH:MM o HH:MM:SS)').optional().nullable(),
-  hora_fin: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9](:00)?$/, 'Formato de hora inválido (debe ser HH:MM o HH:MM:SS)').optional().nullable(),
-  horaFin: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9](:00)?$/, 'Formato de hora inválido (debe ser HH:MM o HH:MM:SS)').optional().nullable(),
+  // CAMPOS DESACTIVADOS - No se reciben desde página externa
+  // dias_semana, diasSemana, hora_inicio, horaInicio, hora_fin, horaFin
 }).transform((data) => {
-  // Normalizar a snake_case y unificar campos
+  // Solo retornar ficha y documento
   return {
     ficha: data.ficha,
     documento: data.documento,
-    dias_semana: data.dias_semana || data.diasSemana || null,
-    hora_inicio: data.hora_inicio || data.horaInicio || null,
-    hora_fin: data.hora_fin || data.horaFin || null,
   };
-}).refine((data) => {
-  // Si se proporciona hora_inicio o hora_fin, ambas deben estar presentes
-  if ((data.hora_inicio && !data.hora_fin) || (!data.hora_inicio && data.hora_fin)) {
-    return false;
-  }
-  return true;
-}, {
-  message: 'Si se especifica horario, tanto hora_inicio como hora_fin son obligatorios',
-  path: ['hora_inicio']
 });
 
 // Schema para compatibilidad con formato antiguo (un solo usuario en el nivel raíz)
@@ -342,44 +293,18 @@ const schemaFormatoAntiguo = z.object({
   // Campos de usuario en el nivel raíz (formato antiguo)
   ficha: z.string().min(1, 'La ficha es obligatoria').max(50, 'La ficha no puede exceder 50 caracteres'),
   documento: z.string().min(5, 'El documento de identificación debe tener al menos 5 caracteres').max(20, 'El documento no puede exceder 20 caracteres'),
-  // Aceptar tanto snake_case como camelCase para horarios
-  dias_semana: z.array(z.union([
-    z.enum(diasSemanaEnum),
-    z.enum(diasSemanaEnumLower)
-  ])).optional().nullable().transform(normalizarDiasSemana),
-  diasSemana: z.array(z.union([
-    z.enum(diasSemanaEnum),
-    z.enum(diasSemanaEnumLower)
-  ])).optional().nullable().transform(normalizarDiasSemana),
-  hora_inicio: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9](:00)?$/, 'Formato de hora inválido (debe ser HH:MM o HH:MM:SS)').optional().nullable(),
-  horaInicio: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9](:00)?$/, 'Formato de hora inválido (debe ser HH:MM o HH:MM:SS)').optional().nullable(),
-  hora_fin: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9](:00)?$/, 'Formato de hora inválido (debe ser HH:MM o HH:MM:SS)').optional().nullable(),
-  horaFin: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9](:00)?$/, 'Formato de hora inválido (debe ser HH:MM o HH:MM:SS)').optional().nullable(),
+  // CAMPOS DESACTIVADOS - No se reciben desde página externa
+  // dias_semana, diasSemana, hora_inicio, horaInicio, hora_fin, horaFin
 }).transform((data) => {
-  // Convertir formato antiguo a formato nuevo (array de usuarios)
+  // Convertir formato antiguo a formato nuevo (con array de usuarios)
   return {
     placa: data.placa,
     ambiente: data.ambiente,
     usuarios: [{
       ficha: data.ficha,
       documento: data.documento,
-      dias_semana: data.dias_semana || data.diasSemana || null,
-      hora_inicio: data.hora_inicio || data.horaInicio || null,
-      hora_fin: data.hora_fin || data.horaFin || null,
     }]
   };
-}).refine((data) => {
-  // Validar que si hay horario, ambas horas estén presentes
-  if (data.usuarios && data.usuarios.length > 0) {
-    const usuario = data.usuarios[0];
-    if ((usuario.hora_inicio && !usuario.hora_fin) || (!usuario.hora_inicio && usuario.hora_fin)) {
-      return false;
-    }
-  }
-  return true;
-}, {
-  message: 'Si se especifica horario, tanto hora_inicio como hora_fin son obligatorios',
-  path: ['hora_inicio']
 });
 
 // Schema para formato nuevo (array de usuarios)
