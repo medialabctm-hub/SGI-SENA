@@ -227,9 +227,9 @@ const isAdmin = userRole === 'Administrador'
   <Card title="Registrar Equipo" to="/equipos" />
 )}
 
-// 2. Card "Personal Registrado" - Solo Admin e Instructor
+// 2. Card "Usuarios" - Solo Admin e Instructor
 {(isAdmin || isInstructor) && (
-  <Card title="Personal Registrado" to="/usuarios" />
+  <Card title="Usuarios" to="/usuarios" />
 )}
 
 // 3. Estadísticas - Solo Administrador

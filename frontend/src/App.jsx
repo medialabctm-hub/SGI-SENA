@@ -25,6 +25,9 @@ import VerificarInventario from './pages/VerificarInventario';
 import Horarios from './pages/Horarios';
 import HistorialVerificaciones from './pages/HistorialVerificaciones';
 import HistorialVerificacionesGeneral from './pages/HistorialVerificacionesGeneral';
+// PÁGINAS DESACTIVADAS
+// import HistorialUsoEquipos from './pages/HistorialUsoEquipos';
+// import HistorialUsoEquipo from './pages/HistorialUsoEquipo';
 import DetalleEquipo from './pages/DetalleEquipo';
 import BuscarCuentadante from './pages/BuscarCuentadante';
 import Perfil from './pages/Perfil';
@@ -236,6 +239,23 @@ export default function App() {
           </ProtectedRoute>
         }
       />
+      {/* RUTAS DESACTIVADAS - Historial de Uso */}
+      {/* <Route
+        path="/equipos/uso/historial"
+        element={
+          <ProtectedRoute>
+            <HistorialUsoEquipos />
+          </ProtectedRoute>
+        }
+      /> */}
+      {/* <Route
+        path="/equipos/:codigo/uso/historial"
+        element={
+          <ProtectedRoute>
+            <HistorialUsoEquipo />
+          </ProtectedRoute>
+        }
+      /> */}
       <Route
         path="/equipos/historial-verificaciones/:codigo"
         element={
@@ -262,7 +282,7 @@ export default function App() {
       />
       {/* Ruta 404 */}
       <Route element={<PaginaNoEncontrada />} path="*" />
-      </Routes>
+        </Routes>
     </ErrorBoundary>
   );
 }

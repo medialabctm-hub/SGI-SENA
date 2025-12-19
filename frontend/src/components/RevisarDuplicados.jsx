@@ -230,7 +230,7 @@ export default function RevisarDuplicados({ idImportacion, onProcesarCompleto })
           { key: 'valor_ingreso', label: 'Valor Ingreso' },
           { key: 'vida_util_meses', label: 'Vida Útil (meses)' },
           { key: 'estado_fisico', label: 'Estado Físico' },
-          { key: 'r_centro', label: 'R Centro' },
+          { key: 'r_centro', label: 'Centro' },
           { key: 'categoria', label: 'Categoría' },
           { key: 'ambiente', label: 'Ambiente' }
         ]

@@ -58,10 +58,26 @@ export async function crearClase(req, res) {
       return res.status(404).json({ error: 'Instructor no encontrado o no tiene rol de Instructor' });
     }
 
-    // Validar formato de fecha y hora
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha_clase)) {
+    // Validar y normalizar formato de fecha (asegurar YYYY-MM-DD sin conversión de zona horaria)
+    let fechaNormalizada = fecha_clase;
+    if (typeof fecha_clase === 'string') {
+      // Extraer solo la parte de fecha si viene con hora
+      fechaNormalizada = fecha_clase.split('T')[0].split(' ')[0];
+    }
+    
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(fechaNormalizada)) {
+      logger.error('Formato de fecha inválido recibido', { fecha_clase, fechaNormalizada });
       return res.status(400).json({ error: 'Formato de fecha inválido. Use YYYY-MM-DD' });
     }
+    
+    // Log para debugging
+    logger.info('Creando clase con fecha', { 
+      fecha_recibida: fecha_clase, 
+      fecha_normalizada: fechaNormalizada,
+      hora_inicio,
+      hora_fin
+    });
+    
     if (!/^\d{2}:\d{2}(:\d{2})?$/.test(hora_inicio) || !/^\d{2}:\d{2}(:\d{2})?$/.test(hora_fin)) {
       return res.status(400).json({ error: 'Formato de hora inválido. Use HH:MM o HH:MM:SS' });
     }
@@ -102,12 +118,13 @@ export async function crearClase(req, res) {
       });
     }
 
-    // Insertar la clase
+    // Insertar la clase con estado explícito
+    // Usar fechaNormalizada para evitar problemas de zona horaria en MySQL
     const [result] = await defaultDb.execute(
       `INSERT INTO Clases 
-       (id_ambiente, id_instructor, nombre_clase, codigo_ficha, descripcion, fecha_clase, hora_inicio, hora_fin, observaciones, creado_por)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [id_ambiente, instructorId, nombre_clase || null, codigo_ficha || null, descripcion || null, fecha_clase, hora_inicio, hora_fin, observaciones || null, creadoPor]
+       (id_ambiente, id_instructor, nombre_clase, codigo_ficha, descripcion, fecha_clase, hora_inicio, hora_fin, observaciones, estado_clase, creado_por)
+       VALUES (?, ?, ?, ?, ?, DATE(?), ?, ?, ?, 'Programada', ?)`,
+      [id_ambiente, instructorId, nombre_clase || null, codigo_ficha || null, descripcion || null, fechaNormalizada, hora_inicio, hora_fin, observaciones || null, creadoPor]
     );
 
     const idClase = result.insertId;
@@ -583,8 +600,22 @@ export async function actualizarClase(req, res) {
 
     for (const key of allowed) {
       if (Object.prototype.hasOwnProperty.call(req.body, key)) {
-        sets.push(`${key} = ?`);
-        params.push(req.body[key]);
+        let value = req.body[key];
+        
+        // Normalizar fecha_clase para evitar problemas de zona horaria
+        if (key === 'fecha_clase' && value) {
+          if (typeof value === 'string') {
+            value = value.split('T')[0].split(' ')[0];
+            if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+              return res.status(400).json({ error: 'Formato de fecha inválido. Use YYYY-MM-DD' });
+            }
+          }
+          // Usar DATE() en MySQL para asegurar que se almacene correctamente
+          sets.push(`${key} = DATE(?)`);
+        } else {
+          sets.push(`${key} = ?`);
+        }
+        params.push(value);
       }
     }
 
@@ -808,7 +839,9 @@ export async function sincronizarResponsabilidadesHorarios(req, res) {
     const fechaActual = ahora.toISOString().split('T')[0];
 
     // Buscar clases que deberían estar activas pero no tienen responsabilidades asignadas
-    // Usar NOW() para comparar con la fecha y hora completa
+    // Buscar clases del día actual y también clases pasadas que no se iniciaron
+    // Usar TIMESTAMP para comparar correctamente fecha y hora
+    // Cambiar >= por > para hora_fin para evitar iniciar clases que ya terminaron
     const [clasesSinResponsabilidades] = await defaultDb.execute(
       `SELECT 
         c.id_clase,
@@ -819,25 +852,28 @@ export async function sincronizarResponsabilidadesHorarios(req, res) {
         c.hora_fin,
         c.estado_clase
        FROM Clases c
-       WHERE c.fecha_clase = ?
-         AND c.estado_clase IN ('Programada', 'En Curso')
-         AND CONCAT(c.fecha_clase, ' ', c.hora_inicio) <= NOW()
-         AND CONCAT(c.fecha_clase, ' ', c.hora_fin) >= NOW()
+       WHERE c.estado_clase = 'Programada'
+         AND TIMESTAMP(c.fecha_clase, c.hora_inicio) <= NOW()
+         AND TIMESTAMP(c.fecha_clase, c.hora_fin) > NOW()
          AND NOT EXISTS (
            SELECT 1 FROM Responsabilidades_Ambiente ra
            WHERE ra.id_clase = c.id_clase
              AND ra.estado_responsabilidad = 'Activa'
              AND ra.tipo_responsabilidad = 'Principal'
          )`,
-      [fechaActual]
+      []
     );
 
     let asignadas = 0;
     const errores = [];
 
+    logger.info(`Sincronizando responsabilidades: ${clasesSinResponsabilidades.length} clases encontradas para iniciar`);
+
     // eslint-disable-next-line no-await-in-loop
     for (const clase of clasesSinResponsabilidades) {
       try {
+        logger.info(`Procesando clase ${clase.id_clase} - Estado: ${clase.estado_clase}`);
+        
         // Finalizar responsabilidades anteriores del ambiente que se solapen
         // Convertir fecha_clase a string en formato YYYY-MM-DD
         const fechaClaseStr = clase.fecha_clase instanceof Date
@@ -845,15 +881,21 @@ export async function sincronizarResponsabilidadesHorarios(req, res) {
           : String(clase.fecha_clase).split('T')[0];
         
         // Asegurar formato correcto de hora (puede venir con o sin segundos)
-        const horaInicio = String(clase.hora_inicio).includes(':') && String(clase.hora_inicio).split(':').length === 2
-          ? `${clase.hora_inicio}:00`
-          : String(clase.hora_inicio);
-        const horaFin = String(clase.hora_fin).includes(':') && String(clase.hora_fin).split(':').length === 2
-          ? `${clase.hora_fin}:00`
-          : String(clase.hora_fin);
+        let horaInicio = String(clase.hora_inicio);
+        if (horaInicio.split(':').length === 2) {
+          horaInicio = `${horaInicio}:00`;
+        }
         
+        let horaFin = String(clase.hora_fin);
+        if (horaFin.split(':').length === 2) {
+          horaFin = `${horaFin}:00`;
+        }
+        
+        // Construir fecha/hora de inicio y fin usando la fecha y hora programadas
         const fechaInicioClase = `${fechaClaseStr} ${horaInicio}`;
         const fechaFinClase = `${fechaClaseStr} ${horaFin}`;
+        
+        logger.info(`Clase ${clase.id_clase}: Inicio programado=${fechaInicioClase}, Fin programado=${fechaFinClase}`);
 
         await defaultDb.execute(
           `UPDATE Responsabilidades_Ambiente
@@ -910,15 +952,15 @@ export async function sincronizarResponsabilidadesHorarios(req, res) {
     }
 
     // Finalizar responsabilidades de clases que ya terminaron
+    // Buscar clases de cualquier fecha que hayan terminado (no solo del día actual)
     const [clasesFinalizadas] = await defaultDb.execute(
       `SELECT DISTINCT c.id_clase
        FROM Clases c
        INNER JOIN Responsabilidades_Ambiente ra ON c.id_clase = ra.id_clase
-       WHERE c.fecha_clase = ?
-         AND CONCAT(c.fecha_clase, ' ', c.hora_fin) < NOW()
+       WHERE TIMESTAMP(c.fecha_clase, c.hora_fin) < NOW()
          AND c.estado_clase = 'En Curso'
          AND ra.estado_responsabilidad = 'Activa'`,
-      [fechaActual]
+      []
     );
 
     let finalizadas = 0;

@@ -9,33 +9,6 @@ import '../styles/equipos.css'
 
 const ESTADOS_FISICOS = ['Nuevo', 'Bueno', 'Regular', 'Malo', 'Dañado']
 
-const TIPOS_EQUIPO = [
-  'ADAPTADOR DE RED',
-  'ACCES POINT',
-  'COMPONENTE ELECTRONICO',
-  'PORTATIL',
-  'CPU',
-  'CPU INTEGRADA CON MONITOR',
-  'GAFAS DE REALIDAD VIRTUAL',
-  'INSUMOS ELECTRICOS',
-  'MODEM',
-  'MODULO DE CIRCUITOS',
-  'MONITOR',
-  'MOTOR',
-  'PROYECTOR',
-  'ROUTER O ENRUTADOR',
-  'SILLA',
-  'SISTEMA DE REALIDAD VIRTUAL',
-  'SWITCH',
-  'TABLET',
-  'TABLETA DIGITALIZADORA',
-  'ESTANTE',
-  'MESA',
-  'MOUSE',
-  'TECLADO',
-  'AIRE ACONDICIONADO'
-]
-
 export default function Equipos() {
   const [activeTab, setActiveTab] = useState('registrar') // 'registrar' o 'importar'
   const [form, setForm] = useState({
@@ -57,6 +30,8 @@ export default function Equipos() {
   const [toast, setToast] = useState(null)
   const [user, setUser] = useState(null)
   const [ambientes, setAmbientes] = useState([])
+  const [categorias, setCategorias] = useState([])
+  const [tieneDuplicadosPendientes, setTieneDuplicadosPendientes] = useState(false)
 
   useEffect(() => {
     try {
@@ -86,6 +61,40 @@ export default function Equipos() {
     }
     cargarAmbientes()
   }, [])
+
+  // Cargar categorías de equipos disponibles
+  useEffect(() => {
+    async function cargarCategorias() {
+      try {
+        const token = localStorage.getItem('token')
+        const res = await fetch('/api/equipos/categorias', {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+        const data = await parseApiResponse(res, 'No se pudieron cargar las categorías')
+        // Extraer solo los nombres de las categorías
+        const nombresCategorias = Array.isArray(data) 
+          ? data.map(cat => cat.nombre_categoria)
+          : []
+        setCategorias(nombresCategorias)
+      } catch (err) {
+        console.error('Error al cargar categorías:', err)
+        setCategorias([])
+      }
+    }
+    cargarCategorias()
+  }, [])
+
+  // Cambio de pestaña respetando el bloqueo por duplicados
+  const handleChangeTab = (tab) => {
+    if (tieneDuplicadosPendientes && activeTab === 'importar' && tab !== 'importar') {
+      setToast({
+        message: 'Debes aprobar o rechazar todos los equipos con placa duplicada antes de salir de esta sección.',
+        type: 'error'
+      })
+      return
+    }
+    setActiveTab(tab)
+  }
 
   // Handler para cambios en el formulario
   const handleChange = e => {
@@ -139,7 +148,7 @@ export default function Equipos() {
       })
       const data = await parseApiResponse(resp, 'No se pudo registrar el elemento del inventario')
       setToast({
-        message: `Elemento del inventario registrado correctamente (ID interno: ${data.id})`,
+        message: `Elemento del inventario registrado correctamente`,
         type: 'success'
       })
       setForm({
@@ -177,14 +186,14 @@ export default function Equipos() {
             {/* Pestañas */}
             <div className="form-tabs">
               <button
-                onClick={() => setActiveTab('registrar')}
+                onClick={() => handleChangeTab('registrar')}
                 className={`form-tab ${activeTab === 'registrar' ? 'active' : ''}`}
               >
                 <FiPlus size={18} />
                 Registrar Inventario
               </button>
               <button
-                onClick={() => setActiveTab('importar')}
+                onClick={() => handleChangeTab('importar')}
                 className={`form-tab ${activeTab === 'importar' ? 'active' : ''}`}
               >
                 <FiUpload size={18} />
@@ -208,7 +217,7 @@ export default function Equipos() {
             {errores.consecutivo && <span className="error-text">{errores.consecutivo}</span>}
           </div>
           <div className="form-row">
-            <label>R Centro</label>
+            <label>Centro</label>
             <input name="r_centro" value="00000" readOnly disabled style={{ backgroundColor: '#f5f5f5', cursor: 'not-allowed' }} />
           </div>
           <div className="form-row">
@@ -219,13 +228,18 @@ export default function Equipos() {
             <label>Tipo *</label>
             <select name="tipo" value={form.tipo} onChange={handleChange}>
               <option value="">Seleccionar tipo</option>
-              {TIPOS_EQUIPO.map(tipo => (
+              {categorias.map(tipo => (
                 <option key={tipo} value={tipo}>
                   {tipo}
                 </option>
               ))}
             </select>
             {errores.tipo && <span className="error-text">{errores.tipo}</span>}
+            {categorias.length === 0 && (
+              <small style={{ color: '#999', fontStyle: 'italic' }}>
+                No hay categorías disponibles. Contacta al administrador.
+              </small>
+            )}
           </div>
           <div className="form-row">
             <label>Placa</label>
@@ -279,6 +293,9 @@ export default function Equipos() {
                     message: `Importación completada: ${resultados.exitosos} exitosos, ${resultados.fallidos} fallidos`,
                     type: resultados.fallidos === 0 ? 'success' : 'warning'
                   })
+                }}
+                onEstadoDuplicadosChange={(hayDuplicados) => {
+                  setTieneDuplicadosPendientes(hayDuplicados)
                 }}
               />
             )}

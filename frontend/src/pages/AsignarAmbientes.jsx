@@ -27,6 +27,8 @@ export default function AsignarAmbientes() {
     hora_fin: '12:00',
     observaciones: ''
   })
+  
+  const diasSemana = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes']
   const [confirmDelete, setConfirmDelete] = useState({ open: false, id: null })
 
   const diasSemanaOpciones = [
@@ -315,7 +317,7 @@ export default function AsignarAmbientes() {
                 </button>
                 <button
                   type="button"
-                  className="btn"
+                  className="btn-act"
                   onClick={fetchAsignaciones}
                   disabled={loading}
                   style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
@@ -345,7 +347,7 @@ export default function AsignarAmbientes() {
                           width: '100%',
                           padding: '10px 14px',
                           borderRadius: '8px',
-                          border: '2px solid var(--neutral-300)',
+                          border: '2px solid var(--success-800)',
                           fontSize: '0.95rem'
                         }}
                       >
@@ -370,7 +372,7 @@ export default function AsignarAmbientes() {
                           width: '100%',
                           padding: '10px 14px',
                           borderRadius: '8px',
-                          border: '2px solid var(--neutral-300)',
+                          border: '2px solid var(--success-800)',
                           fontSize: '0.95rem'
                         }}
                       >
@@ -400,7 +402,7 @@ export default function AsignarAmbientes() {
                           width: '100%',
                           padding: '10px 14px',
                           borderRadius: '8px',
-                          border: '2px solid var(--neutral-300)',
+                          border: '2px solid var(--success-800)',
                           fontSize: '0.95rem'
                         }}
                       />
@@ -419,7 +421,7 @@ export default function AsignarAmbientes() {
                           width: '100%',
                           padding: '10px 14px',
                           borderRadius: '8px',
-                          border: '2px solid var(--neutral-300)',
+                          border: '2px solid var(--success-800)',
                           fontSize: '0.95rem'
                         }}
                       />
@@ -491,7 +493,7 @@ export default function AsignarAmbientes() {
                           width: '100%',
                           padding: '10px 14px',
                           borderRadius: '8px',
-                          border: '2px solid var(--neutral-300)',
+                          border: '2px solid var(--success-800)',
                           fontSize: '0.95rem'
                         }}
                       />
@@ -526,7 +528,7 @@ export default function AsignarAmbientes() {
                         width: '100%',
                         padding: '10px 14px',
                         borderRadius: '8px',
-                        border: '2px solid var(--neutral-300)',
+                        border: '2px solid var(--success-800)',
                         fontSize: '0.95rem',
                         resize: 'vertical'
                       }}
@@ -609,7 +611,11 @@ export default function AsignarAmbientes() {
                       hora_inicio: asig.hora_inicio,
                       hora_fin: asig.hora_fin,
                       estado: asig.estado_responsabilidad,
-                      observaciones: asig.observaciones
+                      observaciones: asig.observaciones,
+                      dias_semana: asig.dias_semana || [],
+                      hora_inicio: asig.hora_inicio,
+                      hora_fin: asig.hora_fin,
+                      jornada: asig.jornada // Para compatibilidad con asignaciones antiguas
                     })
                   })
 

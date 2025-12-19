@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
-import { useNavigate, useLocation } from 'react-router-dom'
+import { useLocation } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import {
   FiPlus,
   FiSearch,
@@ -100,15 +101,17 @@ export default function Sidebar({ user }) {
   }
 
   const isActive = (path) => {
+    const currentPath = location.pathname;
+    
     if (path.includes('?')) {
       const [basePath, query] = path.split('?')
-      if (location.pathname === basePath) {
+      if (currentPath === basePath) {
         const urlParams = new URLSearchParams(location.search)
         const pathParams = new URLSearchParams(query)
         return urlParams.get('section') === pathParams.get('section')
       }
     }
-    return location.pathname === path
+    return currentPath === path
   }
 
   const menuItems = {
@@ -119,6 +122,7 @@ export default function Sidebar({ user }) {
       { title: 'Asignar Equipo', path: '/equipos/asignar', icon: <FiUsers />, roles: ['Administrador', 'Instructor'] },
       { title: 'Verificar Inventario', path: '/equipos/verificar', icon: <FiCheckCircle />, roles: ['Instructor'] },
       { title: 'Historial de Verificaciones', path: '/equipos/verificacion/historial', icon: <FiClock />, roles: ['all'] },
+      // Historial de Uso - DESACTIVADO
       { title: 'Buscar Cuentadante', path: '/equipos/cuentadantes/buscar', icon: <FiSearch />, roles: ['Administrador'] },
       { title: 'Gestión de Ambientes', path: '/ambientes', icon: <FiMapPin />, roles: ['Administrador'] },
       { title: 'Asignar Ambientes', path: '/ambientes/asignar', icon: <FiUserCheck />, roles: ['Administrador'] }
@@ -128,7 +132,7 @@ export default function Sidebar({ user }) {
       { title: 'Reportes', path: '/reportes', icon: <FiFileText />, roles: ['Administrador', 'Instructor', 'Cuentadante'] }
     ],
     mantenimiento: [
-      { title: 'Historial de Mantenimientos', path: '/mantenimientos', icon: <FiTool />, roles: ['all'] }
+      { title: 'Historial de Mantenimientos', path: '/mantenimientos', icon: <FiTool />, roles: ['Administrador', 'Cuentadante'] }
     ],
     horarios: [
       { title: 'Mis Horarios', path: '/horarios', icon: <FiCalendar />, roles: ['Instructor'] },
@@ -136,9 +140,10 @@ export default function Sidebar({ user }) {
       /*{ title: 'Consultar Responsables', path: '/horarios/responsables', icon: <FiClock />, roles: ['all'] }*/
     ],
     config: [
-      { title: 'Personal Registrado', path: '/usuarios', icon: <FiUsers />, roles: ['Administrador', 'Instructor'] },
+      { title: 'Usuarios', path: '/usuarios', icon: <FiUsers />, roles: ['Administrador', 'Instructor'] },
       { title: 'Seguridad', path: '/config?section=security', icon: <FiShield />, roles: ['all'] },
       { title: 'Códigos de Seguridad', path: '/config?section=invitation-codes', icon: <FiKey />, roles: ['Administrador'] },
+      { title: 'Tipos de Equipos', path: '/config?section=tipos-equipo', icon: <FiPackage />, roles: ['Administrador'] },
       { title: 'Roles y Áreas', path: '/config?section=roles', icon: <FiSettings />, roles: ['Administrador', 'Instructor', 'Aprendiz'] },
       { title: 'Notificaciones', path: '/config?section=notifications', icon: <FiBell />, roles: ['all'] },
       { title: 'Ajustes de la App', path: '/config?section=app', icon: <FiSettings />, roles: ['all'] }
@@ -159,7 +164,7 @@ export default function Sidebar({ user }) {
     const isExpanded = expandedMenus[key]
 
     return (
-      <div key={key} className="sidebar-section">
+      <div key={key} className={`sidebar-section ${isExpanded ? 'expanded' : ''}`}>
         <button
           className="sidebar-section-header"
           onClick={() => toggleMenu(key)}
@@ -168,22 +173,22 @@ export default function Sidebar({ user }) {
             {icon}
             <span>{title}</span>
           </div>
-          {isExpanded ? <FiChevronDown /> : <FiChevronRight />}
+          <span className="sidebar-chevron-wrapper">
+            {isExpanded ? <FiChevronDown /> : <FiChevronRight />}
+          </span>
         </button>
-        {isExpanded && (
-          <div className="sidebar-section-items">
-            {filteredItems.map((item) => (
-              <button
-                key={item.path}
-                className={`sidebar-item ${isActive(item.path) ? 'active' : ''}`}
-                onClick={() => nav(item.path)}
-              >
-                {item.icon}
-                <span>{item.title}</span>
-              </button>
-            ))}
-          </div>
-        )}
+        <div className={`sidebar-section-items ${isExpanded ? 'expanded' : ''}`}>
+          {filteredItems.map((item) => (
+            <button
+              key={item.path}
+              className={`sidebar-item ${isActive(item.path) ? 'active' : ''}`}
+              onClick={() => nav(item.path)}
+            >
+              {item.icon}
+              <span>{item.title}</span>
+            </button>
+          ))}
+        </div>
       </div>
     )
   }

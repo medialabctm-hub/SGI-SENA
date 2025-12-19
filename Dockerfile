@@ -57,8 +57,14 @@ COPY frontend/nginx-server.conf /etc/nginx/conf.d/default.conf
 COPY start.sh /start.sh
 RUN chmod +x /start.sh
 
-# Crear directorio para uploads
-RUN mkdir -p /app/backend/uploads/equipos
+# Crear directorios para uploads (el volumen se montará aquí)
+# Estos directorios se crean por si el volumen no está montado inicialmente
+RUN mkdir -p /app/backend/uploads/equipos \
+    /app/backend/uploads/perfiles \
+    /app/backend/uploads/ambientes
+
+# Asegurar permisos correctos en el directorio de uploads
+RUN chmod -R 755 /app/backend/uploads
 
 # Exponer puerto (Railway asignará un puerto dinámico via variable PORT)
 EXPOSE 80

@@ -6,7 +6,7 @@ import ConfirmModal from '../components/ConfirmModal';
 import ImportarUsuarios from '../components/ImportarUsuarios';
 import { FiUpload, FiDownload } from 'react-icons/fi';
 import * as XLSX from 'xlsx';
-import { parseApiResponse, buildErrorMessage } from '../utils/api';
+import { parseApiResponse, buildErrorMessage, getAuthHeaders } from '../utils/api';
 import '../styles/equipos.css';
 import '../styles/usuarios.css';
 import '../styles/modal.css';
@@ -46,13 +46,6 @@ export default function Usuarios() {
 
   const isAdmin = currentUser?.nombre_rol === 'Administrador';
   const isInstructor = currentUser?.nombre_rol === 'Instructor';
-
-  const getAuthHeaders = () => {
-    const token = localStorage.getItem('token');
-    return token
-      ? { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
-      : { 'Content-Type': 'application/json' };
-  };
 
   const fetchUsers = async () => {
     setLoading(true);
@@ -235,7 +228,7 @@ export default function Usuarios() {
       // Preparar datos para Excel
       const datosExcel = usuarios.map(user => ({
         'ID Usuario': user.id_usuario || '-',
-        'Cédula': user.cedula || '-',
+        'Documento': user.cedula || '-',
         'Nombre Completo': user.nombre_usuario || '-',
         'Correo Electrónico': user.correo || '-',
         'Teléfono': user.telefono || '-',
@@ -290,7 +283,7 @@ export default function Usuarios() {
       // Ajustar ancho de columnas
       const colWidths = [
         { wch: 12 }, // ID Usuario
-        { wch: 15 }, // Cédula
+        { wch: 15 }, // Documento
         { wch: 30 }, // Nombre Completo
         { wch: 30 }, // Correo Electrónico
         { wch: 15 }, // Teléfono
@@ -343,7 +336,7 @@ export default function Usuarios() {
             <div className="users-toolbar-actions">
               <input
                 className="search-input"
-                placeholder="Buscar por nombre, cédula o rol..."
+                placeholder="Buscar por nombre, Documento o rol..."
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
               />
@@ -376,7 +369,7 @@ export default function Usuarios() {
                     <thead>
                       <tr>
                         <th>Nombre</th>
-                        <th>Cédula</th>
+                        <th>Documento</th>
                         <th>Rol</th>
                         <th>Equipos</th>
                         <th className="users-actions-header">Acciones</th>
@@ -449,7 +442,7 @@ export default function Usuarios() {
               </div>
               <div className="user-detail-content">
                 <div className="user-detail-grid">
-                  <div><strong>Cédula:</strong> {viewUser.user.cedula}</div>
+                  <div><strong>Documento:</strong> {viewUser.user.cedula}</div>
                   <div><strong>Rol:</strong> {viewUser.user.nombre_rol}</div>
                   <div><strong>Correo:</strong> {viewUser.user.correo}</div>
                   <div><strong>Teléfono:</strong> {viewUser.user.telefono}</div>
@@ -493,7 +486,7 @@ export default function Usuarios() {
                     />
                   </div>
                   <div className="form-row">
-                    <label>Cédula</label>
+                    <label>Documento</label>
                     <input
                       value={form.cedula}
                       onChange={(e) =>

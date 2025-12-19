@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import Header from '../components/Header';
 import Sidebar from '../components/Sidebar';
 import Toast from '../components/Toast';
 import ConfirmModal from '../components/ConfirmModal';
+import ImageViewer from '../components/ImageViewer';
 import { parseApiResponse, buildErrorMessage } from '../utils/api';
-import { FiArrowLeft, FiUpload, FiTrash2, FiStar, FiImage, FiX, FiInfo, FiPackage, FiMapPin, FiCalendar, FiDollarSign } from 'react-icons/fi';
+import { FiArrowLeft, FiUpload, FiTrash2, FiStar, FiImage, FiX, FiInfo, FiPackage, FiMapPin, FiCalendar, FiDollarSign, FiUsers, FiUser, FiEdit2 } from 'react-icons/fi';
 import '../styles/equipos.css';
 import '../styles/detalleEquipo.css';
 import '../styles/ambientes.css';
@@ -24,6 +26,18 @@ export default function DetalleEquipo() {
   const [uploadData, setUploadData] = useState({ tipo_imagen: 'Detalle', descripcion: '', es_principal: false });
   const [user, setUser] = useState(null);
   const [imagenPrincipal, setImagenPrincipal] = useState(null);
+  const [viewerImageIndex, setViewerImageIndex] = useState(null);
+  const [editAsignacionModal, setEditAsignacionModal] = useState({ open: false, asignacion: null });
+  const [deleteAsignacionConfirm, setDeleteAsignacionConfirm] = useState({ open: false, id: null });
+  const [editAsignacionData, setEditAsignacionData] = useState({
+    ficha: '',
+    nombre_externo: '',
+    documento_externo: '',
+    dias_semana: [],
+    hora_inicio: '',
+    hora_fin: '',
+    observaciones: ''
+  });
 
   useEffect(() => {
     try {
@@ -37,6 +51,7 @@ export default function DetalleEquipo() {
     fetchEquipo();
     fetchImagenes();
   }, [codigoEquipo]);
+
 
   async function fetchEquipo() {
     setLoading(true);
@@ -68,6 +83,71 @@ export default function DetalleEquipo() {
     } catch (err) {
       console.error('Error al cargar imágenes:', err);
       setImagenes([]);
+    }
+  }
+
+  function handleOpenEditAsignacion(responsable) {
+    setEditAsignacionData({
+      ficha: responsable.ficha || '',
+      nombre_externo: responsable.nombre_externo || responsable.nombre_usuario || '',
+      documento_externo: responsable.documento_externo || responsable.cedula || '',
+      dias_semana: Array.isArray(responsable.dias_semana) ? responsable.dias_semana : [],
+      hora_inicio: responsable.hora_inicio ? responsable.hora_inicio.substring(0, 5) : '',
+      hora_fin: responsable.hora_fin ? responsable.hora_fin.substring(0, 5) : '',
+      observaciones: responsable.observaciones || ''
+    });
+    setEditAsignacionModal({ open: true, asignacion: responsable });
+  }
+
+  async function handleUpdateAsignacion() {
+    try {
+      const token = localStorage.getItem('token');
+      const { id_responsable } = editAsignacionModal.asignacion;
+      
+      const payload = {
+        ficha: editAsignacionData.ficha || null,
+        nombre_externo: editAsignacionData.nombre_externo || null,
+        documento_externo: editAsignacionData.documento_externo || null,
+        dias_semana: editAsignacionData.dias_semana.length > 0 ? editAsignacionData.dias_semana : null,
+        hora_inicio: editAsignacionData.hora_inicio || null,
+        hora_fin: editAsignacionData.hora_fin || null,
+        observaciones: editAsignacionData.observaciones || null
+      };
+
+      const res = await fetch(`/api/equipos/asignaciones/${id_responsable}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify(payload)
+      });
+
+      const data = await parseApiResponse(res, 'No se pudo actualizar la asignación');
+      
+      setToast({ message: data.message || 'Asignación actualizada correctamente', type: 'success' });
+      setEditAsignacionModal({ open: false, asignacion: null });
+      fetchEquipo(); // Recargar datos del equipo
+    } catch (err) {
+      setToast({ message: buildErrorMessage(err, 'Error al actualizar la asignación'), type: 'error' });
+    }
+  }
+
+  async function handleDeleteAsignacion() {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`/api/equipos/asignaciones/${deleteAsignacionConfirm.id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      const data = await parseApiResponse(res, 'No se pudo eliminar la asignación');
+      
+      setToast({ message: data.message || 'Asignación eliminada correctamente', type: 'success' });
+      setDeleteAsignacionConfirm({ open: false, id: null });
+      fetchEquipo(); // Recargar datos del equipo
+    } catch (err) {
+      setToast({ message: buildErrorMessage(err, 'Error al eliminar la asignación'), type: 'error' });
     }
   }
 
@@ -203,6 +283,22 @@ export default function DetalleEquipo() {
     }
   }
 
+  function openImageViewer(index) {
+    setViewerImageIndex(index);
+  }
+
+  function closeImageViewer() {
+    setViewerImageIndex(null);
+  }
+
+  // Preparar imágenes para el ImageViewer
+  const viewerImages = imagenes.map(img => ({
+    url: img.ruta_imagen,
+    titulo: img.tipo_imagen,
+    descripcion: img.descripcion,
+    es_principal: img.es_principal
+  }));
+
   function getEstadoBadge(estado) {
     const estados = {
       Bueno: { color: 'var(--success-800)', bg: 'var(--success-50)' },
@@ -279,6 +375,16 @@ export default function DetalleEquipo() {
             onConfirm={handleDeleteImagen}
             onCancel={() => setDeleteConfirm({ open: false, idImagen: null })}
           />
+
+          {/* ImageViewer para ver imágenes en tamaño original */}
+          {viewerImageIndex !== null && (
+            <ImageViewer
+              images={viewerImages}
+              currentIndex={viewerImageIndex}
+              onClose={closeImageViewer}
+              onImageChange={setViewerImageIndex}
+            />
+          )}
 
           {/* Modal de subida de imágenes - Mejorado */}
           {showUploadModal && (
@@ -683,20 +789,20 @@ export default function DetalleEquipo() {
                 </h3>
               </div>
               {imagenes.length > 0 ? (
-                <div className="ambiente-images-grid">
-                  {imagenes.map((imagen) => (
+                <div className="detalle-equipo-gallery-thumbnails">
+                  {imagenes.map((imagen, index) => (
                     <div
                       key={imagen.id_imagen_equipo}
-                      className="ambiente-imagen-card"
+                      className="detalle-equipo-gallery-thumbnail"
                       style={{
                         border: imagen.es_principal ? '2px solid var(--success-800)' : '1px solid #e5e7eb',
                       }}
+                      onClick={() => openImageViewer(index)}
                     >
-                      <div className="ambiente-imagen-container">
+                      <div className="detalle-equipo-gallery-thumbnail-image">
                         <img
                           src={imagen.ruta_imagen}
                           alt={imagen.descripcion || 'Imagen del equipo'}
-                          className="ambiente-imagen"
                           onError={(e) => {
                             console.error('Error al cargar imagen:', imagen.ruta_imagen);
                             e.target.style.display = 'none';
@@ -706,49 +812,48 @@ export default function DetalleEquipo() {
                             }
                           }}
                         />
-                        <div className="ambiente-imagen-placeholder">
-                          <FiImage size={32} />
+                        <div className="detalle-equipo-gallery-thumbnail-placeholder">
+                          <FiImage size={24} />
                         </div>
                         {imagen.es_principal && (
-                          <div className="ambiente-imagen-badge">
-                            <FiStar size={14} />
+                          <div className="detalle-equipo-gallery-thumbnail-badge">
+                            <FiStar size={12} />
                             Principal
                           </div>
                         )}
                         {(user?.nombre_rol === 'Administrador' || user?.nombre_rol === 'Instructor') && (
-                          <div className="ambiente-imagen-overlay">
+                          <div className="detalle-equipo-gallery-thumbnail-overlay">
                             {!imagen.es_principal && (
                               <button
-                                className="ambiente-imagen-btn"
-                                onClick={() => handleMarcarPrincipal(imagen.id_imagen_equipo)}
+                                className="detalle-equipo-gallery-thumbnail-btn"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleMarcarPrincipal(imagen.id_imagen_equipo);
+                                }}
                                 title="Marcar como principal"
                               >
-                                <FiStar size={16} />
+                                <FiStar size={14} />
                               </button>
                             )}
                             <button
-                              className="ambiente-imagen-btn ambiente-imagen-btn-delete"
-                              onClick={() => setDeleteConfirm({ open: true, idImagen: imagen.id_imagen_equipo })}
+                              className="detalle-equipo-gallery-thumbnail-btn detalle-equipo-gallery-thumbnail-btn-delete"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setDeleteConfirm({ open: true, idImagen: imagen.id_imagen_equipo });
+                              }}
                               title="Eliminar imagen"
                             >
-                              <FiX size={16} />
+                              <FiX size={14} />
                             </button>
                           </div>
                         )}
                       </div>
-                      <div className="ambiente-imagen-info">
-                        <p className="ambiente-imagen-name" title={imagen.tipo_imagen}>
+                      <div className="detalle-equipo-gallery-thumbnail-info">
+                        <p className="detalle-equipo-gallery-thumbnail-type" title={imagen.tipo_imagen}>
                           {imagen.tipo_imagen}
                         </p>
                         {imagen.descripcion && (
-                          <p style={{ 
-                            fontSize: '12px', 
-                            color: '#9ca3af', 
-                            margin: '4px 0 0 0',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            whiteSpace: 'nowrap'
-                          }} title={imagen.descripcion}>
+                          <p className="detalle-equipo-gallery-thumbnail-desc" title={imagen.descripcion}>
                             {imagen.descripcion}
                           </p>
                         )}
@@ -794,9 +899,397 @@ export default function DetalleEquipo() {
                 </div>
               )}
             </div>
+
+            {/* Sección de Usuarios Asignados */}
+            {equipo.responsables && equipo.responsables.length > 0 && (
+              <div style={{ 
+                background: 'linear-gradient(135deg, #f9fafb 0%, #ffffff 100%)', 
+                padding: '24px', 
+                borderRadius: '12px',
+                border: '1px solid #e5e7eb',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+                marginTop: '24px'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px', paddingBottom: '16px', borderBottom: '2px solid #e5e7eb' }}>
+                  <FiUsers size={20} color="var(--success-800)" />
+                  <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 700, color: '#111827' }}>
+                    Usuarios Asignados
+                    <span style={{ marginLeft: '12px', fontSize: '16px', fontWeight: 500, color: '#6b7280' }}>
+                      ({equipo.responsables.length})
+                    </span>
+                  </h3>
+                </div>
+                <div style={{ display: 'grid', gap: '12px' }}>
+                  {equipo.responsables.map((responsable) => (
+                    <div
+                      key={responsable.id_responsable}
+                      style={{
+                        padding: '16px',
+                        background: '#f9fafb',
+                        borderRadius: '8px',
+                        border: '1px solid #e5e7eb',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '16px'
+                      }}
+                    >
+                      <div style={{
+                        width: '48px',
+                        height: '48px',
+                        borderRadius: '50%',
+                        background: 'linear-gradient(135deg, var(--success-800) 0%, var(--success-600) 100%)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: 'white',
+                        fontWeight: 700,
+                        fontSize: '18px'
+                      }}>
+                        <FiUser size={24} />
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                            <strong style={{ fontSize: '16px', color: '#111827' }}>
+                              {responsable.nombre_usuario || responsable.nombre_externo || 'Usuario sin nombre'}
+                            </strong>
+                            {responsable.nombre_rol && (
+                              <span style={{
+                                padding: '4px 10px',
+                                borderRadius: '12px',
+                                fontSize: '0.75rem',
+                                fontWeight: 600,
+                                background: '#e0e7ff',
+                                color: '#4338ca'
+                              }}>
+                                {responsable.nombre_rol}
+                              </span>
+                            )}
+                          </div>
+                          <div style={{ display: 'flex', gap: '8px' }}>
+                            <button
+                              onClick={() => handleOpenEditAsignacion(responsable)}
+                              style={{
+                                padding: '6px 12px',
+                                background: '#3b82f6',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: '6px',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '6px',
+                                fontSize: '13px',
+                                fontWeight: 500
+                              }}
+                              title="Editar asignación"
+                            >
+                              <FiEdit2 size={14} />
+                              Editar
+                            </button>
+                            <button
+                              onClick={() => setDeleteAsignacionConfirm({ open: true, id: responsable.id_responsable })}
+                              style={{
+                                padding: '6px 12px',
+                                background: '#ef4444',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: '6px',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '6px',
+                                fontSize: '13px',
+                                fontWeight: 500
+                              }}
+                              title="Eliminar asignación"
+                            >
+                              <FiTrash2 size={14} />
+                              Eliminar
+                            </button>
+                          </div>
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '8px', fontSize: '14px', color: '#6b7280' }}>
+                          <div>
+                            <strong>Documento:</strong> {responsable.cedula || responsable.documento_externo || '-'}
+                          </div>
+                          {responsable.ficha && (
+                            <div>
+                              <strong>Ficha:</strong> {responsable.ficha}
+                            </div>
+                          )}
+                          <div>
+                            <strong>Asignado hace:</strong> {responsable.dias_asignado || 0} días
+                          </div>
+                          <div>
+                            <strong>Fecha asignación:</strong> {formatDate(responsable.fecha_asignacion)}
+                          </div>
+                        </div>
+                        {(responsable.dias_semana || responsable.hora_inicio || responsable.hora_fin) && (
+                          <div style={{ marginTop: '12px', padding: '12px', background: '#ffffff', borderRadius: '6px', border: '1px solid #e5e7eb' }}>
+                            <div style={{ fontSize: '13px', fontWeight: 600, color: '#374151', marginBottom: '8px' }}>
+                              Horario de Uso:
+                            </div>
+                            <div style={{ display: 'grid', gap: '6px', fontSize: '13px', color: '#6b7280' }}>
+                              {responsable.dias_semana && Array.isArray(responsable.dias_semana) && responsable.dias_semana.length > 0 && (
+                                <div>
+                                  <strong>Días:</strong> {responsable.dias_semana.join(', ')}
+                                </div>
+                              )}
+                              {(responsable.hora_inicio || responsable.hora_fin) && (
+                                <div>
+                                  <strong>Horario:</strong> {
+                                    responsable.hora_inicio && responsable.hora_fin
+                                      ? `${responsable.hora_inicio.substring(0, 5)} - ${responsable.hora_fin.substring(0, 5)}`
+                                      : responsable.hora_inicio
+                                        ? `Desde ${responsable.hora_inicio.substring(0, 5)}`
+                                        : responsable.hora_fin
+                                          ? `Hasta ${responsable.hora_fin.substring(0, 5)}`
+                                          : '-'
+                                  }
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                        {responsable.observaciones && (
+                          <div style={{ marginTop: '8px', padding: '8px', background: '#ffffff', borderRadius: '6px', fontSize: '13px', color: '#374151' }}>
+                            <strong>Observaciones:</strong> {responsable.observaciones}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </main>
       </div>
+
+      {/* Modal de confirmación para eliminar asignación */}
+      <ConfirmModal
+        open={deleteAsignacionConfirm.open}
+        onClose={() => setDeleteAsignacionConfirm({ open: false, id: null })}
+        onConfirm={handleDeleteAsignacion}
+        title="Eliminar Asignación"
+        message="¿Estás seguro de que deseas eliminar esta asignación? Esta acción no se puede deshacer."
+      />
+
+      {/* Modal de edición de asignación */}
+      {editAsignacionModal.open && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0, 0, 0, 0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000
+        }}>
+          <div style={{
+            background: 'white',
+            borderRadius: '12px',
+            padding: '24px',
+            width: '90%',
+            maxWidth: '600px',
+            maxHeight: '90vh',
+            overflow: 'auto'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+              <h2 style={{ margin: 0, fontSize: '20px', fontWeight: 700 }}>Editar Asignación</h2>
+              <button
+                onClick={() => setEditAsignacionModal({ open: false, asignacion: null })}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  fontSize: '24px',
+                  color: '#6b7280'
+                }}
+              >
+                <FiX />
+              </button>
+            </div>
+
+            <div style={{ display: 'grid', gap: '16px' }}>
+              <div>
+                <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: 600, color: '#374151' }}>
+                  Ficha
+                </label>
+                <input
+                  type="text"
+                  value={editAsignacionData.ficha}
+                  onChange={(e) => setEditAsignacionData({ ...editAsignacionData, ficha: e.target.value })}
+                  style={{
+                    width: '100%',
+                    padding: '10px',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '6px',
+                    fontSize: '14px'
+                  }}
+                  placeholder="Número de ficha"
+                />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: 600, color: '#374151' }}>
+                  Nombre
+                </label>
+                <input
+                  type="text"
+                  value={editAsignacionData.nombre_externo}
+                  onChange={(e) => setEditAsignacionData({ ...editAsignacionData, nombre_externo: e.target.value })}
+                  style={{
+                    width: '100%',
+                    padding: '10px',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '6px',
+                    fontSize: '14px'
+                  }}
+                  placeholder="Nombre completo"
+                />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: 600, color: '#374151' }}>
+                  Documento
+                </label>
+                <input
+                  type="text"
+                  value={editAsignacionData.documento_externo}
+                  onChange={(e) => setEditAsignacionData({ ...editAsignacionData, documento_externo: e.target.value })}
+                  style={{
+                    width: '100%',
+                    padding: '10px',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '6px',
+                    fontSize: '14px'
+                  }}
+                  placeholder="Documento de identificación"
+                />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: 600, color: '#374151' }}>
+                  Días de la semana
+                </label>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px' }}>
+                  {['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'].map(dia => (
+                    <label key={dia} style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
+                      <input
+                        type="checkbox"
+                        checked={editAsignacionData.dias_semana.includes(dia)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setEditAsignacionData({ ...editAsignacionData, dias_semana: [...editAsignacionData.dias_semana, dia] });
+                          } else {
+                            setEditAsignacionData({ ...editAsignacionData, dias_semana: editAsignacionData.dias_semana.filter(d => d !== dia) });
+                          }
+                        }}
+                      />
+                      <span style={{ fontSize: '13px' }}>{dia}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: 600, color: '#374151' }}>
+                    Hora inicio
+                  </label>
+                  <input
+                    type="time"
+                    value={editAsignacionData.hora_inicio}
+                    onChange={(e) => setEditAsignacionData({ ...editAsignacionData, hora_inicio: e.target.value })}
+                    style={{
+                      width: '100%',
+                      padding: '10px',
+                      border: '1px solid #d1d5db',
+                      borderRadius: '6px',
+                      fontSize: '14px'
+                    }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: 600, color: '#374151' }}>
+                    Hora fin
+                  </label>
+                  <input
+                    type="time"
+                    value={editAsignacionData.hora_fin}
+                    onChange={(e) => setEditAsignacionData({ ...editAsignacionData, hora_fin: e.target.value })}
+                    style={{
+                      width: '100%',
+                      padding: '10px',
+                      border: '1px solid #d1d5db',
+                      borderRadius: '6px',
+                      fontSize: '14px'
+                    }}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: 600, color: '#374151' }}>
+                  Observaciones
+                </label>
+                <textarea
+                  value={editAsignacionData.observaciones}
+                  onChange={(e) => setEditAsignacionData({ ...editAsignacionData, observaciones: e.target.value })}
+                  style={{
+                    width: '100%',
+                    padding: '10px',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '6px',
+                    fontSize: '14px',
+                    minHeight: '80px',
+                    resize: 'vertical'
+                  }}
+                  placeholder="Observaciones adicionales"
+                />
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '12px', marginTop: '24px', justifyContent: 'flex-end' }}>
+              <button
+                onClick={() => setEditAsignacionModal({ open: false, asignacion: null })}
+                style={{
+                  padding: '10px 20px',
+                  background: '#e5e7eb',
+                  color: '#374151',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  fontWeight: 500
+                }}
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleUpdateAsignacion}
+                style={{
+                  padding: '10px 20px',
+                  background: 'var(--success-800)',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  fontWeight: 500
+                }}
+              >
+                Guardar Cambios
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

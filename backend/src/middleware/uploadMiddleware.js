@@ -93,3 +93,31 @@ export const deleteImageFile = (filename) => {
   return false;
 };
 
+// Configuración de Multer para endpoint público (registro externo)
+// Usa un nombre temporal y luego se renombra en el controlador con el codigo_equipo
+const storagePublico = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, uploadsDir);
+  },
+  filename: (req, file, cb) => {
+    // Generar nombre temporal único: timestamp-random-nombre_original
+    const timestamp = Date.now();
+    const random = Math.random().toString(36).substring(2, 9);
+    const ext = path.extname(file.originalname);
+    const nameWithoutExt = path.basename(file.originalname, ext);
+    const sanitizedName = nameWithoutExt.replace(/[^a-zA-Z0-9]/g, '_');
+    const filename = `${timestamp}-${random}-${sanitizedName}${ext}`;
+    cb(null, filename);
+  },
+});
+
+// Configuración de Multer para endpoint público
+export const uploadEquipoImagePublico = multer({
+  storage: storagePublico,
+  fileFilter,
+  limits: {
+    fileSize: 5 * 1024 * 1024, // 5MB máximo
+    files: 10, // Máximo 10 imágenes
+  },
+});
+

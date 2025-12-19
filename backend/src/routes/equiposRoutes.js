@@ -1,12 +1,31 @@
 import express from 'express';
-import { registrarEquipo, obtenerEquipoPorCodigo, listarEquipos, actualizarEquipo, eliminarEquipo, asignarEquipo, obtenerMisEquipos, listarAsignaciones, eliminarAsignacion, obtenerEquiposAmbientesInstructor, registrarVerificacionInventario, consultarHistorialVerificaciones, obtenerHistorialEquipo, actualizarCuentadantePrincipal, obtenerCuentadantePrincipal, buscarCuentadantePorDocumento, listarCategorias } from '../controller/equiposController.js';
+import { registrarEquipo, obtenerEquipoPorCodigo, listarEquipos, actualizarEquipo, eliminarEquipo, asignarEquipo, obtenerMisEquipos, listarAsignaciones, eliminarAsignacion, actualizarAsignacionEquipo, obtenerEquiposAmbientesInstructor, registrarVerificacionInventario, consultarHistorialVerificaciones, obtenerHistorialEquipo, actualizarCuentadantePrincipal, obtenerCuentadantePrincipal, buscarCuentadantePorDocumento, listarCategorias, crearCategoria, actualizarCategoria, eliminarCategoria, registrarInicioUso, registrarFinUso, consultarHistorialUso, obtenerHistorialEquipoUso, obtenerSesionesActivas, registrarUsoEquipoExterno } from '../controller/equiposController.js';
 import { authenticate } from '../middleware/authMiddleware.js';
 import { requirePermission, requireAnyPermission } from '../middleware/authorization.js';
 import { PERMISSIONS } from '../config/permissions.js';
-import { writeLimiter, readLimiter, strictLimiter } from '../middleware/rateLimiter.js';
-import { validate, registrarEquipoSchema, actualizarEquipoSchema, asignarEquipoSchema, verificarInventarioSchema } from '../validators/equiposValidator.js';
+import { writeLimiter, readLimiter, strictLimiter, webhookLimiter } from '../middleware/rateLimiter.js';
+import { validate, registrarEquipoSchema, actualizarEquipoSchema, asignarEquipoSchema, verificarInventarioSchema, crearCategoriaSchema, actualizarCategoriaSchema, registrarUsoEquipoSchema, actualizarUsoEquipoSchema, registrarUsoEquipoExternoSchema, actualizarAsignacionEquipoSchema } from '../validators/equiposValidator.js';
+import { uploadEquipoImagePublico, handleUploadError } from '../middleware/uploadMiddleware.js';
+import { parseFormData } from '../middleware/parseFormData.js';
 
 const router = express.Router();
+
+// ============================================
+// RUTAS PÚBLICAS (sin autenticación)
+// ============================================
+
+// Registrar uso de equipo desde página externa (público)
+// Endpoint para recibir datos de páginas externas: ficha, placa, documento, imagenes (opcional)
+// El nombre se obtiene automáticamente buscando el usuario por documento en la BD
+// Las imágenes se guardan en Imagenes_Equipo asociadas al equipo identificado por la placa
+router.post('/uso/registro-externo', 
+  webhookLimiter,
+  uploadEquipoImagePublico.array('imagenes', 10), // Aceptar hasta 10 imágenes
+  handleUploadError,
+  parseFormData, // Parsear datos de multipart/form-data antes de validar
+  validate(registrarUsoEquipoExternoSchema),
+  registrarUsoEquipoExterno
+);
 
 // ============================================
 // RUTAS PROTEGIDAS DE EQUIPOS
@@ -27,6 +46,32 @@ router.get('/categorias',
   authenticate,
   readLimiter,
   listarCategorias
+);
+
+// Crear nueva categoría - Solo Admin
+router.post('/categorias',
+  authenticate,
+  writeLimiter,
+  validate(crearCategoriaSchema),
+  requirePermission(PERMISSIONS.EQUIPOS.MANAGE_CATEGORIES),
+  crearCategoria
+);
+
+// Actualizar categoría - Solo Admin
+router.put('/categorias/:id_categoria',
+  authenticate,
+  writeLimiter,
+  validate(actualizarCategoriaSchema),
+  requirePermission(PERMISSIONS.EQUIPOS.MANAGE_CATEGORIES),
+  actualizarCategoria
+);
+
+// Eliminar categoría - Solo Admin
+router.delete('/categorias/:id_categoria',
+  authenticate,
+  strictLimiter,
+  requirePermission(PERMISSIONS.EQUIPOS.MANAGE_CATEGORIES),
+  eliminarCategoria
 );
 
 // Listar equipos
@@ -141,6 +186,19 @@ router.post('/asignar',
   asignarEquipo
 );
 
+// Actualizar una asignación de equipo
+// Solo Admin e Instructor pueden actualizar asignaciones
+router.put('/asignaciones/:id', 
+  authenticate,
+  writeLimiter,
+  validate(actualizarAsignacionEquipoSchema),
+  requireAnyPermission([
+    PERMISSIONS.EQUIPOS.ASSIGN,
+    PERMISSIONS.EQUIPOS.ASSIGN_TO_APRENDIZ
+  ]),
+  actualizarAsignacionEquipo
+);
+
 // Eliminar/Desactivar una asignación
 // Solo Admin e Instructor pueden eliminar asignaciones
 router.delete('/asignaciones/:id', 
@@ -178,6 +236,67 @@ router.get('/verificacion/historial',
     PERMISSIONS.EQUIPOS.VIEW_OWN
   ]),
   consultarHistorialVerificaciones
+);
+
+// ============================================
+// RUTAS DE HISTORIAL DE USO DE EQUIPOS
+// ============================================
+
+// Registrar inicio de sesión en un equipo (desde app Flutter)
+// Todos los usuarios autenticados pueden registrar su propio inicio de sesión
+router.post('/uso/inicio', 
+  authenticate,
+  writeLimiter,
+  validate(registrarUsoEquipoSchema),
+  registrarInicioUso
+);
+
+// Registrar cierre de sesión en un equipo (desde app Flutter)
+// Todos los usuarios autenticados pueden registrar su propio cierre de sesión
+router.post('/uso/fin', 
+  authenticate,
+  writeLimiter,
+  validate(actualizarUsoEquipoSchema),
+  registrarFinUso
+);
+
+// Consultar historial de uso de equipos
+// Admin e Instructor: ven todo el historial
+// Aprendiz: solo su propio historial
+// RUTA DESACTIVADA
+// router.get('/uso/historial', 
+//   authenticate,
+//   readLimiter,
+//   requireAnyPermission([
+//     PERMISSIONS.EQUIPOS.VIEW,
+//     PERMISSIONS.EQUIPOS.VIEW_OWN
+//   ]),
+//   consultarHistorialUso
+// );
+
+// Obtener historial de uso de un equipo específico
+// IMPORTANTE: Esta ruta debe ir ANTES de /:codigo para evitar conflictos
+router.get('/:codigo/uso/historial', 
+  authenticate,
+  readLimiter,
+  requireAnyPermission([
+    PERMISSIONS.EQUIPOS.VIEW,
+    PERMISSIONS.EQUIPOS.VIEW_OWN
+  ]),
+  obtenerHistorialEquipoUso
+);
+
+// Obtener sesiones activas (en uso) de equipos
+// Admin e Instructor: ven todas las sesiones activas
+// Aprendiz: solo sus propias sesiones activas
+router.get('/uso/activas', 
+  authenticate,
+  readLimiter,
+  requireAnyPermission([
+    PERMISSIONS.EQUIPOS.VIEW,
+    PERMISSIONS.EQUIPOS.VIEW_OWN
+  ]),
+  obtenerSesionesActivas
 );
 
 export default router;

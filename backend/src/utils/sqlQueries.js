@@ -89,6 +89,7 @@ export async function obtenerEquipoPorCodigo(db, codigo) {
            e.descripcion, e.fecha_adquisicion, e.costo, e.valor_ingreso,
            e.vida_util_meses, e.estado_fisico,
            e.specs_completas, e.atributos,
+           e.id_cuentadante,
            a.id_ambiente, a.nombre_ambiente, a.codigo_ambiente
     FROM Elementos e
     LEFT JOIN Ambientes a ON a.id_ambiente = e.id_ambiente

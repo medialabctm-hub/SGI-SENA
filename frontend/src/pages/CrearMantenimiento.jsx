@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import Header from '../components/Header'
 import Sidebar from '../components/Sidebar'
 import Toast from '../components/Toast'
@@ -7,6 +8,7 @@ import { parseApiResponse, buildErrorMessage } from '../utils/api'
 import '../styles/equipos.css'
 
 export default function CrearMantenimiento() {
+  const navigate = useNavigate()
   const [form, setForm] = useState({
     codigo_equipo: '',
     tipo_mantenimiento: 'Preventivo',
@@ -31,12 +33,17 @@ export default function CrearMantenimiento() {
     try {
       const userData = localStorage.getItem('user')
       if (userData) {
-        setUser(JSON.parse(userData))
+        const userObj = JSON.parse(userData)
+        setUser(userObj)
+        // Solo Administrador y Cuentadante pueden crear mantenimientos
+        if (userObj.nombre_rol !== 'Administrador' && userObj.nombre_rol !== 'Cuentadante') {
+          navigate('/dashboard')
+        }
       }
     } catch (error) {
       console.error('Error al obtener datos del usuario:', error)
     }
-  }, [])
+  }, [navigate])
 
   async function buscarEquipo() {
     if (!codigoInventario.trim()) {
@@ -80,7 +87,7 @@ export default function CrearMantenimiento() {
 
   async function buscarTecnico() {
     if (!cedulaTecnico.trim()) {
-      setToast({ message: 'Ingresa una cédula', type: 'error' })
+      setToast({ message: 'Ingresa una Documento', type: 'error' })
       return
     }
 
@@ -385,7 +392,7 @@ export default function CrearMantenimiento() {
               
               <div className="form-group">
                 <label>
-                  Cédula del Técnico
+                  Documento del Técnico
                 </label>
                 <div className="search-equipo-wrapper">
                   <input
@@ -398,7 +405,7 @@ export default function CrearMantenimiento() {
                         buscarTecnico()
                       }
                     }}
-                    placeholder="Ingresa la cédula del técnico"
+                    placeholder="Ingresa la Documento del técnico"
                     className="search-equipo-input"
                   />
                   <button
@@ -427,7 +434,7 @@ export default function CrearMantenimiento() {
                   </div>
                   <div className="equipo-found-info">
                     <div><strong>Nombre:</strong> {tecnicoEncontrado.nombre_usuario}</div>
-                    <div><strong>Cédula:</strong> {tecnicoEncontrado.cedula}</div>
+                    <div><strong>Documento:</strong> {tecnicoEncontrado.cedula}</div>
                     <div><strong>Rol:</strong> {tecnicoEncontrado.nombre_rol}</div>
                   </div>
                   <button

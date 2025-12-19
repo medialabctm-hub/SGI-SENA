@@ -20,7 +20,7 @@ function PaginaNoEncontrada() {
     <main aria-label="Página no encontrada" className="pagina-no-encontrada" role="main">
       <img className="cat_404" src="/images/404_image.png" alt="cat 404" />
 
-      <h1 className="pagina-no-encontrada__titulo">404 - Página no encontrada</h1>
+      <h1 className="pagina-no-encontrada__titulo">¡Oops! Página no encontrada</h1>
       <p className="pagina-no-encontrada__descripcion">
         Lo sentimos, la página que buscas no existe o ha sido movida.
         <br />

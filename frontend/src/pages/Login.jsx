@@ -20,7 +20,7 @@ export default function Login() {
     // Validación mínima
     const nuevosErrores = {};
     if (!cedula) {
-      nuevosErrores.cedula_usuario = 'La cédula es obligatoria';
+      nuevosErrores.cedula_usuario = 'La Documento es obligatoria';
     }
     if (!contrasena) {
       nuevosErrores.contraseña_usuario = 'La contraseña es obligatoria';
@@ -76,7 +76,7 @@ export default function Login() {
             <span className="icon"><FiMail /></span>
             <input
               type="text"
-              placeholder="Cédula"
+              placeholder="Documento"
               value={cedula}
               onChange={(e) => setCedula(e.target.value)}
             />

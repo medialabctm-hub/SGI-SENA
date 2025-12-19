@@ -52,9 +52,9 @@ export default function Register() {
     const errorEspaciosNombre = validarEspaciosInicioFinalNombre(name, 'nombre')
     if (errorEspaciosNombre) nuevosErrores.nombre_usuario = errorEspaciosNombre
     if (!cedula) {
-      nuevosErrores.cedula_usuario = 'La cédula es obligatoria'
-    } else if (validarCaracteresEspeciales(cedula, 'cédula')) {
-      nuevosErrores.cedula_usuario = validarCaracteresEspeciales(cedula, 'cédula')
+      nuevosErrores.cedula_usuario = 'La Documento es obligatoria'
+    } else if (validarCaracteresEspeciales(cedula, 'Documento')) {
+      nuevosErrores.cedula_usuario = validarCaracteresEspeciales(cedula, 'Documento')
     }
     setErrores(nuevosErrores)
     if (Object.keys(nuevosErrores).length > 0) return
@@ -110,7 +110,7 @@ export default function Register() {
             <span className="icon"><FiCreditCard  /></span>
             <input
               type="text"
-              placeholder="Cédula"
+              placeholder="Documento"
               value={cedula}
               onChange={e => setCedula(e.target.value)}
             />

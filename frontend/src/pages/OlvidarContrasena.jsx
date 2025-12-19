@@ -22,7 +22,7 @@ export default function OlvidarContrasena() {
     // Validaciones
     const nuevosErrores = {};
     if (!cedula) {
-      nuevosErrores.cedula = 'La cédula es obligatoria';
+      nuevosErrores.cedula = 'La Documento es obligatoria';
     }
     if (!correo) {
       nuevosErrores.correo = 'El correo es obligatorio';
@@ -108,14 +108,14 @@ export default function OlvidarContrasena() {
           <div className="logo"><img src='/images/logoSena.png' alt="Logo SENA" /></div>
         </div>
         <h1 className="title">Recuperar Contraseña</h1>
-        <p className="subtitle">Ingresa tu cédula y correo para recibir un enlace de recuperación</p>
+        <p className="subtitle">Ingresa tu Documento y correo para recibir un enlace de recuperación</p>
 
         <form onSubmit={handleSubmit} className="form">
           <label className="input">
             <span className="icon"><FiMail /></span>
             <input
               type="text"
-              placeholder="Cédula"
+              placeholder="Documento"
               value={cedula}
               onChange={(e) => setCedula(e.target.value)}
             />

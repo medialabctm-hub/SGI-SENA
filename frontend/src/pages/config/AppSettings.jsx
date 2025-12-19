@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import Toast from '../../components/Toast'
-import { parseApiResponse, buildErrorMessage } from '../../utils/api'
+import { parseApiResponse, buildErrorMessage, getAuthHeaders } from '../../utils/api'
 import { useLanguage } from '../../contexts/LanguageContext'
 import '../../styles/appSettings.css'
 
@@ -16,13 +16,6 @@ export default function AppSettings() {
   useEffect(() => {
     setLang(language)
   }, [language])
-
-  const getAuthHeaders = () => {
-    const token = localStorage.getItem('token')
-    return token
-      ? { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
-      : { 'Content-Type': 'application/json' }
-  }
 
   useEffect(() => {
     fetchPreferences()

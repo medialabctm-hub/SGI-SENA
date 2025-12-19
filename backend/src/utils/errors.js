@@ -70,10 +70,12 @@ export const errorHandler = (err, req, res, next) => {
   // Error de validación de Zod
   if (err.name === 'ZodError') {
     const message = 'Error de validación';
-    const details = err.errors.map((e) => ({
-      path: e.path.join('.'),
-      message: e.message,
-    }));
+    const details = err.errors && Array.isArray(err.errors) 
+      ? err.errors.map((e) => ({
+          path: e.path && Array.isArray(e.path) ? e.path.join('.') : 'unknown',
+          message: e.message || 'Error de validación',
+        }))
+      : [{ path: 'unknown', message: 'Error de validación desconocido' }];
     error = new ValidationError(message, details);
   }
 

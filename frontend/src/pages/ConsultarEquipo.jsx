@@ -28,17 +28,15 @@ export default function ConsultarEquipo() {
   // Definir todas las columnas disponibles
   const allColumns = [
     { key: 'codigo_inventario', label: 'Código Inventario', default: true },
-    { key: 'codigo_equipo', label: 'ID Interno', default: false },
-    { key: 'tipo', label: 'Tipo', default: false },
+    { key: 'tipo', label: 'Tipo', default: true },
     { key: 'modelo', label: 'Modelo', default: true },
-    { key: 'consecutivo', label: 'Consecutivo', default: false },
-    { key: 'estado_fisico', label: 'Estado', default: true },
+    { key: 'consecutivo', label: 'Consecutivo', default: true },
+    { key: 'estado_fisico', label: 'Estado Físico', default: true },
     { key: 'fecha_adquisicion', label: 'Fecha Adquisición', default: true },
-    { key: 'costo', label: 'Costo', default: true },
+    { key: 'costo', label: 'Valor Ingreso', default: true },
     { key: 'nombre_ambiente', label: 'Ambiente', default: true },
-    { key: 'codigo_ambiente', label: 'Código Ambiente', default: false },
-    { key: 'descripcion', label: 'Categoria', default: true },
-    { key: 'specs_completas', label: 'Especificaciones', default: true },
+    { key: 'descripcion', label: 'Descripción', default: true },
+    { key: 'specs_completas', label: 'Atributos', default: true },
   ]
 
   // Estado para columnas visibles (inicializado con las columnas por defecto)
@@ -397,20 +395,15 @@ export default function ConsultarEquipo() {
         const specs = parsearEspecificaciones(eq.specs_completas)
         return {
           'Código Inventario': eq.codigo_inventario || '-',
-          'ID Interno': eq.codigo_equipo || '-',
           'Tipo': eq.tipo || '-',
           'Modelo': eq.modelo || '-',
           'Consecutivo': eq.consecutivo || '-',
-          'Estado': eq.estado_fisico || '-',
+          'Estado Físico': eq.estado_fisico || '-',
           'Fecha Adquisición': eq.fecha_adquisicion ? formatDate(eq.fecha_adquisicion) : '-',
-          'Costo': eq.costo ? formatCurrency(eq.costo) : '-',
+          'Valor Ingreso': eq.costo ? formatCurrency(eq.costo) : '-',
           'Ambiente': eq.nombre_ambiente || '-',
-          'Código Ambiente': eq.codigo_ambiente || '-',
           'Descripción': eq.descripcion || '-',
-          'Marca (Especificaciones)': specs.marca,
-          'Serial (Especificaciones)': specs.serial,
-          'Modelo (Especificaciones)': specs.modelo,
-          'Observaciones': specs.observaciones
+          'Atributos': eq.specs_completas || '-'
         }
       })
 
@@ -456,20 +449,15 @@ export default function ConsultarEquipo() {
       // Ajustar ancho de columnas de forma más adecuada
       const colWidths = [
         { wch: 20 }, // Código Inventario
-        { wch: 12 }, // ID Interno
         { wch: 18 }, // Tipo
         { wch: 25 }, // Modelo
         { wch: 18 }, // Consecutivo
-        { wch: 15 }, // Estado
+        { wch: 15 }, // Estado Físico
         { wch: 20 }, // Fecha Adquisición
-        { wch: 18 }, // Costo
+        { wch: 18 }, // Valor Ingreso
         { wch: 25 }, // Ambiente
-        { wch: 18 }, // Código Ambiente
         { wch: 35 }, // Descripción
-        { wch: 20 }, // Marca (Especificaciones)
-        { wch: 20 }, // Serial (Especificaciones)
-        { wch: 25 }, // Modelo (Especificaciones)
-        { wch: 50 }  // Observaciones
+        { wch: 50 }  // Atributos
       ]
       ws['!cols'] = colWidths
       
@@ -669,17 +657,15 @@ export default function ConsultarEquipo() {
                   <thead>
                     <tr>
                       {visibleColumns.includes('codigo_inventario') && <th>Código Inventario</th>}
-                      {visibleColumns.includes('codigo_equipo') && <th>ID Interno</th>}
                       {visibleColumns.includes('tipo') && <th>Tipo</th>}
                       {visibleColumns.includes('modelo') && <th>Modelo</th>}
                       {visibleColumns.includes('consecutivo') && <th>Consecutivo</th>}
-                      {visibleColumns.includes('estado_fisico') && <th>Estado</th>}
+                      {visibleColumns.includes('estado_fisico') && <th>Estado Físico</th>}
                       {visibleColumns.includes('fecha_adquisicion') && <th>Fecha Adquisición</th>}
-                      {visibleColumns.includes('costo') && <th>Costo</th>}
+                      {visibleColumns.includes('costo') && <th>Valor Ingreso</th>}
                       {visibleColumns.includes('nombre_ambiente') && <th>Ambiente</th>}
-                      {visibleColumns.includes('codigo_ambiente') && <th>Código Ambiente</th>}
                       {visibleColumns.includes('descripcion') && <th>Descripción</th>}
-                      {visibleColumns.includes('specs_completas') && <th>Especificaciones</th>}
+                      {visibleColumns.includes('specs_completas') && <th>Atributos</th>}
                       <th style={{width: user?.nombre_rol === 'Administrador' ? '280px' : '120px'}}>Acciones</th>
                     </tr>
                   </thead>
@@ -688,9 +674,6 @@ export default function ConsultarEquipo() {
                       <tr key={eq.codigo_equipo}>
                         {visibleColumns.includes('codigo_inventario') && (
                           <td>{eq.codigo_inventario || '-'}</td>
-                        )}
-                        {visibleColumns.includes('codigo_equipo') && (
-                          <td>{eq.codigo_equipo}</td>
                         )}
                         {visibleColumns.includes('tipo') && (
                           <td>
@@ -759,24 +742,6 @@ export default function ConsultarEquipo() {
                                 ))}
                               </select>
                             ) : (eq.nombre_ambiente || '-')}
-                          </td>
-                        )}
-                        {visibleColumns.includes('codigo_ambiente') && (
-                          <td>
-                            {editingCodigo === eq.codigo_equipo ? (
-                              <select 
-                                value={draft.id_ambiente || eq.id_ambiente || ''} 
-                                onChange={e=>onDraft('id_ambiente', e.target.value)} 
-                                className="cell-input"
-                              >
-                                <option value="">Seleccionar ambiente</option>
-                                {(ambientes || []).map(amb => (
-                                  <option key={amb.id_ambiente} value={amb.id_ambiente}>
-                                    {amb.codigo_ambiente} - {amb.nombre_ambiente}
-                                  </option>
-                                ))}
-                              </select>
-                            ) : (eq.codigo_ambiente || '-')}
                           </td>
                         )}
                         {visibleColumns.includes('descripcion') && (

@@ -55,9 +55,18 @@ class SchedulerService {
       const ahora = new Date();
       const fechaActual = ahora.toISOString().split('T')[0];
       const horaActual = ahora.toTimeString().slice(0, 5);
+      
+      // Log para debugging - verificar hora actual del servidor
+      logger.debug('Sincronización automática ejecutándose', {
+        fecha_actual: fechaActual,
+        hora_actual: horaActual,
+        timestamp: ahora.toISOString()
+      });
 
       // Buscar clases que deberían estar activas pero no tienen responsabilidades asignadas
-      // Usar NOW() para comparar con la fecha y hora completa
+      // Buscar clases programadas que ya deberían haber comenzado (no solo del día actual)
+      // Usar TIMESTAMP para comparar correctamente fecha y hora
+      // También incluir clases que ya pasaron su hora de inicio pero aún no han terminado
       const [clasesSinResponsabilidades] = await defaultDb.execute(
         `SELECT 
           c.id_clase,
@@ -68,21 +77,73 @@ class SchedulerService {
           c.hora_fin,
           c.estado_clase
          FROM Clases c
-         WHERE c.fecha_clase = ?
-           AND c.estado_clase IN ('Programada', 'En Curso')
-           AND CONCAT(c.fecha_clase, ' ', c.hora_inicio) <= NOW()
-           AND CONCAT(c.fecha_clase, ' ', c.hora_fin) >= NOW()
+         WHERE c.estado_clase = 'Programada'
+           AND TIMESTAMP(c.fecha_clase, c.hora_inicio) <= NOW()
+           AND TIMESTAMP(c.fecha_clase, c.hora_fin) > NOW()
            AND NOT EXISTS (
              SELECT 1 FROM Responsabilidades_Ambiente ra
              WHERE ra.id_clase = c.id_clase
                AND ra.estado_responsabilidad = 'Activa'
                AND ra.tipo_responsabilidad = 'Principal'
            )`,
-        [fechaActual]
+        []
       );
+      
+      // Log para debugging - también verificar clases programadas cercanas
+      const [clasesProgramadasCercanas] = await defaultDb.execute(
+        `SELECT 
+          c.id_clase,
+          c.fecha_clase,
+          c.hora_inicio,
+          c.hora_fin,
+          c.estado_clase,
+          TIMESTAMP(c.fecha_clase, c.hora_inicio) as timestamp_inicio,
+          NOW() as ahora,
+          TIMESTAMP(c.fecha_clase, c.hora_inicio) <= NOW() as debe_iniciar,
+          TIMESTAMP(c.fecha_clase, c.hora_fin) > NOW() as aun_no_termina
+         FROM Clases c
+         WHERE c.estado_clase = 'Programada'
+           AND c.fecha_clase >= DATE_SUB(CURDATE(), INTERVAL 1 DAY)
+           AND c.fecha_clase <= DATE_ADD(CURDATE(), INTERVAL 1 DAY)
+         ORDER BY c.fecha_clase, c.hora_inicio
+         LIMIT 10`,
+        []
+      );
+      
+      if (clasesProgramadasCercanas.length > 0) {
+        logger.debug('Clases programadas cercanas encontradas', {
+          total: clasesProgramadasCercanas.length,
+          clases: clasesProgramadasCercanas.map(c => ({
+            id: c.id_clase,
+            fecha: c.fecha_clase,
+            hora_inicio: c.hora_inicio,
+            hora_fin: c.hora_fin,
+            timestamp_inicio: c.timestamp_inicio,
+            ahora: c.ahora,
+            debe_iniciar: c.debe_iniciar,
+            aun_no_termina: c.aun_no_termina
+          }))
+        });
+      }
+      
+      // Log para debugging
+      if (clasesSinResponsabilidades.length > 0) {
+        logger.info(`Sincronización automática: ${clasesSinResponsabilidades.length} clase(s) encontrada(s) para iniciar`, {
+          clases: clasesSinResponsabilidades.map(c => ({
+            id: c.id_clase,
+            fecha: c.fecha_clase,
+            hora_inicio: c.hora_inicio,
+            hora_fin: c.hora_fin
+          }))
+        });
+      }
 
       let asignadas = 0;
       const errores = [];
+
+      if (clasesSinResponsabilidades.length > 0) {
+        logger.info(`Sincronización automática: ${clasesSinResponsabilidades.length} clase(s) encontrada(s) para iniciar`);
+      }
 
       for (const clase of clasesSinResponsabilidades) {
         try {
@@ -92,15 +153,20 @@ class SchedulerService {
             : String(clase.fecha_clase).split('T')[0];
           
           // Asegurar formato correcto de hora (puede venir con o sin segundos)
-          const horaInicio = String(clase.hora_inicio).includes(':') && String(clase.hora_inicio).split(':').length === 2
-            ? `${clase.hora_inicio}:00`
-            : String(clase.hora_inicio);
-          const horaFin = String(clase.hora_fin).includes(':') && String(clase.hora_fin).split(':').length === 2
-            ? `${clase.hora_fin}:00`
-            : String(clase.hora_fin);
+          let horaInicio = String(clase.hora_inicio);
+          if (horaInicio.split(':').length === 2) {
+            horaInicio = `${horaInicio}:00`;
+          }
+          
+          let horaFin = String(clase.hora_fin);
+          if (horaFin.split(':').length === 2) {
+            horaFin = `${horaFin}:00`;
+          }
           
           const fechaInicioClase = `${fechaClaseStr} ${horaInicio}`;
           const fechaFinClase = `${fechaClaseStr} ${horaFin}`;
+          
+          logger.info(`Sincronización automática: Procesando clase ${clase.id_clase} - Inicio=${fechaInicioClase}`);
 
           // Finalizar responsabilidades anteriores que se solapen
           await defaultDb.execute(
@@ -146,6 +212,7 @@ class SchedulerService {
               `UPDATE Clases SET estado_clase = 'En Curso', fecha_inicio_real = ? WHERE id_clase = ?`,
               [fechaInicioClase, clase.id_clase]
             );
+            logger.info(`Clase ${clase.id_clase} iniciada automáticamente - Estado cambiado a "En Curso"`);
           }
 
           asignadas++;
@@ -156,15 +223,15 @@ class SchedulerService {
       }
 
       // Finalizar responsabilidades de clases que ya terminaron
+      // Buscar clases en curso que ya pasaron su hora de fin (no solo del día actual)
       const [clasesFinalizadas] = await defaultDb.execute(
         `SELECT DISTINCT c.id_clase
          FROM Clases c
          INNER JOIN Responsabilidades_Ambiente ra ON c.id_clase = ra.id_clase
-         WHERE c.fecha_clase = ?
-           AND CONCAT(c.fecha_clase, ' ', c.hora_fin) < NOW()
+         WHERE TIMESTAMP(c.fecha_clase, c.hora_fin) < NOW()
            AND c.estado_clase = 'En Curso'
            AND ra.estado_responsabilidad = 'Activa'`,
-        [fechaActual]
+        []
       );
 
       let finalizadas = 0;
@@ -191,8 +258,15 @@ class SchedulerService {
         }
       }
 
+
       if (asignadas > 0 || finalizadas > 0) {
-        logger.info(`Sincronización automática: ${asignadas} clase(s) iniciada(s), ${finalizadas} clase(s) finalizada(s)`);
+        logger.info(`Sincronización automática completada: ${asignadas} clase(s) iniciada(s), ${finalizadas} clase(s) finalizada(s)`);
+      } else {
+        // Log periódico para verificar que el scheduler está funcionando
+        const ahora = new Date();
+        if (ahora.getMinutes() % 5 === 0) { // Log cada 5 minutos
+          logger.debug('Sincronización automática ejecutada - No hay clases para procesar');
+        }
       }
     } catch (error) {
       logger.error('Error en sincronización automática:', error);

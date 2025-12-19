@@ -1,6 +1,6 @@
-DROP DATABASE IF EXISTS GestionEquipo;
-CREATE DATABASE GestionEquipo;
-USE GestionEquipo;
+DROP DATABASE IF EXISTS railway;
+CREATE DATABASE railway;
+USE railway;
 
 -- ===============
 -- TABLA DE ROLES
@@ -30,7 +30,7 @@ CREATE TABLE Usuarios (
   ultimo_acceso DATETIME,
   creado_por INT,
   FOREIGN KEY (id_rol) REFERENCES Roles(id_rol),
-  FOREIGN KEY (creado_por) REFERENCES Usuarios(id_usuario),
+  FOREIGN KEY (creado_por) REFERENCES Usuarios(id_usuario) ON DELETE SET NULL,
   INDEX idx_cedula (cedula),
   INDEX idx_estado (estado),
   INDEX idx_rol (id_rol)
@@ -129,9 +129,7 @@ CREATE TABLE Elementos (
   id_ambiente INT NOT NULL,
   id_cuentadante INT NULL COMMENT 'ID del cuentadante responsable de este equipo. NULL si no está asignado a un cuentadante específico',
   tipo VARCHAR(100) NOT NULL,
-  marca VARCHAR(100),
   modelo VARCHAR(100),
-  numero_serie VARCHAR(100),
   descripcion TEXT,
   fecha_adquisicion DATE,
   costo DECIMAL(10,2),
@@ -140,7 +138,7 @@ CREATE TABLE Elementos (
   fecha_registro DATETIME DEFAULT NOW(),
   registrado_por INT,
   specs_completas TEXT,
-  r_centro VARCHAR(50) NOT NULL,
+  r_centro VARCHAR(50) NOT NULL COMMENT 'Código del centro (Centro)',
   consecutivo VARCHAR(100),
   placa VARCHAR(100),
   atributos TEXT,
@@ -151,7 +149,6 @@ CREATE TABLE Elementos (
   FOREIGN KEY (id_cuentadante) REFERENCES Usuarios(id_usuario) ON DELETE SET NULL,
   FOREIGN KEY (registrado_por) REFERENCES Usuarios(id_usuario),
   INDEX idx_tipo (tipo),
-  INDEX idx_numero_serie (numero_serie),
   INDEX idx_r_centro (r_centro),
   INDEX idx_consecutivo (consecutivo),
   INDEX idx_ambiente (id_ambiente),
@@ -477,6 +474,31 @@ CREATE TABLE IF NOT EXISTS pedidos_externos (
   INDEX idx_fecha_recepcion (fecha_recepcion)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Tabla para almacenar pedidos recibidos de sistemas externos';
 
+-- ============================================
+-- TABLA DE HISTORIAL DE USO DE EQUIPOS
+-- ============================================
+CREATE TABLE Historial_Uso_Equipos (
+  id_historial INT PRIMARY KEY AUTO_INCREMENT,
+  codigo_equipo INT NOT NULL,
+  id_usuario INT NOT NULL,
+  nombre_usuario VARCHAR(100) NULL COMMENT 'Nombre del usuario en el momento del registro (por si cambia después)',
+  fecha_hora_inicio DATETIME NOT NULL COMMENT 'Fecha y hora en que el usuario inició sesión en el equipo',
+  fecha_hora_fin DATETIME NULL COMMENT 'Fecha y hora en que el usuario cerró sesión. NULL si aún está en uso',
+  estado ENUM('En Uso', 'Finalizado') DEFAULT 'En Uso' COMMENT 'Estado de la sesión',
+  duracion_minutos INT NULL COMMENT 'Duración calculada en minutos (se calcula automáticamente)',
+  observaciones TEXT NULL COMMENT 'Observaciones adicionales sobre el uso',
+  fecha_registro DATETIME DEFAULT NOW() COMMENT 'Fecha en que se registró el historial',
+  FOREIGN KEY (codigo_equipo) REFERENCES Elementos(codigo_equipo) ON DELETE CASCADE,
+  FOREIGN KEY (id_usuario) REFERENCES Usuarios(id_usuario) ON DELETE CASCADE,
+  INDEX idx_equipo (codigo_equipo),
+  INDEX idx_usuario (id_usuario),
+  INDEX idx_fecha_inicio (fecha_hora_inicio),
+  INDEX idx_estado (estado),
+  INDEX idx_equipo_fecha (codigo_equipo, fecha_hora_inicio),
+  INDEX idx_usuario_fecha (id_usuario, fecha_hora_inicio)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+COMMENT = 'Historial de uso de equipos: registra quién inició sesión y de qué hora a qué hora';
+
 -- =========
 -- TRIGGERS
 -- =========
@@ -562,7 +584,7 @@ END;
 
 -- Trigger para validar solo una imagen principal por equipo
 CREATE TRIGGER trg_validar_imagen_principal_equipo
-BEFORE INSERT ON Imagenes_Equipo
+AFTER INSERT ON Imagenes_Equipo
 FOR EACH ROW
 BEGIN
     IF NEW.es_principal = TRUE THEN
@@ -575,7 +597,7 @@ END;
 
 -- Trigger para validar solo una imagen principal por ambiente
 CREATE TRIGGER trg_validar_imagen_principal_ambiente
-BEFORE INSERT ON Imagenes_Ambiente
+AFTER INSERT ON Imagenes_Ambiente
 FOR EACH ROW
 BEGIN
     IF NEW.es_principal = TRUE THEN
@@ -604,6 +626,18 @@ BEGIN
         SET estado_responsabilidad = 'Finalizada', fecha_fin = COALESCE(NEW.fecha_fin_real, NOW())
         WHERE id_clase = NEW.id_clase AND estado_responsabilidad = 'Activa';
     END IF;
+END;
+//
+
+-- Trigger para calcular automáticamente la duración cuando se actualiza fecha_hora_fin
+CREATE TRIGGER calcular_duracion_uso
+BEFORE UPDATE ON Historial_Uso_Equipos
+FOR EACH ROW
+BEGIN
+  IF NEW.fecha_hora_fin IS NOT NULL AND OLD.fecha_hora_fin IS NULL THEN
+    SET NEW.duracion_minutos = TIMESTAMPDIFF(MINUTE, NEW.fecha_hora_inicio, NEW.fecha_hora_fin);
+    SET NEW.estado = 'Finalizado';
+  END IF;
 END;
 //
 
@@ -826,24 +860,6 @@ BEGIN
 END;
 //
 
--- Procedimiento para mover equipo a otro ambiente
-CREATE PROCEDURE sp_mover_equipo_ambiente(
-    IN p_codigo_equipo INT, IN p_id_ambiente_nuevo INT, IN p_observaciones TEXT, IN p_actualizado_por INT
-)
-BEGIN
-    DECLARE v_id_ambiente_anterior INT;
-    
-    SELECT id_ambiente INTO v_id_ambiente_anterior FROM Elementos WHERE codigo_equipo = p_codigo_equipo;
-    
-    UPDATE Elementos SET id_ambiente = p_id_ambiente_nuevo WHERE codigo_equipo = p_codigo_equipo;
-    
-    -- El trigger ya registra el movimiento, pero agregamos observaciones adicionales
-    INSERT INTO Historial_Equipos (codigo_equipo, tipo_evento, descripcion, id_ambiente_anterior, id_ambiente_nuevo, registrado_por)
-    VALUES (p_codigo_equipo, 'Movimiento Ambiente', CONCAT('Equipo movido de ambiente. ', IFNULL(p_observaciones, '')),
-            v_id_ambiente_anterior, p_id_ambiente_nuevo, p_actualizado_por);
-END;
-//
-
 -- Procedimiento para reportar novedad con actualización de estado
 CREATE PROCEDURE sp_reportar_novedad(
     IN p_codigo_equipo INT,
@@ -1021,3 +1037,253 @@ INSERT INTO Criterios_Asignacion (nombre_criterio, prioridad, descripcion, param
 INSERT INTO Usuarios (nombre_usuario, cedula, telefono, correo, contrasena, id_rol, estado) VALUES 
 ('Administrador Sistema', '1000000000', '3001234567', 'admin@sena.edu.co',
  '$2a$12$zz2nWS1PBuSGeX4gNQS5..Jk8Juo5gb8r8ZYDNZreGcND1jrHlVzq', 1, 'Activo');
+
+-- Migración: Agregar campos de días de la semana y horarios a Responsabilidades_Ambiente
+ALTER TABLE Responsabilidades_Ambiente
+ADD COLUMN dias_semana JSON NULL COMMENT 'Array de días de la semana: ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes"]',
+ADD COLUMN hora_inicio TIME NULL COMMENT 'Hora de inicio del horario (formato HH:MM:SS)',
+ADD COLUMN hora_fin TIME NULL COMMENT 'Hora de fin del horario (formato HH:MM:SS)';
+
+-- Crear índices en campos indexables (no se puede indexar JSON directamente)
+ALTER TABLE Responsabilidades_Ambiente
+ADD INDEX idx_ambiente_horas (id_ambiente, hora_inicio, hora_fin, estado_responsabilidad),
+ADD INDEX idx_usuario_horas (id_usuario, hora_inicio, hora_fin, estado_responsabilidad);
+
+-- Migración: Agregar campos adicionales a Responsables_Equipo
+-- Para almacenar información de registros externos (ficha, nombre, documento)
+-- Fecha: 2024-01-15
+
+-- Verificar y agregar columna 'ficha' si no existe
+SET @col_exists = (
+    SELECT COUNT(*) 
+    FROM INFORMATION_SCHEMA.COLUMNS 
+    WHERE TABLE_SCHEMA = DATABASE() 
+    AND TABLE_NAME = 'Responsables_Equipo' 
+    AND COLUMN_NAME = 'ficha'
+);
+
+SET @sql = IF(@col_exists = 0,
+    'ALTER TABLE Responsables_Equipo ADD COLUMN ficha VARCHAR(50) NULL COMMENT ''Número de ficha del aprendiz (registro externo)'' AFTER observaciones',
+    'SELECT ''Columna ficha ya existe'' AS mensaje'
+);
+
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+-- Verificar y agregar columna 'nombre_externo' si no existe
+SET @col_exists = (
+    SELECT COUNT(*) 
+    FROM INFORMATION_SCHEMA.COLUMNS 
+    WHERE TABLE_SCHEMA = DATABASE() 
+    AND TABLE_NAME = 'Responsables_Equipo' 
+    AND COLUMN_NAME = 'nombre_externo'
+);
+
+SET @sql = IF(@col_exists = 0,
+    'ALTER TABLE Responsables_Equipo ADD COLUMN nombre_externo VARCHAR(200) NULL COMMENT ''Nombre completo del usuario (registro externo)'' AFTER ficha',
+    'SELECT ''Columna nombre_externo ya existe'' AS mensaje'
+);
+
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+-- Verificar y crear índice 'idx_ficha' si no existe
+SET @idx_exists = (
+    SELECT COUNT(*) 
+    FROM INFORMATION_SCHEMA.STATISTICS 
+    WHERE TABLE_SCHEMA = DATABASE() 
+    AND TABLE_NAME = 'Responsables_Equipo' 
+    AND INDEX_NAME = 'idx_ficha'
+);
+
+SET @sql = IF(@idx_exists = 0,
+    'CREATE INDEX idx_ficha ON Responsables_Equipo(ficha)',
+    'SELECT ''Índice idx_ficha ya existe'' AS mensaje'
+);
+
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+-- Columna documento_externo
+SET @col_doc = (
+    SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS
+    WHERE TABLE_SCHEMA = DATABASE()
+      AND TABLE_NAME = 'Responsables_Equipo'
+      AND COLUMN_NAME = 'documento_externo'
+);
+
+SET @sql = IF(@col_doc = 0,
+    'ALTER TABLE Responsables_Equipo ADD COLUMN documento_externo VARCHAR(50) NULL COMMENT ''Documento del responsable externo''',
+    'SELECT ''Columna documento_externo ya existe'''
+);
+
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+-- Índice documento_externo
+SET @idx_doc = (
+    SELECT COUNT(*) FROM INFORMATION_SCHEMA.STATISTICS
+    WHERE TABLE_SCHEMA = DATABASE()
+      AND TABLE_NAME = 'Responsables_Equipo'
+      AND INDEX_NAME = 'idx_documento_externo'
+);
+
+SET @sql = IF(@idx_doc = 0 AND @col_doc = 1,
+    'CREATE INDEX idx_documento_externo ON Responsables_Equipo(documento_externo)',
+    'SELECT ''Índice idx_documento_externo ya existe o columna ausente'''
+);
+
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+-- Migración: Agregar relación entre Historial_Uso_Equipos y Clases
+-- Permite relacionar el uso de equipos con clases/horarios específicos
+
+-- 1. Agregar columna id_clase a Historial_Uso_Equipos
+ALTER TABLE Historial_Uso_Equipos
+ADD COLUMN id_clase INT NULL COMMENT 'ID de la clase/horario asociado al uso del equipo' AFTER observaciones,
+ADD INDEX idx_clase (id_clase),
+ADD FOREIGN KEY (id_clase) REFERENCES Clases(id_clase) ON DELETE SET NULL;
+
+-- 2. Verificar que la columna se agregó correctamente
+SELECT 
+    COLUMN_NAME,
+    COLUMN_TYPE,
+    IS_NULLABLE,
+    COLUMN_COMMENT
+FROM INFORMATION_SCHEMA.COLUMNS
+WHERE TABLE_SCHEMA = DATABASE()
+  AND TABLE_NAME = 'Historial_Uso_Equipos'
+  AND COLUMN_NAME = 'id_clase';
+
+  -- Migración: Agregar campos de días de la semana y horarios a Responsables_Equipo
+-- Para almacenar información de horarios cuando se registra desde página externa
+-- Fecha: 2025-12-12
+
+-- Verificar y agregar columna 'dias_semana' si no existe
+SET @col_exists = (
+    SELECT COUNT(*) 
+    FROM INFORMATION_SCHEMA.COLUMNS 
+    WHERE TABLE_SCHEMA = DATABASE() 
+    AND TABLE_NAME = 'Responsables_Equipo' 
+    AND COLUMN_NAME = 'dias_semana'
+);
+
+SET @sql = IF(@col_exists = 0,
+    'ALTER TABLE Responsables_Equipo ADD COLUMN dias_semana JSON NULL COMMENT ''Array de días de la semana: ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"]'' AFTER documento_externo',
+    'SELECT ''Columna dias_semana ya existe'' AS mensaje'
+);
+
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+-- Verificar y agregar columna 'hora_inicio' si no existe
+SET @col_exists = (
+    SELECT COUNT(*) 
+    FROM INFORMATION_SCHEMA.COLUMNS 
+    WHERE TABLE_SCHEMA = DATABASE() 
+    AND TABLE_NAME = 'Responsables_Equipo' 
+    AND COLUMN_NAME = 'hora_inicio'
+);
+
+SET @sql = IF(@col_exists = 0,
+    'ALTER TABLE Responsables_Equipo ADD COLUMN hora_inicio TIME NULL COMMENT ''Hora de inicio del horario (formato HH:MM:SS)'' AFTER dias_semana',
+    'SELECT ''Columna hora_inicio ya existe'' AS mensaje'
+);
+
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+-- Verificar y agregar columna 'hora_fin' si no existe
+SET @col_exists = (
+    SELECT COUNT(*) 
+    FROM INFORMATION_SCHEMA.COLUMNS 
+    WHERE TABLE_SCHEMA = DATABASE() 
+    AND TABLE_NAME = 'Responsables_Equipo' 
+    AND COLUMN_NAME = 'hora_fin'
+);
+
+SET @sql = IF(@col_exists = 0,
+    'ALTER TABLE Responsables_Equipo ADD COLUMN hora_fin TIME NULL COMMENT ''Hora de fin del horario (formato HH:MM:SS)'' AFTER hora_inicio',
+    'SELECT ''Columna hora_fin ya existe'' AS mensaje'
+);
+
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+-- Crear índices para mejorar búsquedas por horarios
+SET @idx_exists = (
+    SELECT COUNT(*) 
+    FROM INFORMATION_SCHEMA.STATISTICS 
+    WHERE TABLE_SCHEMA = DATABASE() 
+    AND TABLE_NAME = 'Responsables_Equipo' 
+    AND INDEX_NAME = 'idx_horarios'
+);
+
+SET @sql = IF(@idx_exists = 0,
+    'CREATE INDEX idx_horarios ON Responsables_Equipo(hora_inicio, hora_fin, estado_responsabilidad)',
+    'SELECT ''Índice idx_horarios ya existe'' AS mensaje'
+);
+
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+-- Columna id_clase
+SET @col_clase = (
+    SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS
+    WHERE TABLE_SCHEMA = DATABASE()
+      AND TABLE_NAME = 'Historial_Uso_Equipos'
+      AND COLUMN_NAME = 'id_clase'
+);
+
+SET @sql = IF(@col_clase = 0,
+    'ALTER TABLE Historial_Uso_Equipos ADD COLUMN id_clase INT NULL COMMENT ''ID de clase asociada''',
+    'SELECT ''Columna id_clase ya existe'''
+);
+
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+-- Índice
+SET @idx_clase = (
+    SELECT COUNT(*) FROM INFORMATION_SCHEMA.STATISTICS
+    WHERE TABLE_SCHEMA = DATABASE()
+      AND TABLE_NAME = 'Historial_Uso_Equipos'
+      AND INDEX_NAME = 'idx_clase'
+);
+
+SET @sql = IF(@idx_clase = 0 AND @col_clase = 1,
+    'CREATE INDEX idx_clase ON Historial_Uso_Equipos(id_clase)',
+    'SELECT ''Índice idx_clase ya existe'''
+);
+
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+-- FK
+SET @fk_clase = (
+    SELECT COUNT(*) FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE
+    WHERE TABLE_SCHEMA = DATABASE()
+      AND TABLE_NAME = 'Historial_Uso_Equipos'
+      AND CONSTRAINT_NAME = 'fk_historial_clase'
+);
+
+SET @sql = IF(@fk_clase = 0 AND @col_clase = 1,
+    'ALTER TABLE Historial_Uso_Equipos ADD CONSTRAINT fk_historial_clase FOREIGN KEY (id_clase) REFERENCES Clases(id_clase) ON DELETE SET NULL',
+    'SELECT ''FK clase ya existe'''
+);
+
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;

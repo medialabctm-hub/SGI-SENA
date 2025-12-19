@@ -277,7 +277,7 @@ export default function Profile() {
             <div className="form-row profile-form-row">
               <label>
                 <FiCreditCard size={16} style={{ marginRight: '8px', color: '#6b7280' }} />
-                Cédula
+                Documento
               </label>
               <input
                 name="cedula"

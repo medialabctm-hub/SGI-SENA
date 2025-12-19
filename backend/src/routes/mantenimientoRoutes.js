@@ -3,6 +3,7 @@ import { authenticate } from '../middleware/authMiddleware.js'
 import { requireAnyPermission, requirePermission } from '../middleware/authorization.js'
 import { PERMISSIONS } from '../config/permissions.js'
 import { crearMantenimiento, listarMantenimientos, obtenerMantenimientoPorId, actualizarEstadoMantenimiento, actualizarFechaProximo, eliminarMantenimiento } from '../controller/mantenimientoController.js'
+import { validate, actualizarEstadoMantenimientoSchema, actualizarFechaProximoSchema } from '../validators/mantenimientoValidator.js'
 
 const router = express.Router()
 
@@ -37,6 +38,7 @@ router.get('/:id',
 
 // Actualizar fecha_proximo de mantenimiento
 router.put('/:id/fecha-proximo', 
+  validate(actualizarFechaProximoSchema),
   requireAnyPermission([
     PERMISSIONS.MANTENIMIENTO.UPDATE
   ]),
@@ -45,6 +47,7 @@ router.put('/:id/fecha-proximo',
 
 // Actualizar estado de mantenimiento
 router.put('/:id/estado', 
+  validate(actualizarEstadoMantenimientoSchema),
   requireAnyPermission([
     PERMISSIONS.MANTENIMIENTO.UPDATE
   ]),

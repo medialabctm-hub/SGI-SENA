@@ -224,7 +224,7 @@ export async function notifyNuevoEquipo({ equipoId, tipoEquipo, marca, modelo, a
     marca,
     modelo,
     ambiente,
-    ruta: `/equipos/${equipoId}`,
+    ruta: `/equipos/detalle/${equipoId}`,
     ...metadataExtra,
   }
 

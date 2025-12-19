@@ -541,13 +541,17 @@
   background: var(--success-800);
   color: white;
   border: none;
-  padding: 10px 20px;
+  padding: .625rem 1.25rem;
   border-radius: 8px;
   font-weight: 600;
+  font-size: .95rem;
   cursor: pointer;
   display: flex;
   align-items: center;
+  justify-content: center;
+  gap: .5rem;
   transition: all 0.2s;
+  transition: background .2s, border-color .2s;
 }
 
 .btn-edit-perfil:hover {

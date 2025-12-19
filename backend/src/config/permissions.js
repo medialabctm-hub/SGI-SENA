@@ -33,6 +33,7 @@ export const PERMISSIONS = {
     DELETE: 'equipos:delete',     // Eliminar equipos
     ASSIGN: 'equipos:assign',     // Asignar equipos a cualquier usuario (Admin)
     ASSIGN_TO_APRENDIZ: 'equipos:assign_to_aprendiz', // Asignar solo a aprendices (Instructor)
+    MANAGE_CATEGORIES: 'equipos:manage_categories', // Gestionar categorías de equipos (Admin)
   },
 
   // Gestión de novedades
@@ -123,6 +124,7 @@ export const ROLE_PERMISSIONS = {
     PERMISSIONS.EQUIPOS.DELETE,
     PERMISSIONS.EQUIPOS.ASSIGN,
     PERMISSIONS.EQUIPOS.ASSIGN_TO_APRENDIZ,
+    PERMISSIONS.EQUIPOS.MANAGE_CATEGORIES,
 
     // Novedades - acceso completo (incluye todos los permisos posibles)
     PERMISSIONS.NOVEDADES.VIEW,
@@ -183,10 +185,9 @@ export const ROLE_PERMISSIONS = {
     PERMISSIONS.EQUIPOS.VIEW_DETAIL,
     PERMISSIONS.EQUIPOS.ASSIGN_TO_APRENDIZ,
 
-    // Novedades - ver todas, crear nuevas, no eliminar
+    // Novedades - ver todas, crear nuevas, no puede cambiar estado ni eliminar
     PERMISSIONS.NOVEDADES.VIEW,
     PERMISSIONS.NOVEDADES.CREATE,
-    PERMISSIONS.NOVEDADES.UPDATE, // Puede editar para agregar observaciones
 
     // Mantenimiento - consulta completa
     PERMISSIONS.MANTENIMIENTO.VIEW,
@@ -230,7 +231,7 @@ export const ROLE_PERMISSIONS = {
   ],
 
   Cuentadante: [
-    // Usuarios - NO tiene acceso (no puede ver personal registrado ni gestionar usuarios)
+    // Usuarios - NO tiene acceso (no puede ver Usuarios ni gestionar usuarios)
     // PERMISSIONS.USERS.VIEW, // NO incluido
     // PERMISSIONS.USERS.VIEW_DETAIL, // NO incluido
     // PERMISSIONS.USERS.CREATE, // NO incluido
@@ -248,12 +249,10 @@ export const ROLE_PERMISSIONS = {
     // PERMISSIONS.EQUIPOS.ASSIGN, // NO incluido
     // PERMISSIONS.EQUIPOS.ASSIGN_TO_APRENDIZ, // NO incluido
 
-    // Novedades - de su inventario
+    // Novedades - de su inventario, no puede cambiar estado
     PERMISSIONS.NOVEDADES.VIEW_OWN,
     PERMISSIONS.NOVEDADES.CREATE_OWN,
-    PERMISSIONS.NOVEDADES.UPDATE,
     PERMISSIONS.NOVEDADES.DELETE,
-    PERMISSIONS.NOVEDADES.RESOLVE,
     // PERMISSIONS.NOVEDADES.VIEW, // NO incluido - no puede ver todas las novedades
 
     // Mantenimiento - de su inventario

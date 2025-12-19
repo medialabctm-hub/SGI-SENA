@@ -1,20 +1,13 @@
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Toast from '../../components/Toast'
-import { parseApiResponse, buildErrorMessage } from '../../utils/api'
+import { parseApiResponse, buildErrorMessage, getAuthHeaders } from '../../utils/api'
 import '../../styles/usersManagement.css'
 
 export default function UsersManagement() {
   const nav = useNavigate()
   const [toast, setToast] = useState(null)
   const [exporting, setExporting] = useState(false)
-
-  const getAuthHeaders = () => {
-    const token = localStorage.getItem('token')
-    return token
-      ? { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
-      : { 'Content-Type': 'application/json' }
-  }
 
   function formatDate(dateString) {
     if (!dateString) return ''
@@ -59,7 +52,7 @@ export default function UsersManagement() {
       // Definir columnas en orden específico con nombres amigables
       const columnMapping = [
         { key: 'id_usuario', label: 'ID Usuario' },
-        { key: 'cedula', label: 'Cédula' },
+        { key: 'cedula', label: 'Documento' },
         { key: 'nombre_usuario', label: 'Nombre Completo' },
         { key: 'correo', label: 'Correo Electrónico' },
         { key: 'telefono', label: 'Teléfono' },

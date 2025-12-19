@@ -1,6 +1,6 @@
 import express from 'express'
 import { authenticate } from '../middleware/authMiddleware.js'
-import { requireAnyPermission } from '../middleware/authorization.js'
+import { requireAnyPermission, requirePermission } from '../middleware/authorization.js'
 import { PERMISSIONS } from '../config/permissions.js'
 import { crearNovedad, listarNovedades, obtenerNovedadPorId, actualizarEstadoNovedad } from '../controller/novedadesController.js'
 import { writeLimiter, readLimiter } from '../middleware/rateLimiter.js'
@@ -41,14 +41,11 @@ router.get('/:id',
   obtenerNovedadPorId
 )
 
-// Actualizar estado de novedad - Protegido con validación
+// Actualizar estado de novedad - Solo Administrador - Protegido con validación
 router.put('/:id/estado', 
   writeLimiter,
   validate(actualizarEstadoNovedadSchema),
-  requireAnyPermission([
-    PERMISSIONS.NOVEDADES.UPDATE,
-    PERMISSIONS.NOVEDADES.RESOLVE
-  ]),
+  requirePermission(PERMISSIONS.NOVEDADES.RESOLVE), // Solo Administrador tiene este permiso
   actualizarEstadoNovedad
 )
 

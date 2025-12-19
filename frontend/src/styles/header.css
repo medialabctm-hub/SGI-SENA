@@ -1,14 +1,51 @@
 /* Header - Nuevo estilo banner blanco */
 .app-header-wrapper {
-  background: var(--neutral-200);
-  background-image: 
-    repeating-linear-gradient(0deg, transparent, transparent 20px, var(--neutral-300) 20px, var(--neutral-300) 21px),
-    repeating-linear-gradient(90deg, transparent, transparent 20px, var(--neutral-300) 20px, var(--neutral-300) 21px);
-  background-size: 20px 20px;
+  background: linear-gradient(135deg, #f0f9f4 0%, #e8f5ea 25%, #f0f9f4 50%, #e8f5ea 75%, #f0f9f4 100%);
+  background-size: 200% 200%;
+  animation: gradientShift 15s ease infinite;
   padding: 20px;
   display: flex;
   justify-content: center;
   position: relative;
+  overflow: visible;
+}
+
+.app-header-wrapper::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: 
+    radial-gradient(circle at 20% 50%, rgba(1, 175, 0, 0.03) 0%, transparent 50%),
+    radial-gradient(circle at 80% 80%, rgba(1, 175, 0, 0.03) 0%, transparent 50%),
+    radial-gradient(circle at 40% 20%, rgba(1, 175, 0, 0.02) 0%, transparent 50%);
+  background-size: 100% 100%;
+  pointer-events: none;
+}
+
+.app-header-wrapper::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: 
+    repeating-linear-gradient(45deg, transparent, transparent 2px, rgba(1, 175, 0, 0.02) 2px, rgba(1, 175, 0, 0.02) 4px);
+  background-size: 40px 40px;
+  pointer-events: none;
+  opacity: 0.5;
+}
+
+@keyframes gradientShift {
+  0%, 100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
 }
 
 .app-header {
@@ -22,7 +59,7 @@
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
   width: 100%;
   position: relative;
-  z-index: 1;
+  z-index: 100;
 }
 
 .sidebar-toggle-btn {
@@ -92,6 +129,7 @@
   align-items: center;
   gap: 12px;
   position: relative;
+  z-index: 10000;
 }
 
 .header-icon-btn {
@@ -132,7 +170,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  z-index: 1000;
+  z-index: 10000;
 }
 
 .notifications-counter {

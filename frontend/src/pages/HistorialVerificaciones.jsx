@@ -150,7 +150,7 @@ export default function HistorialVerificaciones() {
             </div>
             <button
               type="button"
-              className="btn"
+              className="btn-act"
               onClick={fetchHistorial}
               disabled={loading}
               style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
@@ -168,7 +168,7 @@ export default function HistorialVerificaciones() {
                 type="date"
                 value={filtros.fecha_desde}
                 onChange={e => setFiltros({ ...filtros, fecha_desde: e.target.value })}
-                style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '2px solid var(--neutral-300)' }}
+                style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '2px solid var(--success-800)' }}
               />
             </div>
             <div>
@@ -177,7 +177,7 @@ export default function HistorialVerificaciones() {
                 type="date"
                 value={filtros.fecha_hasta}
                 onChange={e => setFiltros({ ...filtros, fecha_hasta: e.target.value })}
-                style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '2px solid var(--neutral-300)' }}
+                style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '2px solid var(--success-800)' }}
               />
             </div>
             <div>
@@ -185,7 +185,7 @@ export default function HistorialVerificaciones() {
               <select
                 value={filtros.estado_verificacion}
                 onChange={e => setFiltros({ ...filtros, estado_verificacion: e.target.value })}
-                style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '2px solid var(--neutral-300)' }}
+                style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '2px solid var(--success-800)' }}
               >
                 <option value="">Todos</option>
                 <option value="Verificado">Verificado</option>

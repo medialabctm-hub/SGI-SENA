@@ -254,7 +254,7 @@ export async function obtenerReportePorId(req, res) {
 export async function actualizarReporte(req, res) {
   try {
     const { id } = req.params
-    const { tipo_reporte, titulo, descripcion, codigo_equipo } = req.body
+    const { tipo_reporte, titulo, descripcion, codigo_equipo, estado, observaciones } = req.body
     const userRole = req.user?.rol
 
     // Solo Administrador puede actualizar reportes
@@ -291,11 +291,28 @@ export async function actualizarReporte(req, res) {
     }
 
     // Actualizar el reporte
+    const updateFields = ['tipo_reporte = ?', 'titulo = ?', 'descripcion = ?', 'codigo_equipo = ?']
+    const updateValues = [tipo_reporte, titulo, descripcion, codigo_equipo || null]
+    
+    // Agregar estado si se proporciona
+    if (estado) {
+      updateFields.push('estado = ?')
+      updateValues.push(estado)
+    }
+    
+    // Agregar observaciones si se proporcionan
+    if (observaciones !== undefined) {
+      updateFields.push('observaciones = ?')
+      updateValues.push(observaciones || null)
+    }
+    
+    updateValues.push(id)
+    
     await defaultDb.execute(
       `UPDATE Reportes 
-       SET tipo_reporte = ?, titulo = ?, descripcion = ?, codigo_equipo = ?
+       SET ${updateFields.join(', ')}
        WHERE id_reporte = ?`,
-      [tipo_reporte, titulo, descripcion, codigo_equipo || null, id]
+      updateValues
     ).catch((err) => {
       if (err.code === 'ER_NO_SUCH_TABLE') {
         return res.status(404).json({ error: 'Tabla de reportes no encontrada' })

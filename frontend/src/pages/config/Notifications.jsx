@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import Toast from '../../components/Toast'
-import { parseApiResponse, buildErrorMessage } from '../../utils/api'
+import { parseApiResponse, buildErrorMessage, getAuthHeaders } from '../../utils/api'
 import '../../styles/notifications.css'
 
 export default function Notifications() {
@@ -10,13 +10,6 @@ export default function Notifications() {
   const [toast, setToast] = useState(null)
   const [saving, setSaving] = useState(false)
   const [loading, setLoading] = useState(true)
-
-  const getAuthHeaders = () => {
-    const token = localStorage.getItem('token')
-    return token
-      ? { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
-      : { 'Content-Type': 'application/json' }
-  }
 
   useEffect(() => {
     fetchPreferences()

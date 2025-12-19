@@ -17,7 +17,9 @@ import {
   FiUsers,
   FiX,
   FiCheck,
-  FiAlertCircle
+  FiAlertCircle,
+  FiPlay,
+  FiSquare
 } from 'react-icons/fi'
 import { parseApiResponse, buildErrorMessage } from '../utils/api'
 import '../styles/equipos.css'
@@ -170,6 +172,22 @@ export default function Horarios() {
       if (user?.nombre_rol === 'Instructor') {
         delete bodyData.id_instructor
       }
+      
+      // Asegurar que la fecha se envíe en formato YYYY-MM-DD sin conversión de zona horaria
+      if (bodyData.fecha_clase) {
+        // Si el input type="date" devuelve YYYY-MM-DD, usarlo directamente
+        // Si por alguna razón viene como Date object, convertirlo sin zona horaria
+        if (bodyData.fecha_clase instanceof Date) {
+          const year = bodyData.fecha_clase.getFullYear()
+          const month = String(bodyData.fecha_clase.getMonth() + 1).padStart(2, '0')
+          const day = String(bodyData.fecha_clase.getDate()).padStart(2, '0')
+          bodyData.fecha_clase = `${year}-${month}-${day}`
+        } else if (typeof bodyData.fecha_clase === 'string') {
+          // Asegurar que solo tenga la parte de la fecha (YYYY-MM-DD)
+          bodyData.fecha_clase = bodyData.fecha_clase.split('T')[0].split(' ')[0]
+        }
+      }
+      
       const res = await fetch('/api/clases', {
         method: 'POST',
         headers: {
@@ -195,13 +213,46 @@ export default function Horarios() {
     setToast(null)
     try {
       const token = localStorage.getItem('token')
+      
+      // Preparar datos asegurando formato correcto de fecha
+      const bodyData = { ...form }
+      
+      // Asegurar que la fecha se envíe en formato YYYY-MM-DD sin conversión de zona horaria
+      if (bodyData.fecha_clase) {
+        // El input type="date" siempre devuelve YYYY-MM-DD como string
+        // Asegurarnos de que no haya ninguna conversión
+        if (bodyData.fecha_clase instanceof Date) {
+          // Si por alguna razón viene como Date, convertir manualmente sin zona horaria
+          const year = bodyData.fecha_clase.getFullYear()
+          const month = String(bodyData.fecha_clase.getMonth() + 1).padStart(2, '0')
+          const day = String(bodyData.fecha_clase.getDate()).padStart(2, '0')
+          bodyData.fecha_clase = `${year}-${month}-${day}`
+        } else if (typeof bodyData.fecha_clase === 'string') {
+          // Extraer solo la parte de la fecha (YYYY-MM-DD) si viene con hora
+          const fechaParte = bodyData.fecha_clase.split('T')[0].split(' ')[0]
+          // Validar que tenga el formato correcto
+          if (/^\d{4}-\d{2}-\d{2}$/.test(fechaParte)) {
+            bodyData.fecha_clase = fechaParte
+          } else {
+            console.error('Formato de fecha inválido:', bodyData.fecha_clase)
+          }
+        }
+      }
+      
+      // Log para debugging
+      console.log('Actualizando clase - Enviando datos al backend:', {
+        fecha_clase: bodyData.fecha_clase,
+        hora_inicio: bodyData.hora_inicio,
+        hora_fin: bodyData.hora_fin
+      })
+      
       const res = await fetch(`/api/clases/${editingClase.id_clase}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`
         },
-        body: JSON.stringify(form)
+        body: JSON.stringify(bodyData)
       })
       const data = await parseApiResponse(res, 'No se pudo actualizar la clase')
       setToast({ message: data.message || 'Clase actualizada correctamente', type: 'success' })
@@ -236,17 +287,80 @@ export default function Horarios() {
     }
   }
 
+  async function handleIniciarClase(idClase) {
+    setLoading(true)
+    setToast(null)
+    try {
+      const token = localStorage.getItem('token')
+      const res = await fetch(`/api/clases/${idClase}/iniciar`, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}` 
+        }
+      })
+      const data = await parseApiResponse(res, 'No se pudo iniciar la clase')
+      setToast({ message: data.message || 'Clase iniciada correctamente', type: 'success' })
+      fetchClases()
+    } catch (err) {
+      setToast({ message: buildErrorMessage(err, 'No se pudo iniciar la clase'), type: 'error' })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function handleFinalizarClase(idClase) {
+    setLoading(true)
+    setToast(null)
+    try {
+      const token = localStorage.getItem('token')
+      const res = await fetch(`/api/clases/${idClase}/finalizar`, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}` 
+        }
+      })
+      const data = await parseApiResponse(res, 'No se pudo finalizar la clase')
+      setToast({ message: data.message || 'Clase finalizada correctamente', type: 'success' })
+      fetchClases()
+    } catch (err) {
+      setToast({ message: buildErrorMessage(err, 'No se pudo finalizar la clase'), type: 'error' })
+    } finally {
+      setLoading(false)
+    }
+  }
+
   function handleEdit(clase) {
     setEditingClase(clase)
+    // Convertir fecha a formato YYYY-MM-DD para el input type="date"
+    // Evitar problemas de zona horaria
+    let fechaFormateada = clase.fecha_clase
+    if (fechaFormateada) {
+      // Si viene como string con hora, extraer solo la fecha
+      if (fechaFormateada.includes('T')) {
+        fechaFormateada = fechaFormateada.split('T')[0]
+      } else if (fechaFormateada.includes(' ')) {
+        fechaFormateada = fechaFormateada.split(' ')[0]
+      }
+      // Si viene como Date object, convertir a YYYY-MM-DD
+      if (fechaFormateada instanceof Date) {
+        const year = fechaFormateada.getFullYear()
+        const month = String(fechaFormateada.getMonth() + 1).padStart(2, '0')
+        const day = String(fechaFormateada.getDate()).padStart(2, '0')
+        fechaFormateada = `${year}-${month}-${day}`
+      }
+    }
+    
     setForm({
       id_ambiente: clase.id_ambiente,
       id_instructor: clase.id_instructor,
       nombre_clase: clase.nombre_clase || '',
       codigo_ficha: clase.codigo_ficha || '',
       descripcion: clase.descripcion || '',
-      fecha_clase: clase.fecha_clase,
-      hora_inicio: clase.hora_inicio,
-      hora_fin: clase.hora_fin,
+      fecha_clase: fechaFormateada || '',
+      hora_inicio: clase.hora_inicio ? clase.hora_inicio.substring(0, 5) : '',
+      hora_fin: clase.hora_fin ? clase.hora_fin.substring(0, 5) : '',
       observaciones: clase.observaciones || ''
     })
     setShowForm(true)
@@ -345,6 +459,12 @@ export default function Horarios() {
 
   function formatDate(dateStr) {
     if (!dateStr) return '-'
+    // Si viene en formato YYYY-MM-DD, extraer directamente sin conversión de zona horaria
+    if (typeof dateStr === 'string' && /^\d{4}-\d{2}-\d{2}/.test(dateStr)) {
+      const [year, month, day] = dateStr.split('T')[0].split(' ')[0].split('-')
+      return `${day}/${month}/${year}`
+    }
+    // Si viene como Date object o otro formato, usar el método anterior
     const date = new Date(dateStr)
     return date.toLocaleDateString('es-ES', { year: 'numeric', month: '2-digit', day: '2-digit' })
   }
@@ -409,7 +529,7 @@ export default function Horarios() {
               )}
               <button
                 type="button"
-                className="btn"
+                className="btn-act"
                 onClick={fetchClases}
                 disabled={loading}
                 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
@@ -427,7 +547,7 @@ export default function Horarios() {
               <select
                 value={filtros.id_ambiente}
                 onChange={e => setFiltros({ ...filtros, id_ambiente: e.target.value })}
-                style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '2px solid var(--neutral-300)' }}
+                style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '2px solid var(--success-800)' }}
               >
                 <option value="">Todos</option>
                 {ambientes.map(amb => (
@@ -443,7 +563,7 @@ export default function Horarios() {
                 <select
                   value={filtros.id_instructor}
                   onChange={e => setFiltros({ ...filtros, id_instructor: e.target.value })}
-                  style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '2px solid var(--neutral-300)' }}
+                  style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '2px solid var(--success-800)' }}
                 >
                   <option value="">Todos</option>
                   {instructores.map(inst => (
@@ -460,7 +580,7 @@ export default function Horarios() {
                 type="date"
                 value={filtros.fecha}
                 onChange={e => setFiltros({ ...filtros, fecha: e.target.value })}
-                style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '2px solid var(--neutral-300)' }}
+                style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '2px solid var(--success-800)' }}
               />
             </div>
             <div>
@@ -468,7 +588,7 @@ export default function Horarios() {
               <select
                 value={filtros.estado_clase}
                 onChange={e => setFiltros({ ...filtros, estado_clase: e.target.value })}
-                style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '2px solid var(--neutral-300)' }}
+                style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '2px solid var(--success-800)' }}
               >
                 <option value="">Todos</option>
                 <option value="Programada">Programada</option>
@@ -501,7 +621,7 @@ export default function Horarios() {
                       value={form.id_ambiente}
                       onChange={e => setForm({ ...form, id_ambiente: e.target.value })}
                       required
-                      style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '2px solid var(--neutral-300)' }}
+                      style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '2px solid var(--success-800)' }}
                     >
                       <option value="">Seleccione...</option>
                       {ambientes.map(amb => (
@@ -518,7 +638,7 @@ export default function Horarios() {
                         value={form.id_instructor}
                         onChange={e => setForm({ ...form, id_instructor: e.target.value })}
                         required
-                        style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '2px solid var(--neutral-300)' }}
+                        style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '2px solid var(--success-800)' }}
                       >
                         <option value="">Seleccione...</option>
                         {instructores.map(inst => (
@@ -536,7 +656,7 @@ export default function Horarios() {
                         type="text"
                         value={user.nombre_usuario}
                         disabled
-                        style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '2px solid var(--neutral-300)', background: '#f3f4f6' }}
+                        style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '2px solid var(--success-800)', background: '#f3f4f6' }}
                       />
                     </div>
                   )}
@@ -546,7 +666,7 @@ export default function Horarios() {
                       type="text"
                       value={form.codigo_ficha}
                       onChange={e => setForm({ ...form, codigo_ficha: e.target.value })}
-                      style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '2px solid var(--neutral-300)' }}
+                      style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '2px solid var(--success-800)' }}
                       placeholder="Ej: 123456"
                     />
                   </div>
@@ -556,7 +676,7 @@ export default function Horarios() {
                       type="text"
                       value={form.nombre_clase}
                       onChange={e => setForm({ ...form, nombre_clase: e.target.value })}
-                      style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '2px solid var(--neutral-300)' }}
+                      style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '2px solid var(--success-800)' }}
                       placeholder="Ej: Programación Web"
                     />
                   </div>
@@ -567,7 +687,7 @@ export default function Horarios() {
                       value={form.fecha_clase}
                       onChange={e => setForm({ ...form, fecha_clase: e.target.value })}
                       required
-                      style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '2px solid var(--neutral-300)' }}
+                      style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '2px solid var(--success-800)' }}
                     />
                   </div>
                   <div>
@@ -577,7 +697,7 @@ export default function Horarios() {
                       value={form.hora_inicio}
                       onChange={e => setForm({ ...form, hora_inicio: e.target.value })}
                       required
-                      style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '2px solid var(--neutral-300)' }}
+                      style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '2px solid var(--success-800)' }}
                     />
                   </div>
                   <div>
@@ -587,7 +707,7 @@ export default function Horarios() {
                       value={form.hora_fin}
                       onChange={e => setForm({ ...form, hora_fin: e.target.value })}
                       required
-                      style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '2px solid var(--neutral-300)' }}
+                      style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '2px solid var(--success-800)' }}
                     />
                   </div>
                 </div>
@@ -597,7 +717,7 @@ export default function Horarios() {
                     value={form.descripcion}
                     onChange={e => setForm({ ...form, descripcion: e.target.value })}
                     rows={3}
-                    style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '2px solid var(--neutral-300)', resize: 'vertical' }}
+                    style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '2px solid var(--success-800)', resize: 'vertical' }}
                     placeholder="Descripción de la clase..."
                   />
                 </div>
@@ -643,7 +763,7 @@ export default function Horarios() {
                   type="file"
                   accept=".xlsx,.xls,.csv"
                   onChange={e => setImportFile(e.target.files[0])}
-                  style={{ marginBottom: '1rem', width: '100%', padding: '10px', borderRadius: '8px', border: '2px solid var(--neutral-300)' }}
+                  style={{ marginBottom: '1rem', width: '100%', padding: '10px', borderRadius: '8px', border: '2px solid var(--success-800)' }}
                 />
                 <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
                   <button
@@ -720,6 +840,15 @@ export default function Horarios() {
                           {clase.estado_clase === 'Programada' && (
                             <>
                               <button
+                                className="btn btn-verde"
+                                onClick={() => handleIniciarClase(clase.id_clase)}
+                                disabled={loading}
+                                style={{ fontSize: '0.85rem', padding: '6px 12px' }}
+                                title="Iniciar Clase"
+                              >
+                                <FiPlay size={14} />
+                              </button>
+                              <button
                                 className="btn btn-edit"
                                 onClick={() => handleEdit(clase)}
                                 disabled={loading}
@@ -738,6 +867,17 @@ export default function Horarios() {
                                 <FiTrash2 size={14} />
                               </button>
                             </>
+                          )}
+                          {clase.estado_clase === 'En Curso' && (
+                            <button
+                              className="btn btn-verde"
+                              onClick={() => handleFinalizarClase(clase.id_clase)}
+                              disabled={loading}
+                              style={{ fontSize: '0.85rem', padding: '6px 12px' }}
+                              title="Finalizar Clase"
+                            >
+                              <FiSquare size={14} />
+                            </button>
                           )}
                         </div>
                       </td>
