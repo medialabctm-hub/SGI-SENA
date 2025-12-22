@@ -12,14 +12,36 @@ export async function listarRoles(req, res) {
 
     const rolesConPermisos = await Promise.all(
       roles.map(async (rol) => {
-        const [permisos] = await defaultDb.execute(
-          `SELECT p.id_permiso, p.codigo_permiso, p.modulo, p.accion, p.descripcion, rp.activo
+        // Obtener todos los permisos disponibles
+        const [todosPermisos] = await defaultDb.execute(
+          `SELECT p.id_permiso, p.codigo_permiso, p.modulo, p.accion, p.descripcion
+           FROM Permisos p
+           ORDER BY p.modulo, p.accion`
+        )
+
+        // Obtener permisos activos del rol desde la BD
+        const [permisosActivos] = await defaultDb.execute(
+          `SELECT p.codigo_permiso, rp.activo
            FROM Permisos p
            INNER JOIN Rol_Permisos rp ON p.id_permiso = rp.id_permiso
-           WHERE rp.id_rol = ? AND rp.activo = 1
-           ORDER BY p.modulo, p.accion`,
+           WHERE rp.id_rol = ? AND rp.activo = 1`,
           [rol.id_rol]
         )
+
+        const permisosActivosSet = new Set(permisosActivos.map(p => p.codigo_permiso))
+
+        // Mapear todos los permisos con su estado
+        const permisosConEstado = todosPermisos.map(p => ({
+          ...p,
+          activo: permisosActivosSet.has(p.codigo_permiso) ? 1 : 0
+        }))
+
+        // Para el Administrador, todos los permisos están activos
+        const permisosFinales = rol.nombre_rol === 'Administrador' 
+          ? permisosConEstado.map(p => ({ ...p, activo: 1 }))
+          : permisosConEstado
+
+        const permisosActivosList = permisosFinales.filter(p => p.activo === 1)
 
         return {
           id_rol: rol.id_rol,
@@ -27,9 +49,9 @@ export async function listarRoles(req, res) {
           descripcion: rol.descripcion,
           estado: rol.estado,
           fecha_creacion: rol.fecha_creacion,
-          totalPermisos: permisos.length,
-          permisos: permisos.map(p => p.codigo_permiso),
-          permisosDetalle: permisos
+          totalPermisos: permisosActivosList.length,
+          permisos: permisosActivosList.map(p => p.codigo_permiso),
+          permisosDetalle: permisosFinales // Incluir todos los permisos con su estado
         }
       })
     )

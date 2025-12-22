@@ -274,7 +274,10 @@ export default function RolesAreas() {
                           )}
                         </div>
                         <p className="role-permissions">
-                          {role.totalPermisos} permiso{role.totalPermisos !== 1 ? 's' : ''} activo{role.totalPermisos !== 1 ? 's' : ''}
+                          {role.rol === 'Administrador' 
+                            ? 'Todos los permisos del sistema'
+                            : `${role.totalPermisos} permiso${role.totalPermisos !== 1 ? 's' : ''} activo${role.totalPermisos !== 1 ? 's' : ''}`
+                          }
                         </p>
                         {role.descripcion && (
                           <p className="role-description">{role.descripcion}</p>
@@ -324,19 +327,36 @@ export default function RolesAreas() {
                                 <h6 className="permission-module-title">{modulo}</h6>
                                 <div className="permissions-grid">
                                   {permisosModulo.map(permiso => {
-                                    const tienePermiso = role.permisos && role.permisos.includes(permiso.codigo_permiso)
+                                    // Verificar si el permiso está activo en el rol
+                                    const tienePermiso = role.permisosDetalle 
+                                      ? role.permisosDetalle.find(p => p.codigo_permiso === permiso.codigo_permiso)?.activo === 1
+                                      : (role.permisos && role.permisos.includes(permiso.codigo_permiso))
+                                    
+                                    // El Administrador no puede desactivar permisos
+                                    const isAdmin = role.rol === 'Administrador'
+                                    
                                     return (
                                       <label key={permiso.id_permiso} className="permission-item">
                                         <input
                                           type="checkbox"
-                                          checked={tienePermiso}
-                                          onChange={(e) => togglePermisoRol(role.rol, permiso.codigo_permiso, e.target.checked)}
+                                          checked={tienePermiso || isAdmin}
+                                          onChange={(e) => {
+                                            if (!isAdmin) {
+                                              togglePermisoRol(role.rol, permiso.codigo_permiso, e.target.checked)
+                                            }
+                                          }}
+                                          disabled={isAdmin}
                                           className="permission-checkbox"
                                         />
                                         <span className="permission-label">
                                           {permiso.descripcion || permiso.accion}
                                         </span>
                                         <span className="permission-code">{permiso.codigo_permiso}</span>
+                                        {isAdmin && (
+                                          <span className="permission-admin-badge" title="El Administrador siempre tiene todos los permisos">
+                                            Admin
+                                          </span>
+                                        )}
                                       </label>
                                     )
                                   })}

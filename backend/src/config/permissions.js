@@ -301,7 +301,7 @@ export const ROLE_PERMISSIONS = {
 // ============================================
 
 /**
- * Verifica si un rol tiene un permiso específico
+ * Verifica si un rol tiene un permiso específico (versión síncrona - usa defaults)
  * @param {string} roleName - Nombre del rol
  * @param {string} permission - Permiso a verificar
  * @returns {boolean}
@@ -317,6 +317,56 @@ export function hasPermission(roleName, permission) {
     return false
   }
   return rolePermissions.includes(permission)
+}
+
+/**
+ * Verifica si un rol tiene un permiso específico consultando la base de datos
+ * @param {Object} db - Instancia de la base de datos
+ * @param {string} roleName - Nombre del rol
+ * @param {string} permission - Permiso a verificar (código del permiso)
+ * @returns {Promise<boolean>}
+ */
+export async function hasPermissionFromDB(db, roleName, permission) {
+  // El Administrador tiene el 100% de los permisos del sistema
+  if (isAdmin(roleName)) {
+    return true
+  }
+
+  try {
+    // Obtener el ID del rol
+    const [roles] = await db.execute(
+      'SELECT id_rol FROM Roles WHERE nombre_rol = ?',
+      [roleName]
+    )
+
+    if (roles.length === 0) {
+      // Si el rol no existe, usar defaults
+      return hasPermission(roleName, permission)
+    }
+
+    const idRol = roles[0].id_rol
+
+    // Verificar si el permiso está activo en la BD
+    const [permisos] = await db.execute(
+      `SELECT rp.activo 
+       FROM Rol_Permisos rp
+       INNER JOIN Permisos p ON rp.id_permiso = p.id_permiso
+       WHERE rp.id_rol = ? AND p.codigo_permiso = ? AND rp.activo = 1`,
+      [idRol, permission]
+    )
+
+    // Si está en la BD y está activo, retornar true
+    if (permisos.length > 0) {
+      return true
+    }
+
+    // Si no está en la BD, usar los defaults hardcodeados como fallback
+    return hasPermission(roleName, permission)
+  } catch (error) {
+    console.error('Error al verificar permiso desde BD:', error)
+    // En caso de error, usar defaults
+    return hasPermission(roleName, permission)
+  }
 }
 
 /**
@@ -388,6 +438,7 @@ export default {
   PERMISSIONS,
   ROLE_PERMISSIONS,
   hasPermission,
+  hasPermissionFromDB,
   hasAnyPermission,
   hasAllPermissions,
   getRolePermissions,

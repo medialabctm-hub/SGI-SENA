@@ -497,6 +497,80 @@
   text-align: center;
 }
 
+/* Clases para mostrar/ocultar elementos de avatar */
+.perfil-avatar-upload-hidden {
+  display: none !important;
+}
+
+.perfil-avatar-upload-visible {
+  display: flex !important;
+}
+
+.perfil-avatar-placeholder-visible {
+  display: flex !important;
+}
+
+/* Botón y área de selección de archivo para foto de perfil */
+.profile-photo-file-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  margin-top: 16px;
+}
+
+.profile-photo-file-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+}
+
+.profile-photo-file-btn {
+  padding: 10px 20px;
+  background: white;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 8px;
+  color: #374151;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.profile-photo-file-btn:hover {
+  background: #f9fafb;
+  border-color: var(--success-800);
+  color: var(--success-800);
+}
+
+.profile-photo-file-name {
+  flex: 1;
+  padding: 10px 16px;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 14px;
+  color: #6b7280;
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+}
+
+.profile-photo-file-name.has-file {
+  color: #111827;
+  background: #f0fdf4;
+  border-color: var(--success-300);
+  font-weight: 500;
+}
+
+.profile-photo-file-name:empty::before {
+  content: "Ningún archivo seleccionado";
+  color: #9ca3af;
+}
+
 /* Formulario (compatibilidad con profile.css) */
 .profile-form {
   background: white;
@@ -590,45 +664,61 @@
 
 /* Sección de eliminación de cuenta */
 .perfil-danger-zone {
-  border: 2px solid var(--error-200) !important;
-  background: var(--error-50) !important;
+  border: 1px solid var(--neutral-300) !important;
+  background: var(--neutral-50) !important;
 }
 
 .perfil-danger-title {
-  color: var(--error-800) !important;
+  color: var(--neutral-800) !important;
+  font-weight: 600;
+  font-size: 1rem;
+  margin-bottom: 0.5rem;
 }
 
 .perfil-danger-description {
-  color: var(--error-700);
-  font-size: 14px;
+  color: var(--neutral-600);
+  font-size: 0.9rem;
   line-height: 1.6;
-  margin-bottom: 16px;
+  margin-bottom: 1rem;
 }
 
 .perfil-delete-account-btn {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 12px 24px;
-  background: var(--error-500);
-  color: white;
-  border: none;
+  padding: 10px 20px;
+  background: white;
+  color: var(--error-600);
+  border: 1.5px solid var(--error-300);
   border-radius: 8px;
-  font-weight: 600;
+  font-weight: 500;
   font-size: 14px;
   cursor: pointer;
-  transition: all 0.2s;
-  width: 100%;
+  transition: all 0.2s ease;
+  width: auto;
   justify-content: center;
 }
 
 .perfil-delete-account-btn:hover:not(:disabled) {
-  background: var(--error-600);
-  box-shadow: 0 4px 12px rgba(220, 53, 69, 0.3);
-  transform: translateY(-1px);
+  background: var(--error-50);
+  border-color: var(--error-400);
+  color: var(--error-700);
+  box-shadow: 0 2px 6px rgba(220, 53, 69, 0.1);
+}
+
+.perfil-delete-account-btn:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: 0 1px 3px rgba(220, 53, 69, 0.1);
 }
 
 .perfil-delete-account-btn:disabled {
-  opacity: 0.6;
+  opacity: 0.5;
   cursor: not-allowed;
+  background: var(--neutral-100);
+  border-color: var(--neutral-300);
+  color: var(--neutral-500);
+}
+
+.perfil-delete-account-btn svg {
+  flex-shrink: 0;
 }
