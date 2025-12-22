@@ -1,0 +1,490 @@
+/* ============================================
+   ESTILOS PARA IMPORTAR EQUIPOS
+   ============================================ */
+
+.importar-equipos-container {
+  padding: 1.5rem;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.importar-equipos-header {
+  margin-bottom: 1.5rem;
+}
+
+.importar-equipos-title {
+  margin: 0;
+  font-size: 1.5rem;
+  color: var(--neutral-900);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.importar-equipos-subtitle {
+  color: var(--neutral-600);
+  margin-top: 0.5rem;
+  font-size: 0.95rem;
+}
+
+.importar-equipos-form-section {
+  margin-bottom: 1rem;
+}
+
+.importar-equipos-label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+  color: var(--neutral-800);
+}
+
+.importar-equipos-file-wrapper {
+  position: relative;
+  margin-bottom: 1rem;
+}
+
+.importar-equipos-file-input {
+  display: none;
+}
+
+.importar-equipos-file-label {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  border: 2px dashed var(--success-800);
+  border-radius: 12px;
+  background: var(--success-50);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: center;
+}
+
+.importar-equipos-file-label:hover {
+  background: var(--success-100);
+  border-color: var(--success-900);
+}
+
+.importar-equipos-file-icon {
+  color: var(--success-800);
+  margin-bottom: 0.5rem;
+}
+
+.importar-equipos-file-name {
+  color: var(--success-800);
+  font-weight: 600;
+  margin-top: 0.5rem;
+}
+
+.importar-equipos-file-placeholder {
+  color: var(--neutral-600);
+}
+
+.importar-equipos-cuentadante-section {
+  margin-top: 1.5rem;
+  padding: 1rem;
+  background: var(--neutral-50);
+  border-radius: 8px;
+  border: 1px solid var(--neutral-200);
+}
+
+.importar-equipos-cuentadante-search {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.importar-equipos-cuentadante-input {
+  flex: 1;
+  padding: 10px 14px;
+  border: 2px solid var(--success-800);
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font-family: inherit;
+  transition: all 0.2s ease;
+}
+
+.importar-equipos-cuentadante-input:focus {
+  outline: none;
+  border-color: var(--success-900);
+  box-shadow: 0 0 0 4px rgba(1, 175, 0, 0.1);
+}
+
+.importar-equipos-cuentadante-found {
+  padding: 1rem;
+  background: var(--success-100);
+  border: 2px solid var(--success-800);
+  border-radius: 8px;
+  margin-top: 1rem;
+}
+
+.importar-equipos-cuentadante-info {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--success-900);
+  font-weight: 600;
+}
+
+.importar-equipos-cuentadante-info-icon {
+  color: var(--success-800);
+}
+
+.importar-equipos-submit-button {
+  width: 100%;
+  padding: 12px 24px;
+  background: linear-gradient(135deg, var(--success-700) 0%, var(--success-800) 100%);
+  color: white;
+  border: 1px solid var(--success-800);
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.2);
+}
+
+.importar-equipos-submit-button:hover:not(:disabled) {
+  background: linear-gradient(135deg, var(--success-800) 0%, var(--success-900) 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+
+.importar-equipos-submit-button:disabled {
+  background: var(--neutral-300);
+  border-color: var(--neutral-300);
+  cursor: not-allowed;
+  transform: none;
+}
+
+.importar-equipos-resultado {
+  margin-top: 1.5rem;
+  padding: 1.5rem;
+  background: var(--neutral-50);
+  border-radius: 12px;
+  border: 1px solid var(--neutral-200);
+}
+
+.importar-equipos-resultado-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--neutral-900);
+  margin-bottom: 1rem;
+}
+
+.importar-equipos-resultado-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.importar-equipos-resultado-stat {
+  text-align: center;
+  padding: 1rem;
+  background: white;
+  border-radius: 8px;
+  border: 1px solid var(--neutral-200);
+}
+
+.importar-equipos-resultado-stat-number {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--success-800);
+  margin-bottom: 0.25rem;
+}
+
+.importar-equipos-resultado-stat-label {
+  color: var(--success-800);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.importar-equipos-resultado-stat.exitosos .importar-equipos-resultado-stat-number {
+  color: var(--success-800);
+}
+
+.importar-equipos-resultado-stat.fallidos .importar-equipos-resultado-stat-number {
+  color: var(--error-500);
+}
+
+.importar-equipos-error {
+  padding: 1rem;
+  background: var(--error-100);
+  color: var(--error-700);
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.importar-equipos-cuentadante-section-warning {
+  margin-top: 2rem;
+  padding: 1.5rem;
+  background: var(--warning-50);
+  border-radius: 8px;
+  border: 1px solid var(--warning-600);
+}
+
+.importar-equipos-cuentadante-title {
+  margin: 0 0 1rem 0;
+  font-size: 1.1rem;
+  color: var(--neutral-900);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.importar-equipos-cuentadante-description {
+  color: var(--neutral-600);
+  margin-bottom: 1rem;
+  font-size: 0.9rem;
+}
+
+.importar-equipos-cuentadante-description strong {
+  font-weight: 700;
+}
+
+.importar-equipos-cuentadante-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.importar-equipos-cuentadante-search-row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+}
+
+.importar-equipos-cuentadante-search-button {
+  padding: 0.75rem 1rem;
+  background: var(--info-600);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.95rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: all 0.2s ease;
+}
+
+.importar-equipos-cuentadante-search-button:hover:not(:disabled) {
+  background: var(--info-700);
+}
+
+.importar-equipos-cuentadante-search-button:disabled {
+  background: var(--neutral-300);
+  cursor: not-allowed;
+}
+
+.importar-equipos-download-button {
+  padding: 0.5rem 1rem;
+  background: var(--success-800);
+  color: white;
+  border: 1px solid var(--success-800);
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.importar-equipos-download-button:hover {
+  background: var(--success-900);
+  border-color: var(--success-900);
+}
+
+.importar-equipos-file-container {
+  border: 2px dashed var(--success-300);
+  border-radius: 8px;
+  padding: 1.5rem;
+  text-align: center;
+  background: var(--neutral-50);
+  transition: all 0.2s;
+}
+
+.importar-equipos-file-container.has-file {
+  background: var(--success-50);
+  border-color: var(--success-500);
+}
+
+.importar-equipos-file-label-inner {
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.importar-equipos-loading-spinner-small {
+  width: 16px;
+  height: 16px;
+  border-width: 2px;
+}
+
+.importar-equipos-cuentadante-found-info {
+  flex: 1;
+}
+
+.importar-equipos-cuentadante-save-button {
+  padding: 0.75rem 1.5rem;
+  background: var(--warning-600);
+  color: var(--neutral-900);
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.95rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  align-self: flex-start;
+  transition: all 0.2s ease;
+}
+
+.importar-equipos-cuentadante-save-button:hover:not(:disabled) {
+  background: var(--warning-700);
+}
+
+.importar-equipos-cuentadante-save-button:disabled {
+  background: var(--neutral-300);
+  cursor: not-allowed;
+}
+
+.importar-equipos-cuentadante-current {
+  margin-top: 0.5rem;
+  font-size: 0.85rem;
+  color: var(--neutral-600);
+}
+
+.importar-equipos-cuentadante-current strong {
+  font-weight: 700;
+}
+
+.importar-equipos-resultado-title {
+  margin: 0 0 1rem 0;
+  font-size: 1.1rem;
+  color: var(--neutral-900);
+}
+
+.importar-equipos-resultado-stat-total {
+  text-align: center;
+  padding: 1rem;
+  background: white;
+  border-radius: 8px;
+  border: 1px solid var(--neutral-200);
+}
+
+.importar-equipos-resultado-stat-total-number {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--neutral-900);
+  margin-bottom: 0.25rem;
+}
+
+.importar-equipos-resultado-stat-total-label {
+  color: var(--neutral-600);
+  font-size: 0.9rem;
+}
+
+.importar-equipos-resultado-stat-fallidos {
+  text-align: center;
+  padding: 1rem;
+  background: var(--error-100);
+  border-radius: 8px;
+  border: 1px solid var(--error-200);
+}
+
+.importar-equipos-resultado-stat-fallidos-number {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--error-700);
+  margin-bottom: 0.25rem;
+}
+
+.importar-equipos-resultado-stat-fallidos-label {
+  color: var(--error-700);
+  font-size: 0.9rem;
+}
+
+.importar-equipos-resultado-stat-duplicados {
+  text-align: center;
+  padding: 1rem;
+  background: var(--warning-50);
+  border-radius: 8px;
+  border: 1px solid var(--warning-200);
+}
+
+.importar-equipos-resultado-stat-duplicados-number {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--warning-600);
+  margin-bottom: 0.25rem;
+}
+
+.importar-equipos-resultado-stat-duplicados-label {
+  color: var(--warning-800);
+  font-size: 0.9rem;
+}
+
+.importar-equipos-errores-section {
+  margin-top: 1rem;
+}
+
+.importar-equipos-errores-title {
+  margin: 0 0 0.5rem 0;
+  font-size: 1rem;
+  color: var(--neutral-900);
+}
+
+.importar-equipos-errores-list {
+  max-height: 200px;
+  overflow-y: auto;
+  background: white;
+  border-radius: 6px;
+  padding: 0.5rem;
+}
+
+.importar-equipos-error-item {
+  padding: 0.5rem;
+  margin-bottom: 0.25rem;
+  background: var(--error-100);
+  border-radius: 4px;
+  font-size: 0.85rem;
+  color: var(--error-900);
+}
+
+.importar-equipos-error-item strong {
+  font-weight: 700;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .importar-equipos-container {
+    padding: 1rem;
+  }
+
+  .importar-equipos-cuentadante-search {
+    flex-direction: column;
+  }
+
+  .importar-equipos-cuentadante-search-row {
+    flex-direction: column;
+  }
+
+  .importar-equipos-resultado-stats {
+    grid-template-columns: 1fr;
+  }
+}
+

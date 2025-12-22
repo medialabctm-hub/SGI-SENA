@@ -23,6 +23,7 @@ import {
 } from 'react-icons/fi'
 import { parseApiResponse, buildErrorMessage } from '../utils/api'
 import '../styles/equipos.css'
+import '../styles/horarios.css'
 
 export default function Horarios() {
   const [user, setUser] = useState(null)
@@ -435,23 +436,12 @@ export default function Horarios() {
   }
 
   function getEstadoBadge(estado) {
-    const estados = {
-      'Programada': { color: '#3b82f6', bg: '#dbeafe' },
-      'En Curso': { color: 'var(--success-800)', bg: '#d1fae5' },
-      'Finalizada': { color: '#6b7280', bg: '#f3f4f6' },
-      'Cancelada': { color: 'var(--error-700)', bg: '#fee2e2' }
-    }
-    const estadoInfo = estados[estado] || estados['Programada']
+    const estadoClass = estado === 'Programada' ? 'horarios-estado-programada' :
+                        estado === 'En Curso' ? 'horarios-estado-en-curso' :
+                        estado === 'Finalizada' ? 'horarios-estado-finalizada' :
+                        'horarios-estado-cancelada'
     return (
-      <span style={{
-        padding: '4px 10px',
-        borderRadius: '12px',
-        fontSize: '0.85rem',
-        fontWeight: 600,
-        color: estadoInfo.color,
-        background: estadoInfo.bg,
-        display: 'inline-block'
-      }}>
+      <span className={`horarios-estado-badge ${estadoClass}`}>
         {estado}
       </span>
     )
@@ -491,16 +481,15 @@ export default function Horarios() {
 
         <div className="users-panel">
           <div className="users-toolbar">
-            <h2 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <h2 className="horarios-header-title">
               <FiCalendar size={24} />
               Gestión de Horarios
             </h2>
-            <div style={{ display: 'flex', gap: '12px' }}>
+            <div className="horarios-header-actions">
               <button
                 type="button"
-                className="btn btn-verde"
+                className="btn btn-verde horarios-btn-icon"
                 onClick={() => { resetForm(); setShowForm(true) }}
-                style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
               >
                 <FiPlus size={16} />
                 Nueva Clase
@@ -509,18 +498,16 @@ export default function Horarios() {
                 <>
                   <button
                     type="button"
-                    className="btn btn-verde"
+                    className="btn btn-verde horarios-btn-icon"
                     onClick={() => setShowImport(true)}
-                    style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
                   >
                     <FiUpload size={16} />
                     Importar Excel
                   </button>
                   <button
                     type="button"
-                    className="btn btn-verde"
+                    className="btn btn-verde horarios-btn-icon"
                     onClick={downloadTemplate}
-                    style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
                   >
                     <FiDownload size={16} />
                     Plantilla
@@ -529,10 +516,9 @@ export default function Horarios() {
               )}
               <button
                 type="button"
-                className="btn-act"
+                className="btn-act horarios-btn-icon"
                 onClick={fetchClases}
                 disabled={loading}
-                style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
               >
                 <FiRefreshCw size={16} />
                 Actualizar
@@ -541,13 +527,13 @@ export default function Horarios() {
           </div>
 
           {/* Filtros */}
-          <div style={{ marginTop: '1.5rem', padding: '1rem', background: '#f9fafb', borderRadius: '10px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
-            <div>
-              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600, fontSize: '0.9rem' }}>Ambiente</label>
+          <div className="horarios-filters-container">
+            <div className="horarios-filter-item">
+              <label className="horarios-filter-label">Ambiente</label>
               <select
+                className="horarios-filter-select"
                 value={filtros.id_ambiente}
                 onChange={e => setFiltros({ ...filtros, id_ambiente: e.target.value })}
-                style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '2px solid var(--success-800)' }}
               >
                 <option value="">Todos</option>
                 {ambientes.map(amb => (
@@ -558,12 +544,12 @@ export default function Horarios() {
               </select>
             </div>
             {user?.nombre_rol === 'Administrador' && (
-              <div>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600, fontSize: '0.9rem' }}>Instructor</label>
+              <div className="horarios-filter-item">
+                <label className="horarios-filter-label">Instructor</label>
                 <select
+                  className="horarios-filter-select"
                   value={filtros.id_instructor}
                   onChange={e => setFiltros({ ...filtros, id_instructor: e.target.value })}
-                  style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '2px solid var(--success-800)' }}
                 >
                   <option value="">Todos</option>
                   {instructores.map(inst => (
@@ -574,21 +560,21 @@ export default function Horarios() {
                 </select>
               </div>
             )}
-            <div>
-              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600, fontSize: '0.9rem' }}>Fecha</label>
+            <div className="horarios-filter-item">
+              <label className="horarios-filter-label">Fecha</label>
               <input
                 type="date"
+                className="horarios-filter-input"
                 value={filtros.fecha}
                 onChange={e => setFiltros({ ...filtros, fecha: e.target.value })}
-                style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '2px solid var(--success-800)' }}
               />
             </div>
-            <div>
-              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600, fontSize: '0.9rem' }}>Estado</label>
+            <div className="horarios-filter-item">
+              <label className="horarios-filter-label">Estado</label>
               <select
+                className="horarios-filter-select"
                 value={filtros.estado_clase}
                 onChange={e => setFiltros({ ...filtros, estado_clase: e.target.value })}
-                style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '2px solid var(--success-800)' }}
               >
                 <option value="">Todos</option>
                 <option value="Programada">Programada</option>
@@ -601,27 +587,26 @@ export default function Horarios() {
 
           {/* Formulario */}
           {showForm && (
-            <div className="verificacion-ambiente-card" style={{ marginTop: '1.5rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                <h3 style={{ margin: 0 }}>{editingClase ? 'Editar Clase' : 'Nueva Clase'}</h3>
+            <div className="horarios-form-container">
+              <div className="horarios-form-header">
+                <h3 className="horarios-form-title">{editingClase ? 'Editar Clase' : 'Nueva Clase'}</h3>
                 <button
                   type="button"
-                  className="btn"
+                  className="btn btn-sm"
                   onClick={() => { setShowForm(false); resetForm() }}
-                  style={{ padding: '6px 12px' }}
                 >
                   <FiX size={16} />
                 </button>
               </div>
               <form onSubmit={handleSubmit}>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1rem', marginBottom: '1rem' }}>
-                  <div>
-                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>Ambiente *</label>
+                <div className="horarios-form-grid">
+                  <div className="horarios-form-row">
+                    <label className="horarios-form-label form-label-required">Ambiente</label>
                     <select
+                      className="horarios-form-select form-select"
                       value={form.id_ambiente}
                       onChange={e => setForm({ ...form, id_ambiente: e.target.value })}
                       required
-                      style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '2px solid var(--success-800)' }}
                     >
                       <option value="">Seleccione...</option>
                       {ambientes.map(amb => (
@@ -632,13 +617,13 @@ export default function Horarios() {
                     </select>
                   </div>
                   {user?.nombre_rol === 'Administrador' && (
-                    <div>
-                      <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>Instructor *</label>
+                    <div className="horarios-form-row">
+                      <label className="horarios-form-label form-label-required">Instructor</label>
                       <select
+                        className="horarios-form-select form-select"
                         value={form.id_instructor}
                         onChange={e => setForm({ ...form, id_instructor: e.target.value })}
                         required
-                        style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '2px solid var(--success-800)' }}
                       >
                         <option value="">Seleccione...</option>
                         {instructores.map(inst => (
@@ -650,81 +635,81 @@ export default function Horarios() {
                     </div>
                   )}
                   {user?.nombre_rol === 'Instructor' && (
-                    <div>
-                      <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>Instructor</label>
+                    <div className="horarios-form-row">
+                      <label className="horarios-form-label">Instructor</label>
                       <input
                         type="text"
+                        className="horarios-form-input form-input"
                         value={user.nombre_usuario}
                         disabled
-                        style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '2px solid var(--success-800)', background: '#f3f4f6' }}
                       />
                     </div>
                   )}
-                  <div>
-                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>Código Ficha</label>
+                  <div className="horarios-form-row">
+                    <label className="horarios-form-label">Código Ficha</label>
                     <input
                       type="text"
+                      className="horarios-form-input form-input"
                       value={form.codigo_ficha}
                       onChange={e => setForm({ ...form, codigo_ficha: e.target.value })}
-                      style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '2px solid var(--success-800)' }}
                       placeholder="Ej: 123456"
                     />
                   </div>
-                  <div>
-                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>Nombre Clase</label>
+                  <div className="horarios-form-row">
+                    <label className="horarios-form-label">Nombre Clase</label>
                     <input
                       type="text"
+                      className="horarios-form-input form-input"
                       value={form.nombre_clase}
                       onChange={e => setForm({ ...form, nombre_clase: e.target.value })}
-                      style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '2px solid var(--success-800)' }}
                       placeholder="Ej: Programación Web"
                     />
                   </div>
-                  <div>
-                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>Fecha *</label>
+                  <div className="horarios-form-row">
+                    <label className="horarios-form-label form-label-required">Fecha</label>
                     <input
                       type="date"
+                      className="horarios-form-input form-input"
                       value={form.fecha_clase}
                       onChange={e => setForm({ ...form, fecha_clase: e.target.value })}
                       required
-                      style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '2px solid var(--success-800)' }}
                     />
                   </div>
-                  <div>
-                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>Hora Inicio *</label>
+                  <div className="horarios-form-row">
+                    <label className="horarios-form-label form-label-required">Hora Inicio</label>
                     <input
                       type="time"
+                      className="horarios-form-input form-input"
                       value={form.hora_inicio}
                       onChange={e => setForm({ ...form, hora_inicio: e.target.value })}
                       required
-                      style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '2px solid var(--success-800)' }}
                     />
                   </div>
-                  <div>
-                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>Hora Fin *</label>
+                  <div className="horarios-form-row">
+                    <label className="horarios-form-label form-label-required">Hora Fin</label>
                     <input
                       type="time"
+                      className="horarios-form-input form-input"
                       value={form.hora_fin}
                       onChange={e => setForm({ ...form, hora_fin: e.target.value })}
                       required
-                      style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '2px solid var(--success-800)' }}
                     />
                   </div>
                 </div>
-                <div style={{ marginBottom: '1rem' }}>
-                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>Descripción</label>
+                <div className="horarios-form-row">
+                  <label className="horarios-form-label">Descripción</label>
                   <textarea
+                    className="horarios-form-textarea form-textarea"
                     value={form.descripcion}
                     onChange={e => setForm({ ...form, descripcion: e.target.value })}
                     rows={3}
-                    style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '2px solid var(--success-800)', resize: 'vertical' }}
                     placeholder="Descripción de la clase..."
                   />
                 </div>
-                <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+                <div className="horarios-form-actions">
                   <button
                     type="button"
-                    className="btn"
+                    className="btn btn-secondary"
                     onClick={() => { setShowForm(false); resetForm() }}
                   >
                     Cancelar
@@ -743,29 +728,28 @@ export default function Horarios() {
 
           {/* Modal de Importación */}
           {showImport && (
-            <div className="verificacion-ambiente-card" style={{ marginTop: '1.5rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                <h3 style={{ margin: 0 }}>Importar Horarios desde Excel</h3>
+            <div className="verificacion-ambiente-card horarios-import-section">
+              <div className="horarios-import-header">
+                <h3 className="horarios-import-title">Importar Horarios desde Excel</h3>
                 <button
                   type="button"
-                  className="btn"
+                  className="btn horarios-import-close"
                   onClick={() => { setShowImport(false); setImportFile(null) }}
-                  style={{ padding: '6px 12px' }}
                 >
                   <FiX size={16} />
                 </button>
               </div>
               <div>
-                <p style={{ marginBottom: '1rem', color: '#6b7280' }}>
+                <p className="horarios-import-text">
                   Selecciona un archivo Excel con el formato correcto. Puedes descargar la plantilla haciendo clic en el botón "Plantilla".
                 </p>
                 <input
                   type="file"
                   accept=".xlsx,.xls,.csv"
                   onChange={e => setImportFile(e.target.files[0])}
-                  style={{ marginBottom: '1rem', width: '100%', padding: '10px', borderRadius: '8px', border: '2px solid var(--success-800)' }}
+                  className="horarios-import-input"
                 />
-                <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+                <div className="horarios-import-actions">
                   <button
                     type="button"
                     className="btn"
@@ -788,17 +772,17 @@ export default function Horarios() {
 
           {/* Tabla de Clases */}
           {loading && clases.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '3rem', color: '#6b7280' }}>
+            <div className="horarios-loading">
               Cargando clases...
             </div>
           ) : clases.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '3rem', color: '#6b7280' }}>
-              <FiCalendar size={48} style={{ marginBottom: '1rem', opacity: 0.5 }} />
+            <div className="horarios-empty">
+              <FiCalendar size={48} className="horarios-empty-icon" />
               <p>No hay clases registradas</p>
             </div>
           ) : (
-            <div style={{ marginTop: '1.5rem', overflowX: 'auto' }}>
-              <table className="consulta-table" style={{ width: '100%' }}>
+            <div className="horarios-table-wrapper">
+              <table className="consulta-table horarios-table">
                 <thead>
                   <tr>
                     <th>Ambiente</th>
@@ -818,7 +802,7 @@ export default function Horarios() {
                       <td>
                         <div>
                           <strong>{clase.nombre_ambiente}</strong>
-                          <div style={{ fontSize: '0.85rem', color: '#6b7280' }}>
+                          <div className="horarios-clase-info">
                             {clase.codigo_ambiente}
                           </div>
                         </div>
@@ -828,7 +812,7 @@ export default function Horarios() {
                       <td>{clase.nombre_clase || '-'}</td>
                       <td>{formatDate(clase.fecha_clase)}</td>
                       <td>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <div className="horarios-clase-time">
                           <FiClock size={14} />
                           {clase.hora_inicio} - {clase.hora_fin}
                         </div>
@@ -836,32 +820,29 @@ export default function Horarios() {
                       <td>{clase.total_participantes || 0}</td>
                       <td>{getEstadoBadge(clase.estado_clase)}</td>
                       <td>
-                        <div style={{ display: 'flex', gap: '8px' }}>
+                        <div className="horarios-clase-actions">
                           {clase.estado_clase === 'Programada' && (
                             <>
                               <button
-                                className="btn btn-verde"
+                                className="btn btn-verde horarios-action-btn"
                                 onClick={() => handleIniciarClase(clase.id_clase)}
                                 disabled={loading}
-                                style={{ fontSize: '0.85rem', padding: '6px 12px' }}
                                 title="Iniciar Clase"
                               >
                                 <FiPlay size={14} />
                               </button>
                               <button
-                                className="btn btn-edit"
+                                className="btn btn-edit horarios-action-btn"
                                 onClick={() => handleEdit(clase)}
                                 disabled={loading}
-                                style={{ fontSize: '0.85rem', padding: '6px 12px' }}
                                 title="Editar"
                               >
                                 <FiEdit size={14} />
                               </button>
                               <button
-                                className="btn btn-delete"
+                                className="btn btn-delete horarios-action-btn"
                                 onClick={() => setConfirmDelete({ open: true, id: clase.id_clase })}
                                 disabled={loading}
-                                style={{ fontSize: '0.85rem', padding: '6px 12px' }}
                                 title="Cancelar"
                               >
                                 <FiTrash2 size={14} />
@@ -870,10 +851,9 @@ export default function Horarios() {
                           )}
                           {clase.estado_clase === 'En Curso' && (
                             <button
-                              className="btn btn-verde"
+                              className="btn btn-verde horarios-action-btn"
                               onClick={() => handleFinalizarClase(clase.id_clase)}
                               disabled={loading}
-                              style={{ fontSize: '0.85rem', padding: '6px 12px' }}
                               title="Finalizar Clase"
                             >
                               <FiSquare size={14} />

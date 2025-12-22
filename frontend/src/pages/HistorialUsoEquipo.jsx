@@ -14,6 +14,7 @@ import {
 } from 'react-icons/fi'
 import { parseApiResponse, buildErrorMessage } from '../utils/api'
 import '../styles/equipos.css'
+import '../styles/historialUsoEquipo.css'
 
 export default function HistorialUsoEquipo() {
   const { codigo } = useParams()
@@ -75,18 +76,9 @@ export default function HistorialUsoEquipo() {
       'Finalizado': { color: 'var(--success-800)', bg: '#d1fae5', icon: <FiStopCircle size={16} /> }
     }
     const estadoInfo = estados[estado] || estados['Finalizado']
+    const estadoClass = estado === 'En Uso' ? 'historial-uso-equipo-estado-badge-en-uso' : 'historial-uso-equipo-estado-badge-finalizado'
     return (
-      <span style={{
-        padding: '6px 12px',
-        borderRadius: '12px',
-        fontSize: '0.9rem',
-        fontWeight: 600,
-        color: estadoInfo.color,
-        background: estadoInfo.bg,
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: '6px'
-      }}>
+      <span className={`historial-uso-equipo-estado-badge ${estadoClass}`}>
         {estadoInfo.icon}
         {estado}
       </span>
@@ -130,29 +122,27 @@ export default function HistorialUsoEquipo() {
             <div>
               <button
                 type="button"
-                className="btn"
+                className="btn historial-uso-equipo-back-btn"
                 onClick={() => navigate('/equipos/uso/historial')}
-                style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}
               >
                 <FiArrowLeft size={16} />
                 Volver
               </button>
-              <h2 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <h2 className="historial-uso-equipo-title">
                 <FiClock size={24} />
                 Historial de Uso
               </h2>
               {equipo && (
-                <p style={{ margin: '8px 0 0 0', border: '1px solid var(--success-700)', fontSize: '0.9rem' }}>
+                <p className="historial-uso-equipo-subtitle">
                   Equipo: {equipo.codigo_inventario || equipo.codigo_equipo} - {equipo.tipo} {equipo.modelo}
                 </p>
               )}
             </div>
             <button
               type="button"
-              className="btn-act"
+              className="btn-act historial-uso-equipo-refresh-btn"
               onClick={fetchHistorial}
               disabled={loading}
-              style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
             >
               <FiClock size={16} />
               Actualizar
@@ -160,31 +150,30 @@ export default function HistorialUsoEquipo() {
           </div>
 
           {/* Filtros */}
-          <div style={{ marginTop: '1.5rem', padding: '1rem', background: '#f9fafb', borderRadius: '10px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
+          <div className="historial-uso-equipo-filters">
             <div>
-              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600, fontSize: '0.9rem' }}>Fecha Desde</label>
+              <label className="historial-uso-equipo-filter-label">Fecha Desde</label>
               <input
                 type="date"
                 value={filtros.fecha_desde}
                 onChange={e => setFiltros({ ...filtros, fecha_desde: e.target.value })}
-                style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--success-700)' }}
+                className="historial-uso-equipo-filter-input"
               />
             </div>
             <div>
-              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600, fontSize: '0.9rem' }}>Fecha Hasta</label>
+              <label className="historial-uso-equipo-filter-label">Fecha Hasta</label>
               <input
                 type="date"
                 value={filtros.fecha_hasta}
                 onChange={e => setFiltros({ ...filtros, fecha_hasta: e.target.value })}
-                style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--success-700)' }}
+                className="historial-uso-equipo-filter-input"
               />
             </div>
-            <div style={{ display: 'flex', alignItems: 'flex-end' }}>
+            <div className="historial-uso-equipo-filter-actions">
               <button
                 type="button"
-                className="btn"
+                className="btn historial-uso-equipo-filter-btn"
                 onClick={() => setFiltros({ fecha_desde: '', fecha_hasta: '' })}
-                style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
               >
                 <FiFilter size={16} />
                 Limpiar
@@ -194,17 +183,17 @@ export default function HistorialUsoEquipo() {
 
           {/* Tabla de Historial */}
           {loading && historial.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '3rem', color: '#6b7280' }}>
+            <div className="historial-uso-equipo-loading">
               Cargando historial...
             </div>
           ) : historial.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '3rem', color: '#6b7280' }}>
-              <FiClock size={48} style={{ marginBottom: '1rem', opacity: 0.5 }} />
+            <div className="historial-uso-equipo-empty">
+              <FiClock size={48} className="historial-uso-equipo-empty-icon" />
               <p>No hay registros de uso para este equipo</p>
             </div>
           ) : (
-            <div style={{ marginTop: '1.5rem', overflowX: 'auto' }}>
-              <table className="consulta-table" style={{ width: '100%' }}>
+            <div className="historial-uso-equipo-table-wrapper">
+              <table className="consulta-table historial-uso-equipo-table">
                 <thead>
                   <tr>
                     <th>Fecha Inicio</th>
@@ -219,29 +208,29 @@ export default function HistorialUsoEquipo() {
                   {historial.map(registro => (
                     <tr key={registro.id_historial}>
                       <td>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          <FiPlay size={14} style={{ color: 'var(--primary-600)' }} />
+                        <div className="historial-uso-equipo-date-cell">
+                          <FiPlay size={14} className="historial-uso-equipo-date-icon-play" />
                           {formatDateTime(registro.fecha_hora_inicio)}
                         </div>
                       </td>
                       <td>
                         {registro.fecha_hora_fin ? (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                            <FiStopCircle size={14} style={{ color: 'var(--success-600)' }} />
+                          <div className="historial-uso-equipo-date-cell">
+                            <FiStopCircle size={14} className="historial-uso-equipo-date-icon-stop" />
                             {formatDateTime(registro.fecha_hora_fin)}
                           </div>
                         ) : (
-                          <span style={{ color: '#6b7280', fontStyle: 'italic' }}>En curso...</span>
+                          <span className="historial-uso-equipo-date-placeholder">En curso...</span>
                         )}
                       </td>
                       <td>
                         {registro.duracion_minutos !== null && registro.duracion_minutos !== undefined ? (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <div className="historial-uso-equipo-duration-cell">
                             <FiClock size={14} />
                             {formatDuration(registro.duracion_minutos)}
                           </div>
                         ) : registro.estado === 'En Uso' ? (
-                          <span style={{ color: '#6b7280', fontStyle: 'italic' }}>Calculando...</span>
+                          <span className="historial-uso-equipo-duration-placeholder">Calculando...</span>
                         ) : (
                           '-'
                         )}
@@ -249,11 +238,11 @@ export default function HistorialUsoEquipo() {
                       <td>
                         <div>
                           <strong>{registro.nombre_usuario}</strong>
-                          <div style={{ fontSize: '0.85rem', color: '#6b7280' }}>
+                          <div className="historial-uso-equipo-usuario-info">
                             CC: {registro.usuario_cedula}
                           </div>
                           {registro.usuario_correo && (
-                            <div style={{ fontSize: '0.85rem', color: '#6b7280' }}>
+                            <div className="historial-uso-equipo-usuario-info">
                               {registro.usuario_correo}
                             </div>
                           )}

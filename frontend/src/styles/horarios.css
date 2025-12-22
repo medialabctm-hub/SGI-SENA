@@ -1,0 +1,186 @@
+/* ============================================
+   ESTILOS PARA PÁGINA DE HORARIOS
+   ============================================ */
+
+.horarios-form-container {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  border: 1px solid var(--neutral-200);
+  margin-bottom: 24px;
+}
+
+.horarios-form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 20px;
+  margin-bottom: 20px;
+}
+
+.horarios-form-row {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.horarios-form-label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+  color: var(--neutral-800);
+  font-size: 0.95rem;
+}
+
+.horarios-form-input,
+.horarios-form-select,
+.horarios-form-textarea {
+  width: 100%;
+  padding: 10px 14px;
+  border-radius: 8px;
+  border: 2px solid var(--success-800);
+  font-size: 1rem;
+  font-family: inherit;
+  background: white;
+  color: var(--neutral-900);
+  transition: all 0.2s ease;
+}
+
+.horarios-form-input:focus,
+.horarios-form-select:focus,
+.horarios-form-textarea:focus {
+  outline: none;
+  border-color: var(--success-900);
+  box-shadow: 0 0 0 4px rgba(1, 175, 0, 0.1);
+}
+
+.horarios-form-textarea {
+  resize: vertical;
+  min-height: 80px;
+}
+
+.horarios-form-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  margin-top: 1rem;
+}
+
+.horarios-form-actions-left {
+  justify-content: flex-start;
+}
+
+.horarios-form-actions-center {
+  justify-content: center;
+}
+
+/* Filtros */
+.horarios-filters-container {
+  margin-top: 1.5rem;
+  padding: 1rem;
+  background: var(--neutral-50);
+  border-radius: 10px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+}
+
+.horarios-filter-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.horarios-filter-label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--neutral-800);
+}
+
+.horarios-filter-input,
+.horarios-filter-select {
+  width: 100%;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 2px solid var(--success-800);
+  font-size: 0.95rem;
+  font-family: inherit;
+  background: white;
+  color: var(--neutral-900);
+  transition: all 0.2s ease;
+}
+
+.horarios-filter-input:focus,
+.horarios-filter-select:focus {
+  outline: none;
+  border-color: var(--success-900);
+  box-shadow: 0 0 0 4px rgba(1, 175, 0, 0.1);
+}
+
+/* Header de sección */
+.horarios-section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.horarios-section-title {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--neutral-900);
+}
+
+.horarios-section-actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.horarios-form-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.horarios-form-title {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--neutral-900);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .horarios-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .horarios-filters-container {
+    grid-template-columns: 1fr;
+  }
+
+  .horarios-form-actions {
+    flex-direction: column;
+  }
+
+  .horarios-form-actions > * {
+    width: 100%;
+  }
+
+  .horarios-section-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .horarios-section-actions {
+    width: 100%;
+    flex-direction: column;
+  }
+}
+

@@ -90,10 +90,31 @@
 }
 
 .invitation-codes-status-badge {
-  padding: 4px 10px;
+  padding: 4px 12px;
   border-radius: 12px;
   font-size: 0.85rem;
   font-weight: 600;
+  display: inline-block;
+}
+
+.invitation-codes-status-badge-activo {
+  background: var(--success-50);
+  color: var(--success-800);
+}
+
+.invitation-codes-status-badge-inactivo {
+  background: var(--neutral-100);
+  color: var(--neutral-700);
+}
+
+.invitation-codes-status-badge-expirado {
+  background: var(--error-50);
+  color: var(--error-700);
+}
+
+.invitation-codes-status-badge-agotado {
+  background: var(--warning-50);
+  color: var(--warning-700);
 }
 
 .invitation-codes-delete-btn {

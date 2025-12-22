@@ -6,6 +6,8 @@ import ConfirmModal from '../components/ConfirmModal'
 import { FiFileText, FiEye, FiEdit, FiTrash2, FiX, FiPackage, FiType, FiSearch, FiCheck, FiList } from 'react-icons/fi'
 import { parseApiResponse, buildErrorMessage } from '../utils/api'
 import '../styles/equipos.css'
+import '../styles/reportes.css'
+import '../styles/reportesModal.css'
 
 export default function Reportes() {
   const [activeTab, setActiveTab] = useState('ver') // 'ver' o 'crear'
@@ -275,70 +277,38 @@ export default function Reportes() {
             onCancel={() => setDeleteConfirm({ open: false, id: null })}
           />
           
-          <div className="form-equipos form-modern" style={{ maxWidth: '1200px' }}>
+          <div className="form-equipos form-modern reportes-container">
           <div className="form-header">
-            <div className="form-icon-wrapper" style={{ background: 'linear-gradient(135deg, #4dabf7 0%, #339af0 100%)' }}>
+            <div className="form-icon-wrapper reportes-header-icon">
               <FiFileText size={28} color="#fff" />
             </div>
-            <div style={{ flex: 1 }}>
-              <h2 style={{ margin: 0, fontSize: '28px', fontWeight: 700, color: '#1a2a3a' }}>Reportes</h2>
-              <p style={{ color: '#666', marginTop: 8, fontSize: '15px' }}>
+            <div className="reportes-header-content">
+              <h2 className="reportes-title">Reportes</h2>
+              <p className="reportes-subtitle">
                 Informes sobre equipos, mantenimiento y uso general
               </p>
             </div>
           </div>
 
           {/* Pestañas */}
-          <div style={{ 
-            display: 'flex', 
-            gap: '0.5rem', 
-            marginTop: '1.5rem',
-            borderBottom: '2px solid #e5e7eb',
-            paddingBottom: '0'
-          }}>
+          <div className="reportes-tabs">
             <button
               onClick={() => setActiveTab('ver')}
-              style={{
-                padding: '0.75rem 1.5rem',
-                border: 'none',
-                background: 'transparent',
-                color: activeTab === 'ver' ? '#4dabf7' : '#6b7280',
-                fontWeight: activeTab === 'ver' ? 600 : 400,
-                fontSize: '1rem',
-                cursor: 'pointer',
-                borderBottom: activeTab === 'ver' ? '3px solid #4dabf7' : '3px solid transparent',
-                transition: 'all 0.2s',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem'
-              }}
+              className={`reportes-tab-button ${activeTab === 'ver' ? 'active' : ''}`}
             >
               <FiList size={18} />
               Ver Reportes
             </button>
             <button
               onClick={() => setActiveTab('crear')}
-              style={{
-                padding: '0.75rem 1.5rem',
-                border: 'none',
-                background: 'transparent',
-                color: activeTab === 'crear' ? '#4dabf7' : '#6b7280',
-                fontWeight: activeTab === 'crear' ? 600 : 400,
-                fontSize: '1rem',
-                cursor: 'pointer',
-                borderBottom: activeTab === 'crear' ? '3px solid #4dabf7' : '3px solid transparent',
-                transition: 'all 0.2s',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem'
-              }}
+              className={`reportes-tab-button ${activeTab === 'crear' ? 'active' : ''}`}
             >
               <FiFileText size={18} />
               Crear Reporte
             </button>
           </div>
 
-          <div className="form-divider" style={{ marginTop: '0' }}></div>
+          <div className="form-divider form-divider-no-margin"></div>
 
           {activeTab === 'ver' ? (
             <>
@@ -356,8 +326,8 @@ export default function Reportes() {
               <p>Los reportes generados aparecerán aquí</p>
             </div>
           ) : (
-            <div style={{ overflowX: 'auto' }}>
-              <table className="consulta-table" style={{ marginTop: '1rem' }}>
+            <div className="reportes-table-wrapper">
+              <table className="consulta-table reportes-table">
                 <thead>
                   <tr>
                     <th>ID</th>
@@ -374,14 +344,11 @@ export default function Reportes() {
                     <tr key={reporte.id_reporte}>
                       <td>{reporte.id_reporte}</td>
                       <td>
-                        <span style={{
-                          padding: '4px 10px',
-                          borderRadius: '12px',
-                          fontSize: '0.85rem',
-                          fontWeight: 600,
-                          background: '#e0e7ff',
-                          color: '#4338ca'
-                        }}>
+                        <span className={`reportes-tipo-badge ${
+                          reporte.tipo_reporte === 'General' ? 'reportes-tipo-badge-general' :
+                          reporte.tipo_reporte === 'Mantenimiento' ? 'reportes-tipo-badge-mantenimiento' :
+                          'reportes-tipo-badge-uso'
+                        }`}>
                           {reporte.tipo_reporte}
                         </span>
                       </td>
@@ -394,39 +361,36 @@ export default function Reportes() {
                             {reporte.equipo_tipo} {reporte.equipo_marca} {reporte.equipo_modelo}
                           </div>
                         ) : (
-                          <span style={{ color: '#999', fontStyle: 'italic' }}>General</span>
+                          <span className="text-muted-italic">General</span>
                         )}
                       </td>
                       <td>{reporte.generado_por_nombre}</td>
                       <td>{formatDate(reporte.fecha_generacion)}</td>
                       <td>
-                        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                        <div className="reportes-actions">
                           <button
-                            className="btn"
+                            className="btn reportes-action-button"
                             onClick={() => setSelectedReporte(reporte)}
-                            style={{ padding: '6px 12px', fontSize: '0.9rem' }}
                           >
-                            <FiEye size={14} style={{ marginRight: '4px' }} />
+                            <FiEye size={14} className="reportes-action-icon" />
                             Ver
                           </button>
                           {isAdmin && (
                             <>
                               <button
-                                className="btn"
+                                className="btn reportes-action-button"
                                 onClick={() => startEdit(reporte)}
-                                style={{ padding: '6px 12px', fontSize: '0.9rem' }}
                                 disabled={loading}
                               >
-                                <FiEdit size={14} style={{ marginRight: '4px' }} />
+                                <FiEdit size={14} className="reportes-action-icon" />
                                 Editar
                               </button>
                               <button
-                                className="btn danger"
+                                className="btn danger reportes-action-button"
                                 onClick={() => confirmDelete(reporte.id_reporte)}
-                                style={{ padding: '6px 12px', fontSize: '0.9rem' }}
                                 disabled={loading}
                               >
-                                <FiTrash2 size={14} style={{ marginRight: '4px' }} />
+                                <FiTrash2 size={14} className="reportes-action-icon" />
                                 Eliminar
                               </button>
                             </>
@@ -445,14 +409,14 @@ export default function Reportes() {
               {/* Sección: Información del Reporte */}
               <div className="form-section">
                 <h3 className="form-section-title">
-                  <FiFileText size={18} style={{ marginRight: 8 }} />
+                  <FiFileText size={18} className="reportes-section-icon" />
                   Información del Reporte
                 </h3>
 
                 <div className="form-grid">
                   <div className="form-group">
                     <label>
-                      <FiType size={16} style={{ marginRight: 6, verticalAlign: 'middle' }} />
+                      <FiType size={16} className="reportes-option-icon" />
                       Tipo de Reporte *
                     </label>
                     <select
@@ -471,7 +435,7 @@ export default function Reportes() {
 
                   <div className="form-group">
                     <label>
-                      <FiFileText size={16} style={{ marginRight: 6, verticalAlign: 'middle' }} />
+                      <FiFileText size={16} className="reportes-option-icon" />
                       Título *
                     </label>
                     <input
@@ -488,7 +452,7 @@ export default function Reportes() {
               {/* Sección: Equipo (Opcional) */}
               <div className="form-section">
                 <h3 className="form-section-title">
-                  <FiPackage size={18} style={{ marginRight: 8 }} />
+                  <FiPackage size={18} className="reportes-section-icon" />
                   Equipo Relacionado (Opcional)
                 </h3>
                 
@@ -526,7 +490,7 @@ export default function Reportes() {
                       )}
                     </button>
                   </div>
-                  <p style={{ marginTop: '8px', fontSize: '0.875rem', color: '#666' }}>
+                  <p className="form-help-text reportes-form-help-text">
                     Si no especificas un equipo, el reporte será general
                   </p>
                 </div>
@@ -559,7 +523,7 @@ export default function Reportes() {
               {/* Sección: Descripción */}
               <div className="form-section">
                 <h3 className="form-section-title">
-                  <FiFileText size={18} style={{ marginRight: 8 }} />
+                  <FiFileText size={18} className="reportes-section-icon" />
                   Descripción del Reporte
                 </h3>
 
@@ -598,53 +562,26 @@ export default function Reportes() {
           </div>
 
       {selectedReporte && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: 'rgba(0,0,0,0.5)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 1000,
-          padding: '20px'
-        }} onClick={() => setSelectedReporte(null)}>
-          <div style={{
-            background: '#fff',
-            borderRadius: '12px',
-            padding: '2rem',
-            maxWidth: '700px',
-            width: '100%',
-            maxHeight: '90vh',
-            overflow: 'auto',
-            boxShadow: '0 20px 60px rgba(0,0,0,0.3)'
-          }} onClick={(e) => e.stopPropagation()}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-              <h3 style={{ margin: 0, fontSize: '24px', color: '#1a2a3a' }}>Detalle de Reporte</h3>
+        <div className="reportes-modal-overlay" onClick={() => setSelectedReporte(null)}>
+          <div className="reportes-modal-sheet" onClick={(e) => e.stopPropagation()}>
+            <div className="reportes-modal-header">
+              <h3 className="reportes-modal-title">Detalle de Reporte</h3>
               <button
                 onClick={() => setSelectedReporte(null)}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  fontSize: '24px',
-                  cursor: 'pointer',
-                  color: '#666'
-                }}
+                className="reportes-modal-close-btn"
               >
                 ×
               </button>
             </div>
 
             {editingReporte === selectedReporte.id_reporte ? (
-              <div style={{ display: 'grid', gap: '1rem' }}>
+              <div className="reportes-modal-info-grid">
                 <div className="form-group">
                   <label>Tipo de Reporte *</label>
                   <select
                     value={editForm.tipo_reporte}
                     onChange={(e) => setEditForm(prev => ({ ...prev, tipo_reporte: e.target.value }))}
-                    style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1.5px solid #b2dfdb' }}
+                    className="reportes-modal-input"
                   >
                     <option value="General">General</option>
                     <option value="Equipos">Equipos</option>
@@ -660,7 +597,7 @@ export default function Reportes() {
                     type="text"
                     value={editForm.titulo}
                     onChange={(e) => setEditForm(prev => ({ ...prev, titulo: e.target.value }))}
-                    style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1.5px solid #b2dfdb' }}
+                    className="reportes-modal-input"
                   />
                 </div>
                 <div className="form-group">
@@ -669,44 +606,34 @@ export default function Reportes() {
                     value={editForm.descripcion}
                     onChange={(e) => setEditForm(prev => ({ ...prev, descripcion: e.target.value }))}
                     rows={6}
-                    style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1.5px solid #b2dfdb', resize: 'vertical' }}
+                    className="reportes-modal-textarea"
                   />
                 </div>
-                <div style={{ display: 'flex', gap: '8px', marginTop: '1rem' }}>
+                <div className="reportes-modal-actions-row">
                   <button
                     onClick={saveEdit}
-                    className="btn-primary btn-modern"
+                    className="btn-primary btn-modern reportes-modal-btn"
                     disabled={loading}
-                    style={{ flex: 1 }}
                   >
                     {loading ? 'Guardando...' : 'Guardar'}
                   </button>
                   <button
                     onClick={cancelEdit}
-                    className="btn-secondary btn-modern"
+                    className="btn-secondary btn-modern reportes-modal-btn"
                     disabled={loading}
-                    style={{ flex: 1 }}
                   >
                     Cancelar
                   </button>
                 </div>
               </div>
             ) : (
-              <div style={{ display: 'grid', gap: '1rem' }}>
+              <div className="reportes-modal-info-grid">
                 <div>
                   <strong>ID:</strong> {selectedReporte.id_reporte}
                 </div>
                 <div>
                   <strong>Tipo:</strong> 
-                  <span style={{
-                    marginLeft: '8px',
-                    padding: '4px 10px',
-                    borderRadius: '12px',
-                    fontSize: '0.9rem',
-                    fontWeight: 600,
-                    background: '#e0e7ff',
-                    color: '#4338ca'
-                  }}>
+                  <span className="reportes-modal-badge reportes-tipo-badge-general">
                     {selectedReporte.tipo_reporte}
                   </span>
                 </div>
@@ -720,7 +647,7 @@ export default function Reportes() {
                 )}
                 <div>
                   <strong>Descripción:</strong>
-                  <div style={{ marginTop: '8px', padding: '12px', background: '#f8f9fa', borderRadius: '8px', whiteSpace: 'pre-wrap' }}>
+                  <div className="reportes-modal-description-box">
                     {selectedReporte.descripcion}
                   </div>
                 </div>
@@ -731,21 +658,19 @@ export default function Reportes() {
                   <strong>Fecha de generación:</strong> {formatDate(selectedReporte.fecha_generacion)}
                 </div>
                 {isAdmin && (
-                  <div style={{ display: 'flex', gap: '8px', marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid #e5e7eb' }}>
+                  <div className="reportes-modal-actions-footer">
                     <button
                       onClick={() => startEdit(selectedReporte)}
-                      className="btn"
-                      style={{ flex: 1 }}
+                      className="btn reportes-modal-btn"
                     >
-                      <FiEdit size={14} style={{ marginRight: '4px' }} />
+                      <FiEdit size={14} className="reportes-modal-icon" />
                       Editar
                     </button>
                     <button
                       onClick={() => confirmDelete(selectedReporte.id_reporte)}
-                      className="btn danger"
-                      style={{ flex: 1 }}
+                      className="btn danger reportes-modal-btn"
                     >
-                      <FiTrash2 size={14} style={{ marginRight: '4px' }} />
+                      <FiTrash2 size={14} className="reportes-modal-icon" />
                       Eliminar
                     </button>
                   </div>

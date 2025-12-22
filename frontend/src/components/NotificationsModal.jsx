@@ -73,10 +73,9 @@ function NotificationsModal({
                 key={notification.id}
                 className={`notifications-item${notification.leida ? '' : ' is-unread'}${hasRoute ? ' clickable' : ''}`}
                 onClick={hasRoute ? () => handleNotificationClick(notification) : undefined}
-                style={hasRoute ? { cursor: 'pointer' } : {}}
               >
                 <div className="notifications-status">
-                  <FiCircle style={{ color: notification.leida ? '#bbb' : '#28a745', fontSize: '18px' }} />
+                  <FiCircle className={notification.leida ? 'notifications-circle-read' : 'notifications-circle-unread'} />
                 </div>
                 <div className="notifications-body">
                   <div className="notif-title">{notification.titulo}</div>

@@ -218,7 +218,7 @@ export default function Equipos() {
           </div>
           <div className="form-row">
             <label>Centro</label>
-            <input name="r_centro" value="00000" readOnly disabled style={{ backgroundColor: '#f5f5f5', cursor: 'not-allowed' }} />
+            <input name="r_centro" value="00000" readOnly disabled className="form-input-disabled" />
           </div>
           <div className="form-row">
             <label>Descripción</label>
@@ -236,7 +236,7 @@ export default function Equipos() {
             </select>
             {errores.tipo && <span className="error-text">{errores.tipo}</span>}
             {categorias.length === 0 && (
-              <small style={{ color: '#999', fontStyle: 'italic' }}>
+              <small className="form-help-text">
                 No hay categorías disponibles. Contacta al administrador.
               </small>
             )}

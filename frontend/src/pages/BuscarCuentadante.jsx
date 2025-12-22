@@ -5,6 +5,7 @@ import Toast from '../components/Toast'
 import { FiSearch, FiUser, FiPackage, FiDollarSign, FiTrendingUp, FiTrendingDown, FiAlertCircle, FiCheckCircle } from 'react-icons/fi'
 import { parseApiResponse, buildErrorMessage } from '../utils/api'
 import '../styles/equipos.css'
+import '../styles/buscarCuentadante.css'
 
 export default function BuscarCuentadante() {
   const [documento, setDocumento] = useState('')
@@ -95,12 +96,12 @@ export default function BuscarCuentadante() {
 
           <div className="form-equipos form-modern">
             <div className="form-header">
-              <div className="form-icon-wrapper" style={{ background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)' }}>
+              <div className="form-icon-wrapper buscar-cuentadante-header-icon">
                 <FiUser size={28} color="#fff" />
               </div>
-              <div style={{ flex: 1 }}>
-                <h2 style={{ margin: 0, fontSize: '28px', fontWeight: 700, color: '#1a2a3a' }}>Buscar Cuentadante</h2>
-                <p style={{ color: '#666', marginTop: 8, fontSize: '15px' }}>
+              <div className="buscar-cuentadante-header-content">
+                <h2 className="buscar-cuentadante-title">Buscar Cuentadante</h2>
+                <p className="buscar-cuentadante-subtitle">
                   Busca un cuentadante por su número de documento para ver su información e inventario completo
                 </p>
               </div>
@@ -108,21 +109,21 @@ export default function BuscarCuentadante() {
 
             <div className="form-divider"></div>
 
-            <form onSubmit={handleSearch} style={{ marginBottom: '2rem' }}>
+            <form onSubmit={handleSearch} className="buscar-cuentadante-form">
               <div className="form-section">
                 <h3 className="form-section-title">
-                  <FiSearch size={18} style={{ marginRight: 8 }} />
+                  <FiSearch size={18} className="buscar-cuentadante-section-icon" />
                   Búsqueda
                 </h3>
                 <div className="form-group">
                   <label>Número de Documento *</label>
-                  <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  <div className="buscar-cuentadante-search-row">
                     <input
                       type="text"
                       value={documento}
                       onChange={(e) => setDocumento(e.target.value)}
                       placeholder="Ingresa el número de documento del cuentadante"
-                      style={{ flex: 1 }}
+                      className="form-input buscar-cuentadante-search-input"
                       disabled={loading}
                     />
                     <button
@@ -132,7 +133,7 @@ export default function BuscarCuentadante() {
                     >
                       {loading ? 'Buscando...' : (
                         <>
-                          <FiSearch size={16} style={{ marginRight: '0.5rem' }} />
+                          <FiSearch size={16} className="icon-inline" />
                           Buscar
                         </>
                       )}
@@ -145,60 +146,48 @@ export default function BuscarCuentadante() {
             {cuentadante && (
               <>
                 {/* Información del Cuentadante */}
-                <div className="form-section" style={{ marginBottom: '2rem' }}>
+                <div className="form-section buscar-cuentadante-section">
                   <h3 className="form-section-title">
-                    <FiUser size={18} style={{ marginRight: 8 }} />
+                    <FiUser size={18} className="buscar-cuentadante-section-icon" />
                     Información del Cuentadante
                   </h3>
-                  <div style={{
-                    padding: '1.5rem',
-                    background: '#f8f9fa',
-                    borderRadius: '8px',
-                    border: '1px solid #e5e7eb'
-                  }}>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1rem' }}>
+                  <div className="buscar-cuentadante-info-card">
+                    <div className="buscar-cuentadante-info-grid">
                       <div>
-                        <strong style={{ color: '#666', fontSize: '0.9rem' }}>Nombre:</strong>
-                        <div style={{ fontSize: '1.1rem', fontWeight: 600, marginTop: '0.25rem' }}>
+                        <strong className="buscar-cuentadante-info-label">Nombre:</strong>
+                        <div className="buscar-cuentadante-info-value">
                           {cuentadante.nombre_usuario}
                         </div>
                       </div>
                       <div>
-                        <strong style={{ color: '#666', fontSize: '0.9rem' }}>Documento:</strong>
-                        <div style={{ fontSize: '1.1rem', fontWeight: 600, marginTop: '0.25rem' }}>
+                        <strong className="buscar-cuentadante-info-label">Documento:</strong>
+                        <div className="buscar-cuentadante-info-value">
                           {cuentadante.cedula}
                         </div>
                       </div>
                       <div>
-                        <strong style={{ color: '#666', fontSize: '0.9rem' }}>Correo:</strong>
-                        <div style={{ fontSize: '1.1rem', marginTop: '0.25rem' }}>
+                        <strong className="buscar-cuentadante-info-label">Correo:</strong>
+                        <div className="buscar-cuentadante-info-value-normal">
                           {cuentadante.correo || '-'}
                         </div>
                       </div>
                       <div>
-                        <strong style={{ color: '#666', fontSize: '0.9rem' }}>Teléfono:</strong>
-                        <div style={{ fontSize: '1.1rem', marginTop: '0.25rem' }}>
+                        <strong className="buscar-cuentadante-info-label">Teléfono:</strong>
+                        <div className="buscar-cuentadante-info-value-normal">
                           {cuentadante.telefono || '-'}
                         </div>
                       </div>
                       <div>
-                        <strong style={{ color: '#666', fontSize: '0.9rem' }}>Estado:</strong>
-                        <div style={{ marginTop: '0.25rem' }}>
-                          <span style={{
-                            padding: '4px 12px',
-                            borderRadius: '12px',
-                            fontSize: '0.85rem',
-                            fontWeight: 600,
-                            background: cuentadante.estado === 'Activo' ? '#d1fae5' : '#fee2e2',
-                            color: cuentadante.estado === 'Activo' ? 'var(--success-800)' : 'var(--error-700)'
-                          }}>
+                        <strong className="buscar-cuentadante-info-label">Estado:</strong>
+                        <div className="buscar-cuentadante-info-margin">
+                          <span className={`badge ${cuentadante.estado === 'Activo' ? 'badge-success' : 'badge-error'}`}>
                             {cuentadante.estado}
                           </span>
                         </div>
                       </div>
                       <div>
-                        <strong style={{ color: '#666', fontSize: '0.9rem' }}>Fecha de Registro:</strong>
-                        <div style={{ fontSize: '1rem', marginTop: '0.25rem' }}>
+                        <strong className="buscar-cuentadante-info-label">Fecha de Registro:</strong>
+                        <div className="buscar-cuentadante-info-value-normal buscar-cuentadante-info-value-large">
                           {formatDate(cuentadante.fecha_creacion)}
                         </div>
                       </div>
@@ -208,76 +197,48 @@ export default function BuscarCuentadante() {
 
                 {/* Estadísticas */}
                 {estadisticas && (
-                  <div className="form-section" style={{ marginBottom: '2rem' }}>
+                  <div className="form-section buscar-cuentadante-section">
                     <h3 className="form-section-title">
-                      <FiTrendingUp size={18} style={{ marginRight: 8 }} />
+                      <FiTrendingUp size={18} className="buscar-cuentadante-section-icon" />
                       Estadísticas del Inventario
                     </h3>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
-                      <div style={{
-                        padding: '1.5rem',
-                        background: '#eff6ff',
-                        borderRadius: '8px',
-                        border: '1px solid #3b82f6',
-                        textAlign: 'center'
-                      }}>
-                        <FiPackage size={32} color="#3b82f6" style={{ marginBottom: '0.5rem' }} />
-                        <div style={{ fontSize: '2rem', fontWeight: 700, color: '#1e40af' }}>
-                          {estadisticas.total_equipos || 0}
+                    <div className="buscar-cuentadante-estadisticas-card">
+                      <div className="buscar-cuentadante-estadisticas-grid">
+                        <div className="buscar-cuentadante-stat-card">
+                          <FiPackage size={32} color="var(--info-600)" className="buscar-cuentadante-stat-icon-margin" />
+                          <div className="buscar-cuentadante-stat-value buscar-cuentadante-stat-value-total">
+                            {estadisticas.total_equipos || 0}
+                          </div>
+                          <div className="buscar-cuentadante-stat-label">Total Equipos</div>
                         </div>
-                        <div style={{ color: '#666', fontSize: '0.9rem', marginTop: '0.25rem' }}>Total Equipos</div>
-                      </div>
-                      <div style={{
-                        padding: '1.5rem',
-                        background: '#f0fdf4',
-                        borderRadius: '8px',
-                        border: '1px solid var(--success-800)',
-                        textAlign: 'center'
-                      }}>
-                        <FiCheckCircle size={32} style={{ marginBottom: '0.5rem', color: 'var(--success-800)' }} />
-                        <div style={{ fontSize: '2rem', fontWeight: 700, color: 'var(--success-800)' }}>
-                          {estadisticas.equipos_buenos || 0}
+                        <div className="buscar-cuentadante-stat-card buscar-cuentadante-stat-card-success">
+                          <FiCheckCircle size={32} color="var(--success-800)" className="buscar-cuentadante-stat-icon-margin" />
+                          <div className="buscar-cuentadante-stat-value buscar-cuentadante-stat-value-valor">
+                            {estadisticas.equipos_buenos || 0}
+                          </div>
+                          <div className="buscar-cuentadante-stat-label">Equipos en Buen Estado</div>
                         </div>
-                        <div style={{ color: '#666', fontSize: '0.9rem', marginTop: '0.25rem' }}>Equipos en Buen Estado</div>
-                      </div>
-                      <div style={{
-                        padding: '1.5rem',
-                        background: '#fef3c7',
-                        borderRadius: '8px',
-                        border: '1px solid var(--warning-600)',
-                        textAlign: 'center'
-                      }}>
-                        <FiAlertCircle size={32} style={{ marginBottom: '0.5rem', color: 'var(--warning-600)' }} />
-                        <div style={{ fontSize: '2rem', fontWeight: 700, color: 'var(--warning-600)' }}>
-                          {estadisticas.equipos_regulares || 0}
+                        <div className="buscar-cuentadante-stat-card buscar-cuentadante-stat-card-warning">
+                          <FiAlertCircle size={32} color="var(--warning-600)" className="buscar-cuentadante-stat-icon-margin" />
+                          <div className="buscar-cuentadante-stat-value buscar-cuentadante-stat-value-warning">
+                            {estadisticas.equipos_regulares || 0}
+                          </div>
+                          <div className="buscar-cuentadante-stat-label">Equipos en Estado Regular</div>
                         </div>
-                        <div style={{ color: '#666', fontSize: '0.9rem', marginTop: '0.25rem' }}>Equipos en Estado Regular</div>
-                      </div>
-                      <div style={{
-                        padding: '1.5rem',
-                        background: '#fee2e2',
-                        borderRadius: '8px',
-                        border: '1px solid var(--error-700)',
-                        textAlign: 'center'
-                      }}>
-                        <FiTrendingDown size={32} style={{ marginBottom: '0.5rem', color: 'var(--error-700)' }} />
-                        <div style={{ fontSize: '2rem', fontWeight: 700, color: 'var(--error-700)' }}>
-                          {estadisticas.equipos_danados || 0}
+                        <div className="buscar-cuentadante-stat-card buscar-cuentadante-stat-card-error">
+                          <FiTrendingDown size={32} color="var(--error-700)" className="buscar-cuentadante-stat-icon-margin" />
+                          <div className="buscar-cuentadante-stat-value buscar-cuentadante-stat-value-error">
+                            {estadisticas.equipos_danados || 0}
+                          </div>
+                          <div className="buscar-cuentadante-stat-label">Equipos Dañados</div>
                         </div>
-                        <div style={{ color: '#666', fontSize: '0.9rem', marginTop: '0.25rem' }}>Equipos Dañados</div>
-                      </div>
-                      <div style={{
-                        padding: '1.5rem',
-                        background: '#f3f4f6',
-                        borderRadius: '8px',
-                        border: '1px solid #6b7280',
-                        textAlign: 'center'
-                      }}>
-                        <FiDollarSign size={32} color="#6b7280" style={{ marginBottom: '0.5rem' }} />
-                        <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#374151' }}>
-                          {formatCurrency(estadisticas.valor_total_inventario || 0)}
+                        <div className="buscar-cuentadante-stat-card buscar-cuentadante-stat-card-neutral">
+                          <FiDollarSign size={32} color="var(--neutral-600)" className="buscar-cuentadante-stat-icon-margin" />
+                          <div className="buscar-cuentadante-stat-value buscar-cuentadante-stat-value-large">
+                            {formatCurrency(estadisticas.valor_total_inventario || 0)}
+                          </div>
+                          <div className="buscar-cuentadante-stat-label">Valor Total Inventario</div>
                         </div>
-                        <div style={{ color: '#666', fontSize: '0.9rem', marginTop: '0.25rem' }}>Valor Total Inventario</div>
                       </div>
                     </div>
                   </div>
@@ -286,7 +247,7 @@ export default function BuscarCuentadante() {
                 {/* Inventario */}
                 <div className="form-section">
                   <h3 className="form-section-title">
-                    <FiPackage size={18} style={{ marginRight: 8 }} />
+                    <FiPackage size={18} className="buscar-cuentadante-section-icon" />
                     Inventario ({inventario.length} equipos)
                   </h3>
                   {inventario.length === 0 ? (
@@ -298,8 +259,8 @@ export default function BuscarCuentadante() {
                       <p>Este cuentadante no tiene equipos en su inventario</p>
                     </div>
                   ) : (
-                    <div style={{ overflowX: 'auto' }}>
-                      <table className="consulta-table" style={{ marginTop: '1rem' }}>
+                    <div className="buscar-cuentadante-table-wrapper">
+                      <table className="consulta-table buscar-cuentadante-table">
                         <thead>
                           <tr>
                             <th>Código Inventario</th>
@@ -320,16 +281,11 @@ export default function BuscarCuentadante() {
                               <td>{equipo.modelo}</td>
                               <td>{equipo.nombre_ambiente || '-'}</td>
                               <td>
-                                <span style={{
-                                  padding: '4px 10px',
-                                  borderRadius: '12px',
-                                  fontSize: '0.85rem',
-                                  fontWeight: 600,
-                                  background: equipo.estado_fisico === 'Bueno' ? '#d1fae5' : 
-                                             equipo.estado_fisico === 'Regular' ? '#fef3c7' : '#fee2e2',
-                                  color: equipo.estado_fisico === 'Bueno' ? 'var(--success-800)' : 
-                                         equipo.estado_fisico === 'Regular' ? 'var(--warning-600)' : 'var(--error-700)'
-                                }}>
+                                <span className={`buscar-cuentadante-badge-estado ${
+                                  equipo.estado_fisico === 'Bueno' ? 'badge-success' :
+                                  equipo.estado_fisico === 'Regular' ? 'badge-warning' :
+                                  'badge-error'
+                                }`}>
                                   {equipo.estado_fisico}
                                 </span>
                               </td>

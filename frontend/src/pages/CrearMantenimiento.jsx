@@ -6,6 +6,7 @@ import Toast from '../components/Toast'
 import { FiTool, FiPackage, FiCalendar, FiUser, FiFileText, FiSearch, FiCheck, FiX, FiType } from 'react-icons/fi'
 import { parseApiResponse, buildErrorMessage } from '../utils/api'
 import '../styles/equipos.css'
+import '../styles/crearMantenimiento.css'
 
 export default function CrearMantenimiento() {
   const navigate = useNavigate()
@@ -223,12 +224,12 @@ export default function CrearMantenimiento() {
           {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
         <div className="form-equipos form-modern">
           <div className="form-header">
-            <div className="form-icon-wrapper" style={{ background: 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)' }}>
+            <div className="form-icon-wrapper crear-mantenimiento-header-icon">
               <FiTool size={28} color="#fff" />
             </div>
-            <div>
-              <h2 style={{ margin: 0, fontSize: '28px', fontWeight: 700, color: '#1a2a3a' }}>Registrar Mantenimiento</h2>
-              <p style={{ color: '#666', marginTop: 8, fontSize: '15px' }}>
+            <div className="crear-mantenimiento-header-content">
+              <h2 className="crear-mantenimiento-title">Registrar Mantenimiento</h2>
+              <p className="crear-mantenimiento-subtitle">
                 Registra mantenimientos preventivos, correctivos o actualizaciones realizadas en equipos
               </p>
             </div>
@@ -240,7 +241,7 @@ export default function CrearMantenimiento() {
             {/* Sección: Equipo */}
             <div className="form-section">
               <h3 className="form-section-title">
-                <FiPackage size={18} style={{ marginRight: 8 }} />
+                    <FiPackage size={18} className="crear-mantenimiento-section-icon" />
                 Equipo a Mantener
               </h3>
               
@@ -308,14 +309,14 @@ export default function CrearMantenimiento() {
             {/* Sección: Información del Mantenimiento */}
             <div className="form-section">
               <h3 className="form-section-title">
-                <FiType size={18} style={{ marginRight: 8 }} />
+                    <FiType size={18} className="crear-mantenimiento-section-icon" />
                 Información del Mantenimiento
               </h3>
 
               <div className="form-grid">
                 <div className="form-group">
                   <label>
-                    <FiTool size={16} style={{ marginRight: 6, verticalAlign: 'middle' }} />
+                    <FiTool size={16} className="crear-mantenimiento-option-icon" />
                     Tipo de Mantenimiento *
                   </label>
                   <select
@@ -331,7 +332,7 @@ export default function CrearMantenimiento() {
 
                 <div className="form-group">
                   <label>
-                    <FiCalendar size={16} style={{ marginRight: 6, verticalAlign: 'middle' }} />
+                    <FiCalendar size={16} className="crear-mantenimiento-option-icon" />
                     Estado *
                   </label>
                   <select
@@ -350,7 +351,7 @@ export default function CrearMantenimiento() {
               <div className="form-grid">
                 <div className="form-group">
                   <label>
-                    <FiCalendar size={16} style={{ marginRight: 6, verticalAlign: 'middle' }} />
+                    <FiCalendar size={16} className="crear-mantenimiento-option-icon" />
                     Fecha de Mantenimiento *
                   </label>
                   <input
@@ -360,14 +361,14 @@ export default function CrearMantenimiento() {
                     min={getCurrentDateTime()}
                     required
                   />
-                  <p style={{ marginTop: '4px', fontSize: '0.8rem', color: '#666' }}>
+                  <p className="crear-mantenimiento-help-text">
                     Selecciona una fecha futura para programar el mantenimiento
                   </p>
                 </div>
 
                 <div className="form-group">
                   <label>
-                    <FiCalendar size={16} style={{ marginRight: 6, verticalAlign: 'middle' }} />
+                    <FiCalendar size={16} className="crear-mantenimiento-option-icon" />
                     Próximo Mantenimiento (Opcional)
                   </label>
                   <input
@@ -376,7 +377,7 @@ export default function CrearMantenimiento() {
                     onChange={(e) => handleChange('fecha_proximo', e.target.value)}
                     min={form.fecha_mantenimiento ? form.fecha_mantenimiento.split('T')[0] : ''}
                   />
-                  <p style={{ marginTop: '4px', fontSize: '0.8rem', color: '#666' }}>
+                  <p className="crear-mantenimiento-help-text">
                     Establece la fecha del próximo mantenimiento para que aparezca en las estadísticas del Dashboard
                   </p>
                 </div>
@@ -386,7 +387,7 @@ export default function CrearMantenimiento() {
             {/* Sección: Técnico (Opcional) */}
             <div className="form-section">
               <h3 className="form-section-title">
-                <FiUser size={18} style={{ marginRight: 8 }} />
+                    <FiUser size={18} className="crear-mantenimiento-section-icon" />
                 Técnico Responsable (Opcional)
               </h3>
               
@@ -452,7 +453,7 @@ export default function CrearMantenimiento() {
             {/* Sección: Detalles */}
             <div className="form-section">
               <h3 className="form-section-title">
-                <FiFileText size={18} style={{ marginRight: 8 }} />
+                    <FiFileText size={18} className="crear-mantenimiento-section-icon" />
                 Detalles
               </h3>
 

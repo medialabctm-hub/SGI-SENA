@@ -7,6 +7,7 @@ import { FiMapPin, FiUser, FiPlus, FiTrash2, FiRefreshCw, FiPackage, FiCalendar,
 import { parseApiResponse, buildErrorMessage } from '../utils/api'
 import '../styles/equipos.css'
 import '../styles/verificacion.css'
+import '../styles/asignarAmbientes.css'
 
 export default function AsignarAmbientes() {
   const [user, setUser] = useState(null)
@@ -256,21 +257,9 @@ export default function AsignarAmbientes() {
   }
 
   function getEstadoBadge(estado) {
-    const estados = {
-      'Activa': { color: 'var(--success-800)', bg: '#d1fae5' },
-      'Finalizada': { color: '#6b7280', bg: '#f3f4f6' }
-    }
-    const estadoInfo = estados[estado] || estados['Finalizada']
+    const estadoClass = estado === 'Activa' ? 'verificado' : 'pendiente'
     return (
-      <span style={{
-        padding: '4px 10px',
-        borderRadius: '12px',
-        fontSize: '0.85rem',
-        fontWeight: 600,
-        color: estadoInfo.color,
-        background: estadoInfo.bg,
-        display: 'inline-block'
-      }}>
+      <span className={`verificacion-badge ${estadoClass}`}>
         {estado}
       </span>
     )
@@ -301,26 +290,24 @@ export default function AsignarAmbientes() {
 
           <div className="users-panel">
             <div className="users-toolbar">
-              <h2 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <h2 className="asignar-ambientes-header">
                 <FiMapPin size={24} />
                 Asignar Ambientes a Instructores
               </h2>
-              <div style={{ display: 'flex', gap: '12px' }}>
+              <div className="asignar-ambientes-actions">
                 <button
                   type="button"
                   className="btn btn-verde"
                   onClick={() => setShowForm(true)}
-                  style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
                 >
                   <FiPlus size={16} />
                   Nueva Asignación
                 </button>
                 <button
                   type="button"
-                  className="btn-act"
+                  className="btn btn-secondary"
                   onClick={fetchAsignaciones}
                   disabled={loading}
-                  style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
                 >
                   <FiRefreshCw size={16} />
                   Actualizar
@@ -329,27 +316,21 @@ export default function AsignarAmbientes() {
             </div>
 
             {showForm && (
-              <div className="verificacion-ambiente-card" style={{ marginTop: '1.5rem', marginBottom: '1.5rem' }}>
-                <h3 style={{ marginTop: 0, marginBottom: '1rem' }}>Nueva Asignación de Ambiente</h3>
+              <div className="verificacion-ambiente-card asignar-ambientes-form-container">
+                <h3 className="asignar-ambientes-form-title">Nueva Asignación de Ambiente</h3>
                 <form onSubmit={handleSubmit}>
                   {/* Fila 1: Ambiente e Instructor */}
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
-                    <div>
-                      <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>
-                        <FiMapPin size={14} style={{ marginRight: '4px', verticalAlign: 'middle' }} />
-                        Ambiente *
+                  <div className="asignar-ambientes-form-grid">
+                    <div className="asignar-ambientes-form-row">
+                      <label className="asignar-ambientes-form-label form-label-required">
+                        <FiMapPin size={14} className="asignar-ambientes-form-label-icon" />
+                        Ambiente
                       </label>
                       <select
+                        className="asignar-ambientes-form-select form-select"
                         value={form.id_ambiente}
                         onChange={e => setForm({ ...form, id_ambiente: e.target.value })}
                         required
-                        style={{
-                          width: '100%',
-                          padding: '10px 14px',
-                          borderRadius: '8px',
-                          border: '2px solid var(--success-800)',
-                          fontSize: '0.95rem'
-                        }}
                       >
                         <option value="">Seleccione un ambiente...</option>
                         {ambientes.map(amb => (
@@ -359,22 +340,16 @@ export default function AsignarAmbientes() {
                         ))}
                       </select>
                     </div>
-                    <div>
-                      <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>
-                        <FiUser size={14} style={{ marginRight: '4px', verticalAlign: 'middle' }} />
-                        Instructor *
+                    <div className="asignar-ambientes-form-row">
+                      <label className="asignar-ambientes-form-label form-label-required">
+                        <FiUser size={14} className="asignar-ambientes-form-label-icon" />
+                        Instructor
                       </label>
                       <select
+                        className="asignar-ambientes-form-select form-select"
                         value={form.id_instructor}
                         onChange={e => setForm({ ...form, id_instructor: e.target.value })}
                         required
-                        style={{
-                          width: '100%',
-                          padding: '10px 14px',
-                          borderRadius: '8px',
-                          border: '2px solid var(--success-800)',
-                          fontSize: '0.95rem'
-                        }}
                       >
                         <option value="">Seleccione un instructor...</option>
                         {instructores.map(inst => (
@@ -387,70 +362,50 @@ export default function AsignarAmbientes() {
                   </div>
 
                   {/* Fila 2: Fechas */}
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
-                    <div>
-                      <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>
-                        <FiCalendar size={14} style={{ marginRight: '4px', verticalAlign: 'middle' }} />
-                        Fecha Inicio *
+                  <div className="asignar-ambientes-form-grid">
+                    <div className="asignar-ambientes-form-row">
+                      <label className="asignar-ambientes-form-label form-label-required">
+                        <FiCalendar size={14} className="asignar-ambientes-form-label-icon" />
+                        Fecha Inicio
                       </label>
                       <input
                         type="date"
+                        className="asignar-ambientes-form-input form-input"
                         value={form.fecha_inicio}
                         onChange={e => setForm({ ...form, fecha_inicio: e.target.value })}
                         required
-                        style={{
-                          width: '100%',
-                          padding: '10px 14px',
-                          borderRadius: '8px',
-                          border: '2px solid var(--success-800)',
-                          fontSize: '0.95rem'
-                        }}
                       />
                     </div>
-                    <div>
-                      <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>
-                        <FiCalendar size={14} style={{ marginRight: '4px', verticalAlign: 'middle' }} />
-                        Fecha Fin *
+                    <div className="asignar-ambientes-form-row">
+                      <label className="asignar-ambientes-form-label form-label-required">
+                        <FiCalendar size={14} className="asignar-ambientes-form-label-icon" />
+                        Fecha Fin
                       </label>
                       <input
                         type="date"
+                        className="asignar-ambientes-form-input form-input"
                         value={form.fecha_fin}
                         onChange={e => setForm({ ...form, fecha_fin: e.target.value })}
                         required
-                        style={{
-                          width: '100%',
-                          padding: '10px 14px',
-                          borderRadius: '8px',
-                          border: '2px solid var(--success-800)',
-                          fontSize: '0.95rem'
-                        }}
                       />
                     </div>
                   </div>
 
                   {/* Fila 3: Días de la semana */}
-                  <div style={{ marginBottom: '1rem' }}>
-                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>
-                      Días de la Semana *
+                  <div className="asignar-ambientes-form-row">
+                    <label className="asignar-ambientes-form-label form-label-required">
+                      Días de la Semana
                     </label>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '0.5rem' }}>
+                    <div className="asignar-ambientes-dias-container">
                       {diasSemanaOpciones.map(dia => (
-                        <label key={dia.valor} style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          padding: '10px 14px',
-                          borderRadius: '8px',
-                          border: '2px solid var(--success-800)',
-                          cursor: 'pointer',
-                          backgroundColor: form.dias_semana.includes(dia.valor) ? '#d1fae5' : 'white',
-                          borderColor: form.dias_semana.includes(dia.valor) ? 'var(--success-800)' : 'var(--success-800)',
-                          transition: 'all 0.2s'
-                        }}>
+                        <label 
+                          key={dia.valor} 
+                          className={`asignar-ambientes-dia-checkbox ${form.dias_semana.includes(dia.valor) ? 'selected' : ''}`}
+                        >
                           <input
                             type="checkbox"
                             checked={form.dias_semana.includes(dia.valor)}
                             onChange={() => handleToggleDia(dia.valor)}
-                            style={{ marginRight: '8px', cursor: 'pointer' }}
                           />
                           <span>{dia.nombre}</span>
                         </label>
@@ -459,87 +414,61 @@ export default function AsignarAmbientes() {
                   </div>
 
                   {/* Fila 4: Horas */}
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
-                    <div>
-                      <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>
-                        <FiClock size={14} style={{ marginRight: '4px', verticalAlign: 'middle' }} />
-                        Hora Inicio *
+                  <div className="asignar-ambientes-form-grid">
+                    <div className="asignar-ambientes-form-row">
+                      <label className="asignar-ambientes-form-label form-label-required">
+                        <FiClock size={14} className="asignar-ambientes-form-label-icon" />
+                        Hora Inicio
                       </label>
                       <input
                         type="time"
+                        className="asignar-ambientes-form-input form-input"
                         value={form.hora_inicio}
                         onChange={e => setForm({ ...form, hora_inicio: e.target.value })}
                         required
-                        style={{
-                          width: '100%',
-                          padding: '10px 14px',
-                          borderRadius: '8px',
-                          border: '2px solid var(--neutral-300)',
-                          fontSize: '0.95rem'
-                        }}
                       />
                     </div>
-                    <div>
-                      <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>
-                        <FiClock size={14} style={{ marginRight: '4px', verticalAlign: 'middle' }} />
-                        Hora Fin *
+                    <div className="asignar-ambientes-form-row">
+                      <label className="asignar-ambientes-form-label form-label-required">
+                        <FiClock size={14} className="asignar-ambientes-form-label-icon" />
+                        Hora Fin
                       </label>
                       <input
                         type="time"
+                        className="asignar-ambientes-form-input form-input"
                         value={form.hora_fin}
                         onChange={e => setForm({ ...form, hora_fin: e.target.value })}
                         required
-                        style={{
-                          width: '100%',
-                          padding: '10px 14px',
-                          borderRadius: '8px',
-                          border: '2px solid var(--success-800)',
-                          fontSize: '0.95rem'
-                        }}
                       />
                     </div>
                   </div>
 
                   {/* Resumen de asignaciones */}
                   {cantidadAsignaciones > 0 && (
-                    <div style={{
-                      padding: '12px 14px',
-                      marginBottom: '1rem',
-                      borderRadius: '8px',
-                      backgroundColor: '#dbeafe',
-                      borderLeft: '4px solid #3b82f6',
-                      color: '#1e40af'
-                    }}>
+                    <div className="asignar-ambientes-info-box">
                       <strong>ℹ️ Información:</strong> Se crearán <strong>{cantidadAsignaciones}</strong> asignaciones para todos los días seleccionados dentro del rango de fechas.
                     </div>
                   )}
 
                   {/* Observaciones */}
-                  <div style={{ marginBottom: '1rem' }}>
-                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>
+                  <div className="asignar-ambientes-form-row">
+                    <label className="asignar-ambientes-form-label">
                       Observaciones
                     </label>
                     <textarea
+                      className="asignar-ambientes-form-textarea form-textarea"
                       value={form.observaciones}
                       onChange={e => setForm({ ...form, observaciones: e.target.value })}
                       placeholder="Observaciones opcionales sobre la asignación..."
                       rows={3}
-                      style={{
-                        width: '100%',
-                        padding: '10px 14px',
-                        borderRadius: '8px',
-                        border: '2px solid var(--success-800)',
-                        fontSize: '0.95rem',
-                        resize: 'vertical'
-                      }}
                     />
                   </div>
 
                   {/* Botones */}
-                  <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+                  <div className="form-actions">
                     <button
                       type="button"
-                      className="btn"
+                      className="btn btn-secondary"
                       onClick={() => {
                         setShowForm(false)
                         setForm({
@@ -571,8 +500,8 @@ export default function AsignarAmbientes() {
             )}
 
             {loading && asignaciones.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '3rem' }}>
-                <div className="loading-spinner" style={{ margin: '0 auto' }}></div>
+              <div className="asignar-ambientes-loading">
+                <div className="loading-spinner asignar-ambientes-loading-spinner"></div>
                 <p>Cargando asignaciones...</p>
               </div>
             ) : asignaciones.length === 0 ? (
@@ -584,7 +513,7 @@ export default function AsignarAmbientes() {
                 <p>Asigna ambientes a instructores para que puedan verificar el inventario</p>
               </div>
             ) : (
-              <div style={{ marginTop: '1.5rem' }}>
+              <div className="asignar-ambientes-content">
                 {/* Agrupar asignaciones por ambiente para mejor visualización */}
                 {(() => {
                   // Agrupar por ambiente
@@ -620,26 +549,16 @@ export default function AsignarAmbientes() {
                   })
 
                   return Object.values(agrupadas).map((grupo, idx) => (
-                    <div key={idx} className="verificacion-ambiente-card" style={{ marginBottom: '1.5rem' }}>
+                    <div key={idx} className="verificacion-ambiente-card asignar-ambientes-ambiente-card">
                       <div className="verificacion-ambiente-header">
                         <div>
-                          <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <h3 className="asignar-ambientes-ambiente-header">
                             <FiMapPin size={20} />
                             {grupo.ambiente.nombre}
                           </h3>
-                          <p style={{ margin: '4px 0 0 0', color: '#6b7280', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                          <p className="asignar-ambientes-ambiente-subtitle">
                             <span>Código: {grupo.ambiente.codigo} | {grupo.ambiente.tipo}</span>
-                            <span style={{
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: '6px',
-                              padding: '4px 10px',
-                              borderRadius: '12px',
-                              fontSize: '0.85rem',
-                              fontWeight: 600,
-                              color: '#3b82f6',
-                              background: '#dbeafe'
-                            }}>
+                            <span className="asignar-ambientes-ambiente-badge asignar-ambientes-ambiente-badge-info">
                               <FiPackage size={14} />
                               {grupo.ambiente.equipos} equipo(s)
                             </span>
@@ -647,8 +566,8 @@ export default function AsignarAmbientes() {
                         </div>
                       </div>
 
-                      <div style={{ marginTop: '1rem', overflowX: 'auto' }}>
-                        <table className="consulta-table" style={{ width: '100%' }}>
+                      <div className="asignar-ambientes-table-container">
+                        <table className="consulta-table asignar-ambientes-table">
                           <thead>
                             <tr>
                               <th>Instructor</th>
@@ -666,7 +585,7 @@ export default function AsignarAmbientes() {
                                 <td>
                                   <div>
                                     <strong>{asig.instructor_nombre}</strong>
-                                    <div style={{ fontSize: '0.85rem', color: '#6b7280' }}>
+                                    <div className="asignar-ambientes-table-meta">
                                       CC: {asig.instructor_cedula}
                                     </div>
                                   </div>
@@ -675,14 +594,13 @@ export default function AsignarAmbientes() {
                                 <td>{asig.hora_inicio || '-'}</td>
                                 <td>{asig.hora_fin || '-'}</td>
                                 <td>{getEstadoBadge(asig.estado)}</td>
-                                <td style={{ maxWidth: '250px', wordWrap: 'break-word' }}>{asig.observaciones || '-'}</td>
+                                <td className="asignar-ambientes-table-cell-observaciones">{asig.observaciones || '-'}</td>
                                 <td>
                                   {asig.estado === 'Activa' && (
                                     <button
-                                      className="btn btn-delete"
+                                      className="btn btn-delete btn-sm asignar-ambientes-table-actions"
                                       onClick={() => setConfirmDelete({ open: true, id: asig.id })}
                                       disabled={loading}
-                                      style={{ fontSize: '0.85rem', padding: '6px 12px' }}
                                       title="Desasignar ambiente"
                                     >
                                       <FiTrash2 size={14} />

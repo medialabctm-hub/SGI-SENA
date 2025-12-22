@@ -356,7 +356,7 @@ export default function Header() {
               ) : null}
               <div
                 className="header-profile-placeholder"
-                style={{ display: fotoPerfil ? 'none' : 'flex' }}
+                className={fotoPerfil ? 'header-avatar-placeholder-hidden' : 'header-avatar-placeholder-visible'}
               >
                 {getInitials(nombreCompleto)}
               </div>

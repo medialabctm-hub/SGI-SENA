@@ -208,7 +208,7 @@ export default function Perfil() {
         <div className="dashboard-layout">
           <Sidebar user={currentUser} />
           <main className="dashboard-main">
-            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '400px' }}>
+            <div className="perfil-avatar-container">
               <div>Cargando perfil...</div>
             </div>
           </main>
@@ -245,11 +245,11 @@ export default function Perfil() {
               </div>
               {!editing ? (
                 <button className="btn-edit-perfil" onClick={() => setEditing(true)}>
-                  <FiEdit2 size={16} style={{ marginRight: '6px' }} />
+                  <FiEdit2 size={16} className="perfil-edit-btn-icon" />
                   Editar Perfil
                 </button>
               ) : (
-                <div style={{ display: 'flex', gap: '12px' }}>
+                <div className="perfil-actions-inline">
                   <button className="btn" onClick={() => { setEditing(false); fetchUserData(); }}>
                     Cancelar
                   </button>
@@ -285,7 +285,7 @@ export default function Perfil() {
                     )}
                     <div 
                       className="perfil-photo-placeholder"
-                      style={{ display: fotoPerfil ? 'none' : 'flex' }}
+                      className={fotoPerfil ? 'perfil-avatar-upload-hidden' : 'perfil-avatar-placeholder-visible'}
                     >
                       {getInitials(nombreCompleto)}
                     </div>
@@ -311,7 +311,7 @@ export default function Perfil() {
                     type="file"
                     accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
                     onChange={handlePhotoUpload}
-                    style={{ display: 'none' }}
+                    className="perfil-avatar-upload-hidden"
                   />
                   <h3 className="perfil-photo-name">{nombreCompleto}</h3>
                   <p className="perfil-photo-role">{rol}</p>

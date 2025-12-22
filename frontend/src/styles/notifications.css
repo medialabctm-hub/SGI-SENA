@@ -224,9 +224,22 @@
   border-bottom: none;
 }
 
+.notifications-item.clickable {
+  cursor: pointer;
+}
+
+.notifications-circle-read {
+  color: #bbb;
+  font-size: 18px;
+}
+
+.notifications-circle-unread {
+  color: #28a745;
+  font-size: 18px;
+}
+
 .notifications-item.clickable:hover {
   background-color: #f9fafb;
-  cursor: pointer;
 }
 
 .notifications-item.is-unread {

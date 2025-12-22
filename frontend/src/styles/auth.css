@@ -153,6 +153,10 @@
   padding: 6px 0;
 }
 
+.eye-clickable {
+  cursor: pointer;
+}
+
 .eye {
   margin-left: 10px;
   cursor: pointer;

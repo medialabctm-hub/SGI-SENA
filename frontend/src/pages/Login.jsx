@@ -91,9 +91,8 @@ export default function Login() {
               onChange={(e) => setContrasena(e.target.value)}
             />
             <span 
-              className="eye" 
+              className="eye eye-clickable" 
               onClick={() => setMostrarContrasena(!mostrarContrasena)}
-              style={{ cursor: 'pointer' }}
             >
               {mostrarContrasena ? <FiEyeOff /> : <FiEye />}
             </span>

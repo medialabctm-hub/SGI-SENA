@@ -145,9 +145,8 @@ export default function Register() {
               onChange={e => setPassword(e.target.value)}
             />
             <span 
-              className="eye" 
+              className="eye auth-eye-icon" 
               onClick={() => setMostrarPassword(!mostrarPassword)}
-              style={{ cursor: 'pointer' }}
             >
               {mostrarPassword ? <FiEyeOff /> : <FiEye />}
             </span>
@@ -162,9 +161,8 @@ export default function Register() {
               onChange={e => setConfirmPassword(e.target.value)}
             />
             <span 
-              className="eye" 
+              className="eye auth-eye-icon" 
               onClick={() => setMostrarConfirmPassword(!mostrarConfirmPassword)}
-              style={{ cursor: 'pointer' }}
             >
               {mostrarConfirmPassword ? <FiEyeOff /> : <FiEye />}
             </span>
@@ -177,7 +175,7 @@ export default function Register() {
               if (e.target.value === 'Aprendiz') {
                 setCodigoInvitacion('');
               }
-            }} style={{ width: '100%', border: 'none', outline: 'none', background: 'transparent' }}>
+            }} className="auth-select-input">
               <option value="Aprendiz">Aprendiz</option>
               <option value="Instructor">Instructor</option>
               <option value="Administrador">Administrador</option>
@@ -193,11 +191,11 @@ export default function Register() {
                   placeholder={`Código de Seguridad (requerido para ${rol === 'Instructor' ? 'Instructores' : rol === 'Administrador' ? 'Administradores' : 'Cuentadantes'})`}
                   value={codigoInvitacion}
                   onChange={e => setCodigoInvitacion(e.target.value)}
-                  style={{ textTransform: 'uppercase' }}
+                  className="auth-select-uppercase"
                 />
               </label>
               {errores.codigo_invitacion && <div className="error-msg">{errores.codigo_invitacion}</div>}
-              <p style={{ fontSize: '0.85rem', color: '#666', marginTop: '-0.5rem', marginBottom: '1rem' }}>
+              <p className="auth-help-text">
                 Necesitas un código de invitación válido para registrarte como {rol}
               </p>
             </>

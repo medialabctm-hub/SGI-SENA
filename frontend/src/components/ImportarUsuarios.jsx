@@ -129,7 +129,7 @@ export default function ImportarUsuarios({ onImportComplete }) {
               htmlFor="file-input-usuarios"
               className="importar-usuarios-file-label-inner"
             >
-              <FiFile size={28} style={{ color: 'var(--success-800)' }} />
+              <FiFile size={28} color="var(--success-800)" />
               {archivo ? (
                 <span className="importar-usuarios-file-name">{archivo.name}</span>
               ) : (

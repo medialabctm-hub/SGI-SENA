@@ -17,6 +17,7 @@ import {
 } from 'react-icons/fi'
 import { parseApiResponse, buildErrorMessage } from '../utils/api'
 import '../styles/equipos.css'
+import '../styles/historialVerificacionesGeneral.css'
 
 export default function HistorialVerificacionesGeneral() {
   const navigate = useNavigate()
@@ -96,18 +97,11 @@ export default function HistorialVerificacionesGeneral() {
       'No Verificado': { color: '#6b7280', bg: '#f3f4f6', icon: <FiX size={16} /> }
     }
     const estadoInfo = estados[estado] || estados['No Verificado']
+    const estadoClass = estado === 'Verificado' ? 'historial-verificaciones-general-estado-badge-verificado' :
+                        estado === 'Con Novedad' ? 'historial-verificaciones-general-estado-badge-con-novedad' :
+                        'historial-verificaciones-general-estado-badge-no-verificado'
     return (
-      <span style={{
-        padding: '6px 12px',
-        borderRadius: '12px',
-        fontSize: '0.9rem',
-        fontWeight: 600,
-        color: estadoInfo.color,
-        background: estadoInfo.bg,
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: '6px'
-      }}>
+      <span className={`historial-verificaciones-general-estado-badge ${estadoClass}`}>
         {estadoInfo.icon}
         {estado}
       </span>
@@ -144,16 +138,15 @@ export default function HistorialVerificacionesGeneral() {
 
         <div className="users-panel">
           <div className="users-toolbar">
-            <h2 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <h2 className="historial-verificaciones-general-header">
               <FiClock size={24} />
               Historial de Verificaciones de Inventario
             </h2>
             {/* <button
               type="button"
-              className="btn-act"
+              className="btn-act historial-verificaciones-general-refresh-btn"
               onClick={fetchHistorial}
               disabled={loading}
-              style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
             >
               <FiRefreshCw size={16} />
               Actualizar
@@ -161,24 +154,24 @@ export default function HistorialVerificacionesGeneral() {
           </div>
 
           {/* Filtros */}
-          <div style={{ marginTop: '1.5rem', padding: '1rem', background: '#f9fafb', borderRadius: '10px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
+          <div className="historial-verificaciones-general-filters">
             <div>
-              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600, fontSize: '0.9rem' }}>Placa</label>
+              <label className="historial-verificaciones-general-filter-label">Placa</label>
               <input
                 type="text"
                 value={filtros.codigo_equipo}
                 onChange={e => setFiltros({ ...filtros, codigo_equipo: e.target.value })}
                 placeholder="Buscar por código..."
-                style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '2px solid var(--success-800)' }}
+                className="historial-verificaciones-general-filter-input"
               />
             </div>
             {user?.nombre_rol === 'Administrador' && (
               <div>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600, fontSize: '0.9rem' }}>Ambiente</label>
+                <label className="historial-verificaciones-general-filter-label">Ambiente</label>
                 <select
                   value={filtros.id_ambiente}
                   onChange={e => setFiltros({ ...filtros, id_ambiente: e.target.value })}
-                  style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '2px solid var(--success-800)' }}
+                  className="historial-verificaciones-general-filter-input"
                 >
                   <option value="">Todos</option>
                   {ambientes.map(amb => (
@@ -190,29 +183,29 @@ export default function HistorialVerificacionesGeneral() {
               </div>
             )}
             <div>
-              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600, fontSize: '0.9rem' }}>Fecha Desde</label>
+              <label className="historial-verificaciones-general-filter-label">Fecha Desde</label>
               <input
                 type="date"
                 value={filtros.fecha_desde}
                 onChange={e => setFiltros({ ...filtros, fecha_desde: e.target.value })}
-                style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '2px solid var(--success-800)' }}
+                className="historial-verificaciones-general-filter-input"
               />
             </div>
             <div>
-              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600, fontSize: '0.9rem' }}>Fecha Hasta</label>
+              <label className="historial-verificaciones-general-filter-label">Fecha Hasta</label>
               <input
                 type="date"
                 value={filtros.fecha_hasta}
                 onChange={e => setFiltros({ ...filtros, fecha_hasta: e.target.value })}
-                style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '2px solid var(--success-800)' }}
+                className="historial-verificaciones-general-filter-input"
               />
             </div>
             <div>
-              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600, fontSize: '0.9rem' }}>Estado</label>
+              <label className="historial-verificaciones-general-filter-label">Estado</label>
               <select
                 value={filtros.estado_verificacion}
                 onChange={e => setFiltros({ ...filtros, estado_verificacion: e.target.value })}
-                style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '2px solid var(--success-800)' }}
+                className="historial-verificaciones-general-filter-input"
               >
                 <option value="">Todos</option>
                 <option value="Verificado">Verificado</option>
@@ -220,12 +213,11 @@ export default function HistorialVerificacionesGeneral() {
                 <option value="No Verificado">No Verificado</option>
               </select>
             </div>
-            <div style={{ display: 'flex', alignItems: 'flex-end' }}>
+            <div className="historial-verificaciones-general-filter-actions">
               <button
                 type="button"
-                className="btn"
+                className="btn historial-verificaciones-general-filter-btn"
                 onClick={() => setFiltros({ codigo_equipo: '', id_ambiente: '', fecha_desde: '', fecha_hasta: '', estado_verificacion: '' })}
-                style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
               >
                 <FiFilter size={16} />
                 Limpiar
@@ -235,18 +227,18 @@ export default function HistorialVerificacionesGeneral() {
 
           {/* Tabla de Historial */}
           {loading && verificaciones.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '3rem', color: '#6b7280' }}>
+            <div className="historial-verificaciones-general-loading">
               Cargando historial...
             </div>
           ) : verificaciones.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '3rem', color: '#6b7280' }}>
-              <FiClock size={48} style={{ marginBottom: '1rem', opacity: 0.5 }} />
+            <div className="historial-verificaciones-general-empty">
+              <FiClock size={48} className="historial-verificaciones-general-empty-icon" />
               <p>No hay verificaciones registradas</p>
-              <p style={{ fontSize: '0.9rem', marginTop: '0.5rem' }}>Usa los filtros para buscar verificaciones específicas</p>
+              <p className="historial-verificaciones-general-empty-text">Usa los filtros para buscar verificaciones específicas</p>
             </div>
           ) : (
-            <div style={{ marginTop: '1.5rem', overflowX: 'auto' }}>
-              <table className="consulta-table" style={{ width: '100%' }}>
+            <div className="historial-verificaciones-general-table-wrapper">
+              <table className="consulta-table historial-verificaciones-general-table">
                 <thead>
                   <tr>
                     <th>Fecha y Hora</th>
@@ -264,7 +256,7 @@ export default function HistorialVerificacionesGeneral() {
                   {verificaciones.map(verif => (
                     <tr key={verif.id_verificacion}>
                       <td>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <div className="historial-verificaciones-general-date-cell">
                           <FiClock size={14} />
                           {formatDateTime(verif.fecha_verificacion)}
                         </div>
@@ -272,11 +264,11 @@ export default function HistorialVerificacionesGeneral() {
                       <td>
                         <div>
                           <strong>{verif.equipo_tipo}</strong>
-                          <div style={{ fontSize: '0.85rem', color: '#6b7280' }}>
+                          <div className="historial-verificaciones-general-equipo-info">
                             {verif.codigo_inventario || verif.codigo_equipo}
                           </div>
                           {verif.equipo_marca && verif.equipo_modelo && (
-                            <div style={{ fontSize: '0.85rem', color: '#6b7280' }}>
+                            <div className="historial-verificaciones-general-equipo-info">
                               {verif.equipo_marca} {verif.equipo_modelo}
                             </div>
                           )}
@@ -285,7 +277,7 @@ export default function HistorialVerificacionesGeneral() {
                       <td>
                         <div>
                           <strong>{verif.instructor_nombre}</strong>
-                          <div style={{ fontSize: '0.85rem', color: '#6b7280' }}>
+                          <div className="historial-verificaciones-general-instructor-info">
                             CC: {verif.instructor_cedula}
                           </div>
                         </div>
@@ -294,7 +286,7 @@ export default function HistorialVerificacionesGeneral() {
                         {verif.nombre_ambiente ? (
                           <div>
                             <strong>{verif.nombre_ambiente}</strong>
-                            <div style={{ fontSize: '0.85rem', color: '#6b7280' }}>
+                            <div className="historial-verificaciones-general-ambiente-info">
                               {verif.codigo_ambiente}
                             </div>
                           </div>
@@ -305,11 +297,11 @@ export default function HistorialVerificacionesGeneral() {
                           <div>
                             <div><strong>{verif.nombre_clase || 'Clase'}</strong></div>
                             {verif.codigo_ficha && (
-                              <div style={{ fontSize: '0.85rem', color: '#6b7280' }}>
+                              <div className="historial-verificaciones-general-clase-info">
                                 Ficha: {verif.codigo_ficha}
                               </div>
                             )}
-                            <div style={{ fontSize: '0.85rem', color: '#6b7280', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '4px' }}>
+                            <div className="historial-verificaciones-general-clase-time">
                               <FiClock size={12} />
                               {formatDate(verif.fecha_clase)} {verif.hora_inicio} - {verif.hora_fin}
                             </div>
@@ -318,14 +310,11 @@ export default function HistorialVerificacionesGeneral() {
                       </td>
                       <td>
                         {verif.jornada ? (
-                          <span style={{
-                            padding: '4px 10px',
-                            borderRadius: '12px',
-                            fontSize: '0.85rem',
-                            fontWeight: 600,
-                            color: verif.jornada === 'Mañana' ? 'var(--warning-600)' : verif.jornada === 'Tarde' ? '#3b82f6' : '#8b5cf6',
-                            background: verif.jornada === 'Mañana' ? '#fef3c7' : verif.jornada === 'Tarde' ? '#dbeafe' : '#ede9fe'
-                          }}>
+                          <span className={`historial-verificaciones-general-jornada-badge ${
+                            verif.jornada === 'Mañana' ? 'historial-verificaciones-general-jornada-manana' :
+                            verif.jornada === 'Tarde' ? 'historial-verificaciones-general-jornada-tarde' :
+                            'historial-verificaciones-general-jornada-noche'
+                          }`}>
                             {verif.jornada}
                           </span>
                         ) : '-'}
@@ -334,9 +323,8 @@ export default function HistorialVerificacionesGeneral() {
                       <td>{verif.observaciones || '-'}</td>
                       <td>
                         <button
-                          className="btn btn-view"
+                          className="btn btn-view historial-verificaciones-general-action-btn"
                           onClick={() => navigate(`/equipos/historial-verificaciones/${verif.codigo_equipo}`)}
-                          style={{ fontSize: '0.85rem', padding: '6px 12px' }}
                           title="Ver historial completo del equipo"
                         >
                           <FiSearch size={14} />

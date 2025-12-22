@@ -1,4 +1,9 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Nunito:ital,wght@0,200..1000;1,200..1000&family=Urbanist:ital,wght@0,100..900;1,100..900&display=swap');
+@import './styles/forms.css';
+@import './styles/tables.css';
+@import './styles/buttons.css';
+@import './styles/modals.css';
+@import './styles/badges.css';
 
 /* Variables globales */
 :root {
@@ -42,6 +47,13 @@
   --error-900: #641119;
 
   /* Success */
+  --success-50: #f0fdf4;
+  --success-100: #dcfce7;
+  --success-200: #bbf7d0;
+  --success-300: #86efac;
+  --success-400: #4ade80;
+  --success-500: #22c55e;
+  --success-600: #16a34a;
   --success-700: #15c415;
   --success-800: #01af00;
   --success-900: #16943a;

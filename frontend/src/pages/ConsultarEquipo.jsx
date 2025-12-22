@@ -9,6 +9,7 @@ import { useNavigate } from 'react-router-dom'
 import * as XLSX from 'xlsx'
 import '../styles/equipos.css'
 import '../styles/consultarEquipo.css'
+import '../styles/consultarEquipoBadges.css'
 
 export default function ConsultarEquipo() {
   const navigate = useNavigate()
@@ -283,25 +284,19 @@ export default function ConsultarEquipo() {
   
 
   function getEstadoBadge(estado) {
-    const estados = {
-      'Bueno': { color: 'var(--success-800)', bg: 'var(--success-50)' },
-      'Regular': { color: 'var(--warning-600)', bg: '#fef3c7' },
-      'Malo': { color: 'var(--error-700)', bg: '#fee2e2' },
-      'Nuevo': { color: '#3b82f6', bg: '#dbeafe' },
-      'En Reparación': { color: '#8b5cf6', bg: '#ede9fe' }
-    }
-    const estadoInfo = estados[estado] || { color: '#6b7280', bg: '#f3f4f6' }
+    if (!estado) return <span className="consultar-equipo-estado-badge consultar-equipo-estado-badge-default">-</span>
+    
+    const estadoClass = estado === 'Nuevo' ? 'consultar-equipo-estado-badge-nuevo' :
+                        estado === 'Bueno' ? 'consultar-equipo-estado-badge-bueno' :
+                        estado === 'Regular' ? 'consultar-equipo-estado-badge-regular' :
+                        estado === 'Malo' ? 'consultar-equipo-estado-badge-malo' :
+                        estado === 'Dañado' ? 'consultar-equipo-estado-badge-danado' :
+                        estado === 'En Reparación' ? 'consultar-equipo-estado-badge-en-reparacion' :
+                        'consultar-equipo-estado-badge-default'
+    
     return (
-      <span style={{
-        padding: '4px 10px',
-        borderRadius: '12px',
-        fontSize: '0.85rem',
-        fontWeight: 600,
-        color: estadoInfo.color,
-        background: estadoInfo.bg,
-        display: 'inline-block'
-      }}>
-        {estado || '-'}
+      <span className={`consultar-equipo-estado-badge ${estadoClass}`}>
+        {estado}
       </span>
     )
   }
@@ -506,9 +501,9 @@ export default function ConsultarEquipo() {
           />
           <div className="users-panel">
           <div className="users-toolbar">
-            <h2 style={{margin:0}}>Consultar Inventario</h2>
-            <div style={{display:'flex', gap:12, alignItems:'center', flexWrap: 'wrap'}}>
-              <form onSubmit={handleBuscar} style={{display:'flex', gap:12, alignItems:'center'}}>
+            <h2 className="consultar-equipo-header">Consultar Inventario</h2>
+            <div className="consultar-equipo-header-row">
+              <form onSubmit={handleBuscar} className="consultar-equipo-search-form">
                 <input
                   type="text"
                   placeholder="Buscar por código de inventario..."
@@ -534,7 +529,7 @@ export default function ConsultarEquipo() {
                   {loading ? 'Cargando...' : 'Mostrar todos'}
                 </button>
               </form>
-              <div style={{display:'flex', gap:12, alignItems:'center'}}>
+              <div className="consultar-equipo-actions-row">
                 <button 
                   type="button" 
                   className="consultar-equipo-btn consultar-equipo-btn-gris" 
@@ -648,12 +643,12 @@ export default function ConsultarEquipo() {
             </div>
           )}
 
-          <div style={{marginTop:12}}>
+          <div className="consultar-equipo-content">
             {loading ? (
               <div>Cargando equipos...</div>
             ) : equipos.length > 0 ? (
-              <div style={{overflowX:'auto'}}>
-                <table className="users-table" style={{width:'100%'}}>
+              <div className="consultar-equipo-table-wrapper">
+                <table className="users-table consultar-equipo-table">
                   <thead>
                     <tr>
                       {visibleColumns.includes('codigo_inventario') && <th>Código Inventario</th>}
@@ -666,7 +661,7 @@ export default function ConsultarEquipo() {
                       {visibleColumns.includes('nombre_ambiente') && <th>Ambiente</th>}
                       {visibleColumns.includes('descripcion') && <th>Descripción</th>}
                       {visibleColumns.includes('specs_completas') && <th>Atributos</th>}
-                      <th style={{width: user?.nombre_rol === 'Administrador' ? '280px' : '120px'}}>Acciones</th>
+                      <th className={user?.nombre_rol === 'Administrador' ? 'consultar-equipo-actions-column' : 'consultar-equipo-actions-column-instructor'}>Acciones</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -772,30 +767,28 @@ export default function ConsultarEquipo() {
                                 onClick={() => navigate(`/equipos/detalle/${eq.codigo_equipo}`)} 
                                 disabled={loading}
                                 title="Ver detalle completo del equipo"
-                                style={{ fontSize: '0.85rem', padding: '6px 12px', marginRight: '6px' }}
+                                className="consultar-equipo-action-button"
                               >
-                                <FiEye size={14} />
+                                <FiEye size={14} className="consultar-equipo-action-icon" />
                                 Ver Detalle
                               </button>
                               <button 
-                                className="btn btn-view" 
+                                className="btn btn-view consultar-equipo-action-button" 
                                 type="button" 
                                 onClick={() => navigate(`/equipos/historial-verificaciones/${eq.codigo_equipo}`)} 
                                 disabled={loading}
                                 title="Ver historial de verificaciones"
-                                style={{ fontSize: '0.85rem', padding: '6px 12px', marginRight: '6px' }}
                               >
-                                <FiClock size={14} />
+                                <FiClock size={14} className="consultar-equipo-action-icon" />
                                 Historial
                               </button>
                               {user?.nombre_rol === 'Administrador' && (
                                 <>
                                   <button 
-                                    className="btn btn-edit" 
+                                    className="btn btn-edit consultar-equipo-action-button" 
                                     type="button" 
                                     onClick={() => startEdit(eq)} 
                                     disabled={loading}
-                                    style={{ marginRight: '6px' }}
                                   >
                                     Editar
                                   </button>
@@ -821,7 +814,7 @@ export default function ConsultarEquipo() {
               <div className="users-empty">
                 <div>
                   <strong>No hay equipos para mostrar</strong>
-                  <div style={{color:'#666', marginTop:6}}>Busca un equipo por código de inventario o haz clic en "Mostrar todos" para ver todos los equipos.</div>
+                  <div className="consultar-equipo-help-text">Busca un equipo por código de inventario o haz clic en "Mostrar todos" para ver todos los equipos.</div>
                 </div>
               </div>
             )}

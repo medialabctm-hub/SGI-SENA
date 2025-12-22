@@ -307,25 +307,15 @@ export default function DetalleEquipo() {
 
   function getEstadoBadge(estado) {
     const estados = {
-      Bueno: { color: 'var(--success-800)', bg: 'var(--success-50)' },
-      Regular: { color: 'var(--warning-600)', bg: '#fef3c7' },
-      Malo: { color: 'var(--error-700)', bg: '#fee2e2' },
-      Nuevo: { color: '#3b82f6', bg: '#dbeafe' },
-      Dañado: { color: 'var(--error-700)', bg: '#fee2e2' },
+      Bueno: { color: 'var(--success-800)', bg: 'var(--success-50)', className: 'detalle-equipo-estado-badge-bueno' },
+      Regular: { color: 'var(--warning-600)', bg: 'var(--warning-100)', className: 'detalle-equipo-estado-badge-regular' },
+      Malo: { color: 'var(--error-700)', bg: 'var(--error-100)', className: 'detalle-equipo-estado-badge-malo' },
+      Nuevo: { color: 'var(--info-600)', bg: 'var(--info-50)', className: 'detalle-equipo-estado-badge-nuevo' },
+      Dañado: { color: 'var(--error-700)', bg: 'var(--error-100)', className: 'detalle-equipo-estado-badge-danado' },
     };
-    const estadoInfo = estados[estado] || { color: '#6b7280', bg: '#f3f4f6' };
+    const estadoInfo = estados[estado] || { color: 'var(--neutral-600)', bg: 'var(--neutral-100)', className: 'detalle-equipo-estado-badge-default' };
     return (
-      <span
-        style={{
-          padding: '4px 10px',
-          borderRadius: '12px',
-          fontSize: '0.85rem',
-          fontWeight: 600,
-          color: estadoInfo.color,
-          background: estadoInfo.bg,
-          display: 'inline-block',
-        }}
-      >
+      <span className={`detalle-equipo-estado-badge ${estadoInfo.className || 'detalle-equipo-estado-badge-default'}`}>
         {estado || '-'}
       </span>
     );
@@ -338,7 +328,7 @@ export default function DetalleEquipo() {
         <div className="dashboard-layout">
           <Sidebar user={user} />
           <main className="dashboard-main">
-            <div style={{ padding: '40px', textAlign: 'center' }}>Cargando equipo...</div>
+            <div className="detalle-equipo-loading">Cargando equipo...</div>
           </main>
         </div>
       </div>
@@ -352,9 +342,9 @@ export default function DetalleEquipo() {
         <div className="dashboard-layout">
           <Sidebar user={user} />
           <main className="dashboard-main">
-            <div style={{ padding: '40px', textAlign: 'center' }}>
+            <div className="detalle-equipo-not-found">
               <p>Equipo no encontrado</p>
-              <button className="btn" onClick={() => navigate('/equipos/consultar')}>
+              <button className="btn btn-secondary" onClick={() => navigate('/equipos/consultar')}>
                 Volver
               </button>
             </div>
@@ -508,8 +498,8 @@ export default function DetalleEquipo() {
                       disabled={uploading}
                       className="detalle-equipo-modal-checkbox"
                     />
-                    <span style={{ color: 'var(--success-900)' }}>
-                      <FiStar size={18} style={{ display: 'inline', marginRight: '6px', verticalAlign: 'middle' }} />
+                    <span className="detalle-equipo-modal-checkbox-text">
+                      <FiStar size={18} className="detalle-equipo-star-icon" />
                       Marcar como imagen principal
                     </span>
                   </label>
@@ -541,66 +531,30 @@ export default function DetalleEquipo() {
             </div>
           )}
 
-          <div className="users-panel" style={{ background: '#ffffff', borderRadius: '12px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+          <div className="users-panel detalle-equipo-panel">
             {/* Header mejorado */}
-            <div style={{ 
-              display: 'flex', 
-              justifyContent: 'space-between', 
-              alignItems: 'center', 
-              marginBottom: '24px',
-              paddingBottom: '20px',
-              borderBottom: '2px solid #e5e7eb'
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+            <div className="detalle-equipo-header-container">
+              <div className="detalle-equipo-header-left">
                 <button 
-                  className="btn" 
+                  className="btn btn-secondary detalle-equipo-back-button"
                   onClick={() => navigate('/equipos/consultar')}
-                  style={{ 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    gap: '8px',
-                    padding: '10px 16px',
-                    borderRadius: '8px',
-                    border: '1px solid #d1d5db',
-                    background: '#fff',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s'
-                  }}
-                  onMouseOver={(e) => { e.target.style.background = '#f9fafb'; }}
-                  onMouseOut={(e) => { e.target.style.background = '#fff'; }}
                 >
                   <FiArrowLeft size={18} />
                   Volver
                 </button>
-                <div>
-                  <h2 style={{ margin: 0, fontSize: '24px', fontWeight: 700, color: '#111827' }}>
+                <div className="detalle-equipo-title-section">
+                  <h2>
                     {equipo.modelo || equipo.tipo || `Equipo #${equipo.codigo_equipo}`}
                   </h2>
-                  <p style={{ margin: '4px 0 0 0', color: '#6b7280', fontSize: '14px' }}>
+                  <p>
                     {equipo.codigo_inventario || `ID: ${equipo.codigo_equipo}`}
                   </p>
                 </div>
               </div>
               {(user?.nombre_rol === 'Administrador' || user?.nombre_rol === 'Instructor') && (
                 <button 
-                  className="btn btn-verde" 
+                  className="btn btn-verde detalle-equipo-upload-button"
                   onClick={() => setShowUploadModal(true)}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                    padding: '12px 20px',
-                    borderRadius: '8px',
-                    background: 'var(--success-800)',
-                    color: 'white',
-                    border: 'none',
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    transition: 'all 0.2s',
-                    boxShadow: '0 2px 4px rgba(16, 185, 129, 0.3)'
-                  }}
-                  onMouseOver={(e) => { e.target.style.background = 'var(--success-900)'; e.target.style.transform = 'translateY(-1px)'; }}
-                  onMouseOut={(e) => { e.target.style.background = 'var(--success-800)'; e.target.style.transform = 'translateY(0)'; }}
                 >
                   <FiUpload size={18} />
                   Cargar Imágenes
@@ -608,169 +562,128 @@ export default function DetalleEquipo() {
               )}
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', marginBottom: '32px' }}>
+            <div className="detalle-equipo-info-grid">
               {/* Información del Equipo - Mejorado */}
-              <div style={{ 
-                background: 'linear-gradient(135deg, #f9fafb 0%, #ffffff 100%)', 
-                padding: '24px', 
-                borderRadius: '12px',
-                border: '1px solid #e5e7eb',
-                boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px', paddingBottom: '16px', borderBottom: '2px solid #e5e7eb' }}>
+              <div className="detalle-equipo-info-card">
+                <div className="detalle-equipo-card-header">
                   <FiInfo size={20} color="var(--success-800)" />
-                  <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 700, color: '#111827' }}>Información General</h3>
+                  <h3 className="detalle-equipo-card-title">Información General</h3>
                 </div>
-                <div style={{ display: 'grid', gap: '16px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px', background: '#f9fafb', borderRadius: '8px' }}>
-                    <FiPackage size={18} color="#6b7280" />
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: '12px', color: '#6b7280', fontWeight: 600, marginBottom: '4px' }}>CÓDIGO DE INVENTARIO</div>
-                      <div style={{ fontSize: '16px', fontWeight: 600, color: '#111827' }}>{equipo.codigo_inventario || '-'}</div>
+                <div className="detalle-equipo-info-inner-grid">
+                  <div className="detalle-equipo-info-item-with-icon">
+                    <FiPackage size={18} color="var(--neutral-500)" />
+                    <div className="detalle-equipo-info-item-content">
+                      <div className="detalle-equipo-info-label">CÓDIGO DE INVENTARIO</div>
+                      <div className="detalle-equipo-info-value-large">{equipo.codigo_inventario || '-'}</div>
                     </div>
                   </div>
                   
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                    <div style={{ padding: '12px', background: '#f9fafb', borderRadius: '8px' }}>
-                      <div style={{ fontSize: '12px', color: '#6b7280', fontWeight: 600, marginBottom: '4px' }}>TIPO</div>
-                      <div style={{ fontSize: '15px', fontWeight: 500, color: '#111827' }}>{equipo.tipo || '-'}</div>
+                  <div className="detalle-equipo-info-item-grid">
+                    <div className="detalle-equipo-info-item-small">
+                      <div className="detalle-equipo-info-label">TIPO</div>
+                      <div className="detalle-equipo-info-value">{equipo.tipo || '-'}</div>
                     </div>
-                    <div style={{ padding: '12px', background: '#f9fafb', borderRadius: '8px' }}>
-                      <div style={{ fontSize: '12px', color: '#6b7280', fontWeight: 600, marginBottom: '4px' }}>MODELO</div>
-                      <div style={{ fontSize: '15px', fontWeight: 500, color: '#111827' }}>{equipo.modelo || '-'}</div>
-                    </div>
-                  </div>
-
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                    <div style={{ padding: '12px', background: '#f9fafb', borderRadius: '8px' }}>
-                      <div style={{ fontSize: '12px', color: '#6b7280', fontWeight: 600, marginBottom: '4px' }}>NÚMERO DE SERIE</div>
-                      <div style={{ fontSize: '15px', fontWeight: 500, color: '#111827' }}>{equipo.numero_serie || '-'}</div>
-                    </div>
-                    <div style={{ padding: '12px', background: '#f9fafb', borderRadius: '8px' }}>
-                      <div style={{ fontSize: '12px', color: '#6b7280', fontWeight: 600, marginBottom: '4px' }}>CONSECUTIVO</div>
-                      <div style={{ fontSize: '15px', fontWeight: 500, color: '#111827' }}>{equipo.consecutivo || '-'}</div>
+                    <div className="detalle-equipo-info-item-small">
+                      <div className="detalle-equipo-info-label">MODELO</div>
+                      <div className="detalle-equipo-info-value">{equipo.modelo || '-'}</div>
                     </div>
                   </div>
 
-                  <div style={{ padding: '12px', background: '#f9fafb', borderRadius: '8px' }}>
-                    <div style={{ fontSize: '12px', color: '#6b7280', fontWeight: 600, marginBottom: '8px' }}>ESTADO FÍSICO</div>
+                  <div className="detalle-equipo-info-item-grid">
+                    <div className="detalle-equipo-info-item-small">
+                      <div className="detalle-equipo-info-label">NÚMERO DE SERIE</div>
+                      <div className="detalle-equipo-info-value">{equipo.numero_serie || '-'}</div>
+                    </div>
+                    <div className="detalle-equipo-info-item-small">
+                      <div className="detalle-equipo-info-label">CONSECUTIVO</div>
+                      <div className="detalle-equipo-info-value">{equipo.consecutivo || '-'}</div>
+                    </div>
+                  </div>
+
+                  <div className="detalle-equipo-info-card">
+                    <div className="detalle-equipo-info-label">ESTADO FÍSICO</div>
                     {getEstadoBadge(equipo.estado_fisico)}
                   </div>
 
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px', background: '#f9fafb', borderRadius: '8px' }}>
-                      <FiCalendar size={18} color="#6b7280" />
-                      <div style={{ flex: 1 }}>
-                        <div style={{ fontSize: '12px', color: '#6b7280', fontWeight: 600, marginBottom: '4px' }}>FECHA ADQUISICIÓN</div>
-                        <div style={{ fontSize: '15px', fontWeight: 500, color: '#111827' }}>{formatDate(equipo.fecha_adquisicion)}</div>
+                  <div className="detalle-equipo-info-item-grid">
+                    <div className="detalle-equipo-info-item-with-icon">
+                      <FiCalendar size={18} color="var(--neutral-500)" />
+                      <div className="detalle-equipo-info-item-content">
+                        <div className="detalle-equipo-info-label">FECHA ADQUISICIÓN</div>
+                        <div className="detalle-equipo-info-value">{formatDate(equipo.fecha_adquisicion)}</div>
                       </div>
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px', background: '#f9fafb', borderRadius: '8px' }}>
-                      <FiDollarSign size={18} color="#6b7280" />
-                      <div style={{ flex: 1 }}>
-                        <div style={{ fontSize: '12px', color: '#6b7280', fontWeight: 600, marginBottom: '4px' }}>COSTO</div>
-                        <div style={{ fontSize: '15px', fontWeight: 600, color: '#111827' }}>{formatCurrency(equipo.costo)}</div>
+                    <div className="detalle-equipo-info-item-with-icon">
+                      <FiDollarSign size={18} color="var(--neutral-500)" />
+                      <div className="detalle-equipo-info-item-content">
+                        <div className="detalle-equipo-info-label">COSTO</div>
+                        <div className="detalle-equipo-info-value-bold">{formatCurrency(equipo.costo)}</div>
                       </div>
                     </div>
                   </div>
 
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px', background: '#f9fafb', borderRadius: '8px' }}>
-                    <FiMapPin size={18} color="#6b7280" />
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: '12px', color: '#6b7280', fontWeight: 600, marginBottom: '4px' }}>AMBIENTE</div>
-                      <div style={{ fontSize: '15px', fontWeight: 500, color: '#111827' }}>
+                  <div className="detalle-equipo-info-item-with-icon">
+                    <FiMapPin size={18} color="var(--neutral-500)" />
+                    <div className="detalle-equipo-info-item-content">
+                      <div className="detalle-equipo-info-label">AMBIENTE</div>
+                      <div className="detalle-equipo-info-value">
                         {equipo.nombre_ambiente || '-'} {equipo.codigo_ambiente && `(${equipo.codigo_ambiente})`}
                       </div>
                     </div>
                   </div>
 
                   {equipo.descripcion && (
-                    <div style={{ padding: '12px', background: '#f9fafb', borderRadius: '8px' }}>
-                      <div style={{ fontSize: '12px', color: '#6b7280', fontWeight: 600, marginBottom: '8px' }}>DESCRIPCIÓN</div>
-                      <div style={{ fontSize: '15px', color: '#374151', lineHeight: '1.6' }}>{equipo.descripcion}</div>
+                    <div className="detalle-equipo-info-card">
+                      <div className="detalle-equipo-info-label">DESCRIPCIÓN</div>
+                      <div className="detalle-equipo-info-item-text">{equipo.descripcion}</div>
                     </div>
                   )}
                   
                   {equipo.specs_completas && (
-                    <div style={{ padding: '12px', background: '#f9fafb', borderRadius: '8px' }}>
-                      <div style={{ fontSize: '12px', color: '#6b7280', fontWeight: 600, marginBottom: '8px' }}>ESPECIFICACIONES</div>
-                      <div style={{ fontSize: '14px', color: '#374151', whiteSpace: 'pre-wrap', lineHeight: '1.6' }}>
-                        {equipo.specs_completas}
-                      </div>
+                    <div className="detalle-equipo-info-card">
+                      <div className="detalle-equipo-info-label">ESPECIFICACIONES</div>
+                      <div className="detalle-equipo-info-item-text-specs">{equipo.specs_completas}</div>
                     </div>
                   )}
                 </div>
               </div>
 
               {/* Imagen Principal - Mejorado */}
-              <div style={{ 
-                background: 'linear-gradient(135deg, #f9fafb 0%, #ffffff 100%)', 
-                padding: '24px', 
-                borderRadius: '12px',
-                border: '1px solid #e5e7eb',
-                boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px', paddingBottom: '16px', borderBottom: '2px solid #e5e7eb' }}>
+              <div className="detalle-equipo-image-card">
+                <div className="detalle-equipo-image-card-header">
                   <FiImage size={20} color="var(--success-800)" />
-                  <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 700, color: '#111827' }}>Imagen Principal</h3>
+                  <h3 className="detalle-equipo-image-card-title">Imagen Principal</h3>
                 </div>
                 {imagenPrincipal ? (
                   <div>
-                    <div style={{
-                      width: '100%',
-                      height: '400px',
-                      borderRadius: '12px',
-                      overflow: 'hidden',
-                      background: '#fff',
-                      border: '2px solid #e5e7eb',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
-                    }}>
+                    <div className="detalle-equipo-image-wrapper">
                       <img
                         src={imagenPrincipal.ruta_imagen}
                         alt={imagenPrincipal.descripcion || 'Imagen del equipo'}
-                        style={{
-                          width: '100%',
-                          height: '100%',
-                          objectFit: 'contain',
-                        }}
                         onError={(e) => {
                           console.error('Error al cargar imagen:', imagenPrincipal.ruta_imagen);
                           e.target.style.display = 'none';
                         }}
                       />
                     </div>
-                    <div style={{ marginTop: '16px', padding: '12px', background: '#f9fafb', borderRadius: '8px' }}>
+                    <div className="detalle-equipo-image-info-box">
                       {imagenPrincipal.descripcion && (
-                        <div style={{ marginBottom: '8px', fontSize: '14px', color: '#374151', fontWeight: 500 }}>
+                        <div className="detalle-equipo-image-info-description">
                           {imagenPrincipal.descripcion}
                         </div>
                       )}
-                      <div style={{ fontSize: '12px', color: '#6b7280', display: 'flex', gap: '16px' }}>
+                      <div className="detalle-equipo-image-info-meta">
                         <span><strong>Tipo:</strong> {imagenPrincipal.tipo_imagen}</span>
                         <span><strong>Subida:</strong> {formatDate(imagenPrincipal.fecha_subida)}</span>
                       </div>
                     </div>
                   </div>
                 ) : (
-                  <div
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      height: '400px',
-                      background: 'linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%)',
-                      borderRadius: '12px',
-                      border: '2px dashed #d1d5db',
-                      color: '#9ca3af',
-                    }}
-                  >
-                    <div style={{ textAlign: 'center' }}>
-                      <FiImage size={64} style={{ marginBottom: '16px', opacity: 0.4 }} />
-                      <div style={{ fontSize: '16px', fontWeight: 500, marginBottom: '4px' }}>No hay imagen principal</div>
-                      <div style={{ fontSize: '14px', opacity: 0.7 }}>Sube una imagen para verla aquí</div>
+                  <div className="detalle-equipo-image-empty">
+                    <div className="detalle-equipo-image-empty-content">
+                      <FiImage size={64} className="detalle-equipo-image-empty-icon" />
+                      <div className="detalle-equipo-image-empty-title">No hay imagen principal</div>
+                      <div className="detalle-equipo-image-empty-subtitle">Sube una imagen para verla aquí</div>
                     </div>
                   </div>
                 )}
@@ -778,18 +691,12 @@ export default function DetalleEquipo() {
             </div>
 
             {/* Galería de Imágenes - Mejorada */}
-            <div style={{ 
-              background: 'linear-gradient(135deg, #f9fafb 0%, #ffffff 100%)', 
-              padding: '24px', 
-              borderRadius: '12px',
-              border: '1px solid #e5e7eb',
-              boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px', paddingBottom: '16px', borderBottom: '2px solid #e5e7eb' }}>
-                <FiImage size={20} style={{ color: 'var(--success-800)' }} />
-                <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 700, color: '#111827' }}>
+            <div className="detalle-equipo-gallery-section">
+              <div className="detalle-equipo-gallery-section-header">
+                <FiImage size={20} className="detalle-equipo-gallery-section-icon" />
+                <h3 className="detalle-equipo-gallery-section-title">
                   Galería de Imágenes
-                  <span style={{ marginLeft: '12px', fontSize: '16px', fontWeight: 500, color: '#6b7280' }}>
+                  <span className="detalle-equipo-gallery-section-count">
                     ({imagenes.length})
                   </span>
                 </h3>
@@ -800,9 +707,7 @@ export default function DetalleEquipo() {
                     <div
                       key={imagen.id_imagen_equipo}
                       className="detalle-equipo-gallery-thumbnail"
-                      style={{
-                        border: imagen.es_principal ? '2px solid var(--success-800)' : '1px solid #e5e7eb',
-                      }}
+                      className={`detalle-equipo-gallery-thumbnail ${imagen.es_principal ? 'principal' : ''}`}
                       onClick={() => openImageViewer(index)}
                     >
                       <div className="detalle-equipo-gallery-thumbnail-image">
@@ -868,34 +773,17 @@ export default function DetalleEquipo() {
                   ))}
                 </div>
               ) : (
-                <div
-                  style={{
-                    padding: '60px 40px',
-                    textAlign: 'center',
-                    background: 'linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%)',
-                    borderRadius: '12px',
-                    border: '2px dashed #d1d5db',
-                    color: '#9ca3af',
-                  }}
-                >
-                  <FiImage size={64} style={{ marginBottom: '16px', opacity: 0.4 }} />
-                  <div style={{ fontSize: '18px', fontWeight: 600, marginBottom: '8px', color: '#6b7280' }}>
+                <div className="detalle-equipo-gallery-empty-state">
+                  <FiImage size={64} className="detalle-equipo-gallery-empty-icon" />
+                  <div className="detalle-equipo-gallery-empty-title">
                     No hay imágenes disponibles
                   </div>
-                  <div style={{ fontSize: '14px', marginBottom: '20px', opacity: 0.7 }}>
+                  <div className="detalle-equipo-gallery-empty-subtitle">
                     Sube imágenes para verlas en la galería
                   </div>
                   {(user?.nombre_rol === 'Administrador' || user?.nombre_rol === 'Instructor') && (
                     <button
-                      className="btn btn-verde"
-                      style={{ 
-                        marginTop: '16px',
-                        padding: '12px 24px',
-                        borderRadius: '8px',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '8px'
-                      }}
+                      className="btn btn-verde detalle-equipo-gallery-empty-button"
                       onClick={() => setShowUploadModal(true)}
                     >
                       <FiUpload size={18} />
@@ -908,24 +796,17 @@ export default function DetalleEquipo() {
 
             {/* Sección de Usuarios Asignados */}
             {equipo.responsables && equipo.responsables.length > 0 && (
-              <div style={{ 
-                background: 'linear-gradient(135deg, #f9fafb 0%, #ffffff 100%)', 
-                padding: '24px', 
-                borderRadius: '12px',
-                border: '1px solid #e5e7eb',
-                boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
-                marginTop: '24px'
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px', paddingBottom: '16px', borderBottom: '2px solid #e5e7eb' }}>
+              <div className="detalle-equipo-responsables-section">
+                <div className="detalle-equipo-responsables-header">
                   <FiUsers size={20} color="var(--success-800)" />
-                  <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 700, color: '#111827' }}>
+                  <h3 className="detalle-equipo-responsables-title">
                     Usuarios Asignados
-                    <span style={{ marginLeft: '12px', fontSize: '16px', fontWeight: 500, color: '#6b7280' }}>
+                    <span className="detalle-equipo-responsables-count">
                       ({equipo.responsables.length})
                     </span>
                   </h3>
                 </div>
-                <div style={{ display: 'grid', gap: '12px' }}>
+                <div className="detalle-equipo-responsables-grid">
                   {equipo.responsables.map((responsable) => {
                     const displayName = responsable.nombre_aprendiz || responsable.nombre_usuario || responsable.nombre_externo || 'Usuario sin nombre';
                     const displayDocumento = responsable.documento_aprendiz || responsable.cedula || responsable.documento_externo || '-';
@@ -936,77 +817,32 @@ export default function DetalleEquipo() {
                     return (
                     <div
                       key={responsable.id_responsable}
-                      style={{
-                        padding: '16px',
-                        background: '#f9fafb',
-                        borderRadius: '8px',
-                        border: '1px solid #e5e7eb',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '16px'
-                      }}
+                      className="detalle-equipo-responsable-card"
                     >
-                      <div style={{
-                        width: '48px',
-                        height: '48px',
-                        borderRadius: '50%',
-                        background: 'linear-gradient(135deg, var(--success-800) 0%, var(--success-600) 100%)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        color: 'white',
-                        fontWeight: 700,
-                        fontSize: '18px'
-                      }}>
+                      <div className="detalle-equipo-responsable-avatar">
                         <FiUser size={24} />
                       </div>
-                      <div style={{ flex: 1 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                            <strong style={{ fontSize: '16px', color: '#111827' }}>
+                      <div className="detalle-equipo-responsable-content">
+                        <div className="detalle-equipo-responsable-header-row">
+                          <div className="detalle-equipo-responsable-name-row">
+                            <strong className="detalle-equipo-responsable-name">
                               {displayName}
                             </strong>
                             {esAprendizImportado && (
-                              <span style={{
-                                padding: '4px 10px',
-                                borderRadius: '12px',
-                                fontSize: '0.75rem',
-                                fontWeight: 700,
-                                background: '#ecfeff',
-                                color: '#03ca0dff'
-                              }}>
+                              <span className="detalle-equipo-responsable-badge-aprendiz">
                                 Aprendiz
                               </span>
                             )}
                             {responsable.nombre_rol && (
-                              <span style={{
-                                padding: '4px 10px',
-                                borderRadius: '12px',
-                                fontSize: '0.75rem',
-                                fontWeight: 600,
-                                background: '#e0e7ff',
-                                color: '#4338ca'
-                              }}>
+                              <span className="detalle-equipo-responsable-badge-rol">
                                 {responsable.nombre_rol}
                               </span>
                             )}
                           </div>
-                          <div style={{ display: 'flex', gap: '8px' }}>
+                          <div className="detalle-equipo-responsable-actions">
                             <button
                               onClick={() => handleOpenEditAsignacion(responsable)}
-                              style={{
-                                padding: '6px 12px',
-                                background: '#3b82f6',
-                                color: 'white',
-                                border: 'none',
-                                borderRadius: '6px',
-                                cursor: 'pointer',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '6px',
-                                fontSize: '13px',
-                                fontWeight: 500
-                              }}
+                              className="detalle-equipo-responsable-action-btn-edit"
                               title="Editar asignación"
                             >
                               <FiEdit2 size={14} />
@@ -1014,19 +850,7 @@ export default function DetalleEquipo() {
                             </button>
                             <button
                               onClick={() => setDeleteAsignacionConfirm({ open: true, id: responsable.id_responsable })}
-                              style={{
-                                padding: '6px 12px',
-                                background: '#ef4444',
-                                color: 'white',
-                                border: 'none',
-                                borderRadius: '6px',
-                                cursor: 'pointer',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '6px',
-                                fontSize: '13px',
-                                fontWeight: 500
-                              }}
+                              className="detalle-equipo-responsable-action-btn-delete-inline"
                               title="Eliminar asignación"
                             >
                               <FiTrash2 size={14} />
@@ -1034,33 +858,33 @@ export default function DetalleEquipo() {
                             </button>
                           </div>
                         </div>
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '8px', fontSize: '14px', color: '#6b7280' }}>
-                          <div>
+                        <div className="detalle-equipo-responsable-info-grid">
+                          <div className="detalle-equipo-responsable-info-item">
                             <strong>Documento:</strong> {displayDocumento}
                           </div>
                           {displayFicha && (
-                            <div>
+                            <div className="detalle-equipo-responsable-info-item">
                               <strong>Ficha:</strong> {displayFicha}
                             </div>
                           )}
                           {displayJornada && (
-                            <div>
+                            <div className="detalle-equipo-responsable-info-item">
                               <strong>Jornada:</strong> {displayJornada}
                             </div>
                           )}
-                          <div>
+                          <div className="detalle-equipo-responsable-info-item">
                             <strong>Asignado hace:</strong> {responsable.dias_asignado || 0} días
                           </div>
-                          <div>
+                          <div className="detalle-equipo-responsable-info-item">
                             <strong>Fecha asignación:</strong> {formatDate(responsable.fecha_asignacion)}
                           </div>
                         </div>
                         {(responsable.dias_semana || responsable.hora_inicio || responsable.hora_fin) && (
-                          <div style={{ marginTop: '12px', padding: '12px', background: '#ffffff', borderRadius: '6px', border: '1px solid #e5e7eb' }}>
-                            <div style={{ fontSize: '13px', fontWeight: 600, color: '#374151', marginBottom: '8px' }}>
+                          <div className="detalle-equipo-responsable-horario-box">
+                            <div className="detalle-equipo-responsable-horario-title">
                               Horario de Uso:
                             </div>
-                            <div style={{ display: 'grid', gap: '6px', fontSize: '13px', color: '#6b7280' }}>
+                            <div className="detalle-equipo-responsable-horario-grid">
                               {responsable.dias_semana && Array.isArray(responsable.dias_semana) && responsable.dias_semana.length > 0 && (
                                 <div>
                                   <strong>Días:</strong> {responsable.dias_semana.join(', ')}
@@ -1083,7 +907,7 @@ export default function DetalleEquipo() {
                           </div>
                         )}
                         {responsable.observaciones && (
-                          <div style={{ marginTop: '8px', padding: '8px', background: '#ffffff', borderRadius: '6px', fontSize: '13px', color: '#374151' }}>
+                          <div className="detalle-equipo-responsable-observaciones-box">
                             <strong>Observaciones:</strong> {responsable.observaciones}
                           </div>
                         )}
@@ -1111,108 +935,65 @@ export default function DetalleEquipo() {
 
       {/* Modal de edición de asignación */}
       {editAsignacionModal.open && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: 'rgba(0, 0, 0, 0.5)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 1000
-        }}>
-          <div style={{
-            background: 'white',
-            borderRadius: '12px',
-            padding: '24px',
-            width: '90%',
-            maxWidth: '600px',
-            maxHeight: '90vh',
-            overflow: 'auto'
-          }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-              <h2 style={{ margin: 0, fontSize: '20px', fontWeight: 700 }}>Editar Asignación</h2>
+        <div className="detalle-equipo-edit-modal-overlay">
+          <div className="detalle-equipo-edit-modal">
+            <div className="detalle-equipo-edit-modal-header">
+              <h2 className="detalle-equipo-edit-modal-title">Editar Asignación</h2>
               <button
                 onClick={() => setEditAsignacionModal({ open: false, asignacion: null })}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  cursor: 'pointer',
-                  fontSize: '24px',
-                  color: '#6b7280'
-                }}
+                className="detalle-equipo-edit-modal-close"
               >
                 <FiX />
               </button>
             </div>
 
-            <div style={{ display: 'grid', gap: '16px' }}>
+            <div className="detalle-equipo-edit-modal-form">
               <div>
-                <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: 600, color: '#374151' }}>
+                <label className="detalle-equipo-edit-modal-label">
                   Ficha
                 </label>
                 <input
                   type="text"
                   value={editAsignacionData.ficha}
                   onChange={(e) => setEditAsignacionData({ ...editAsignacionData, ficha: e.target.value })}
-                  style={{
-                    width: '100%',
-                    padding: '10px',
-                    border: '1px solid #d1d5db',
-                    borderRadius: '6px',
-                    fontSize: '14px'
-                  }}
+                  className="detalle-equipo-edit-modal-input"
                   placeholder="Número de ficha"
                 />
               </div>
 
               <div>
-                <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: 600, color: '#374151' }}>
+                <label className="detalle-equipo-edit-modal-label">
                   Nombre
                 </label>
                 <input
                   type="text"
                   value={editAsignacionData.nombre_externo}
                   onChange={(e) => setEditAsignacionData({ ...editAsignacionData, nombre_externo: e.target.value })}
-                  style={{
-                    width: '100%',
-                    padding: '10px',
-                    border: '1px solid #d1d5db',
-                    borderRadius: '6px',
-                    fontSize: '14px'
-                  }}
+                  className="detalle-equipo-edit-modal-input"
                   placeholder="Nombre completo"
                 />
               </div>
 
               <div>
-                <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: 600, color: '#374151' }}>
+                <label className="detalle-equipo-edit-modal-label">
                   Documento
                 </label>
                 <input
                   type="text"
                   value={editAsignacionData.documento_externo}
                   onChange={(e) => setEditAsignacionData({ ...editAsignacionData, documento_externo: e.target.value })}
-                  style={{
-                    width: '100%',
-                    padding: '10px',
-                    border: '1px solid #d1d5db',
-                    borderRadius: '6px',
-                    fontSize: '14px'
-                  }}
+                  className="detalle-equipo-edit-modal-input"
                   placeholder="Documento de identificación"
                 />
               </div>
 
               <div>
-                <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: 600, color: '#374151' }}>
+                <label className="detalle-equipo-edit-modal-label">
                   Días de la semana
                 </label>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px' }}>
+                <div className="detalle-equipo-edit-modal-dias-grid">
                   {['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'].map(dia => (
-                    <label key={dia} style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
+                    <label key={dia} className="detalle-equipo-edit-modal-dia-label">
                       <input
                         type="checkbox"
                         checked={editAsignacionData.dias_semana.includes(dia)}
@@ -1223,99 +1004,62 @@ export default function DetalleEquipo() {
                             setEditAsignacionData({ ...editAsignacionData, dias_semana: editAsignacionData.dias_semana.filter(d => d !== dia) });
                           }
                         }}
+                        className="detalle-equipo-edit-modal-dia-checkbox"
                       />
-                      <span style={{ fontSize: '13px' }}>{dia}</span>
+                      <span className="detalle-equipo-edit-modal-dia-text">{dia}</span>
                     </label>
                   ))}
                 </div>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+              <div className="detalle-equipo-edit-modal-horario-grid">
                 <div>
-                  <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: 600, color: '#374151' }}>
+                  <label className="detalle-equipo-edit-modal-label">
                     Hora inicio
                   </label>
                   <input
                     type="time"
                     value={editAsignacionData.hora_inicio}
                     onChange={(e) => setEditAsignacionData({ ...editAsignacionData, hora_inicio: e.target.value })}
-                    style={{
-                      width: '100%',
-                      padding: '10px',
-                      border: '1px solid #d1d5db',
-                      borderRadius: '6px',
-                      fontSize: '14px'
-                    }}
+                    className="detalle-equipo-edit-modal-input"
                   />
                 </div>
                 <div>
-                  <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: 600, color: '#374151' }}>
+                  <label className="detalle-equipo-edit-modal-label">
                     Hora fin
                   </label>
                   <input
                     type="time"
                     value={editAsignacionData.hora_fin}
                     onChange={(e) => setEditAsignacionData({ ...editAsignacionData, hora_fin: e.target.value })}
-                    style={{
-                      width: '100%',
-                      padding: '10px',
-                      border: '1px solid #d1d5db',
-                      borderRadius: '6px',
-                      fontSize: '14px'
-                    }}
+                    className="detalle-equipo-edit-modal-input"
                   />
                 </div>
               </div>
 
               <div>
-                <label style={{ display: 'block', marginBottom: '6px', fontSize: '14px', fontWeight: 600, color: '#374151' }}>
+                <label className="detalle-equipo-edit-modal-label">
                   Observaciones
                 </label>
                 <textarea
                   value={editAsignacionData.observaciones}
                   onChange={(e) => setEditAsignacionData({ ...editAsignacionData, observaciones: e.target.value })}
-                  style={{
-                    width: '100%',
-                    padding: '10px',
-                    border: '1px solid #d1d5db',
-                    borderRadius: '6px',
-                    fontSize: '14px',
-                    minHeight: '80px',
-                    resize: 'vertical'
-                  }}
+                  className="detalle-equipo-edit-modal-textarea"
                   placeholder="Observaciones adicionales"
                 />
               </div>
             </div>
 
-            <div style={{ display: 'flex', gap: '12px', marginTop: '24px', justifyContent: 'flex-end' }}>
+            <div className="detalle-equipo-edit-modal-actions">
               <button
                 onClick={() => setEditAsignacionModal({ open: false, asignacion: null })}
-                style={{
-                  padding: '10px 20px',
-                  background: '#e5e7eb',
-                  color: '#374151',
-                  border: 'none',
-                  borderRadius: '6px',
-                  cursor: 'pointer',
-                  fontSize: '14px',
-                  fontWeight: 500
-                }}
+                className="detalle-equipo-edit-modal-btn"
               >
                 Cancelar
               </button>
               <button
                 onClick={handleUpdateAsignacion}
-                style={{
-                  padding: '10px 20px',
-                  background: 'var(--success-800)',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '6px',
-                  cursor: 'pointer',
-                  fontSize: '14px',
-                  fontWeight: 500
-                }}
+                className="detalle-equipo-edit-modal-btn detalle-equipo-edit-modal-btn-primary"
               >
                 Guardar Cambios
               </button>

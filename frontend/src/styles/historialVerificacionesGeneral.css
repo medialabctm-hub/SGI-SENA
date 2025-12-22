@@ -1,0 +1,172 @@
+/* ============================================
+   ESTILOS PARA HISTORIAL VERIFICACIONES GENERAL
+   ============================================ */
+
+.historial-verificaciones-general-header {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.historial-verificaciones-general-refresh-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.historial-verificaciones-general-filters {
+  margin-top: 1.5rem;
+  padding: 1rem;
+  background: #f9fafb;
+  border-radius: 10px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+}
+
+.historial-verificaciones-general-filter-label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.historial-verificaciones-general-filter-input {
+  width: 100%;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 2px solid var(--success-800);
+}
+
+.historial-verificaciones-general-filter-actions {
+  display: flex;
+  align-items: flex-end;
+}
+
+.historial-verificaciones-general-filter-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.historial-verificaciones-general-loading {
+  text-align: center;
+  padding: 3rem;
+  color: #6b7280;
+}
+
+.historial-verificaciones-general-empty {
+  text-align: center;
+  padding: 3rem;
+  color: #6b7280;
+}
+
+.historial-verificaciones-general-empty-icon {
+  margin-bottom: 1rem;
+  opacity: 0.5;
+}
+
+.historial-verificaciones-general-empty-text {
+  font-size: 0.9rem;
+  margin-top: 0.5rem;
+}
+
+.historial-verificaciones-general-table-wrapper {
+  margin-top: 1.5rem;
+  overflow-x: auto;
+}
+
+.historial-verificaciones-general-table {
+  width: 100%;
+}
+
+.historial-verificaciones-general-date-cell {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.historial-verificaciones-general-equipo-info {
+  font-size: 0.85rem;
+  color: #6b7280;
+}
+
+.historial-verificaciones-general-instructor-info {
+  font-size: 0.85rem;
+  color: #6b7280;
+}
+
+.historial-verificaciones-general-ambiente-info {
+  font-size: 0.85rem;
+  color: #6b7280;
+}
+
+.historial-verificaciones-general-clase-info {
+  font-size: 0.85rem;
+  color: #6b7280;
+}
+
+.historial-verificaciones-general-clase-time {
+  font-size: 0.85rem;
+  color: #6b7280;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.historial-verificaciones-general-jornada-badge {
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.historial-verificaciones-general-jornada-manana {
+  color: var(--warning-600);
+  background: #fef3c7;
+}
+
+.historial-verificaciones-general-jornada-tarde {
+  color: #3b82f6;
+  background: #dbeafe;
+}
+
+.historial-verificaciones-general-jornada-noche {
+  color: #8b5cf6;
+  background: #ede9fe;
+}
+
+.historial-verificaciones-general-action-btn {
+  font-size: 0.85rem;
+  padding: 6px 12px;
+}
+
+/* Badges de estado */
+.historial-verificaciones-general-estado-badge {
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.historial-verificaciones-general-estado-badge-verificado {
+  background: #d1fae5;
+  color: var(--success-800);
+}
+
+.historial-verificaciones-general-estado-badge-con-novedad {
+  background: #fee2e2;
+  color: var(--error-700);
+}
+
+.historial-verificaciones-general-estado-badge-no-verificado {
+  background: #f3f4f6;
+  color: #6b7280;
+}

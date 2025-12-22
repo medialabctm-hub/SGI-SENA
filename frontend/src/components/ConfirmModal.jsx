@@ -44,18 +44,16 @@ export default function ConfirmModal({ open, message, onConfirm, onCancel, title
         
         <div className="confirm-modal-footer">
           <button 
-            className="confirm-modal-btn confirm-modal-btn-secondary"
+            className={`confirm-modal-btn confirm-modal-btn-secondary ${loading ? 'confirm-modal-btn-disabled' : ''}`}
             onClick={onCancel}
             disabled={loading}
-            style={{ opacity: loading ? 0.5 : 1, cursor: loading ? 'not-allowed' : 'pointer' }}
           >
             {cancelText}
           </button>
           <button 
-            className={`confirm-modal-btn confirm-modal-btn-primary ${type}`}
+            className={`confirm-modal-btn confirm-modal-btn-primary ${type} ${loading ? 'confirm-modal-btn-disabled' : ''}`}
             onClick={onConfirm}
             disabled={loading}
-            style={{ opacity: loading ? 0.7 : 1, cursor: loading ? 'not-allowed' : 'pointer' }}
           >
             {loading ? 'Procesando...' : confirmText}
           </button>

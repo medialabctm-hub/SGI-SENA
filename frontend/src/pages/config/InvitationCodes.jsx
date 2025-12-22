@@ -111,18 +111,9 @@ export default function InvitationCodes() {
   }
 
   function getStatusBadge(estado) {
-    const badges = {
-      'Activo': { bg: '#d1fae5', color: '#065f46' },
-      'Inactivo': { bg: '#f3f4f6', color: '#374151' },
-      'Expirado': { bg: '#fee2e2', color: '#991b1b' },
-      'Agotado': { bg: '#fef3c7', color: '#92400e' }
-    };
-    const badge = badges[estado] || badges['Inactivo'];
+    const estadoLower = estado?.toLowerCase() || 'inactivo';
     return (
-      <span className="invitation-codes-status-badge" style={{
-        background: badge.bg,
-        color: badge.color
-      }}>
+      <span className={`invitation-codes-status-badge invitation-codes-status-badge-${estadoLower}`}>
         {estado}
       </span>
     );

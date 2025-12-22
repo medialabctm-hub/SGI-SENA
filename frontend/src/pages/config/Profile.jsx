@@ -165,7 +165,7 @@ export default function Profile() {
         <div className="profile-actions">
           {!editing ? (
             <button className="btn-verde" onClick={() => setEditing(true)}>
-              <FiEdit2 size={16} style={{ marginRight: '6px' }} />
+              <FiEdit2 size={16} className="perfil-edit-icon" />
               Editar
             </button>
           ) : (
@@ -201,7 +201,7 @@ export default function Profile() {
             ) : null}
             <div 
               className="profile-photo-placeholder"
-              style={{ display: user?.foto_perfil ? 'none' : 'flex' }}
+              className={user?.foto_perfil ? 'perfil-avatar-upload-hidden' : 'perfil-avatar-upload-visible'}
             >
               {getInitials(user?.nombre_usuario || 'Usuario')}
             </div>
@@ -227,7 +227,7 @@ export default function Profile() {
             type="file"
             accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
             onChange={handlePhotoUpload}
-            style={{ display: 'none' }}
+            className="perfil-avatar-upload-hidden"
           />
           <p className="profile-photo-hint">Haz clic en la cámara para cambiar tu foto de perfil</p>
         </div>
@@ -237,7 +237,7 @@ export default function Profile() {
           <div className="form-grid">
             <div className="form-row profile-form-row">
               <label>
-                <FiUser size={16} style={{ marginRight: '8px', color: '#6b7280' }} />
+                <FiUser size={16} className="perfil-form-icon" />
                 Nombre completo
               </label>
               <input
@@ -250,7 +250,7 @@ export default function Profile() {
             </div>
             <div className="form-row profile-form-row">
               <label>
-                <FiMail size={16} style={{ marginRight: '8px', color: '#6b7280' }} />
+                <FiMail size={16} className="perfil-form-icon" />
                 Correo
               </label>
               <input
@@ -263,7 +263,7 @@ export default function Profile() {
             </div>
             <div className="form-row profile-form-row">
               <label>
-                <FiPhone size={16} style={{ marginRight: '8px', color: '#6b7280' }} />
+                <FiPhone size={16} className="perfil-form-icon" />
                 Teléfono
               </label>
               <input
@@ -276,7 +276,7 @@ export default function Profile() {
             </div>
             <div className="form-row profile-form-row">
               <label>
-                <FiCreditCard size={16} style={{ marginRight: '8px', color: '#6b7280' }} />
+                <FiCreditCard size={16} className="perfil-form-icon" />
                 Documento
               </label>
               <input
@@ -289,7 +289,7 @@ export default function Profile() {
             </div>
             <div className="form-row profile-form-row">
               <label>
-                <FiUser size={16} style={{ marginRight: '8px', color: '#6b7280' }} />
+                <FiUser size={16} className="perfil-form-icon" />
                 Rol
               </label>
               <input

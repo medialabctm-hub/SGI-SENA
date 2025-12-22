@@ -1,0 +1,242 @@
+/* ============================================
+   ESTILOS GLOBALES PARA BOTONES
+   ============================================ */
+
+/* Botón base */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 20px;
+  border-radius: 10px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  border: none;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  text-decoration: none;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  position: relative;
+  overflow: hidden;
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none !important;
+}
+
+/* Botón verde (primary) */
+.btn-verde,
+.btn-primary {
+  background: linear-gradient(135deg, var(--success-700) 0%, var(--success-800) 100%);
+  color: white;
+  border: none;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.25);
+}
+
+.btn-verde:hover:not(:disabled),
+.btn-primary:hover:not(:disabled) {
+  background: linear-gradient(135deg, var(--success-800) 0%, var(--success-900) 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(16, 185, 129, 0.35);
+}
+
+.btn-verde:active:not(:disabled),
+.btn-primary:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.25);
+}
+
+/* Botón secundario */
+.btn-secondary {
+  background: var(--neutral-100);
+  color: var(--neutral-700);
+  border: 1px solid var(--neutral-200);
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: var(--neutral-200);
+  border-color: var(--neutral-300);
+}
+
+/* Botón de editar */
+.btn-edit {
+  background: linear-gradient(135deg, var(--success-700) 0%, var(--success-800) 100%);
+  color: white;
+  border: none;
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.2);
+}
+
+.btn-edit:hover:not(:disabled) {
+  background: linear-gradient(135deg, var(--success-800) 0%, var(--success-900) 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+
+/* Botón de eliminar */
+.btn-delete {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  color: white;
+  border: none;
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.2);
+}
+
+.btn-delete:hover:not(:disabled) {
+  background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+}
+
+/* Botón de ver/info */
+.btn-view,
+.btn-info {
+  background: linear-gradient(135deg, var(--info-600) 0%, var(--info-700) 100%);
+  color: white;
+  border: none;
+  box-shadow: 0 2px 8px rgba(59, 139, 255, 0.2);
+}
+
+.btn-view:hover:not(:disabled),
+.btn-info:hover:not(:disabled) {
+  background: linear-gradient(135deg, var(--info-700) 0%, var(--info-800) 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(59, 139, 255, 0.3);
+}
+
+/* Botón de warning */
+.btn-warning {
+  background: linear-gradient(135deg, var(--warning-500) 0%, var(--warning-600) 100%);
+  color: white;
+  border: none;
+  box-shadow: 0 2px 8px rgba(255, 193, 7, 0.2);
+}
+
+.btn-warning:hover:not(:disabled) {
+  background: linear-gradient(135deg, var(--warning-600) 0%, var(--warning-700) 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(255, 193, 7, 0.3);
+}
+
+/* Botón de error */
+.btn-error {
+  background: linear-gradient(135deg, var(--error-500) 0%, var(--error-600) 100%);
+  color: white;
+  border: none;
+  box-shadow: 0 2px 8px rgba(220, 53, 69, 0.2);
+}
+
+.btn-error:hover:not(:disabled) {
+  background: linear-gradient(135deg, var(--error-600) 0%, var(--error-700) 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(220, 53, 69, 0.3);
+}
+
+/* Tamaños de botones */
+.btn-sm {
+  padding: 8px 14px;
+  font-size: 0.875rem;
+}
+
+.btn-lg {
+  padding: 16px 28px;
+  font-size: 1.05rem;
+}
+
+/* Botón full width */
+.btn-full {
+  width: 100%;
+}
+
+/* Botón icono solo */
+.btn-icon {
+  padding: 10px;
+  width: 40px;
+  height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-icon-sm {
+  padding: 6px;
+  width: 32px;
+  height: 32px;
+}
+
+.btn-icon-lg {
+  padding: 14px;
+  width: 48px;
+  height: 48px;
+}
+
+/* Botón outline */
+.btn-outline {
+  background: transparent;
+  border: 2px solid currentColor;
+}
+
+.btn-outline.btn-verde {
+  color: var(--success-800);
+  border-color: var(--success-800);
+}
+
+.btn-outline.btn-verde:hover:not(:disabled) {
+  background: var(--success-800);
+  color: white;
+}
+
+.btn-outline.btn-delete {
+  color: var(--error-500);
+  border-color: var(--error-500);
+}
+
+.btn-outline.btn-delete:hover:not(:disabled) {
+  background: var(--error-500);
+  color: white;
+}
+
+/* Botón ghost */
+.btn-ghost {
+  background: transparent;
+  box-shadow: none;
+}
+
+.btn-ghost:hover:not(:disabled) {
+  background: var(--neutral-100);
+}
+
+/* Grupo de botones */
+.btn-group {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.btn-group-vertical {
+  flex-direction: column;
+}
+
+.btn-group-vertical .btn {
+  width: 100%;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .btn {
+    padding: 10px 16px;
+    font-size: 0.9rem;
+  }
+
+  .btn-group {
+    flex-direction: column;
+  }
+
+  .btn-group .btn {
+    width: 100%;
+  }
+}
+

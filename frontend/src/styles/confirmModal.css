@@ -127,6 +127,11 @@
   background: var(--error-600);
 }
 
+.confirm-modal-btn-disabled {
+  opacity: 0.6 !important;
+  cursor: not-allowed !important;
+}
+
 .confirm-modal-btn-primary.warning {
   background: var(--warning-500);
   box-shadow: 0 2px 8px rgba(255, 193, 7, 0.25);

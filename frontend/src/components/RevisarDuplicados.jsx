@@ -153,44 +153,29 @@ export default function RevisarDuplicados({ idImportacion, onProcesarCompleto })
 
   if (loading) {
     return (
-      <div style={{ padding: '2rem', textAlign: 'center' }}>
-        <div className="loading-spinner" style={{ margin: '0 auto' }}></div>
-        <p style={{ marginTop: '1rem', color: '#666' }}>Cargando duplicados...</p>
+      <div className="revisar-duplicados-loading">
+        <div className="loading-spinner revisar-duplicados-loading-spinner"></div>
+        <p className="revisar-duplicados-loading-text">Cargando duplicados...</p>
       </div>
     )
   }
 
   if (duplicados.length === 0) {
     return (
-      <div style={{
-        padding: '2rem',
-        textAlign: 'center',
-        background: '#d1fae5',
-        borderRadius: '8px',
-        border: '1px solid var(--success-800)'
-      }}>
-        <FiCheckCircle size={32} style={{ marginBottom: '0.5rem', color: 'var(--success-800)' }} />
-        <p style={{ color: 'var(--success-800)', fontWeight: 600 }}>No hay duplicados pendientes de revisión</p>
+      <div className="revisar-duplicados-empty">
+        <FiCheckCircle size={32} className="revisar-duplicados-empty-icon" />
+        <p className="revisar-duplicados-empty-text">No hay duplicados pendientes de revisión</p>
       </div>
     )
   }
 
   return (
-    <div style={{ marginTop: '2rem' }}>
-      <div style={{
-        padding: '1rem',
-        background: '#fff3cd',
-        borderRadius: '8px',
-        border: '1px solid var(--warning-600)',
-        marginBottom: '1.5rem',
-        display: 'flex',
-        alignItems: 'center',
-        gap: '0.5rem'
-      }}>
-        <FiAlertCircle size={20} style={{ color: 'var(--warning-600)' }} />
-        <div style={{ flex: 1 }}>
+    <div className="revisar-duplicados-container">
+      <div className="revisar-duplicados-warning">
+        <FiAlertCircle size={20} className="revisar-duplicados-warning-icon" />
+        <div className="revisar-duplicados-warning-content">
           <strong>Duplicados pendientes de revisión</strong>
-          <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.9rem', color: '#666' }}>
+          <p className="revisar-duplicados-warning-text">
             Se encontraron {duplicados.length} registro(s) con placas duplicadas. 
             Compara la información y decide si aprobar o rechazar cada uno.
           </p>
@@ -198,16 +183,7 @@ export default function RevisarDuplicados({ idImportacion, onProcesarCompleto })
       </div>
 
       {error && (
-        <div style={{
-          padding: '1rem',
-          background: '#fee2e2',
-          color: 'var(--error-700)',
-          borderRadius: '8px',
-          marginBottom: '1rem',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '0.5rem'
-        }}>
+        <div className="revisar-duplicados-error">
           <FiAlertCircle size={20} />
           {error}
         </div>
@@ -238,66 +214,39 @@ export default function RevisarDuplicados({ idImportacion, onProcesarCompleto })
         return (
           <div
             key={duplicado.id_duplicado}
-            style={{
-              marginBottom: '1.5rem',
-              border: decision 
-                ? (decision === 'aprobar' ? '2px solid var(--success-800)' : '2px solid var(--error-700)')
-                : '1px solid #e5e7eb',
-              borderRadius: '8px',
-              overflow: 'hidden',
-              background: '#fff'
-            }}
+            className={`revisar-duplicados-duplicado-card ${
+              decision === 'aprobar' ? 'aprobado' : 
+              decision === 'rechazar' ? 'rechazado' : ''
+            }`}
           >
-            <div style={{
-              padding: '1rem',
-              background: decision 
-                ? (decision === 'aprobar' ? '#d1fae5' : '#fee2e2')
-                : '#f9fafb',
-              borderBottom: '1px solid #e5e7eb',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center'
-            }}>
+            <div className={`revisar-duplicados-duplicado-header ${
+              decision === 'aprobar' ? 'aprobado' : 
+              decision === 'rechazar' ? 'rechazado' : ''
+            }`}>
               <div>
                 <strong>Fila {duplicado.fila_excel} - Placa: {duplicado.placa}</strong>
-                <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.85rem', color: '#666' }}>
+                <p className="revisar-duplicados-duplicado-info">
                   Equipo existente: Código #{datosBD.codigo_equipo}
                 </p>
               </div>
               {decision && (
-                <div style={{
-                  padding: '0.5rem 1rem',
-                  borderRadius: '6px',
-                  background: decision === 'aprobar' ? 'var(--success-800)' : 'var(--error-700)',
-                  color: '#fff',
-                  fontSize: '0.85rem',
-                  fontWeight: 600,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.5rem'
-                }}>
+                <div className={`revisar-duplicados-decision-badge ${
+                  decision === 'rechazar' ? 'rechazado' : ''
+                }`}>
                   {decision === 'aprobar' ? <FiCheckCircle size={16} /> : <FiX size={16} />}
                   {decision === 'aprobar' ? 'Aprobado' : 'Rechazado'}
                 </div>
               )}
             </div>
 
-            <div style={{ padding: '1rem', overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
+            <div className="revisar-duplicados-table-wrapper">
+              <table className="revisar-duplicados-table">
                 <thead>
-                  <tr style={{ background: '#f3f4f6' }}>
-                    <th style={{ padding: '0.75rem', textAlign: 'left', border: '1px solid #e5e7eb' }}>
-                      Campo
-                    </th>
-                    <th style={{ padding: '0.75rem', textAlign: 'left', border: '1px solid #e5e7eb', background: '#fee2e2' }}>
-                      Registro Existente (BD)
-                    </th>
-                    <th style={{ padding: '0.75rem', textAlign: 'left', border: '1px solid #e5e7eb', background: '#dbeafe' }}>
-                      Registro del Excel
-                    </th>
-                    <th style={{ padding: '0.75rem', textAlign: 'center', border: '1px solid #e5e7eb', width: '100px' }}>
-                      Coincide
-                    </th>
+                  <tr>
+                    <th className="revisar-duplicados-table th">Campo</th>
+                    <th className="revisar-duplicados-table th bd">Registro Existente (BD)</th>
+                    <th className="revisar-duplicados-table th excel">Registro del Excel</th>
+                    <th className="revisar-duplicados-table th coincide">Coincide</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -308,28 +257,18 @@ export default function RevisarDuplicados({ idImportacion, onProcesarCompleto })
 
                     return (
                       <tr key={campo.key}>
-                        <td style={{ padding: '0.75rem', border: '1px solid #e5e7eb', fontWeight: 600 }}>
-                          {campo.label}
-                        </td>
-                        <td style={{ 
-                          padding: '0.75rem', 
-                          border: '1px solid #e5e7eb',
-                          background: coincide ? '#f0fdf4' : '#fef2f2'
-                        }}>
+                        <td className="revisar-duplicados-table td campo">{campo.label}</td>
+                        <td className={`revisar-duplicados-table td ${coincide ? 'coincide-si' : 'coincide-no'}`}>
                           {formatearValor(valorBD)}
                         </td>
-                        <td style={{ 
-                          padding: '0.75rem', 
-                          border: '1px solid #e5e7eb',
-                          background: coincide ? '#f0fdf4' : '#fef2f2'
-                        }}>
+                        <td className={`revisar-duplicados-table td ${coincide ? 'coincide-si' : 'coincide-no'}`}>
                           {formatearValor(valorExcel)}
                         </td>
-                        <td style={{ padding: '0.75rem', border: '1px solid #e5e7eb', textAlign: 'center' }}>
+                        <td className="revisar-duplicados-table td coincide">
                           {coincide ? (
-                            <FiCheckCircle size={18} style={{ color: 'var(--success-800)' }} />
+                            <FiCheckCircle size={18} className="revisar-duplicados-icon-check" />
                           ) : (
-                            <FiX size={18} style={{ color: 'var(--error-700)' }} />
+                            <FiX size={18} className="revisar-duplicados-icon-x" />
                           )}
                         </td>
                       </tr>
@@ -339,14 +278,7 @@ export default function RevisarDuplicados({ idImportacion, onProcesarCompleto })
               </table>
             </div>
 
-            <div style={{
-              padding: '1rem',
-              background: '#f9fafb',
-              borderTop: '1px solid #e5e7eb',
-              display: 'flex',
-              gap: '0.5rem',
-              justifyContent: 'flex-end'
-            }}>
+            <div className="revisar-duplicados-actions">
               <button
                 onClick={() => tomarDecision(duplicado.id_duplicado, 'rechazar')}
                 disabled={procesandoId === duplicado.id_duplicado}
@@ -371,7 +303,7 @@ export default function RevisarDuplicados({ idImportacion, onProcesarCompleto })
                 >
                   {procesandoId === duplicado.id_duplicado ? (
                     <>
-                      <div className="loading-spinner" style={{ width: '14px', height: '14px', borderWidth: '2px' }}></div>
+                      <div className="loading-spinner revisar-duplicados-spinner-small"></div>
                       Procesando...
                     </>
                   ) : (
@@ -388,19 +320,10 @@ export default function RevisarDuplicados({ idImportacion, onProcesarCompleto })
       })}
 
       {Object.keys(decisiones).length > 0 && (
-        <div style={{
-          marginTop: '1.5rem',
-          padding: '1rem',
-          background: '#e0f2fe',
-          borderRadius: '8px',
-          border: '1px solid #0284c7',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center'
-        }}>
+        <div className="revisar-duplicados-masivo">
           <div>
             <strong>Decisiones tomadas: {Object.keys(decisiones).length}</strong>
-            <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.85rem', color: '#666' }}>
+            <p className="revisar-duplicados-masivo-info">
               Aprobados: {Object.values(decisiones).filter(d => d === 'aprobar').length} | 
               Rechazados: {Object.values(decisiones).filter(d => d === 'rechazar').length}
             </p>
@@ -408,23 +331,11 @@ export default function RevisarDuplicados({ idImportacion, onProcesarCompleto })
           <button
             onClick={procesarMasivo}
             disabled={procesando}
-            style={{
-              padding: '0.75rem 1.5rem',
-              background: procesando ? '#ccc' : '#0284c7',
-              color: '#fff',
-              border: 'none',
-              borderRadius: '6px',
-              cursor: procesando ? 'not-allowed' : 'pointer',
-              fontSize: '1rem',
-              fontWeight: 600,
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.5rem'
-            }}
+            className="revisar-duplicados-masivo-btn"
           >
             {procesando ? (
               <>
-                <div className="loading-spinner" style={{ width: '16px', height: '16px', borderWidth: '2px' }}></div>
+                <div className="loading-spinner revisar-duplicados-masivo-spinner"></div>
                 Procesando...
               </>
             ) : (

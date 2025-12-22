@@ -7,6 +7,7 @@ import ConfirmModal from '../components/ConfirmModal'
 import { FiTool, FiEye, FiCheckCircle, FiClock, FiXCircle, FiAlertCircle, FiPlus, FiEdit, FiTrash2 } from 'react-icons/fi'
 import { parseApiResponse, buildErrorMessage } from '../utils/api'
 import '../styles/equipos.css'
+import '../styles/mantenimientos.css'
 
 export default function Mantenimientos() {
   const navigate = useNavigate()
@@ -66,18 +67,12 @@ export default function Mantenimientos() {
       'Cancelado': { color: 'var(--error-700)', bg: '#fee2e2', icon: <FiXCircle size={14} /> }
     }
     const estadoInfo = estados[estado] || estados['Completado']
+    const estadoClass = estado === 'Programado' ? 'programado' : 
+                       estado === 'En Proceso' ? 'en-proceso' :
+                       estado === 'Completado' ? 'completado' :
+                       estado === 'Cancelado' ? 'cancelado' : 'completado'
     return (
-      <span style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: '4px',
-        padding: '4px 10px',
-        borderRadius: '12px',
-        fontSize: '0.85rem',
-        fontWeight: 600,
-        color: estadoInfo.color,
-        background: estadoInfo.bg
-      }}>
+      <span className={`mantenimientos-estado-badge ${estadoClass}`}>
         {estadoInfo.icon}
         {estado || 'Completado'}
       </span>
@@ -92,14 +87,7 @@ export default function Mantenimientos() {
     }
     const tipoInfo = tipos[tipo] || tipos['Preventivo']
     return (
-      <span style={{
-        padding: '4px 10px',
-        borderRadius: '12px',
-        fontSize: '0.85rem',
-        fontWeight: 600,
-        color: tipoInfo.color,
-        background: tipoInfo.bg
-      }}>
+      <span className="mantenimientos-tipo-badge">
         {tipo}
       </span>
     )
@@ -220,22 +208,21 @@ export default function Mantenimientos() {
             onCancel={() => setDeleteConfirm({ open: false, id: null })}
           />
           
-          <div className="form-equipos form-modern" style={{ maxWidth: '1200px' }}>
+          <div className="form-equipos form-modern mantenimientos-container">
           <div className="form-header">
-            <div className="form-icon-wrapper" style={{ background: 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)' }}>
+            <div className="form-icon-wrapper mantenimientos-header-icon">
               <FiTool size={28} color="#fff" />
             </div>
-            <div style={{ flex: 1 }}>
-              <h2 style={{ margin: 0, fontSize: '28px', fontWeight: 700, color: '#1a2a3a' }}>Mantenimientos</h2>
-              <p style={{ color: '#666', marginTop: 8, fontSize: '15px' }}>
+            <div className="mantenimientos-header-content">
+              <h2 className="mantenimientos-title">Mantenimientos</h2>
+              <p className="mantenimientos-subtitle">
                 Historial de mantenimientos realizados en los equipos
               </p>
             </div>
             {(isAdmin || user?.nombre_rol === 'Cuentadante') && (
               <button
                 onClick={() => navigate('/mantenimientos/crear')}
-                className="btn-primary btn-modern"
-                style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 20px' }}
+                className="btn-primary btn-modern mantenimientos-add-button"
               >
                 <FiPlus size={18} />
                 Nuevo Mantenimiento
@@ -259,8 +246,8 @@ export default function Mantenimientos() {
               <p>Los mantenimientos realizados aparecerán aquí</p>
             </div>
           ) : (
-            <div style={{ overflowX: 'auto' }}>
-              <table className="consulta-table" style={{ marginTop: '1rem' }}>
+            <div className="mantenimientos-table-wrapper">
+              <table className="consulta-table mantenimientos-table">
                 <thead>
                   <tr>
                     <th>ID</th>
@@ -281,7 +268,7 @@ export default function Mantenimientos() {
                       <td>
                         <div>
                           <strong>{mant.equipo_tipo} {mant.equipo_marca} {mant.equipo_modelo}</strong>
-                          {mant.consecutivo && <div style={{ fontSize: '0.85rem', color: '#666' }}>Consecutivo: {mant.consecutivo}</div>}
+                          {mant.consecutivo && <div className="mantenimientos-consecutivo">Consecutivo: {mant.consecutivo}</div>}
                         </div>
                       </td>
                       <td>{getTipoBadge(mant.tipo_mantenimiento)}</td>
@@ -291,37 +278,34 @@ export default function Mantenimientos() {
                       <td>{formatCurrency(mant.costo)}</td>
                       <td>{mant.realizado_por_nombre || '-'}</td>
                       <td>
-                        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                        <div className="mantenimientos-actions">
                           <button
-                            className="btn"
+                            className="btn mantenimientos-action-button"
                             onClick={() => setSelectedMantenimiento(mant)}
-                            style={{ padding: '6px 12px', fontSize: '0.9rem' }}
                           >
-                            <FiEye size={14} style={{ marginRight: '4px' }} />
+                            <FiEye size={14} className="mantenimientos-action-icon" />
                             Ver
                           </button>
                           {(isAdmin || isInstructor) && (
                             <button
-                              className="btn"
+                              className="btn mantenimientos-action-button"
                               onClick={() => {
                                 setSelectedMantenimiento(mant)
                                 abrirEditarEstado(mant)
                               }}
-                              style={{ padding: '6px 12px', fontSize: '0.9rem' }}
                               disabled={loading}
                             >
-                              <FiEdit size={14} style={{ marginRight: '4px' }} />
+                              <FiEdit size={14} className="mantenimientos-action-icon" />
                               Estado
                             </button>
                           )}
                           {isAdmin && (
                             <button
-                              className="btn danger"
+                              className="btn danger mantenimientos-action-button"
                               onClick={() => confirmDelete(mant.id_mantenimiento)}
-                              style={{ padding: '6px 12px', fontSize: '0.9rem' }}
                               disabled={loading}
                             >
-                              <FiTrash2 size={14} style={{ marginRight: '4px' }} />
+                              <FiTrash2 size={14} className="mantenimientos-action-icon" />
                               Eliminar
                             </button>
                           )}
@@ -336,101 +320,68 @@ export default function Mantenimientos() {
           </div>
 
       {selectedMantenimiento && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: 'rgba(0,0,0,0.5)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 1000,
-          padding: '20px'
-        }} onClick={() => setSelectedMantenimiento(null)}>
-          <div style={{
-            background: '#fff',
-            borderRadius: '12px',
-            padding: '2rem',
-            maxWidth: '700px',
-            width: '100%',
-            maxHeight: '90vh',
-            overflow: 'auto',
-            boxShadow: '0 20px 60px rgba(0,0,0,0.3)'
-          }} onClick={(e) => e.stopPropagation()}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-              <h3 style={{ margin: 0, fontSize: '24px', color: '#1a2a3a' }}>Detalle de Mantenimiento</h3>
+        <div className="mantenimientos-modal-overlay modal-overlay"
+          onClick={() => setSelectedMantenimiento(null)}
+        >
+          <div className="mantenimientos-modal-content modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="mantenimientos-modal-header">
+              <h3 className="mantenimientos-modal-title">Detalle de Mantenimiento</h3>
               <button
                 onClick={() => setSelectedMantenimiento(null)}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  fontSize: '24px',
-                  cursor: 'pointer',
-                  color: '#666'
-                }}
+                className="mantenimientos-modal-close modal-close"
               >
                 ×
               </button>
             </div>
 
-            <div style={{ display: 'grid', gap: '1rem' }}>
-              <div>
-                <strong>ID:</strong> {selectedMantenimiento.id_mantenimiento}
+            <div className="mantenimientos-modal-grid">
+              <div className="mantenimientos-modal-field">
+                <strong className="mantenimientos-modal-field-label">ID:</strong> {selectedMantenimiento.id_mantenimiento}
               </div>
-              <div>
-                <strong>Equipo:</strong> {selectedMantenimiento.equipo_tipo} {selectedMantenimiento.equipo_marca} {selectedMantenimiento.equipo_modelo}
+              <div className="mantenimientos-modal-field">
+                <strong className="mantenimientos-modal-field-label">Equipo:</strong> {selectedMantenimiento.equipo_tipo} {selectedMantenimiento.equipo_marca} {selectedMantenimiento.equipo_modelo}
                 {selectedMantenimiento.consecutivo && <span> (Consecutivo: {selectedMantenimiento.consecutivo})</span>}
               </div>
-              <div>
-                <strong>Tipo:</strong> {getTipoBadge(selectedMantenimiento.tipo_mantenimiento)}
+              <div className="mantenimientos-modal-field">
+                <strong className="mantenimientos-modal-field-label">Tipo:</strong> {getTipoBadge(selectedMantenimiento.tipo_mantenimiento)}
               </div>
-              <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                  <strong>Estado:</strong>
+              <div className="mantenimientos-modal-field">
+                <div className="mantenimientos-modal-field-header">
+                  <strong className="mantenimientos-modal-field-label">Estado:</strong>
                   {!editandoEstado && (isAdmin || isInstructor) && (
                     <button
                       onClick={() => abrirEditarEstado(selectedMantenimiento)}
-                      className="btn"
-                      style={{ padding: '6px 12px', fontSize: '0.85rem' }}
+                      className="btn mantenimientos-action-button"
                     >
-                      <FiEdit size={14} style={{ marginRight: '4px' }} />
+                      <FiEdit size={14} className="mantenimientos-action-icon" />
                       Cambiar Estado
                     </button>
                   )}
                 </div>
                 {editandoEstado ? (
-                  <div style={{ display: 'grid', gap: '12px', marginTop: '8px' }}>
+                  <div className="mantenimientos-modal-edit-grid">
                     <select
                       value={nuevoEstado}
                       onChange={(e) => setNuevoEstado(e.target.value)}
-                      style={{
-                        padding: '8px',
-                        borderRadius: '6px',
-                        border: '1.5px solid #b2dfdb',
-                        fontSize: '0.95rem'
-                      }}
+                      className="mantenimientos-modal-select form-select"
                     >
                       <option value="Programado">Programado</option>
                       <option value="En Proceso">En Proceso</option>
                       <option value="Completado">Completado</option>
                       <option value="Cancelado">Cancelado</option>
                     </select>
-                    <div style={{ display: 'flex', gap: '8px' }}>
+                    <div className="mantenimientos-modal-actions-row">
                       <button
                         onClick={guardarEstado}
-                        className="btn-primary btn-modern"
+                        className="btn-primary btn-modern mantenimientos-modal-action-button"
                         disabled={loading}
-                        style={{ flex: 1 }}
                       >
                         {loading ? 'Guardando...' : 'Guardar'}
                       </button>
                       <button
                         onClick={cancelarEditarEstado}
-                        className="btn-secondary btn-modern"
+                        className="btn-secondary btn-modern mantenimientos-modal-action-button"
                         disabled={loading}
-                        style={{ flex: 1 }}
                       >
                         Cancelar
                       </button>
@@ -440,26 +391,21 @@ export default function Mantenimientos() {
                   getEstadoBadge(selectedMantenimiento.estado_mantenimiento)
                 )}
               </div>
-              <div>
-                <strong>Fecha de mantenimiento:</strong> {formatDate(selectedMantenimiento.fecha_mantenimiento)}
+              <div className="mantenimientos-modal-field">
+                <strong className="mantenimientos-modal-field-label">Fecha de mantenimiento:</strong> {formatDate(selectedMantenimiento.fecha_mantenimiento)}
               </div>
-              <div>
-                <strong>Próximo mantenimiento del equipo:</strong>
+              <div className="mantenimientos-modal-field">
+                <strong className="mantenimientos-modal-field-label">Próximo mantenimiento del equipo:</strong>
                 {editandoFechaProximo ? (
-                  <div style={{ display: 'grid', gap: '12px', marginTop: '8px' }}>
+                  <div className="mantenimientos-modal-edit-grid">
                     <input
                       type="date"
                       value={nuevaFechaProximo}
                       onChange={(e) => setNuevaFechaProximo(e.target.value)}
                       min={selectedMantenimiento.fecha_mantenimiento ? selectedMantenimiento.fecha_mantenimiento.split('T')[0] : ''}
-                      style={{
-                        padding: '8px',
-                        borderRadius: '6px',
-                        border: '1.5px solid #b2dfdb',
-                        fontSize: '0.95rem'
-                      }}
+                      className="mantenimientos-modal-input form-input"
                     />
-                    <div style={{ display: 'flex', gap: '8px' }}>
+                    <div className="mantenimientos-modal-actions-row">
                       <button
                         onClick={async () => {
                           try {
@@ -487,9 +433,8 @@ export default function Mantenimientos() {
                             setLoading(false)
                           }
                         }}
-                        className="btn-primary btn-modern"
+                        className="btn-primary btn-modern mantenimientos-modal-action-button"
                         disabled={loading || !nuevaFechaProximo}
-                        style={{ flex: 1 }}
                       >
                         {loading ? 'Guardando...' : 'Guardar'}
                       </button>
@@ -498,70 +443,67 @@ export default function Mantenimientos() {
                           setEditandoFechaProximo(false)
                           setNuevaFechaProximo('')
                         }}
-                        className="btn-secondary btn-modern"
+                        className="btn-secondary btn-modern mantenimientos-modal-action-button"
                         disabled={loading}
-                        style={{ flex: 1 }}
                       >
                         Cancelar
                       </button>
                     </div>
                   </div>
                 ) : (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
+                  <div className="mantenimientos-modal-edit-row">
                     <span>{selectedMantenimiento.fecha_proximo_mantenimiento ? formatDate(selectedMantenimiento.fecha_proximo_mantenimiento) : 'No establecida'}</span>
                     <button
                       onClick={() => {
                         setEditandoFechaProximo(true)
                         setNuevaFechaProximo(selectedMantenimiento.fecha_proximo_mantenimiento || '')
                       }}
-                      className="btn-secondary btn-modern"
-                      style={{ padding: '4px 8px', fontSize: '0.85rem' }}
+                      className="btn-secondary btn-modern mantenimientos-modal-edit-button-small"
                     >
-                      <FiEdit size={14} style={{ marginRight: '4px' }} />
+                      <FiEdit size={14} className="mantenimientos-action-icon" />
                       {selectedMantenimiento.fecha_proximo_mantenimiento ? 'Editar' : 'Establecer'}
                     </button>
                   </div>
                 )}
               </div>
               {selectedMantenimiento.descripcion_trabajo && (
-                <div>
-                  <strong>Descripción del trabajo:</strong>
-                  <div style={{ marginTop: '8px', padding: '12px', background: '#f8f9fa', borderRadius: '8px', whiteSpace: 'pre-wrap' }}>
+                <div className="mantenimientos-modal-field">
+                  <strong className="mantenimientos-modal-field-label">Descripción del trabajo:</strong>
+                  <div className="mantenimientos-modal-text-box">
                     {selectedMantenimiento.descripcion_trabajo}
                   </div>
                 </div>
               )}
               {selectedMantenimiento.costo && (
-                <div>
-                  <strong>Costo:</strong> {formatCurrency(selectedMantenimiento.costo)}
+                <div className="mantenimientos-modal-field">
+                  <strong className="mantenimientos-modal-field-label">Costo:</strong> {formatCurrency(selectedMantenimiento.costo)}
                 </div>
               )}
               {selectedMantenimiento.realizado_por_nombre && (
-                <div>
-                  <strong>Realizado por:</strong> {selectedMantenimiento.realizado_por_nombre}
+                <div className="mantenimientos-modal-field">
+                  <strong className="mantenimientos-modal-field-label">Realizado por:</strong> {selectedMantenimiento.realizado_por_nombre}
                 </div>
               )}
               {selectedMantenimiento.tecnico_nombre && (
-                <div>
-                  <strong>Técnico:</strong> {selectedMantenimiento.tecnico_nombre}
+                <div className="mantenimientos-modal-field">
+                  <strong className="mantenimientos-modal-field-label">Técnico:</strong> {selectedMantenimiento.tecnico_nombre}
                 </div>
               )}
               {selectedMantenimiento.observaciones && (
-                <div>
-                  <strong>Observaciones:</strong>
-                  <div style={{ marginTop: '8px', padding: '12px', background: '#f8f9fa', borderRadius: '8px', whiteSpace: 'pre-wrap' }}>
+                <div className="mantenimientos-modal-field">
+                  <strong className="mantenimientos-modal-field-label">Observaciones:</strong>
+                  <div className="mantenimientos-modal-text-box">
                     {selectedMantenimiento.observaciones}
                   </div>
                 </div>
               )}
               {isAdmin && (
-                <div style={{ display: 'flex', gap: '8px', marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid #e5e7eb' }}>
+                <div className="mantenimientos-modal-footer">
                   <button
                     onClick={() => confirmDelete(selectedMantenimiento.id_mantenimiento)}
-                    className="btn danger"
-                    style={{ flex: 1 }}
+                    className="btn danger mantenimientos-modal-footer-button"
                   >
-                    <FiTrash2 size={14} style={{ marginRight: '4px' }} />
+                    <FiTrash2 size={14} className="mantenimientos-action-icon" />
                     Eliminar
                   </button>
                 </div>

@@ -256,7 +256,7 @@ export default function Novedades() {
         <Sidebar user={user} />
         <main className="dashboard-main">
           {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
-          <div className="form-equipos form-modern" style={{ maxWidth: '1200px' }}>
+          <div className="form-equipos form-modern novedades-form-container">
             <div className="form-header">
               <div className="form-icon-wrapper novedades-icon-wrapper">
                 <FiAlertCircle size={28} color="#fff" />
@@ -287,7 +287,7 @@ export default function Novedades() {
               </button>
             </div>
 
-            <div className="form-divider" style={{ marginTop: '0' }}></div>
+            <div className="form-divider form-divider-no-margin"></div>
 
             {activeTab === 'ver' ? (
               <>
@@ -305,8 +305,8 @@ export default function Novedades() {
                     <p>Las novedades reportadas aparecerán aquí</p>
                   </div>
                 ) : (
-                  <div style={{ overflowX: 'auto' }}>
-                    <table className="consulta-table" style={{ marginTop: '1rem' }}>
+                  <div className="table-wrapper">
+                    <table className="consulta-table novedades-table">
                       <thead>
                         <tr>
                           <th>ID</th>
@@ -343,7 +343,7 @@ export default function Novedades() {
                                 className="btn novedades-ver-btn"
                                 onClick={() => setSelectedNovedad(novedad)}
                               >
-                                <FiEye size={14} style={{ marginRight: '4px' }} />
+                                <FiEye size={14} className="novedades-icon-inline-small" />
                                 Ver
                               </button>
                             </td>
@@ -359,7 +359,7 @@ export default function Novedades() {
                 {/* Sección: Equipo */}
                 <div className="form-section">
                   <h3 className="form-section-title">
-                    <FiPackage size={18} style={{ marginRight: 8 }} />
+                    <FiPackage size={18} className="novedades-icon-inline" />
                     Equipo Afectado
                   </h3>
                   
@@ -427,7 +427,7 @@ export default function Novedades() {
                 {/* Sección: Tipo de Novedad */}
                 <div className="form-section">
                   <h3 className="form-section-title">
-                    <FiAlertCircle size={18} style={{ marginRight: 8 }} />
+                    <FiAlertCircle size={18} className="novedades-icon-inline" />
                     Tipo de Novedad
                   </h3>
 
@@ -452,7 +452,7 @@ export default function Novedades() {
                 {/* Sección: Descripción */}
                 <div className="form-section">
                   <h3 className="form-section-title">
-                    <FiFileText size={18} style={{ marginRight: 8 }} />
+                    <FiFileText size={18} className="novedades-icon-inline" />
                     Descripción del Problema
                   </h3>
 
@@ -534,7 +534,7 @@ export default function Novedades() {
                           onClick={() => abrirEditarEstado(selectedNovedad)}
                           className="btn novedades-cambiar-estado-btn"
                         >
-                          <FiEdit size={14} style={{ marginRight: '4px' }} />
+                          <FiEdit size={14} className="novedades-icon-inline-small" />
                           Cambiar Estado
                         </button>
                       )}

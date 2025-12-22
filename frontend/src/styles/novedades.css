@@ -106,6 +106,27 @@
 .novedades-ver-btn {
   padding: 6px 12px;
   font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.novedades-icon-inline {
+  display: inline-flex;
+  align-items: center;
+  margin-right: 8px;
+}
+
+.novedades-icon-inline-small {
+  margin-right: 4px;
+}
+
+.novedades-form-container {
+  max-width: 1200px;
+}
+
+.novedades-table {
+  margin-top: 1rem;
 }
 
 /* Modal de detalle */

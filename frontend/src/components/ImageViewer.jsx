@@ -146,7 +146,7 @@ export default function ImageViewer({ images = [], currentIndex = 0, onClose, on
               e.target.style.display = 'none';
               setImageLoaded(true);
             }}
-            style={{ display: imageLoaded ? 'block' : 'none' }}
+            className={imageLoaded ? 'image-viewer-img-visible' : 'image-viewer-img-hidden'}
           />
         </div>
 

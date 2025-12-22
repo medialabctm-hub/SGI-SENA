@@ -8,6 +8,7 @@ import { parseApiResponse, buildErrorMessage } from '../utils/api'
 import { useNavigate } from 'react-router-dom'
 import '../styles/equipos.css'
 import '../styles/verificacion.css'
+import '../styles/verificarInventario.css'
 
 export default function VerificarInventario() {
   const [user, setUser] = useState(null)
@@ -184,24 +185,9 @@ export default function VerificarInventario() {
   }
 
   function getJornadaBadge(jornada) {
-    const jornadas = {
-      'Mañana': { color: 'var(--warning-600)', bg: '#fef3c7' },
-      'Tarde': { color: '#3b82f6', bg: '#dbeafe' },
-      'Noche': { color: '#8b5cf6', bg: '#ede9fe' }
-    }
-    const jornadaInfo = jornadas[jornada] || jornadas['Mañana']
+    const jornadaClass = jornada?.toLowerCase().replace('á', 'a').replace('é', 'e') || 'mañana'
     return (
-      <span style={{
-        padding: '6px 12px',
-        borderRadius: '12px',
-        fontSize: '0.9rem',
-        fontWeight: 600,
-        color: jornadaInfo.color,
-        background: jornadaInfo.bg,
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: '6px'
-      }}>
+      <span className={`jornada-badge ${jornadaClass}`}>
         {jornada}
       </span>
     )
@@ -209,23 +195,13 @@ export default function VerificarInventario() {
 
   function getEstadoBadge(estado) {
     const estados = {
-      'Verificado': { color: 'var(--success-800)', bg: '#d1fae5', icon: <FiCheckCircle /> },
-      'Con Novedad': { color: 'var(--error-700)', bg: '#fee2e2', icon: <FiAlertCircle /> },
-      'No Verificado': { color: '#6b7280', bg: '#f3f4f6', icon: <FiXCircle /> }
+      'Verificado': { class: 'verificado', icon: <FiCheckCircle /> },
+      'Con Novedad': { class: 'con-novedad', icon: <FiAlertCircle /> },
+      'No Verificado': { class: 'pendiente', icon: <FiXCircle /> }
     }
     const estadoInfo = estados[estado] || estados['No Verificado']
     return (
-      <span style={{
-        padding: '6px 12px',
-        borderRadius: '12px',
-        fontSize: '0.85rem',
-        fontWeight: 600,
-        color: estadoInfo.color,
-        background: estadoInfo.bg,
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: '6px'
-      }}>
+      <span className={`verificacion-badge ${estadoInfo.class}`}>
         {estadoInfo.icon}
         {estado}
       </span>
@@ -271,9 +247,8 @@ export default function VerificarInventario() {
               }}
             >
               <div 
-                className="confirm-modal-sheet" 
+                className="confirm-modal-sheet novedad-modal-container" 
                 onClick={(e) => e.stopPropagation()}
-                style={{ maxWidth: '600px' }}
               >
                 <div className="confirm-modal-header">
                   <div className="confirm-modal-title-wrapper">
@@ -285,27 +260,21 @@ export default function VerificarInventario() {
                     </h3>
                   </div>
                   {selectedEquipo && (
-                    <div style={{ marginTop: '0.5rem', fontSize: '0.9rem', color: '#6b7280' }}>
+                    <div className="novedad-modal-info">
                       Equipo: {selectedEquipo.codigo_inventario || selectedEquipo.codigo_equipo} - {selectedEquipo.tipo} {selectedEquipo.marca} {selectedEquipo.modelo}
                     </div>
                   )}
                 </div>
                 
-                <form onSubmit={handleSubmitNovedad} style={{ padding: '1rem' }}>
-                  <div style={{ marginBottom: '1rem' }}>
-                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>
+                <form onSubmit={handleSubmitNovedad} className="novedad-form">
+                  <div className="novedad-form-row">
+                    <label className="novedad-form-label">
                       Tipo de Novedad
                     </label>
                     <select
+                      className="novedad-form-select form-select"
                       value={novedadForm.tipo_novedad}
                       onChange={e => setNovedadForm({ ...novedadForm, tipo_novedad: e.target.value })}
-                      style={{
-                        width: '100%',
-                        padding: '8px 12px',
-                        borderRadius: '8px',
-                        border: '2px solid var(--success-800)',
-                        fontSize: '0.95rem'
-                      }}
                       disabled={loading}
                     >
                       <option value="Mal Funcionamiento">Mal Funcionamiento</option>
@@ -315,37 +284,26 @@ export default function VerificarInventario() {
                       <option value="Otro">Otro</option>
                     </select>
                   </div>
-                  <div style={{ marginBottom: '1rem' }}>
-                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>
-                      Descripción *
+                  <div className="novedad-form-row">
+                    <label className="novedad-form-label form-label-required">
+                      Descripción
                     </label>
                     <textarea
+                      className={`novedad-form-textarea form-textarea ${novedadForm.descripcion.trim().length > 0 && novedadForm.descripcion.trim().length < 10 ? 'error' : ''}`}
                       value={novedadForm.descripcion}
                       onChange={e => setNovedadForm({ ...novedadForm, descripcion: e.target.value })}
                       placeholder="Describe la novedad encontrada..."
                       required
                       rows={4}
                       disabled={loading}
-                      style={{
-                        width: '100%',
-                        padding: '8px 12px',
-                        borderRadius: '8px',
-                        border: `2px solid ${novedadForm.descripcion.trim().length > 0 && novedadForm.descripcion.trim().length < 10 ? '#ef4444' : 'var(--neutral-300)'}`,
-                        fontSize: '0.95rem',
-                        resize: 'vertical'
-                      }}
                     />
-                    <div style={{ 
-                      marginTop: '0.25rem', 
-                      fontSize: '0.85rem',
-                      color: novedadForm.descripcion.trim().length > 0 && novedadForm.descripcion.trim().length < 10 ? '#ef4444' : '#6b7280'
-                    }}>
+                    <div className={`novedad-char-count ${novedadForm.descripcion.trim().length > 0 && novedadForm.descripcion.trim().length < 10 ? 'error' : ''}`}>
                       {novedadForm.descripcion.trim().length > 0 && novedadForm.descripcion.trim().length < 10 
                         ? `Mínimo 10 caracteres (${novedadForm.descripcion.trim().length}/10)`
                         : `Mínimo 10 caracteres (${novedadForm.descripcion.trim().length} caracteres)`}
                     </div>
                   </div>
-                  <div className="confirm-modal-footer" style={{ marginTop: '1.5rem' }}>
+                  <div className="confirm-modal-footer novedad-form-footer">
                     <button
                       type="button"
                       className="confirm-modal-btn confirm-modal-btn-secondary"
@@ -373,20 +331,19 @@ export default function VerificarInventario() {
           <div className="users-panel">
             <div className="users-toolbar">
               <div>
-                <h2 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <h2 className="verificar-inventario-header">
                   <FiPackage size={24} />
                   Verificación de Inventario
                 </h2>
-                <p style={{ margin: '8px 0 0 0', color: '#6b7280', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <p className="verificar-inventario-subtitle">
                   Jornada actual: {getJornadaBadge(getJornadaActual())}
                 </p>
               </div>
               <button
                 type="button"
-                className="btn-act"
+                className="btn btn-secondary verificar-inventario-actions"
                 onClick={fetchEquiposAmbientes}
                 disabled={loading}
-                style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
               >
                 <FiRefreshCw size={16} />
                 Actualizar
@@ -394,8 +351,8 @@ export default function VerificarInventario() {
             </div>
 
             {loading && ambientes.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '3rem' }}>
-                <div className="loading-spinner" style={{ margin: '0 auto' }}></div>
+              <div className="verificar-inventario-loading">
+                <div className="loading-spinner verificar-inventario-loading-spinner"></div>
                 <p>Cargando equipos...</p>
               </div>
             ) : ambientes.length === 0 ? (
@@ -407,7 +364,7 @@ export default function VerificarInventario() {
                 <p>No hay ambientes bajo tu responsabilidad en este momento</p>
               </div>
             ) : (
-              <div style={{ marginTop: '1.5rem' }}>
+              <div className="verificar-inventario-content">
                 {ambientes.map(ambiente => {
                   const equiposAmbiente = getEquiposPorAmbiente(ambiente.id_ambiente)
                   if (equiposAmbiente.length === 0) return null
@@ -416,11 +373,11 @@ export default function VerificarInventario() {
                     <div key={ambiente.id_ambiente} className="verificacion-ambiente-card">
                       <div className="verificacion-ambiente-header">
                         <div>
-                          <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <h3 className="verificar-inventario-ambiente-header">
                             <FiMapPin size={20} />
                             {ambiente.nombre_ambiente}
                           </h3>
-                          <p style={{ margin: '4px 0 0 0', color: '#6b7280', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <p className="verificar-inventario-ambiente-subtitle">
                             Código: {ambiente.codigo_ambiente} | {equiposAmbiente.length} equipo(s)
                             {ambiente.jornada && (
                               <>
@@ -431,8 +388,8 @@ export default function VerificarInventario() {
                         </div>
                       </div>
 
-                      <div style={{ overflowX: 'auto', marginTop: '1rem' }}>
-                        <table className="consulta-table" style={{ width: '100%' }}>
+                      <div className="verificar-inventario-table-wrapper">
+                        <table className="consulta-table verificar-inventario-table">
                           <thead>
                             <tr>
                               <th>Código Inventario</th>
@@ -455,37 +412,30 @@ export default function VerificarInventario() {
                                   <td>{equipo.marca} {equipo.modelo}</td>
                                   <td>{equipo.consecutivo || '-'}</td>
                                   <td>
-                                    <span style={{
-                                      padding: '4px 10px',
-                                      borderRadius: '12px',
-                                      fontSize: '0.85rem',
-                                      fontWeight: 600,
-                                      color: equipo.estado_fisico === 'Bueno' || equipo.estado_fisico === 'Nuevo' ? 'var(--success-800)' : 'var(--error-700)',
-                                      background: equipo.estado_fisico === 'Bueno' || equipo.estado_fisico === 'Nuevo' ? '#d1fae5' : '#fee2e2',
-                                      display: 'inline-block'
-                                    }}>
+                                    <span className={`verificar-inventario-estado-badge ${
+                                      equipo.estado_fisico === 'Bueno' || equipo.estado_fisico === 'Nuevo' ? 'verificacion-badge-verificado' :
+                                      'verificacion-badge-no-verificado'
+                                    }`}>
                                       {equipo.estado_fisico}
                                     </span>
                                   </td>
                                   <td>{equipo.ultima_verificacion ? formatDate(equipo.ultima_verificacion) : 'Nunca'}</td>
                                   <td>{getEstadoBadge(verificacion.estado)}</td>
                                   <td>
-                                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                                    <div className="verificar-inventario-actions">
                                       <button
-                                        className="btn btn-verde"
+                                        className="btn btn-verde verificar-inventario-action-btn"
                                         onClick={() => handleVerificar(equipo.codigo_equipo, 'Verificado')}
                                         disabled={loading}
-                                        style={{ fontSize: '0.85rem', padding: '6px 12px' }}
                                         title="Marcar como verificado"
                                       >
                                         <FiCheckCircle size={14} />
                                         Verificado
                                       </button>
                                       <button
-                                        className="btn"
+                                        className="btn verificar-inventario-action-btn-novedad"
                                         onClick={() => handleReportarNovedad(equipo)}
                                         disabled={loading}
-                                        style={{ fontSize: '0.85rem', padding: '6px 12px', background: '#fee2e2', color: 'var(--error-700)', border: '2px solid var(--error-700)' }}
                                         title="Reportar novedad"
                                       >
                                         <FiAlertCircle size={14} />

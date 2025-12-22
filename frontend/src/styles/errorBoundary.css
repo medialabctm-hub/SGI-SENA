@@ -1,0 +1,77 @@
+/* ============================================
+   ESTILOS PARA ERROR BOUNDARY
+   ============================================ */
+
+.error-boundary-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
+  padding: 2rem;
+  text-align: center;
+}
+
+.error-boundary-title {
+  color: var(--error-700);
+  margin-bottom: 1rem;
+}
+
+.error-boundary-message {
+  color: var(--neutral-600);
+  margin-bottom: 1.5rem;
+}
+
+.error-boundary-actions {
+  display: flex;
+  gap: 1rem;
+}
+
+.error-boundary-btn {
+  padding: 0.5rem 1.5rem;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s;
+}
+
+.error-boundary-btn-primary {
+  background: var(--success-800);
+  color: white;
+}
+
+.error-boundary-btn-primary:hover {
+  background: var(--success-700);
+}
+
+.error-boundary-btn-secondary {
+  background: var(--neutral-600);
+  color: white;
+}
+
+.error-boundary-btn-secondary:hover {
+  background: var(--neutral-700);
+}
+
+.error-boundary-details {
+  margin-top: 2rem;
+  padding: 1rem;
+  background: var(--neutral-50);
+  border-radius: 6px;
+  max-width: 800px;
+  text-align: left;
+}
+
+.error-boundary-details summary {
+  cursor: pointer;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+.error-boundary-details pre {
+  overflow: auto;
+  font-size: 12px;
+  color: var(--error-700);
+}
+

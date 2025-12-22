@@ -3,6 +3,7 @@ import { FiUpload, FiFile, FiDownload, FiUser, FiSave, FiAlertCircle, FiSearch, 
 import * as XLSX from 'xlsx'
 import { parseApiResponse, buildErrorMessage, handleError } from '../utils/api'
 import RevisarDuplicados from './RevisarDuplicados'
+import '../styles/importarEquipos.css'
 
 export default function ImportarEquipos({ onImportComplete, onEstadoDuplicadosChange }) {
   const [archivo, setArchivo] = useState(null)
@@ -263,101 +264,54 @@ export default function ImportarEquipos({ onImportComplete, onEstadoDuplicadosCh
   }
 
   return (
-    <div style={{
-      padding: '1.5rem 0'
-    }}>
-      <div style={{ marginBottom: '1.5rem' }}>
-        <h3 style={{ margin: 0, fontSize: '1.5rem', color: '#1a2a3a', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+    <div className="importar-equipos-container">
+      <div className="importar-equipos-header">
+        <h3 className="importar-equipos-title">
           <FiUpload size={24} />
           Importación Masiva de Equipos
         </h3>
-        <p style={{ color: '#666', marginTop: '0.5rem', fontSize: '0.95rem' }}>
+        <p className="importar-equipos-subtitle">
           Sube un archivo Excel con los equipos a importar. El archivo debe contener las columnas requeridas.
         </p>
       </div>
 
-
       <button
         onClick={descargarPlantilla}
-        style={{
-          padding: '0.5rem 1rem',
-          background: 'var(--success-800)',
-          color: 'white',
-          border: '1px solid var(--success-800)',
-          borderRadius: '6px',
-          cursor: 'pointer',
-          fontSize: '0.9rem',
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: '0.5rem',
-          marginBottom: '1rem',
-          fontWeight: '500',
-          transition: 'background 0.2s'
-        }}
-        onMouseEnter={(e) => {
-          e.target.style.background = 'var(--success-900)';
-          e.target.style.borderColor = 'var(--success-900)';
-        }}
-        onMouseLeave={(e) => {
-          e.target.style.background = 'var(--success-800)';
-          e.target.style.borderColor = 'var(--success-800)';
-        }}
+        className="btn btn-verde importar-equipos-download-button"
       >
         <FiDownload size={16} />
         Descargar Plantilla (Excel)
       </button>
 
       <form onSubmit={handleSubmit}>
-        <div style={{ marginBottom: '1rem' }}>
-          <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600, color: '#1a2a3a' }}>
+        <div className="importar-equipos-form-section">
+          <label className="importar-equipos-label">
             Seleccionar archivo Excel
           </label>
-          <div style={{
-            border: '2px dashed #b2dfdb',
-            borderRadius: '8px',
-            padding: '1.5rem',
-            textAlign: 'center',
-            background: archivo ? '#e8f5e9' : '#f5f5f5',
-            transition: 'all 0.2s'
-          }}>
+          <div className={`importar-equipos-file-wrapper importar-equipos-file-container ${archivo ? 'has-file' : ''}`}>
             <input
               type="file"
               accept=".xlsx,.xls"
               onChange={handleFileChange}
-              style={{ display: 'none' }}
+              className="importar-equipos-file-input"
               id="file-input-equipos"
             />
             <label
               htmlFor="file-input-equipos"
-              style={{
-                cursor: 'pointer',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                gap: '0.5rem'
-              }}
+              className="importar-equipos-file-label-inner"
             >
-              <FiFile size={32} style={{ color: 'var(--success-800)' }} />
+              <FiFile size={32} className="importar-equipos-file-icon" />
               {archivo ? (
-                <span style={{ color: 'var(--success-800)', fontWeight: 600 }}>{archivo.name}</span>
+                <span className="importar-equipos-file-name">{archivo.name}</span>
               ) : (
-                <span style={{ color: '#666' }}>Haz clic para seleccionar un archivo</span>
+                <span className="importar-equipos-file-placeholder">Haz clic para seleccionar un archivo</span>
               )}
             </label>
           </div>
         </div>
 
         {error && (
-          <div style={{
-            padding: '1rem',
-            background: '#fee2e2',
-            color: 'var(--error-700)',
-            borderRadius: '8px',
-            marginBottom: '1rem',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.5rem'
-          }}>
+          <div className="importar-equipos-error">
             <FiAlertCircle size={20} />
             {error}
           </div>
@@ -365,52 +319,34 @@ export default function ImportarEquipos({ onImportComplete, onEstadoDuplicadosCh
 
         <button
           type="submit"
+          className="btn btn-verde importar-equipos-submit-button"
           disabled={!archivo || loading}
-          style={{
-            padding: '0.75rem 1.5rem',
-            background: loading || !archivo ? '#ccc' : 'var(--success-800)',
-            color: '#fff',
-            border: 'none',
-            borderRadius: '8px',
-            cursor: loading || !archivo ? 'not-allowed' : 'pointer',
-            fontSize: '1rem',
-            fontWeight: 600,
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.5rem',
-            margin: '0 auto'
-          }}
         >
           {loading ? 'Importando...' : 'Importar Equipos'}
-          {loading && <div className="loading-spinner" style={{ width: '16px', height: '16px', borderWidth: '2px' }}></div>}
+          {loading && <div className="loading-spinner importar-equipos-loading-spinner-small"></div>}
         </button>
       </form>
 
       {/* Sección de Cuentadante Principal - Solo para Administradores */}
       {user?.nombre_rol === 'Administrador' && (
-        <div style={{
-          marginTop: '2rem',
-          padding: '1.5rem',
-          background: '#fff3cd',
-          borderRadius: '8px',
-          border: '1px solid var(--warning-600)'
-        }}>
-          <h4 style={{ margin: '0 0 1rem 0', fontSize: '1.1rem', color: '#1a2a3a', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+        <div className="importar-equipos-cuentadante-section-warning">
+          <h4 className="importar-equipos-cuentadante-title">
             <FiUser size={20} />
             Cuentadante Principal del Inventario
           </h4>
-          <p style={{ color: '#666', marginBottom: '1rem', fontSize: '0.9rem' }}>
+          <p className="importar-equipos-cuentadante-description">
             El cuentadante principal es la persona responsable permanente de todo el inventario. 
             Debe ingresarse después de importar los equipos. Ingrese la <strong>Documento</strong> del cuentadante.
           </p>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-start' }}>
+          <div className="importar-equipos-cuentadante-form">
+            <div className="importar-equipos-cuentadante-search-row">
               <input
                 type="text"
+                className={`importar-equipos-cuentadante-input form-input ${cuentadanteEncontrado ? 'form-input-success' : ''}`}
                 value={cuentadantePrincipal}
                 onChange={(e) => {
                   setCuentadantePrincipal(e.target.value)
-                  setCuentadanteEncontrado(null) // Limpiar resultado al cambiar la Documento
+                  setCuentadanteEncontrado(null)
                 }}
                 onKeyPress={(e) => {
                   if (e.key === 'Enter') {
@@ -419,31 +355,13 @@ export default function ImportarEquipos({ onImportComplete, onEstadoDuplicadosCh
                   }
                 }}
                 placeholder="Documento del cuentadante principal"
-                style={{
-                  flex: 1,
-                  padding: '0.75rem',
-                  border: cuentadanteEncontrado ? '2px solid var(--success-800)' : '1px solid #ddd',
-                  borderRadius: '6px',
-                  fontSize: '0.95rem'
-                }}
                 disabled={loadingCuentadante || savingCuentadante}
               />
               <button
+                type="button"
+                className="importar-equipos-cuentadante-search-button"
                 onClick={buscarCuentadante}
                 disabled={!cuentadantePrincipal.trim() || buscandoCuentadante || savingCuentadante}
-                style={{
-                  padding: '0.75rem 1rem',
-                  background: buscandoCuentadante || !cuentadantePrincipal.trim() ? '#ccc' : '#1976d2',
-                  color: '#fff',
-                  border: 'none',
-                  borderRadius: '6px',
-                  cursor: buscandoCuentadante || !cuentadantePrincipal.trim() ? 'not-allowed' : 'pointer',
-                  fontSize: '0.95rem',
-                  fontWeight: 600,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.5rem'
-                }}
               >
                 <FiSearch size={16} />
                 {buscandoCuentadante ? 'Buscando...' : 'Buscar'}
@@ -451,46 +369,26 @@ export default function ImportarEquipos({ onImportComplete, onEstadoDuplicadosCh
             </div>
             
             {cuentadanteEncontrado && (
-              <div style={{
-                padding: '0.75rem',
-                background: '#d1fae5',
-                border: '1px solid var(--success-800)',
-                borderRadius: '6px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem'
-              }}>
-                <FiCheckCircle size={18} style={{ color: 'var(--success-800)' }} />
-                <div style={{ flex: 1 }}>
+              <div className="importar-equipos-cuentadante-found">
+                <FiCheckCircle size={18} className="importar-equipos-cuentadante-info-icon" />
+                <div className="importar-equipos-cuentadante-found-info">
                   <strong>{cuentadanteEncontrado.nombre_usuario}</strong> - Documento: {cuentadanteEncontrado.cedula}
                 </div>
               </div>
             )}
             
             <button
+              type="button"
+              className="importar-equipos-cuentadante-save-button"
               onClick={handleSaveCuentadante}
               disabled={!cuentadanteEncontrado || savingCuentadante || loadingCuentadante}
-              style={{
-                padding: '0.75rem 1.5rem',
-                background: savingCuentadante || !cuentadanteEncontrado ? '#ccc' : 'var(--warning-600)',
-                color: '#000',
-                border: 'none',
-                borderRadius: '6px',
-                cursor: savingCuentadante || !cuentadanteEncontrado ? 'not-allowed' : 'pointer',
-                fontSize: '0.95rem',
-                fontWeight: 600,
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem',
-                alignSelf: 'flex-start'
-              }}
             >
               <FiSave size={16} />
               {savingCuentadante ? 'Guardando...' : 'Guardar Cuentadante'}
             </button>
           </div>
           {cuentadanteActual && (
-            <p style={{ marginTop: '0.5rem', fontSize: '0.85rem', color: '#666' }}>
+            <p className="importar-equipos-cuentadante-current">
               Cuentadante actual: <strong>{cuentadanteActual}</strong>
             </p>
           )}
@@ -498,48 +396,36 @@ export default function ImportarEquipos({ onImportComplete, onEstadoDuplicadosCh
       )}
 
       {resultado && (
-        <div style={{
-          marginTop: '2rem',
-          padding: '1.5rem',
-          background: '#f8f9fa',
-          borderRadius: '8px',
-          border: '1px solid #e5e7eb'
-        }}>
-          <h4 style={{ margin: '0 0 1rem 0', fontSize: '1.1rem', color: '#1a2a3a' }}>Resultados de la Importación</h4>
+        <div className="importar-equipos-resultado">
+          <h4 className="importar-equipos-resultado-title">Resultados de la Importación</h4>
           
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem', marginBottom: '1rem' }}>
-            <div style={{ textAlign: 'center', padding: '1rem', background: '#fff', borderRadius: '8px' }}>
-              <div style={{ fontSize: '2rem', fontWeight: 700, color: '#1a2a3a' }}>{resultado.total}</div>
-              <div style={{ color: '#666', fontSize: '0.9rem' }}>Total</div>
+          <div className="importar-equipos-resultado-stats">
+            <div className="importar-equipos-resultado-stat importar-equipos-resultado-stat-total">
+              <div className="importar-equipos-resultado-stat-total-number">{resultado.total}</div>
+              <div className="importar-equipos-resultado-stat-total-label">Total</div>
             </div>
-            <div style={{ textAlign: 'center', padding: '1rem', background: '#d1fae5', borderRadius: '8px' }}>
-              <div style={{ fontSize: '2rem', fontWeight: 700, color: 'var(--success-800)' }}>{resultado.exitosos}</div>
-              <div style={{ color: 'var(--success-800)', fontSize: '0.9rem' }}>Exitosos</div>
+            <div className="importar-equipos-resultado-stat exitosos">
+              <div className="importar-equipos-resultado-stat-number">{resultado.exitosos}</div>
+              <div className="importar-equipos-resultado-stat-label">Exitosos</div>
             </div>
-            <div style={{ textAlign: 'center', padding: '1rem', background: '#fee2e2', borderRadius: '8px' }}>
-              <div style={{ fontSize: '2rem', fontWeight: 700, color: 'var(--error-700)' }}>{resultado.fallidos}</div>
-              <div style={{ color: 'var(--error-700)', fontSize: '0.9rem' }}>Fallidos</div>
+            <div className="importar-equipos-resultado-stat fallidos importar-equipos-resultado-stat-fallidos">
+              <div className="importar-equipos-resultado-stat-fallidos-number">{resultado.fallidos}</div>
+              <div className="importar-equipos-resultado-stat-fallidos-label">Fallidos</div>
             </div>
             {resultado.duplicados > 0 && (
-              <div style={{ textAlign: 'center', padding: '1rem', background: '#fff3cd', borderRadius: '8px' }}>
-                <div style={{ fontSize: '2rem', fontWeight: 700, color: 'var(--warning-600)' }}>{resultado.duplicados}</div>
-                <div style={{ color: '#b45309', fontSize: '0.9rem' }}>Duplicados</div>
+              <div className="importar-equipos-resultado-stat duplicados importar-equipos-resultado-stat-duplicados">
+                <div className="importar-equipos-resultado-stat-duplicados-number">{resultado.duplicados}</div>
+                <div className="importar-equipos-resultado-stat-duplicados-label">Duplicados</div>
               </div>
             )}
           </div>
 
           {resultado.errores && resultado.errores.length > 0 && (
-            <div style={{ marginTop: '1rem' }}>
-              <h5 style={{ margin: '0 0 0.5rem 0', fontSize: '1rem', color: '#1a2a3a' }}>Errores:</h5>
-              <div style={{ maxHeight: '200px', overflowY: 'auto', background: '#fff', borderRadius: '6px', padding: '0.5rem' }}>
+            <div className="importar-equipos-errores-section">
+              <h5 className="importar-equipos-errores-title">Errores:</h5>
+              <div className="importar-equipos-errores-list">
                 {resultado.errores.map((error, idx) => (
-                  <div key={idx} style={{
-                    padding: '0.5rem',
-                    marginBottom: '0.25rem',
-                    background: '#fee2e2',
-                    borderRadius: '4px',
-                    fontSize: '0.85rem'
-                  }}>
+                  <div key={idx} className="importar-equipos-error-item">
                     <strong>Fila {error.fila}</strong> ({error.codigo || error.cedula || 'N/A'}): {error.error}
                   </div>
                 ))}

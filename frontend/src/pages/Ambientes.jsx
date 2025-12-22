@@ -406,8 +406,8 @@ export default function Ambientes() {
               </div>
             </div>
 
-            <div className="users-content" style={{ marginBottom: '1rem' }}>
-              <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', marginTop: '0.75rem' }}>
+            <div className="users-content ambientes-content">
+              <div className="ambientes-filters-row">
                 <select
                   className="filter-control"
                   value={filtros.estado}
@@ -442,7 +442,7 @@ export default function Ambientes() {
             </div>
 
             {showForm && (
-    <div className="card ambiente-form-card" style={{ marginBottom: '1.5rem' }}>
+    <div className="card ambiente-form-card ambientes-form-card">
         <h3>{editingAmbiente ? 'Editar Ambiente' : 'Nuevo Ambiente'}</h3>
         <form onSubmit={handleSubmit}>
             {/* INICIO: Estructura del formulario mejorada */}
@@ -552,7 +552,7 @@ export default function Ambientes() {
                     rows="3"
                 />
             </div>
-                <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
+                <div className="ambientes-form-actions">
                   <button type="submit" className="btn-primary">
                     {editingAmbiente ? 'Actualizar' : 'Crear'}
                   </button>
@@ -573,7 +573,7 @@ export default function Ambientes() {
           )}
 
           {viewAmbiente && (
-            <div className="ambiente-detail-card" style={{ marginBottom: '1.5rem' }}>
+            <div className="ambiente-detail-card ambientes-detail-card">
               <div className="ambiente-detail-header">
                 <div>
                   <h3 className="ambiente-detail-title">{viewAmbiente.nombre_ambiente}</h3>
@@ -683,12 +683,12 @@ export default function Ambientes() {
                     </div>
                   )}
                   {viewAmbiente.descripcion && (
-                    <div className="info-item" style={{ gridColumn: '1 / -1' }}>
+                    <div className="info-item ambientes-descripcion-item">
                       <div className="info-label">
                         <FiInfo size={16} />
                         Descripción
                       </div>
-                      <div className="info-value" style={{ whiteSpace: 'pre-wrap' }}>{viewAmbiente.descripcion}</div>
+                      <div className="info-value ambientes-descripcion-value">{viewAmbiente.descripcion}</div>
                     </div>
                   )}
                 </div>
@@ -719,7 +719,7 @@ export default function Ambientes() {
               <div className="ambiente-inventario-section">
                 <h4 className="ambiente-section-title">Inventario del Ambiente</h4>
                 {viewAmbiente.equipos && viewAmbiente.equipos.length > 0 ? (
-                  <div className="users-table-wrapper" style={{ marginTop: '1rem' }}>
+                  <div className="users-table-wrapper ambientes-table-wrapper">
                     <table className="users-table">
                       <thead>
                         <tr>
@@ -770,7 +770,7 @@ export default function Ambientes() {
                     </table>
                   </div>
                 ) : (
-                  <div className="ambiente-no-images" style={{ marginTop: '1rem' }}>
+                  <div className="ambiente-no-images ambientes-no-images">
                     <FiPackage size={48} />
                     <p>No hay elementos registrados en este ambiente</p>
                   </div>
@@ -794,7 +794,7 @@ export default function Ambientes() {
                     accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
                     multiple
                     onChange={handleImageUpload}
-                    style={{ display: 'none' }}
+                    className="ambientes-file-input-hidden"
                   />
                 </div>
                 
