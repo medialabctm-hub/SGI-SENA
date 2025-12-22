@@ -3002,6 +3002,21 @@ export async function registrarUsoEquipoExterno(req, res) {
          AND COLUMN_NAME = 'nombre_usuario'`
       );
 
+      // Asegurar que id_usuario permita NULL para registros externos
+      try {
+        const [[colIdUsuario]] = await connection.execute(
+          `SELECT IS_NULLABLE AS nulable FROM INFORMATION_SCHEMA.COLUMNS 
+           WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'Responsables_Equipo' AND COLUMN_NAME = 'id_usuario'`
+        );
+        if (colIdUsuario && colIdUsuario.nulable === 'NO') {
+          await connection.execute(
+            `ALTER TABLE Responsables_Equipo MODIFY id_usuario INT NULL`);
+          logger.info('Columna id_usuario ajustada a NULL en Responsables_Equipo para soportar registros externos');
+        }
+      } catch (eNull) {
+        logger.warn('No se pudo ajustar id_usuario a NULL (puede existir restricción). Se intentará continuar.', { error: eNull?.message });
+      }
+
       const tieneFicha = colFicha.cnt > 0;
       const tieneNombreExterno = colNombreExterno.cnt > 0;
       const tieneDocumentoExterno = colDocumentoExterno.cnt > 0;
