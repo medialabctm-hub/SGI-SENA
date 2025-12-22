@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { FiDownload, FiUpload } from 'react-icons/fi'
+import { FiDownload, FiUpload, FiEdit3, FiTrash2 } from 'react-icons/fi'
 import * as XLSX from 'xlsx'
 import Header from '../components/Header'
 import Sidebar from '../components/Sidebar'
@@ -15,6 +15,11 @@ export default function Aprendices() {
   const [toast, setToast] = useState(null)
   const [query, setQuery] = useState('')
   const [showImport, setShowImport] = useState(false)
+  const [showEditModal, setShowEditModal] = useState(false)
+  const [selectedAprendiz, setSelectedAprendiz] = useState(null)
+  const [editForm, setEditForm] = useState({ nombre: '', documento: '', ficha: '', jornada: '' })
+  const [savingEdit, setSavingEdit] = useState(false)
+  const [deletingId, setDeletingId] = useState(null)
 
   useEffect(() => {
     try {
@@ -108,6 +113,81 @@ export default function Aprendices() {
     XLSX.writeFile(wb, `aprendices_${new Date().toISOString().split('T')[0]}.xlsx`)
   }
 
+  const openEditModal = (aprendiz) => {
+    setSelectedAprendiz(aprendiz)
+    setEditForm({
+      nombre: aprendiz.nombre || '',
+      documento: aprendiz.documento || '',
+      ficha: aprendiz.ficha || '',
+      jornada: aprendiz.jornada || ''
+    })
+    setShowEditModal(true)
+  }
+
+  const closeEditModal = () => {
+    setShowEditModal(false)
+    setSelectedAprendiz(null)
+  }
+
+  const handleEditChange = (event) => {
+    const { name, value } = event.target
+    setEditForm((prev) => ({ ...prev, [name]: value }))
+  }
+
+  const handleEditSubmit = async (event) => {
+    event.preventDefault()
+    if (!selectedAprendiz) {
+      return
+    }
+    setSavingEdit(true)
+    try {
+      const payload = {
+        ...editForm,
+        ficha: editForm.ficha?.trim() || null,
+        nombre: editForm.nombre?.trim(),
+        documento: editForm.documento?.trim(),
+        jornada: editForm.jornada || null
+      }
+      const res = await fetch(`/api/aprendices/${selectedAprendiz.id_aprendiz}`, {
+        method: 'PUT',
+        headers: getAuthHeaders(),
+        body: JSON.stringify(payload)
+      })
+      await parseApiResponse(res, 'No se pudo actualizar el aprendiz')
+      setToast({ message: 'Aprendiz actualizado correctamente', type: 'success' })
+      closeEditModal()
+      fetchAprendices()
+    } catch (err) {
+      setToast({ message: buildErrorMessage(err, 'No se pudo actualizar el aprendiz'), type: 'error' })
+    } finally {
+      setSavingEdit(false)
+    }
+  }
+
+  const handleDelete = async (aprendiz) => {
+    if (!canImport) {
+      return
+    }
+    const confirmed = window.confirm(`¿Seguro que deseas eliminar a ${aprendiz.nombre}?`)
+    if (!confirmed) {
+      return
+    }
+    setDeletingId(aprendiz.id_aprendiz)
+    try {
+      const res = await fetch(`/api/aprendices/${aprendiz.id_aprendiz}`, {
+        method: 'DELETE',
+        headers: getAuthHeaders()
+      })
+      await parseApiResponse(res, 'No se pudo eliminar el aprendiz')
+      setToast({ message: 'Aprendiz eliminado correctamente', type: 'success' })
+      fetchAprendices()
+    } catch (err) {
+      setToast({ message: buildErrorMessage(err, 'No se pudo eliminar el aprendiz'), type: 'error' })
+    } finally {
+      setDeletingId(null)
+    }
+  }
+
   return (
     <div className="page simple-page">
       <Header />
@@ -187,6 +267,7 @@ export default function Aprendices() {
                         <th>Ficha</th>
                         <th>Jornada</th>
                         <th>Registrado</th>
+                        {canImport && <th>Acciones</th>}
                       </tr>
                     </thead>
                     <tbody>
@@ -197,6 +278,27 @@ export default function Aprendices() {
                           <td>{aprendiz.ficha || '-'}</td>
                           <td>{aprendiz.jornada || '-'}</td>
                           <td>{formatDate(aprendiz.fecha_creacion)}</td>
+                          {canImport && (
+                            <td>
+                              <div className="users-actions" style={{ gap: '0.5rem' }}>
+                                <button
+                                  className="btn btn-edit"
+                                  onClick={() => openEditModal(aprendiz)}
+                                >
+                                  <FiEdit3 size={16} />
+                                  Editar
+                                </button>
+                                <button
+                                  className="btn btn-delete"
+                                  disabled={deletingId === aprendiz.id_aprendiz}
+                                  onClick={() => handleDelete(aprendiz)}
+                                >
+                                  <FiTrash2 size={16} />
+                                  {deletingId === aprendiz.id_aprendiz ? 'Eliminando...' : 'Eliminar'}
+                                </button>
+                              </div>
+                            </td>
+                          )}
                         </tr>
                       ))}
                     </tbody>
@@ -229,6 +331,67 @@ export default function Aprendices() {
                 }
               }}
             />
+          </div>
+        </div>
+      )}
+
+      {showEditModal && selectedAprendiz && (
+        <div className="modal-overlay">
+          <div className="modal-sheet form-modal">
+            <div className="modal-header">
+              <h3>Editar Aprendiz</h3>
+              <button className="btn" onClick={closeEditModal}>
+                Cerrar
+              </button>
+            </div>
+            <form className="modal-form" onSubmit={handleEditSubmit}>
+              <label>
+                Nombre completo
+                <input
+                  type="text"
+                  name="nombre"
+                  value={editForm.nombre}
+                  onChange={handleEditChange}
+                  required
+                />
+              </label>
+              <label>
+                Documento
+                <input
+                  type="text"
+                  name="documento"
+                  value={editForm.documento}
+                  onChange={handleEditChange}
+                  required
+                />
+              </label>
+              <label>
+                Ficha (opcional)
+                <input
+                  type="text"
+                  name="ficha"
+                  value={editForm.ficha}
+                  onChange={handleEditChange}
+                />
+              </label>
+              <label>
+                Jornada
+                <select name="jornada" value={editForm.jornada} onChange={handleEditChange}>
+                  <option value="">Sin definir</option>
+                  <option value="Mañana">Mañana</option>
+                  <option value="Tarde">Tarde</option>
+                  <option value="Noche">Noche</option>
+                </select>
+              </label>
+              <div className="modal-form-actions">
+                <button type="button" className="btn" onClick={closeEditModal}>
+                  Cancelar
+                </button>
+                <button type="submit" className="btn btn-verde" disabled={savingEdit}>
+                  {savingEdit ? 'Guardando...' : 'Guardar cambios'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

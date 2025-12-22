@@ -15,7 +15,7 @@ const router = express.Router();
 // ============================================
 
 // Registrar uso de equipo desde página externa (público)
-// Endpoint para recibir datos de páginas externas: ficha, placa, documento, imagenes (opcional)
+// Endpoint para recibir datos de páginas externas: documento, placa, imagenes (opcional)
 // El nombre se obtiene automáticamente buscando el usuario por documento en la BD
 // Las imágenes se guardan en Imagenes_Equipo asociadas al equipo identificado por la placa
 router.post('/uso/registro-externo', 

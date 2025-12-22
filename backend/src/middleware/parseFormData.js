@@ -42,7 +42,7 @@ export const parseFormData = (req, res, next) => {
               parsedBody.usuarios = Array.isArray(parsed) ? parsed : [parsed];
             } else {
               // Si no es JSON válido, crear array con el string como objeto
-              parsedBody.usuarios = [{ ficha: '', documento: parsedBody.usuarios }];
+              parsedBody.usuarios = [{ documento: parsedBody.usuarios }];
             }
           } catch (e2) {
             logger.error('No se pudo parsear usuarios', {
@@ -63,7 +63,7 @@ export const parseFormData = (req, res, next) => {
     // Convertir a formato nuevo
     if (!parsedBody.usuarios && (parsedBody.ficha || parsedBody.documento)) {
       const usuario = {
-        ficha: parsedBody.ficha || '',
+        ficha: parsedBody.ficha || null,
         documento: parsedBody.documento || '',
       };
 

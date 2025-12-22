@@ -419,6 +419,8 @@ export async function obtenerEquipoPorCodigo(req, res) {
     const responsablesConDias = responsables.map(resp => {
       // Parsear dias_semana si existe
       if (resp.dias_semana) {
+        let documentoOficial = documentoNormalizado;
+
         try {
           // Si es string, parsearlo; si ya es array, dejarlo como está
           if (typeof resp.dias_semana === 'string') {
@@ -2667,13 +2669,13 @@ export async function obtenerSesionesActivas(req, res) {
 
 /**
  * Registrar uso de equipo desde página externa (público)
- * Recibe: ficha, placa, documento, ambiente, imagenes (opcional)
+ * Recibe: documento, placa, ambiente, imagenes (opcional)
  * No requiere autenticación, pero valida que el usuario y equipo existan
  * 
  * Acciones:
- * 1. Busca el usuario por documento en la base de datos
+ * 1. Busca el usuario por documento en la base de datos y obtiene todos sus datos
  * 2. Actualiza el ambiente del equipo en el inventario (tabla Elementos)
- * 3. Asigna el equipo al usuario en Responsables_Equipo con ficha, nombre (obtenido de BD) y documento
+ * 3. Asigna el equipo al usuario en Responsables_Equipo con los datos oficiales del sistema (no desde la página externa)
  * 4. Registra el uso en Historial_Uso_Equipos
  * 5. Si hay imágenes, las guarda en Imagenes_Equipo asociadas al equipo
  */
@@ -2878,7 +2880,7 @@ export async function registrarUsoEquipoExterno(req, res) {
       return res.status(400).json({ 
         success: false,
         error: 'Usuarios requeridos',
-        message: 'Debe proporcionar al menos un usuario con ficha y documento' 
+        message: 'Debe proporcionar al menos un usuario con documento' 
       });
     }
 
@@ -2976,7 +2978,18 @@ export async function registrarUsoEquipoExterno(req, res) {
       const errores = [];
 
       for (const usuarioData of usuarios) {
-        const { ficha, documento, dias_semana, hora_inicio, hora_fin } = usuarioData;
+        const { ficha, documento, dias_semana, hora_inicio, hora_fin } = usuarioData || {};
+        const documentoNormalizado = typeof documento === 'string' ? documento.trim() : '';
+        const fichaNormalizada = typeof ficha === 'string' && ficha.trim().length > 0 ? ficha.trim() : null;
+
+        if (!documentoNormalizado) {
+          errores.push({
+            documento: 'N/A',
+            ficha: fichaNormalizada || 'N/A',
+            error: 'El documento del usuario es obligatorio'
+          });
+          continue;
+        }
 
         try {
           // Buscar usuario por documento
@@ -2986,21 +2999,30 @@ export async function registrarUsoEquipoExterno(req, res) {
              FROM Usuarios u
              LEFT JOIN Roles r ON r.id_rol = u.id_rol
              WHERE u.cedula = ? AND u.estado = 'Activo'`,
-            [documento.trim()]
+            [documentoNormalizado]
           );
           const usuario = usuarioRow || null;
 
           if (!usuario) {
             errores.push({
-              documento: documento.trim(),
-              ficha: ficha.trim(),
-              error: `Usuario no encontrado con documento "${documento}". Debe registrarse primero en SGI-SENA.`
+              documento: documentoNormalizado,
+              ficha: fichaNormalizada || 'N/A',
+              error: `Usuario no encontrado con documento "${documentoNormalizado}". Debe registrarse primero en SGI-SENA.`
             });
             continue;
           }
 
-          // Obtener el nombre del usuario desde la base de datos
+          const usuarioDetalle = {
+            id_usuario: usuario.id_usuario,
+            nombre: usuario.nombre_usuario,
+            documento: usuario.cedula,
+            correo: usuario.correo,
+            telefono: usuario.telefono,
+            rol: usuario.nombre_rol
+          };
+
           const nombreUsuario = usuario.nombre_usuario || null;
+          documentoOficial = usuarioDetalle.documento || documentoOficial;
 
           // Verificar si ya existe una asignación activa para este equipo y usuario
           const [[asignacionExistente]] = await connection.execute(
@@ -3020,7 +3042,6 @@ export async function registrarUsoEquipoExterno(req, res) {
           let horaInicioTime = null;
           let horaFinTime = null;
           if (hora_inicio) {
-            // Asegurar formato HH:MM:SS
             const horaInicioParts = hora_inicio.split(':');
             if (horaInicioParts.length === 2) {
               horaInicioTime = `${horaInicioParts[0].padStart(2, '0')}:${horaInicioParts[1].padStart(2, '0')}:00`;
@@ -3038,9 +3059,7 @@ export async function registrarUsoEquipoExterno(req, res) {
           }
 
           // Validar conflictos de horario: no puede haber dos usuarios con el mismo equipo
-          // en los mismos días y horarios que se solapen
           if (diasSemanaJson && horaInicioTime && horaFinTime) {
-            // Construir la consulta para verificar conflictos
             let conflictQuery = `
               SELECT 
                 re.id_responsable,
@@ -3058,34 +3077,30 @@ export async function registrarUsoEquipoExterno(req, res) {
                 AND re.hora_inicio IS NOT NULL
                 AND re.hora_fin IS NOT NULL
             `;
-            
-            let conflictParams = [equipo.codigo_equipo];
-            
-            // Si estamos actualizando una asignación existente, excluirla de la búsqueda
+
+            const conflictParams = [equipo.codigo_equipo];
+
             if (asignacionExistente) {
               conflictQuery += ` AND re.id_responsable != ?`;
               conflictParams.push(asignacionExistente.id_responsable);
             }
-            
-            // Verificar solapamiento de días usando JSON_OVERLAPS
+
             conflictQuery += ` AND JSON_OVERLAPS(re.dias_semana, ?)`;
             conflictParams.push(diasSemanaJson);
-            
-            // Verificar solapamiento de horarios
-            // Dos horarios se solapan si: (inicio_nuevo < fin_existente AND fin_nuevo > inicio_existente)
+
             conflictQuery += ` AND (
               (re.hora_inicio < ? AND re.hora_fin > ?) OR
               (re.hora_inicio < ? AND re.hora_fin >= ?) OR
               (re.hora_inicio >= ? AND re.hora_fin <= ?)
             )`;
             conflictParams.push(
-              horaFinTime, horaInicioTime,  // inicio_nuevo < fin_existente
-              horaFinTime, horaInicioTime,  // inicio_nuevo < fin_existente (con >=)
-              horaInicioTime, horaFinTime   // nuevo horario está dentro del existente
+              horaFinTime, horaInicioTime,
+              horaFinTime, horaInicioTime,
+              horaInicioTime, horaFinTime
             );
-            
+
             const [conflictos] = await connection.execute(conflictQuery, conflictParams);
-            
+
             if (conflictos.length > 0) {
               const conflicto = conflictos[0];
               let diasConflicto = [];
@@ -3095,14 +3110,12 @@ export async function registrarUsoEquipoExterno(req, res) {
                 } else if (Array.isArray(conflicto.dias_semana)) {
                   diasConflicto = conflicto.dias_semana;
                 }
-              } catch (e) {
-                // Ignorar error de parseo
-              }
-              
+              } catch (e) {}
+
               errores.push({
-                documento: documento.trim(),
+                documento: documentoOficial,
                 nombre: nombreUsuario,
-                ficha: ficha.trim(),
+                ficha: fichaNormalizada || 'N/A',
                 error: `Conflicto de horario: Ya existe otro usuario (${conflicto.nombre_usuario || 'Sin nombre'}, ${conflicto.cedula || 'Sin documento'}) asignado a este equipo en los días ${Array.isArray(diasConflicto) ? diasConflicto.join(', ') : 'N/A'} de ${conflicto.hora_inicio ? conflicto.hora_inicio.substring(0, 5) : 'N/A'} a ${conflicto.hora_fin ? conflicto.hora_fin.substring(0, 5) : 'N/A'}`,
                 conflicto_con: {
                   id_usuario: conflicto.id_usuario,
@@ -3112,11 +3125,11 @@ export async function registrarUsoEquipoExterno(req, res) {
                   horario: `${conflicto.hora_inicio ? conflicto.hora_inicio.substring(0, 5) : ''} - ${conflicto.hora_fin ? conflicto.hora_fin.substring(0, 5) : ''}`
                 }
               });
-              
+
               logger.warn('Conflicto de horario detectado', {
                 codigo_equipo: equipo.codigo_equipo,
                 usuario_nuevo: {
-                  documento: documento.trim(),
+                  documento: documentoOficial,
                   nombre: nombreUsuario,
                   dias: dias_semana,
                   horario: `${horaInicioTime} - ${horaFinTime}`
@@ -3129,23 +3142,28 @@ export async function registrarUsoEquipoExterno(req, res) {
                   horario: `${conflicto.hora_inicio} - ${conflicto.hora_fin}`
                 }
               });
-              
+
               continue;
             }
           }
 
-          // Crear o actualizar asignación
-          const observaciones = `Ficha: ${ficha.trim()}, Nombre: ${nombreUsuario || 'N/A'}, Documento: ${documento.trim()}`;
+          const observacionesPartes = [
+            `Nombre: ${nombreUsuario || 'N/A'}`,
+            `Documento: ${documentoOficial}`
+          ];
+          if (fichaNormalizada) {
+            observacionesPartes.unshift(`Ficha: ${fichaNormalizada}`);
+          }
+          const observaciones = observacionesPartes.join(', ');
 
           if (!asignacionExistente) {
-            // Crear nueva asignación
             let campos = ['codigo_equipo', 'id_usuario', 'tipo_responsabilidad', 'observaciones', 'fecha_asignacion'];
             let valores = [equipo.codigo_equipo, usuario.id_usuario, 'Principal', observaciones];
             let placeholders = ['?', '?', '?', '?', 'NOW()'];
 
             if (tieneFicha) {
               campos.push('ficha');
-              valores.push(ficha.trim());
+              valores.push(fichaNormalizada);
               placeholders.push('?');
             }
             if (tieneNombreExterno && nombreUsuario) {
@@ -3155,7 +3173,7 @@ export async function registrarUsoEquipoExterno(req, res) {
             }
             if (tieneDocumentoExterno) {
               campos.push('documento_externo');
-              valores.push(documento.trim());
+              valores.push(documentoOficial);
               placeholders.push('?');
             }
             if (tieneDiasSemana && diasSemanaJson) {
@@ -3184,18 +3202,17 @@ export async function registrarUsoEquipoExterno(req, res) {
               id_responsable: resultAsignacion.insertId,
               codigo_equipo: equipo.codigo_equipo,
               id_usuario: usuario.id_usuario,
-              ficha: ficha.trim(),
+              ficha: fichaNormalizada,
               nombre: nombreUsuario,
-              documento: documento.trim()
+              documento: documentoOficial
             });
           } else {
-            // Actualizar asignación existente
             let updates = [];
             let valoresUpdate = [];
 
             if (tieneFicha) {
               updates.push('ficha = ?');
-              valoresUpdate.push(ficha.trim());
+              valoresUpdate.push(fichaNormalizada);
             }
             if (tieneNombreExterno && nombreUsuario) {
               updates.push('nombre_externo = ?');
@@ -3203,7 +3220,7 @@ export async function registrarUsoEquipoExterno(req, res) {
             }
             if (tieneDocumentoExterno) {
               updates.push('documento_externo = ?');
-              valoresUpdate.push(documento.trim());
+              valoresUpdate.push(documentoOficial);
             }
             if (tieneDiasSemana) {
               updates.push('dias_semana = ?');
@@ -3229,14 +3246,14 @@ export async function registrarUsoEquipoExterno(req, res) {
                  WHERE id_responsable = ?`,
                 valoresUpdate
               );
-              
+
               logger.info('Asignación actualizada desde página externa', {
                 id_responsable: asignacionExistente.id_responsable,
                 codigo_equipo: equipo.codigo_equipo,
                 id_usuario: usuario.id_usuario,
-                ficha: ficha.trim(),
+                ficha: fichaNormalizada,
                 nombre: nombreUsuario,
-                documento: documento.trim(),
+                documento: documentoOficial,
                 filas_afectadas: updateResult.affectedRows,
                 campos_actualizados: updates.length
               });
@@ -3249,7 +3266,6 @@ export async function registrarUsoEquipoExterno(req, res) {
             }
           }
 
-          // Verificar si el usuario tiene una sesión activa en este equipo
           const [[sesionActiva]] = await connection.execute(
             `SELECT id_historial FROM Historial_Uso_Equipos 
              WHERE codigo_equipo = ? AND id_usuario = ? AND estado = 'En Uso' 
@@ -3257,41 +3273,40 @@ export async function registrarUsoEquipoExterno(req, res) {
             [equipo.codigo_equipo, usuario.id_usuario]
           );
 
-          // Si ya existe una sesión activa, no crear otra, pero sí actualizar la asignación con los nuevos datos
-          // y agregar al resultado para que se muestre en el frontend
           if (sesionActiva) {
             logger.info('Sesión activa existente - actualizando asignación con nuevos datos', {
               id_historial: sesionActiva.id_historial,
               codigo_equipo: equipo.codigo_equipo,
               id_usuario: usuario.id_usuario,
-              documento: documento.trim(),
+              documento: documentoOficial,
               tiene_asignacion: !!asignacionExistente
             });
-            
-            // La asignación ya se actualizó arriba (si existía) o se creó (si no existía)
-            // Agregar al resultado aunque ya exista sesión activa, para que se muestre en el frontend
+
             resultados.push({
               id_historial: sesionActiva.id_historial,
-              id_usuario: usuario.id_usuario,
-              nombre: nombreUsuario,
-              documento: documento.trim(),
-              ficha: ficha.trim(),
-              fecha_hora_inicio: new Date(), // Usar fecha actual como referencia
+              usuario: usuarioDetalle,
+              nombre: usuarioDetalle.nombre,
+              documento: documentoOficial,
+              correo: usuarioDetalle.correo,
+              telefono: usuarioDetalle.telefono,
+              rol: usuarioDetalle.rol,
+              ficha: fichaNormalizada,
+              fecha_hora_inicio: new Date(),
               dias_semana: diasSemanaJson ? (typeof diasSemanaJson === 'string' ? JSON.parse(diasSemanaJson) : diasSemanaJson) : null,
               hora_inicio: horaInicioTime,
               hora_fin: horaFinTime,
-              sesion_existente: true // Marcar que es una sesión existente
+              sesion_existente: true
             });
-            
-            // Continuar sin crear nuevo historial, pero la asignación ya se actualizó/creó arriba
+
             continue;
           }
 
-          // Crear registro de uso
-          const observacionesHistorial = `Ficha: ${ficha.trim()}`;
+          const observacionesHistorial = fichaNormalizada
+            ? `Ficha: ${fichaNormalizada}, Documento: ${documentoOficial}`
+            : `Documento: ${documentoOficial}`;
           const fechaInicio = new Date();
           let resultHistorial;
-          
+
           try {
             if (tieneNombreUsuarioHistorial) {
               [resultHistorial] = await connection.execute(
@@ -3308,7 +3323,7 @@ export async function registrarUsoEquipoExterno(req, res) {
                 [equipo.codigo_equipo, usuario.id_usuario, fechaInicio, observacionesHistorial]
               );
             }
-            
+
             logger.info('Historial de uso creado exitosamente', {
               id_historial: resultHistorial.insertId,
               codigo_equipo: equipo.codigo_equipo,
@@ -3321,10 +3336,9 @@ export async function registrarUsoEquipoExterno(req, res) {
               codigo_equipo: equipo.codigo_equipo,
               id_usuario: usuario.id_usuario
             });
-            throw historialError; // Re-lanzar para que sea capturado por el catch externo
+            throw historialError;
           }
 
-          // Parsear dias_semana si existe
           let diasSemanaParsed = null;
           if (diasSemanaJson) {
             try {
@@ -3334,13 +3348,16 @@ export async function registrarUsoEquipoExterno(req, res) {
               diasSemanaParsed = null;
             }
           }
-          
+
           resultados.push({
             id_historial: resultHistorial.insertId,
-            id_usuario: usuario.id_usuario,
-            nombre: nombreUsuario,
-            documento: documento.trim(),
-            ficha: ficha.trim(),
+            usuario: usuarioDetalle,
+            nombre: usuarioDetalle.nombre,
+            documento: documentoOficial,
+            correo: usuarioDetalle.correo,
+            telefono: usuarioDetalle.telefono,
+            rol: usuarioDetalle.rol,
+            ficha: fichaNormalizada,
             fecha_hora_inicio: fechaInicio,
             dias_semana: diasSemanaParsed,
             hora_inicio: horaInicioTime,
@@ -3351,21 +3368,21 @@ export async function registrarUsoEquipoExterno(req, res) {
             id_historial: resultHistorial.insertId,
             codigo_equipo: equipo.codigo_equipo,
             id_usuario: usuario.id_usuario,
-            documento: documento.trim(),
+            documento: documentoOficial,
             nombre: nombreUsuario,
-            ficha: ficha.trim()
+            ficha: fichaNormalizada
           });
 
         } catch (usuarioError) {
           logger.error('Error al procesar usuario', {
             error: usuarioError.message,
             stack: usuarioError.stack,
-            documento: documento?.trim(),
-            ficha: ficha?.trim()
+            documento: documentoOficial,
+            ficha: fichaNormalizada
           });
           errores.push({
-            documento: documento?.trim() || 'N/A',
-            ficha: ficha?.trim() || 'N/A',
+            documento: documentoOficial || 'N/A',
+            ficha: fichaNormalizada || 'N/A',
             error: usuarioError.message || 'Error al procesar usuario'
           });
         }
