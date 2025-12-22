@@ -271,36 +271,49 @@ export default function Aprendices() {
                       </tr>
                     </thead>
                     <tbody>
-                      {filteredAprendices.map((aprendiz) => (
-                        <tr key={aprendiz.id_aprendiz}>
-                          <td>{aprendiz.nombre}</td>
-                          <td>{aprendiz.documento}</td>
-                          <td>{aprendiz.ficha || '-'}</td>
-                          <td>{aprendiz.jornada || '-'}</td>
-                          <td>{formatDate(aprendiz.fecha_creacion)}</td>
-                          {canImport && (
+                      {filteredAprendices.map((aprendiz) => {
+                        const jornadaClass = aprendiz.jornada 
+                          ? aprendiz.jornada.toLowerCase().replace('á', 'a').replace('é', 'e')
+                          : 'sin-definir'
+                        return (
+                          <tr key={aprendiz.id_aprendiz}>
+                            <td><strong>{aprendiz.nombre}</strong></td>
+                            <td>{aprendiz.documento}</td>
+                            <td>{aprendiz.ficha || '-'}</td>
                             <td>
-                              <div className="users-actions users-actions-compact">
-                                <button
-                                  className="btn btn-edit"
-                                  onClick={() => openEditModal(aprendiz)}
-                                >
-                                  <FiEdit3 size={16} />
-                                  Editar
-                                </button>
-                                <button
-                                  className="btn btn-delete"
-                                  disabled={deletingId === aprendiz.id_aprendiz}
-                                  onClick={() => handleDelete(aprendiz)}
-                                >
-                                  <FiTrash2 size={16} />
-                                  {deletingId === aprendiz.id_aprendiz ? 'Eliminando...' : 'Eliminar'}
-                                </button>
-                              </div>
+                              {aprendiz.jornada ? (
+                                <span className={`jornada-badge ${jornadaClass}`}>
+                                  {aprendiz.jornada}
+                                </span>
+                              ) : (
+                                <span className="jornada-badge sin-definir">Sin definir</span>
+                              )}
                             </td>
-                          )}
-                        </tr>
-                      ))}
+                            <td>{formatDate(aprendiz.fecha_creacion)}</td>
+                            {canImport && (
+                              <td>
+                                <div className="users-actions users-actions-compact">
+                                  <button
+                                    className="btn btn-edit"
+                                    onClick={() => openEditModal(aprendiz)}
+                                  >
+                                    <FiEdit3 size={16} />
+                                    Editar
+                                  </button>
+                                  <button
+                                    className="btn btn-delete"
+                                    disabled={deletingId === aprendiz.id_aprendiz}
+                                    onClick={() => handleDelete(aprendiz)}
+                                  >
+                                    <FiTrash2 size={16} />
+                                    {deletingId === aprendiz.id_aprendiz ? 'Eliminando...' : 'Eliminar'}
+                                  </button>
+                                </div>
+                              </td>
+                            )}
+                          </tr>
+                        )
+                      })}
                     </tbody>
                   </table>
                 </div>
