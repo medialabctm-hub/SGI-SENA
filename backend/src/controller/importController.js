@@ -2,6 +2,7 @@ import defaultDb from '../config/dbconfig.js';
 import XLSX from 'xlsx';
 import bcrypt from 'bcrypt';
 import emailService from '../services/emailService.js';
+import { ensureAprendicesTable } from './aprendicesController.js';
 import { logger } from '../utils/logger.js';
 
 /**
@@ -990,35 +991,7 @@ export async function importarAprendices(req, res) {
 
     const userId = req.user?.id || null;
 
-    // Asegurar que exista tabla para almacenar aprendices (sin crear cuentas de usuario)
-    try {
-      const [[tablaExiste]] = await defaultDb.execute(
-        `SELECT COUNT(*) AS cnt FROM INFORMATION_SCHEMA.TABLES 
-         WHERE TABLE_SCHEMA = DATABASE() 
-         AND TABLE_NAME = 'Aprendices'`
-      );
-
-      if (tablaExiste.cnt === 0) {
-        await defaultDb.execute(
-          `CREATE TABLE Aprendices (
-            id_aprendiz INT PRIMARY KEY AUTO_INCREMENT,
-            ficha VARCHAR(100) NULL,
-            nombre VARCHAR(200) NOT NULL,
-            documento VARCHAR(50) NOT NULL,
-            jornada ENUM('Mañana','Tarde','Noche') NULL,
-            creado_por INT NULL,
-            fecha_creacion DATETIME DEFAULT NOW(),
-            FOREIGN KEY (creado_por) REFERENCES Usuarios(id_usuario) ON DELETE SET NULL,
-            UNIQUE KEY uk_documento (documento),
-            INDEX idx_ficha (ficha),
-            INDEX idx_jornada (jornada)
-          ) COMMENT = 'Registro de aprendices (no habilitados para iniciar sesión)'
-          `
-        );
-      }
-    } catch (err) {
-      logger.warn('No se pudo crear tabla Aprendices', { err: err.message });
-    }
+    await ensureAprendicesTable();
 
     for (let i = 0; i < data.length; i++) {
       const row = data[i];

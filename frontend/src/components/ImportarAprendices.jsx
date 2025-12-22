@@ -58,6 +58,11 @@ export default function ImportarAprendices({ onImportComplete }) {
 
       const data = await parseApiResponse(res, 'Error al importar aprendices')
       setResultado(data.resultados)
+      setArchivo(null)
+      const input = document.getElementById('file-input-aprendices')
+      if (input) {
+        input.value = ''
+      }
 
       if (typeof onImportComplete === 'function') {
         onImportComplete(data.resultados)
