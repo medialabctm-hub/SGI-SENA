@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react'
 import Header from '../components/Header'
 import Sidebar from '../components/Sidebar'
 import Toast from '../components/Toast'
-import ConfirmModal from '../components/ConfirmModal'
+import DestructiveConfirmModal from '../components/DestructiveConfirmModal'
 import { parseApiResponse, buildErrorMessage } from '../utils/api'
 import { FiDownload, FiSearch, FiList, FiClock, FiEye, FiUpload, FiSettings, FiCheckSquare, FiSquare } from 'react-icons/fi'
 import { useNavigate } from 'react-router-dom'
@@ -261,7 +261,6 @@ export default function ConsultarEquipo() {
     const codigoEq = deleteConfirm.codigo
     if (!codigoEq) return
     
-    setDeleteConfirm({ open: false, codigo: null })
     setLoading(true)
     setToast(null)
     try {
@@ -273,9 +272,11 @@ export default function ConsultarEquipo() {
       await parseApiResponse(res, 'No se pudo eliminar el equipo')
       setEquipos(prev => prev.filter(eq => eq.codigo_equipo !== codigoEq))
       if (editingCodigo === codigoEq) cancelEdit()
+      setDeleteConfirm({ open: false, codigo: null })
       setToast({ message: `Equipo ${codigoEq} eliminado correctamente`, type: 'success' })
     } catch (err) {
       setToast({ message: buildErrorMessage(err, 'No se pudo eliminar el equipo'), type: 'error' })
+      setDeleteConfirm({ open: false, codigo: null })
     } finally {
       setLoading(false)
     }
@@ -489,13 +490,14 @@ export default function ConsultarEquipo() {
         <Sidebar user={user} />
         <main className="dashboard-main">
           {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
-          <ConfirmModal
+          <DestructiveConfirmModal
             open={deleteConfirm.open}
             title="Eliminar Equipo"
-            message={`¿Estás seguro de que deseas eliminar el equipo ${deleteConfirm.codigo}? Esta acción no se puede deshacer.`}
-            confirmText="Eliminar"
+            message={`¿Estás seguro de que quieres eliminar el equipo ${deleteConfirm.codigo}? Esta acción es destructiva e irreversible.`}
+            confirmText="Eliminar Equipo"
             cancelText="Cancelar"
-            type="danger"
+            confirmationPhrase="confirmar accion"
+            loading={loading}
             onConfirm={handleDelete}
             onCancel={() => setDeleteConfirm({ open: false, codigo: null })}
           />

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import Header from '../components/Header';
 import Sidebar from '../components/Sidebar';
 import Toast from '../components/Toast';
-import ConfirmModal from '../components/ConfirmModal';
+import DestructiveConfirmModal from '../components/DestructiveConfirmModal';
 import ImportarUsuarios from '../components/ImportarUsuarios';
 import { FiUpload, FiDownload } from 'react-icons/fi';
 import * as XLSX from 'xlsx';
@@ -72,9 +72,9 @@ export default function Usuarios() {
 
   const doDelete = async () => {
     const id = confirm.id;
-    setConfirm({ open: false, id: null });
     if (!id) {
       setToast({ message: 'No se seleccionó usuario', type: 'error' });
+      setConfirm({ open: false, id: null });
       return;
     }
     try {
@@ -85,12 +85,14 @@ export default function Usuarios() {
       });
       const data = await parseApiResponse(res, 'No se pudo eliminar el usuario');
       setUsers((prev) => prev.filter((u) => u.id_usuario !== id));
+      setConfirm({ open: false, id: null });
       setToast({ message: data.message || 'Usuario eliminado', type: 'success' });
     } catch (err) {
       setToast({
         message: buildErrorMessage(err, 'No se pudo eliminar el usuario'),
         type: 'error',
       });
+      setConfirm({ open: false, id: null });
     } finally {
       setLoading(false);
     }
@@ -540,9 +542,14 @@ export default function Usuarios() {
         </div>
       )}
 
-      <ConfirmModal
+      <DestructiveConfirmModal
         open={confirm.open}
-        message="¿Eliminar este usuario?"
+        title="Eliminar Usuario"
+        message="¿Estás seguro de que quieres eliminar este usuario? Esta acción es destructiva e irreversible."
+        confirmText="Eliminar Usuario"
+        cancelText="Cancelar"
+        confirmationPhrase="confirmar accion"
+        loading={loading}
         onConfirm={doDelete}
         onCancel={() => setConfirm({ open: false, id: null })}
       />

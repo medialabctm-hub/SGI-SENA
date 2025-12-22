@@ -587,3 +587,48 @@
     padding: 24px;
   }
 }
+
+/* Sección de eliminación de cuenta */
+.perfil-danger-zone {
+  border: 2px solid var(--error-200) !important;
+  background: var(--error-50) !important;
+}
+
+.perfil-danger-title {
+  color: var(--error-800) !important;
+}
+
+.perfil-danger-description {
+  color: var(--error-700);
+  font-size: 14px;
+  line-height: 1.6;
+  margin-bottom: 16px;
+}
+
+.perfil-delete-account-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 24px;
+  background: var(--error-500);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+  width: 100%;
+  justify-content: center;
+}
+
+.perfil-delete-account-btn:hover:not(:disabled) {
+  background: var(--error-600);
+  box-shadow: 0 4px 12px rgba(220, 53, 69, 0.3);
+  transform: translateY(-1px);
+}
+
+.perfil-delete-account-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}

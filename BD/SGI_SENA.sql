@@ -2,19 +2,39 @@ DROP DATABASE IF EXISTS railway;
 CREATE DATABASE railway;
 USE railway;
 
--- ===============
+-- ============================================
 -- TABLA DE ROLES
--- ===============
+-- ============================================
 CREATE TABLE Roles (
   id_rol INT PRIMARY KEY AUTO_INCREMENT,
-  nombre_rol ENUM('Administrador', 'Instructor', 'Aprendiz', 'Cuentadante') UNIQUE NOT NULL,
+  nombre_rol VARCHAR(50) UNIQUE NOT NULL COMMENT 'Nombre del rol (permite roles personalizados)',
   descripcion VARCHAR(200),
-  fecha_creacion DATETIME DEFAULT NOW()
-) COMMENT = 'Roles del sistema de gestión de equipos';
+  estado ENUM('Activo', 'Inactivo') DEFAULT 'Activo' COMMENT 'Estado del rol',
+  fecha_creacion DATETIME DEFAULT NOW(),
+  INDEX idx_estado (estado),
+  INDEX idx_nombre (nombre_rol)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+COMMENT = 'Roles del sistema de gestión de equipos';
 
--- =================
+-- ============================================
+-- TABLA DE PERMISOS
+-- ============================================
+CREATE TABLE Permisos (
+  id_permiso INT PRIMARY KEY AUTO_INCREMENT,
+  codigo_permiso VARCHAR(100) UNIQUE NOT NULL COMMENT 'Código único del permiso (ej: users:view)',
+  modulo VARCHAR(50) NOT NULL COMMENT 'Módulo al que pertenece (ej: USERS, EQUIPOS)',
+  accion VARCHAR(50) NOT NULL COMMENT 'Acción del permiso (ej: VIEW, CREATE)',
+  descripcion TEXT COMMENT 'Descripción del permiso',
+  fecha_creacion DATETIME DEFAULT NOW(),
+  INDEX idx_modulo (modulo),
+  INDEX idx_codigo (codigo_permiso),
+  INDEX idx_modulo_accion (modulo, accion)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+COMMENT = 'Permisos disponibles en el sistema';
+
+-- ============================================
 -- TABLA DE USUARIOS
--- =================
+-- ============================================
 CREATE TABLE Usuarios (
   id_usuario INT PRIMARY KEY AUTO_INCREMENT,
   nombre_usuario VARCHAR(100) NOT NULL,
@@ -24,7 +44,7 @@ CREATE TABLE Usuarios (
   contrasena VARCHAR(255) NOT NULL,
   id_rol INT NOT NULL,
   estado ENUM('Activo', 'Inactivo') DEFAULT 'Activo',
-  requiere_cambio_contrasena TINYINT(1) DEFAULT 0 COMMENT 'Indica si el usuario debe cambiar su contraseña (generada automáticamente)',
+  requiere_cambio_contrasena TINYINT(1) DEFAULT 0 COMMENT 'Indica si el usuario debe cambiar su contraseña',
   foto_perfil VARCHAR(255) NULL COMMENT 'Ruta de la foto de perfil del usuario',
   fecha_registro DATETIME DEFAULT NOW(),
   ultimo_acceso DATETIME,
@@ -32,9 +52,31 @@ CREATE TABLE Usuarios (
   FOREIGN KEY (id_rol) REFERENCES Roles(id_rol),
   FOREIGN KEY (creado_por) REFERENCES Usuarios(id_usuario) ON DELETE SET NULL,
   INDEX idx_cedula (cedula),
+  INDEX idx_correo (correo),
   INDEX idx_estado (estado),
-  INDEX idx_rol (id_rol)
-) COMMENT = 'Usuarios del sistema con sus credenciales y datos personales';
+  INDEX idx_rol (id_rol),
+  INDEX idx_estado_rol (estado, id_rol)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+COMMENT = 'Usuarios del sistema con sus credenciales y datos personales';
+
+-- ============================================
+-- TABLA DE RELACIÓN ROL-PERMISO
+-- (Debe crearse después de Usuarios porque tiene FK a Usuarios)
+-- ============================================
+CREATE TABLE Rol_Permisos (
+  id_rol INT NOT NULL,
+  id_permiso INT NOT NULL,
+  activo TINYINT(1) DEFAULT 1 COMMENT 'Indica si el permiso está activo para el rol',
+  fecha_asignacion DATETIME DEFAULT NOW(),
+  asignado_por INT COMMENT 'Usuario que asignó el permiso',
+  PRIMARY KEY (id_rol, id_permiso),
+  FOREIGN KEY (id_rol) REFERENCES Roles(id_rol) ON DELETE CASCADE,
+  FOREIGN KEY (id_permiso) REFERENCES Permisos(id_permiso) ON DELETE CASCADE,
+  FOREIGN KEY (asignado_por) REFERENCES Usuarios(id_usuario) ON DELETE SET NULL,
+  INDEX idx_rol_activo (id_rol, activo),
+  INDEX idx_permiso_activo (id_permiso, activo)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+COMMENT = 'Relación entre roles y permisos';
 
 -- ============================================
 -- TABLA DE TOKENS DE RECUPERACIÓN DE CONTRASEÑA
@@ -50,12 +92,14 @@ CREATE TABLE Tokens_Recuperacion_Contrasena (
   FOREIGN KEY (id_usuario) REFERENCES Usuarios(id_usuario) ON DELETE CASCADE,
   INDEX idx_token (token),
   INDEX idx_usuario (id_usuario),
-  INDEX idx_expiracion (fecha_expiracion, usado)
-) COMMENT = 'Tokens para recuperación de contraseñas de usuarios';
+  INDEX idx_expiracion_usado (fecha_expiracion, usado),
+  INDEX idx_usuario_expiracion (id_usuario, fecha_expiracion, usado)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+COMMENT = 'Tokens para recuperación de contraseñas de usuarios';
 
--- ========================
+-- ============================================
 -- TABLA DE NOTIFICACIONES
--- ========================
+-- ============================================
 CREATE TABLE Notificaciones (
   id_notificacion INT PRIMARY KEY AUTO_INCREMENT,
   id_usuario INT NOT NULL,
@@ -70,12 +114,14 @@ CREATE TABLE Notificaciones (
   FOREIGN KEY (id_usuario) REFERENCES Usuarios(id_usuario) ON DELETE CASCADE,
   FOREIGN KEY (creado_por) REFERENCES Usuarios(id_usuario) ON DELETE SET NULL,
   INDEX idx_usuario_leida (id_usuario, leida),
-  INDEX idx_fecha_notificacion (fecha_creacion)
-) COMMENT = 'Notificaciones del sistema para usuarios';
+  INDEX idx_fecha_notificacion (fecha_creacion),
+  INDEX idx_usuario_fecha (id_usuario, fecha_creacion DESC)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+COMMENT = 'Notificaciones del sistema para usuarios';
 
--- =================
+-- ============================================
 -- TABLA DE AMBIENTES
--- =================
+-- ============================================
 CREATE TABLE Ambientes (
   id_ambiente INT PRIMARY KEY AUTO_INCREMENT,
   codigo_ambiente VARCHAR(20) UNIQUE NOT NULL,
@@ -88,12 +134,15 @@ CREATE TABLE Ambientes (
   estado_ambiente ENUM('Activo', 'Inactivo', 'En Mantenimiento') DEFAULT 'Activo',
   fecha_creacion DATETIME DEFAULT NOW(),
   INDEX idx_codigo (codigo_ambiente),
-  INDEX idx_tipo (tipo_ambiente)
-) COMMENT = 'Ubicaciones físicas donde se encuentran los equipos';
+  INDEX idx_tipo (tipo_ambiente),
+  INDEX idx_estado (estado_ambiente),
+  INDEX idx_tipo_estado (tipo_ambiente, estado_ambiente)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+COMMENT = 'Ubicaciones físicas donde se encuentran los equipos';
 
--- ============================
+-- ============================================
 -- TABLA DE IMÁGENES AMBIENTES
--- ============================
+-- ============================================
 CREATE TABLE Imagenes_Ambiente (
   id_imagen_ambiente INT PRIMARY KEY AUTO_INCREMENT,
   id_ambiente INT NOT NULL,
@@ -108,26 +157,29 @@ CREATE TABLE Imagenes_Ambiente (
   FOREIGN KEY (subida_por) REFERENCES Usuarios(id_usuario),
   INDEX idx_ambiente (id_ambiente),
   INDEX idx_principal (id_ambiente, es_principal)
-) COMMENT = 'Almacenamiento de rutas de imágenes de ambientes';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+COMMENT = 'Almacenamiento de rutas de imágenes de ambientes';
 
--- ====================
+-- ============================================
 -- TABLA DE CATEGORÍAS
--- ====================
+-- ============================================
 CREATE TABLE Categorias_Equipo (
   id_categoria INT PRIMARY KEY AUTO_INCREMENT,
   nombre_categoria VARCHAR(50) UNIQUE NOT NULL,
   descripcion VARCHAR(200),
-  es_componente BOOLEAN DEFAULT FALSE
-) COMMENT = 'Categorías de equipos (completos o componentes)';
+  es_componente BOOLEAN DEFAULT FALSE,
+  INDEX idx_es_componente (es_componente)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+COMMENT = 'Categorías de equipos (completos o componentes)';
 
--- ===================
+-- ============================================
 -- TABLA DE ELEMENTOS
--- ===================
+-- ============================================
 CREATE TABLE Elementos (
   codigo_equipo INT PRIMARY KEY AUTO_INCREMENT,
   id_categoria INT NOT NULL,
   id_ambiente INT NOT NULL,
-  id_cuentadante INT NULL COMMENT 'ID del cuentadante responsable de este equipo. NULL si no está asignado a un cuentadante específico',
+  id_cuentadante INT NULL COMMENT 'ID del cuentadante responsable de este equipo',
   tipo VARCHAR(100) NOT NULL,
   modelo VARCHAR(100),
   descripcion TEXT,
@@ -138,12 +190,12 @@ CREATE TABLE Elementos (
   fecha_registro DATETIME DEFAULT NOW(),
   registrado_por INT,
   specs_completas TEXT,
-  r_centro VARCHAR(50) NOT NULL COMMENT 'Código del centro (Centro)',
+  r_centro VARCHAR(50) NOT NULL COMMENT 'Código del centro',
   consecutivo VARCHAR(100),
   placa VARCHAR(100),
   atributos TEXT,
   valor_ingreso DECIMAL(10,2),
-  cuentadante_principal VARCHAR(255) NULL COMMENT 'Cuentadante principal permanente de todo el inventario',
+  cuentadante_principal VARCHAR(255) NULL COMMENT 'Cuentadante principal permanente',
   FOREIGN KEY (id_categoria) REFERENCES Categorias_Equipo(id_categoria),
   FOREIGN KEY (id_ambiente) REFERENCES Ambientes(id_ambiente) ON DELETE RESTRICT,
   FOREIGN KEY (id_cuentadante) REFERENCES Usuarios(id_usuario) ON DELETE SET NULL,
@@ -152,12 +204,16 @@ CREATE TABLE Elementos (
   INDEX idx_r_centro (r_centro),
   INDEX idx_consecutivo (consecutivo),
   INDEX idx_ambiente (id_ambiente),
-  INDEX idx_cuentadante (id_cuentadante)
-) COMMENT = 'Tabla principal de equipos y componentes tecnológicos';
+  INDEX idx_cuentadante (id_cuentadante),
+  INDEX idx_categoria (id_categoria),
+  INDEX idx_estado_fisico (estado_fisico),
+  INDEX idx_r_centro_consecutivo (r_centro, consecutivo)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+COMMENT = 'Tabla principal de equipos y componentes tecnológicos';
 
--- ==========================
+-- ============================================
 -- TABLA DE IMÁGENES EQUIPOS
--- ==========================
+-- ============================================
 CREATE TABLE Imagenes_Equipo (
   id_imagen_equipo INT PRIMARY KEY AUTO_INCREMENT,
   codigo_equipo INT NOT NULL,
@@ -172,11 +228,12 @@ CREATE TABLE Imagenes_Equipo (
   FOREIGN KEY (subida_por) REFERENCES Usuarios(id_usuario),
   INDEX idx_equipo (codigo_equipo),
   INDEX idx_principal (codigo_equipo, es_principal)
-) COMMENT = 'Almacenamiento de rutas de imágenes de equipos';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+COMMENT = 'Almacenamiento de rutas de imágenes de equipos';
 
--- ===============================
+-- ============================================
 -- TABLA DE COMPONENTES ASOCIADOS
--- ===============================
+-- ============================================
 CREATE TABLE Componentes_Asociados (
   id_asociacion INT PRIMARY KEY AUTO_INCREMENT,
   codigo_equipo_completo INT NOT NULL,
@@ -190,12 +247,14 @@ CREATE TABLE Componentes_Asociados (
   FOREIGN KEY (codigo_componente) REFERENCES Elementos(codigo_equipo) ON DELETE CASCADE,
   INDEX idx_equipo_completo (codigo_equipo_completo),
   INDEX idx_componente (codigo_componente),
+  INDEX idx_estado_asociacion (estado_asociacion),
   UNIQUE KEY uk_componente_activo (codigo_componente, estado_asociacion)
-) COMMENT = 'Asociación de componentes a equipos completos';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+COMMENT = 'Asociación de componentes a equipos completos';
 
--- =======================
+-- ============================================
 -- TABLA DE ESTADO ACTUAL
--- =======================
+-- ============================================
 CREATE TABLE Estado_Equipo (
   codigo_equipo INT PRIMARY KEY,
   estado_operativo ENUM('Disponible', 'En Uso', 'En Mantenimiento', 'Dañado', 'Dado de Baja') DEFAULT 'Disponible',
@@ -204,33 +263,47 @@ CREATE TABLE Estado_Equipo (
   actualizado_por INT,
   FOREIGN KEY (codigo_equipo) REFERENCES Elementos(codigo_equipo) ON DELETE CASCADE,
   FOREIGN KEY (actualizado_por) REFERENCES Usuarios(id_usuario),
-  INDEX idx_estado (estado_operativo)
-) COMMENT = 'Estado operativo actual de cada equipo';
+  INDEX idx_estado (estado_operativo),
+  INDEX idx_fecha_actualizacion (fecha_actualizacion),
+  INDEX idx_estado_fecha (estado_operativo, fecha_actualizacion)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+COMMENT = 'Estado operativo actual de cada equipo';
 
--- ================================
+-- ============================================
 -- TABLA DE RESPONSABLES DE EQUIPO
--- ================================
+-- ============================================
 CREATE TABLE Responsables_Equipo (
   id_responsable INT PRIMARY KEY AUTO_INCREMENT,
   codigo_equipo INT NOT NULL,
-  id_usuario INT NOT NULL,
+  id_usuario INT NULL COMMENT 'NULL si es registro externo',
   fecha_asignacion DATETIME DEFAULT NOW(),
   fecha_desvinculacion DATETIME,
   estado_responsabilidad ENUM('Activo', 'Finalizado') DEFAULT 'Activo',
   tipo_responsabilidad ENUM('Principal', 'Secundario') DEFAULT 'Principal',
   observaciones TEXT,
   asignado_por INT,
+  -- Campos para registros externos
+  ficha VARCHAR(50) NULL COMMENT 'Número de ficha del aprendiz (registro externo)',
+  nombre_externo VARCHAR(200) NULL COMMENT 'Nombre completo del usuario (registro externo)',
+  documento_externo VARCHAR(50) NULL COMMENT 'Documento del responsable externo',
+  dias_semana JSON NULL COMMENT 'Array de días de la semana para horarios',
+  hora_inicio TIME NULL COMMENT 'Hora de inicio del horario',
+  hora_fin TIME NULL COMMENT 'Hora de fin del horario',
   FOREIGN KEY (codigo_equipo) REFERENCES Elementos(codigo_equipo) ON DELETE CASCADE,
   FOREIGN KEY (id_usuario) REFERENCES Usuarios(id_usuario) ON DELETE CASCADE,
   FOREIGN KEY (asignado_por) REFERENCES Usuarios(id_usuario),
   INDEX idx_equipo_activo (codigo_equipo, estado_responsabilidad),
   INDEX idx_usuario (id_usuario),
-  INDEX idx_responsables_activos (estado_responsabilidad, fecha_asignacion)
-) COMMENT = 'Gestión de múltiples responsables por equipo';
+  INDEX idx_responsables_activos (estado_responsabilidad, fecha_asignacion),
+  INDEX idx_ficha (ficha),
+  INDEX idx_documento_externo (documento_externo),
+  INDEX idx_horarios (hora_inicio, hora_fin, estado_responsabilidad)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+COMMENT = 'Gestión de múltiples responsables por equipo';
 
--- ================================
+-- ============================================
 -- TABLA DE CLASES/PROGRAMACIONES
--- ================================
+-- ============================================
 CREATE TABLE Clases (
   id_clase INT PRIMARY KEY AUTO_INCREMENT,
   id_ambiente INT NOT NULL,
@@ -252,12 +325,15 @@ CREATE TABLE Clases (
   FOREIGN KEY (creado_por) REFERENCES Usuarios(id_usuario),
   INDEX idx_ambiente_fecha_hora (id_ambiente, fecha_clase, hora_inicio, hora_fin, estado_clase),
   INDEX idx_instructor (id_instructor),
-  INDEX idx_ficha (codigo_ficha)
-) COMMENT = 'Programación de clases en ambientes con horarios específicos';
+  INDEX idx_ficha (codigo_ficha),
+  INDEX idx_estado_clase (estado_clase),
+  INDEX idx_fecha_clase (fecha_clase)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+COMMENT = 'Programación de clases en ambientes con horarios específicos';
 
--- ================================
+-- ============================================
 -- TABLA DE PARTICIPANTES DE CLASE
--- ================================
+-- ============================================
 CREATE TABLE Participantes_Clase (
   id_participante INT PRIMARY KEY AUTO_INCREMENT,
   id_clase INT NOT NULL,
@@ -270,25 +346,30 @@ CREATE TABLE Participantes_Clase (
   INDEX idx_clase (id_clase),
   INDEX idx_aprendiz (id_aprendiz),
   UNIQUE KEY uk_clase_aprendiz (id_clase, id_aprendiz)
-) COMMENT = 'Registro de aprendices que participan en cada clase';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+COMMENT = 'Registro de aprendices que participan en cada clase';
 
--- ================================
+-- ============================================
 -- TABLA DE RESPONSABILIDADES AMBIENTE
--- ================================
+-- ============================================
 CREATE TABLE Responsabilidades_Ambiente (
   id_responsabilidad_ambiente INT PRIMARY KEY AUTO_INCREMENT,
   id_ambiente INT NOT NULL,
   id_clase INT,
-  jornada ENUM('Mañana', 'Tarde', 'Noche') NULL COMMENT 'Jornada de la asignación. NULL para asignaciones temporales de clases',
+  jornada ENUM('Mañana', 'Tarde', 'Noche') NULL COMMENT 'Jornada de la asignación. NULL para asignaciones temporales',
   id_usuario INT NOT NULL,
   tipo_responsabilidad ENUM('Principal', 'Secundario') NOT NULL,
   fecha_inicio DATETIME NOT NULL,
   fecha_fin DATETIME,
   estado_responsabilidad ENUM('Activa', 'Finalizada') DEFAULT 'Activa',
-  asignacion_automatica BOOLEAN DEFAULT FALSE COMMENT 'Indica si la responsabilidad fue asignada automáticamente por horario',
+  asignacion_automatica BOOLEAN DEFAULT FALSE COMMENT 'Indica si fue asignada automáticamente por horario',
   observaciones TEXT,
   creado_por INT,
   fecha_creacion DATETIME DEFAULT NOW(),
+  -- Campos para horarios recurrentes
+  dias_semana JSON NULL COMMENT 'Array de días de la semana',
+  hora_inicio TIME NULL COMMENT 'Hora de inicio del horario',
+  hora_fin TIME NULL COMMENT 'Hora de fin del horario',
   FOREIGN KEY (id_ambiente) REFERENCES Ambientes(id_ambiente) ON DELETE CASCADE,
   FOREIGN KEY (id_clase) REFERENCES Clases(id_clase) ON DELETE SET NULL,
   FOREIGN KEY (id_usuario) REFERENCES Usuarios(id_usuario) ON DELETE CASCADE,
@@ -296,12 +377,15 @@ CREATE TABLE Responsabilidades_Ambiente (
   INDEX idx_ambiente_fecha_activa (id_ambiente, fecha_inicio, fecha_fin, estado_responsabilidad),
   INDEX idx_clase (id_clase),
   INDEX idx_usuario (id_usuario),
-  INDEX idx_ambiente_jornada (id_ambiente, jornada, estado_responsabilidad)
-) COMMENT = 'Responsabilidades temporales sobre el inventario de un ambiente durante clases';
+  INDEX idx_ambiente_jornada (id_ambiente, jornada, estado_responsabilidad),
+  INDEX idx_ambiente_horas (id_ambiente, hora_inicio, hora_fin, estado_responsabilidad),
+  INDEX idx_usuario_horas (id_usuario, hora_inicio, hora_fin, estado_responsabilidad)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+COMMENT = 'Responsabilidades temporales sobre el inventario de un ambiente durante clases';
 
--- =======================
+-- ============================================
 -- TABLA DE MANTENIMIENTO
--- =======================
+-- ============================================
 CREATE TABLE Mantenimiento (
   id_mantenimiento INT PRIMARY KEY AUTO_INCREMENT,
   codigo_equipo INT NOT NULL,
@@ -319,12 +403,14 @@ CREATE TABLE Mantenimiento (
   FOREIGN KEY (id_usuario_tecnico) REFERENCES Usuarios(id_usuario),
   INDEX idx_equipo (codigo_equipo),
   INDEX idx_mantenimiento_pendiente (estado_mantenimiento, fecha_proximo),
-  INDEX idx_fecha (fecha_mantenimiento)
-) COMMENT = 'Registro de mantenimientos realizados y programados';
+  INDEX idx_fecha (fecha_mantenimiento),
+  INDEX idx_fecha_proximo (fecha_proximo)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+COMMENT = 'Registro de mantenimientos realizados y programados';
 
--- ===================
+-- ============================================
 -- TABLA DE NOVEDADES
--- ===================
+-- ============================================
 CREATE TABLE Novedades (
   id_novedad INT PRIMARY KEY AUTO_INCREMENT,
   codigo_equipo INT NOT NULL,
@@ -339,12 +425,15 @@ CREATE TABLE Novedades (
   FOREIGN KEY (codigo_equipo) REFERENCES Elementos(codigo_equipo) ON DELETE CASCADE,
   FOREIGN KEY (reportado_por) REFERENCES Usuarios(id_usuario),
   FOREIGN KEY (resuelto_por) REFERENCES Usuarios(id_usuario),
-  INDEX idx_novedades_pendientes (estado_resolucion, fecha_novedad)
-) COMMENT = 'Registro de novedades reportadas sobre equipos';
+  INDEX idx_novedades_pendientes (estado_resolucion, fecha_novedad),
+  INDEX idx_equipo (codigo_equipo),
+  INDEX idx_fecha_novedad (fecha_novedad)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+COMMENT = 'Registro de novedades reportadas sobre equipos';
 
--- =======================================
+-- ============================================
 -- TABLA DE HISTORIAL (Reemplazo Rastreo)
--- =======================================
+-- ============================================
 CREATE TABLE Historial_Equipos (
   id_historial INT PRIMARY KEY AUTO_INCREMENT,
   codigo_equipo INT NOT NULL,
@@ -360,13 +449,15 @@ CREATE TABLE Historial_Equipos (
   FOREIGN KEY (id_ambiente_anterior) REFERENCES Ambientes(id_ambiente) ON DELETE SET NULL,
   FOREIGN KEY (id_ambiente_nuevo) REFERENCES Ambientes(id_ambiente) ON DELETE SET NULL,
   FOREIGN KEY (registrado_por) REFERENCES Usuarios(id_usuario),
-  INDEX idx_historial_fecha (codigo_equipo, fecha_evento),
-  INDEX idx_tipo (tipo_evento)
-) COMMENT = 'Registro histórico de eventos de equipos (reemplaza rastreo temporal)';
+  INDEX idx_historial_fecha (codigo_equipo, fecha_evento DESC),
+  INDEX idx_tipo (tipo_evento),
+  INDEX idx_fecha_evento (fecha_evento DESC)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+COMMENT = 'Registro histórico de eventos de equipos';
 
--- ===================
+-- ============================================
 -- TABLA DE AUDITORÍA
--- ===================
+-- ============================================
 CREATE TABLE Auditoria (
   id_auditoria INT PRIMARY KEY AUTO_INCREMENT,
   tabla_afectada VARCHAR(50) NOT NULL,
@@ -379,12 +470,14 @@ CREATE TABLE Auditoria (
   datos_nuevos JSON,
   FOREIGN KEY (usuario_accion) REFERENCES Usuarios(id_usuario),
   INDEX idx_tabla (tabla_afectada),
-  INDEX idx_fecha (fecha_accion)
-) COMMENT = 'Registro de auditoría de cambios en el sistema';
+  INDEX idx_fecha (fecha_accion DESC),
+  INDEX idx_usuario_fecha (usuario_accion, fecha_accion DESC)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+COMMENT = 'Registro de auditoría de cambios en el sistema';
 
--- ==========================================
+-- ============================================
 -- TABLA DE CRITERIOS ASIGNACIÓN AUTOMÁTICA
--- ==========================================
+-- ============================================
 CREATE TABLE Criterios_Asignacion (
   id_criterio INT PRIMARY KEY AUTO_INCREMENT,
   nombre_criterio VARCHAR(100) NOT NULL,
@@ -392,8 +485,10 @@ CREATE TABLE Criterios_Asignacion (
   activo BOOLEAN DEFAULT TRUE,
   descripcion TEXT,
   parametros JSON,
-  fecha_creacion DATETIME DEFAULT NOW()
-) COMMENT = 'Criterios para asignación automática de equipos';
+  fecha_creacion DATETIME DEFAULT NOW(),
+  INDEX idx_activo_prioridad (activo, prioridad)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+COMMENT = 'Criterios para asignación automática de equipos';
 
 -- ============================================
 -- TABLA DE CÓDIGOS DE SEGURIDAD
@@ -401,11 +496,11 @@ CREATE TABLE Criterios_Asignacion (
 CREATE TABLE Invitation_Codes (
   id_codigo INT PRIMARY KEY AUTO_INCREMENT,
   codigo VARCHAR(50) UNIQUE NOT NULL,
-  rol_destinado ENUM('Administrador', 'Instructor', 'Aprendiz', 'Cuentadante') NOT NULL,
+  rol_destinado VARCHAR(50) NOT NULL COMMENT 'Rol destinado (referencia a Roles.nombre_rol)',
   fecha_creacion DATETIME DEFAULT NOW(),
   fecha_expiracion DATETIME,
-  max_usos INT DEFAULT 1 COMMENT 'Número máximo de veces que se puede usar el código (0 = ilimitado)',
-  usos_actuales INT DEFAULT 0 COMMENT 'Número de veces que se ha usado el código',
+  max_usos INT DEFAULT 1 COMMENT 'Número máximo de veces que se puede usar (0 = ilimitado)',
+  usos_actuales INT DEFAULT 0 COMMENT 'Número de veces que se ha usado',
   estado ENUM('Activo', 'Inactivo', 'Expirado', 'Agotado') DEFAULT 'Activo',
   creado_por INT,
   FOREIGN KEY (creado_por) REFERENCES Usuarios(id_usuario) ON DELETE SET NULL,
@@ -413,7 +508,8 @@ CREATE TABLE Invitation_Codes (
   INDEX idx_rol (rol_destinado),
   INDEX idx_estado (estado),
   INDEX idx_expiracion (fecha_expiracion)
-) COMMENT = 'Códigos de invitación para registro de usuarios';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+COMMENT = 'Códigos de invitación para registro de usuarios';
 
 -- ============================================
 -- TABLA DE PREFERENCIAS DE USUARIO
@@ -421,17 +517,17 @@ CREATE TABLE Invitation_Codes (
 CREATE TABLE Preferencias_Usuario (
   id_preferencia INT PRIMARY KEY AUTO_INCREMENT,
   id_usuario INT NOT NULL UNIQUE,
-  notificaciones_email TINYINT(1) DEFAULT 1 COMMENT 'Recibir notificaciones por correo electrónico',
-  notificaciones_sms TINYINT(1) DEFAULT 0 COMMENT 'Recibir notificaciones por SMS',
-  notificaciones_app TINYINT(1) DEFAULT 1 COMMENT 'Recibir notificaciones en la aplicación',
-  idioma VARCHAR(10) DEFAULT 'es' COMMENT 'Idioma de la interfaz (es, en, etc.)',
-  zona_horaria VARCHAR(50) DEFAULT 'America/Bogota' COMMENT 'Zona horaria del usuario',
+  notificaciones_email TINYINT(1) DEFAULT 1,
+  notificaciones_sms TINYINT(1) DEFAULT 0,
+  notificaciones_app TINYINT(1) DEFAULT 1,
+  idioma VARCHAR(10) DEFAULT 'es',
+  zona_horaria VARCHAR(50) DEFAULT 'America/Bogota',
   fecha_creacion DATETIME DEFAULT NOW(),
   fecha_actualizacion DATETIME DEFAULT NOW() ON UPDATE NOW(),
   FOREIGN KEY (id_usuario) REFERENCES Usuarios(id_usuario) ON DELETE CASCADE,
   INDEX idx_usuario (id_usuario)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-COMMENT = 'Preferencias de configuración de usuario (notificaciones, idioma, zona horaria)';
+COMMENT = 'Preferencias de configuración de usuario';
 
 -- ============================================
 -- TABLA DE VERIFICACIONES DE INVENTARIO
@@ -441,8 +537,8 @@ CREATE TABLE Verificaciones_Inventario (
   codigo_equipo INT NOT NULL,
   id_ambiente INT NULL COMMENT 'Ambiente donde se verificó el equipo',
   id_clase INT NULL COMMENT 'Clase/horario activo cuando se verificó',
-  id_responsabilidad_ambiente INT NULL COMMENT 'Responsabilidad que estaba activa cuando se verificó',
-  jornada ENUM('Mañana', 'Tarde', 'Noche') NULL COMMENT 'Jornada cuando se verificó (para asignaciones permanentes)',
+  id_responsabilidad_ambiente INT NULL COMMENT 'Responsabilidad que estaba activa',
+  jornada ENUM('Mañana', 'Tarde', 'Noche') NULL COMMENT 'Jornada cuando se verificó',
   id_usuario INT NOT NULL COMMENT 'Instructor que realiza la verificación',
   estado_verificacion ENUM('Verificado', 'Con Novedad', 'No Verificado') NOT NULL,
   observaciones TEXT,
@@ -452,14 +548,17 @@ CREATE TABLE Verificaciones_Inventario (
   FOREIGN KEY (id_clase) REFERENCES Clases(id_clase) ON DELETE SET NULL,
   FOREIGN KEY (id_responsabilidad_ambiente) REFERENCES Responsabilidades_Ambiente(id_responsabilidad_ambiente) ON DELETE SET NULL,
   FOREIGN KEY (id_usuario) REFERENCES Usuarios(id_usuario) ON DELETE CASCADE,
-  INDEX idx_equipo_usuario_fecha (codigo_equipo, id_usuario, fecha_verificacion),
-  INDEX idx_ambiente_fecha (id_ambiente, fecha_verificacion),
-  INDEX idx_clase_fecha (id_clase, fecha_verificacion),
+  INDEX idx_equipo_usuario_fecha (codigo_equipo, id_usuario, fecha_verificacion DESC),
+  INDEX idx_ambiente_fecha (id_ambiente, fecha_verificacion DESC),
+  INDEX idx_clase_fecha (id_clase, fecha_verificacion DESC),
   INDEX idx_estado (estado_verificacion)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-COMMENT = 'Historial completo de verificaciones de inventario con contexto de horarios y responsabilidades';
+COMMENT = 'Historial completo de verificaciones de inventario con contexto';
 
-CREATE TABLE IF NOT EXISTS pedidos_externos (
+-- ============================================
+-- TABLA DE PEDIDOS EXTERNOS
+-- ============================================
+CREATE TABLE pedidos_externos (
   id INT AUTO_INCREMENT PRIMARY KEY,
   usuario VARCHAR(255) NOT NULL COMMENT 'Usuario que realiza el pedido (identificador externo)',
   id_ambiente INT NOT NULL COMMENT 'ID del ambiente donde se realiza el pedido',
@@ -471,8 +570,9 @@ CREATE TABLE IF NOT EXISTS pedidos_externos (
   INDEX idx_ambiente (id_ambiente),
   INDEX idx_ficha (ficha),
   INDEX idx_estado (estado),
-  INDEX idx_fecha_recepcion (fecha_recepcion)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Tabla para almacenar pedidos recibidos de sistemas externos';
+  INDEX idx_fecha_recepcion (fecha_recepcion DESC)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+COMMENT = 'Tabla para almacenar pedidos recibidos de sistemas externos';
 
 -- ============================================
 -- TABLA DE HISTORIAL DE USO DE EQUIPOS
@@ -481,27 +581,30 @@ CREATE TABLE Historial_Uso_Equipos (
   id_historial INT PRIMARY KEY AUTO_INCREMENT,
   codigo_equipo INT NOT NULL,
   id_usuario INT NOT NULL,
-  nombre_usuario VARCHAR(100) NULL COMMENT 'Nombre del usuario en el momento del registro (por si cambia después)',
-  fecha_hora_inicio DATETIME NOT NULL COMMENT 'Fecha y hora en que el usuario inició sesión en el equipo',
+  nombre_usuario VARCHAR(100) NULL COMMENT 'Nombre del usuario en el momento del registro',
+  fecha_hora_inicio DATETIME NOT NULL COMMENT 'Fecha y hora en que el usuario inició sesión',
   fecha_hora_fin DATETIME NULL COMMENT 'Fecha y hora en que el usuario cerró sesión. NULL si aún está en uso',
   estado ENUM('En Uso', 'Finalizado') DEFAULT 'En Uso' COMMENT 'Estado de la sesión',
-  duracion_minutos INT NULL COMMENT 'Duración calculada en minutos (se calcula automáticamente)',
+  duracion_minutos INT NULL COMMENT 'Duración calculada en minutos',
   observaciones TEXT NULL COMMENT 'Observaciones adicionales sobre el uso',
   fecha_registro DATETIME DEFAULT NOW() COMMENT 'Fecha en que se registró el historial',
+  id_clase INT NULL COMMENT 'ID de clase asociada',
   FOREIGN KEY (codigo_equipo) REFERENCES Elementos(codigo_equipo) ON DELETE CASCADE,
   FOREIGN KEY (id_usuario) REFERENCES Usuarios(id_usuario) ON DELETE CASCADE,
+  FOREIGN KEY (id_clase) REFERENCES Clases(id_clase) ON DELETE SET NULL,
   INDEX idx_equipo (codigo_equipo),
   INDEX idx_usuario (id_usuario),
-  INDEX idx_fecha_inicio (fecha_hora_inicio),
+  INDEX idx_fecha_inicio (fecha_hora_inicio DESC),
   INDEX idx_estado (estado),
-  INDEX idx_equipo_fecha (codigo_equipo, fecha_hora_inicio),
-  INDEX idx_usuario_fecha (id_usuario, fecha_hora_inicio)
+  INDEX idx_equipo_fecha (codigo_equipo, fecha_hora_inicio DESC),
+  INDEX idx_usuario_fecha (id_usuario, fecha_hora_inicio DESC),
+  INDEX idx_clase (id_clase)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
 COMMENT = 'Historial de uso de equipos: registra quién inició sesión y de qué hora a qué hora';
 
--- =========
+-- ============================================
 -- TRIGGERS
--- =========
+-- ============================================
 
 DELIMITER //
 
@@ -590,7 +693,7 @@ BEGIN
     IF NEW.es_principal = TRUE THEN
         UPDATE Imagenes_Equipo
         SET es_principal = FALSE
-        WHERE codigo_equipo = NEW.codigo_equipo;
+        WHERE codigo_equipo = NEW.codigo_equipo AND id_imagen_equipo <> NEW.id_imagen_equipo;
     END IF;
 END;
 //
@@ -603,7 +706,7 @@ BEGIN
     IF NEW.es_principal = TRUE THEN
         UPDATE Imagenes_Ambiente
         SET es_principal = FALSE
-        WHERE id_ambiente = NEW.id_ambiente;
+        WHERE id_ambiente = NEW.id_ambiente AND id_imagen_ambiente <> NEW.id_imagen_ambiente;
     END IF;
 END;
 //
@@ -643,9 +746,9 @@ END;
 
 DELIMITER ;
 
--- ========
---  VISTAS
--- ========
+-- ============================================
+-- VISTAS
+-- ============================================
 
 CREATE VIEW Vista_Equipos_Con_Responsables AS
 SELECT 
@@ -736,9 +839,9 @@ LEFT JOIN Roles r ON u.id_rol = r.id_rol
 LEFT JOIN Clases c ON ra.id_clase = c.id_clase
 WHERE ra.estado_responsabilidad = 'Activa';
 
--- ===========================
+-- ============================================
 -- PROCEDIMIENTOS ALMACENADOS
--- ===========================
+-- ============================================
 
 DELIMITER //
 
@@ -927,7 +1030,6 @@ BEGIN
     
     SET v_fecha_fin_estimada = CONCAT(v_fecha_clase, ' ', v_hora_fin);
     
-    -- El trigger finaliza responsabilidades anteriores automáticamente
     INSERT INTO Responsabilidades_Ambiente (id_ambiente, id_clase, id_usuario, tipo_responsabilidad, fecha_inicio, fecha_fin, estado_responsabilidad, creado_por)
     VALUES (v_id_ambiente, p_id_clase, v_id_instructor, 'Principal', p_fecha_inicio_real, v_fecha_fin_estimada, 'Activa', v_id_instructor);
     
@@ -953,7 +1055,6 @@ BEGIN
     DECLARE v_fecha_fin DATETIME;
     SET v_fecha_fin = COALESCE(p_fecha_fin_real, NOW());
     
-    -- El trigger finaliza responsabilidades automáticamente
     UPDATE Clases SET estado_clase = 'Finalizada', fecha_fin_real = v_fecha_fin WHERE id_clase = p_id_clase;
     
     SELECT 'Clase finalizada y responsabilidades cerradas correctamente' AS mensaje;
@@ -982,9 +1083,9 @@ END;
 
 DELIMITER ;
 
--- ======================
+-- ============================================
 -- DATOS INICIALES
--- ======================
+-- ============================================
 
 INSERT INTO Roles (nombre_rol, descripcion) VALUES
 ('Administrador', 'Acceso total al sistema'),
@@ -1038,252 +1139,73 @@ INSERT INTO Usuarios (nombre_usuario, cedula, telefono, correo, contrasena, id_r
 ('Administrador Sistema', '1000000000', '3001234567', 'admin@sena.edu.co',
  '$2a$12$zz2nWS1PBuSGeX4gNQS5..Jk8Juo5gb8r8ZYDNZreGcND1jrHlVzq', 1, 'Activo');
 
--- Migración: Agregar campos de días de la semana y horarios a Responsabilidades_Ambiente
-ALTER TABLE Responsabilidades_Ambiente
-ADD COLUMN dias_semana JSON NULL COMMENT 'Array de días de la semana: ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes"]',
-ADD COLUMN hora_inicio TIME NULL COMMENT 'Hora de inicio del horario (formato HH:MM:SS)',
-ADD COLUMN hora_fin TIME NULL COMMENT 'Hora de fin del horario (formato HH:MM:SS)';
+-- ============================================
+-- INSERTAR PERMISOS DEL SISTEMA
+-- ============================================
+INSERT IGNORE INTO Permisos (codigo_permiso, modulo, accion, descripcion) VALUES
+-- Usuarios
+('users:view', 'USERS', 'VIEW', 'Ver listado de usuarios'),
+('users:view_detail', 'USERS', 'VIEW_DETAIL', 'Ver detalle de un usuario'),
+('users:create', 'USERS', 'CREATE', 'Crear nuevos usuarios'),
+('users:update', 'USERS', 'UPDATE', 'Editar usuarios'),
+('users:delete', 'USERS', 'DELETE', 'Eliminar usuarios'),
+('users:manage_roles', 'USERS', 'MANAGE_ROLES', 'Cambiar roles de usuarios'),
 
--- Crear índices en campos indexables (no se puede indexar JSON directamente)
-ALTER TABLE Responsabilidades_Ambiente
-ADD INDEX idx_ambiente_horas (id_ambiente, hora_inicio, hora_fin, estado_responsabilidad),
-ADD INDEX idx_usuario_horas (id_usuario, hora_inicio, hora_fin, estado_responsabilidad);
+-- Equipos
+('equipos:view', 'EQUIPOS', 'VIEW', 'Ver listado de equipos'),
+('equipos:view_detail', 'EQUIPOS', 'VIEW_DETAIL', 'Ver detalle de equipo'),
+('equipos:view_own', 'EQUIPOS', 'VIEW_OWN', 'Ver solo equipos asignados'),
+('equipos:create', 'EQUIPOS', 'CREATE', 'Registrar nuevos equipos'),
+('equipos:update', 'EQUIPOS', 'UPDATE', 'Editar equipos'),
+('equipos:delete', 'EQUIPOS', 'DELETE', 'Eliminar equipos'),
+('equipos:assign', 'EQUIPOS', 'ASSIGN', 'Asignar equipos a cualquier usuario'),
+('equipos:assign_to_aprendiz', 'EQUIPOS', 'ASSIGN_TO_APRENDIZ', 'Asignar solo a aprendices'),
+('equipos:manage_categories', 'EQUIPOS', 'MANAGE_CATEGORIES', 'Gestionar categorías de equipos'),
 
--- Migración: Agregar campos adicionales a Responsables_Equipo
--- Para almacenar información de registros externos (ficha, nombre, documento)
--- Fecha: 2024-01-15
+-- Novedades
+('novedades:view', 'NOVEDADES', 'VIEW', 'Ver todas las novedades'),
+('novedades:view_own', 'NOVEDADES', 'VIEW_OWN', 'Ver solo novedades de equipos propios'),
+('novedades:create', 'NOVEDADES', 'CREATE', 'Registrar novedades'),
+('novedades:create_own', 'NOVEDADES', 'CREATE_OWN', 'Registrar solo en equipos propios'),
+('novedades:update', 'NOVEDADES', 'UPDATE', 'Editar novedades'),
+('novedades:delete', 'NOVEDADES', 'DELETE', 'Eliminar novedades'),
+('novedades:resolve', 'NOVEDADES', 'RESOLVE', 'Resolver novedades'),
 
--- Verificar y agregar columna 'ficha' si no existe
-SET @col_exists = (
-    SELECT COUNT(*) 
-    FROM INFORMATION_SCHEMA.COLUMNS 
-    WHERE TABLE_SCHEMA = DATABASE() 
-    AND TABLE_NAME = 'Responsables_Equipo' 
-    AND COLUMN_NAME = 'ficha'
-);
+-- Mantenimiento
+('mantenimiento:view', 'MANTENIMIENTO', 'VIEW', 'Ver historial de mantenimiento'),
+('mantenimiento:view_own', 'MANTENIMIENTO', 'VIEW_OWN', 'Ver mantenimiento de equipos propios'),
+('mantenimiento:create', 'MANTENIMIENTO', 'CREATE', 'Programar mantenimiento'),
+('mantenimiento:update', 'MANTENIMIENTO', 'UPDATE', 'Editar mantenimiento'),
+('mantenimiento:delete', 'MANTENIMIENTO', 'DELETE', 'Eliminar registro de mantenimiento'),
 
-SET @sql = IF(@col_exists = 0,
-    'ALTER TABLE Responsables_Equipo ADD COLUMN ficha VARCHAR(50) NULL COMMENT ''Número de ficha del aprendiz (registro externo)'' AFTER observaciones',
-    'SELECT ''Columna ficha ya existe'' AS mensaje'
-);
+-- Reportes
+('reportes:view', 'REPORTES', 'VIEW', 'Ver reportes'),
+('reportes:create', 'REPORTES', 'CREATE', 'Crear reportes'),
+('reportes:update', 'REPORTES', 'UPDATE', 'Actualizar reportes'),
+('reportes:delete', 'REPORTES', 'DELETE', 'Eliminar reportes'),
+('reportes:export', 'REPORTES', 'EXPORT', 'Exportar reportes'),
 
-PREPARE stmt FROM @sql;
-EXECUTE stmt;
-DEALLOCATE PREPARE stmt;
+-- Ambientes
+('ambientes:view', 'AMBIENTES', 'VIEW', 'Ver ambientes'),
+('ambientes:create', 'AMBIENTES', 'CREATE', 'Crear ambientes'),
+('ambientes:update', 'AMBIENTES', 'UPDATE', 'Editar ambientes'),
+('ambientes:delete', 'AMBIENTES', 'DELETE', 'Eliminar ambientes'),
 
--- Verificar y agregar columna 'nombre_externo' si no existe
-SET @col_exists = (
-    SELECT COUNT(*) 
-    FROM INFORMATION_SCHEMA.COLUMNS 
-    WHERE TABLE_SCHEMA = DATABASE() 
-    AND TABLE_NAME = 'Responsables_Equipo' 
-    AND COLUMN_NAME = 'nombre_externo'
-);
+-- Clases
+('clases:view', 'CLASES', 'VIEW', 'Ver clases'),
+('clases:create', 'CLASES', 'CREATE', 'Crear clases'),
+('clases:update', 'CLASES', 'UPDATE', 'Actualizar/iniciar/finalizar clases'),
+('clases:delete', 'CLASES', 'DELETE', 'Eliminar clases'),
 
-SET @sql = IF(@col_exists = 0,
-    'ALTER TABLE Responsables_Equipo ADD COLUMN nombre_externo VARCHAR(200) NULL COMMENT ''Nombre completo del usuario (registro externo)'' AFTER ficha',
-    'SELECT ''Columna nombre_externo ya existe'' AS mensaje'
-);
+-- Notificaciones
+('notificaciones:view', 'NOTIFICACIONES', 'VIEW', 'Ver propias notificaciones'),
+('notificaciones:create', 'NOTIFICACIONES', 'CREATE', 'Crear notificaciones para otros'),
+('notificaciones:broadcast', 'NOTIFICACIONES', 'BROADCAST', 'Enviar notificaciones globales'),
 
-PREPARE stmt FROM @sql;
-EXECUTE stmt;
-DEALLOCATE PREPARE stmt;
+-- Sistema
+('system:view_config', 'SYSTEM', 'VIEW_CONFIG', 'Ver configuración'),
+('system:update_config', 'SYSTEM', 'UPDATE_CONFIG', 'Modificar configuración'),
+('system:view_audit', 'SYSTEM', 'VIEW_AUDIT', 'Ver auditoría'),
 
--- Verificar y crear índice 'idx_ficha' si no existe
-SET @idx_exists = (
-    SELECT COUNT(*) 
-    FROM INFORMATION_SCHEMA.STATISTICS 
-    WHERE TABLE_SCHEMA = DATABASE() 
-    AND TABLE_NAME = 'Responsables_Equipo' 
-    AND INDEX_NAME = 'idx_ficha'
-);
-
-SET @sql = IF(@idx_exists = 0,
-    'CREATE INDEX idx_ficha ON Responsables_Equipo(ficha)',
-    'SELECT ''Índice idx_ficha ya existe'' AS mensaje'
-);
-
-PREPARE stmt FROM @sql;
-EXECUTE stmt;
-DEALLOCATE PREPARE stmt;
-
--- Columna documento_externo
-SET @col_doc = (
-    SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS
-    WHERE TABLE_SCHEMA = DATABASE()
-      AND TABLE_NAME = 'Responsables_Equipo'
-      AND COLUMN_NAME = 'documento_externo'
-);
-
-SET @sql = IF(@col_doc = 0,
-    'ALTER TABLE Responsables_Equipo ADD COLUMN documento_externo VARCHAR(50) NULL COMMENT ''Documento del responsable externo''',
-    'SELECT ''Columna documento_externo ya existe'''
-);
-
-PREPARE stmt FROM @sql;
-EXECUTE stmt;
-DEALLOCATE PREPARE stmt;
-
--- Índice documento_externo
-SET @idx_doc = (
-    SELECT COUNT(*) FROM INFORMATION_SCHEMA.STATISTICS
-    WHERE TABLE_SCHEMA = DATABASE()
-      AND TABLE_NAME = 'Responsables_Equipo'
-      AND INDEX_NAME = 'idx_documento_externo'
-);
-
-SET @sql = IF(@idx_doc = 0 AND @col_doc = 1,
-    'CREATE INDEX idx_documento_externo ON Responsables_Equipo(documento_externo)',
-    'SELECT ''Índice idx_documento_externo ya existe o columna ausente'''
-);
-
-PREPARE stmt FROM @sql;
-EXECUTE stmt;
-DEALLOCATE PREPARE stmt;
-
--- Migración: Agregar relación entre Historial_Uso_Equipos y Clases
--- Permite relacionar el uso de equipos con clases/horarios específicos
-
--- 1. Agregar columna id_clase a Historial_Uso_Equipos
-ALTER TABLE Historial_Uso_Equipos
-ADD COLUMN id_clase INT NULL COMMENT 'ID de la clase/horario asociado al uso del equipo' AFTER observaciones,
-ADD INDEX idx_clase (id_clase),
-ADD FOREIGN KEY (id_clase) REFERENCES Clases(id_clase) ON DELETE SET NULL;
-
--- 2. Verificar que la columna se agregó correctamente
-SELECT 
-    COLUMN_NAME,
-    COLUMN_TYPE,
-    IS_NULLABLE,
-    COLUMN_COMMENT
-FROM INFORMATION_SCHEMA.COLUMNS
-WHERE TABLE_SCHEMA = DATABASE()
-  AND TABLE_NAME = 'Historial_Uso_Equipos'
-  AND COLUMN_NAME = 'id_clase';
-
-  -- Migración: Agregar campos de días de la semana y horarios a Responsables_Equipo
--- Para almacenar información de horarios cuando se registra desde página externa
--- Fecha: 2025-12-12
-
--- Verificar y agregar columna 'dias_semana' si no existe
-SET @col_exists = (
-    SELECT COUNT(*) 
-    FROM INFORMATION_SCHEMA.COLUMNS 
-    WHERE TABLE_SCHEMA = DATABASE() 
-    AND TABLE_NAME = 'Responsables_Equipo' 
-    AND COLUMN_NAME = 'dias_semana'
-);
-
-SET @sql = IF(@col_exists = 0,
-    'ALTER TABLE Responsables_Equipo ADD COLUMN dias_semana JSON NULL COMMENT ''Array de días de la semana: ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"]'' AFTER documento_externo',
-    'SELECT ''Columna dias_semana ya existe'' AS mensaje'
-);
-
-PREPARE stmt FROM @sql;
-EXECUTE stmt;
-DEALLOCATE PREPARE stmt;
-
--- Verificar y agregar columna 'hora_inicio' si no existe
-SET @col_exists = (
-    SELECT COUNT(*) 
-    FROM INFORMATION_SCHEMA.COLUMNS 
-    WHERE TABLE_SCHEMA = DATABASE() 
-    AND TABLE_NAME = 'Responsables_Equipo' 
-    AND COLUMN_NAME = 'hora_inicio'
-);
-
-SET @sql = IF(@col_exists = 0,
-    'ALTER TABLE Responsables_Equipo ADD COLUMN hora_inicio TIME NULL COMMENT ''Hora de inicio del horario (formato HH:MM:SS)'' AFTER dias_semana',
-    'SELECT ''Columna hora_inicio ya existe'' AS mensaje'
-);
-
-PREPARE stmt FROM @sql;
-EXECUTE stmt;
-DEALLOCATE PREPARE stmt;
-
--- Verificar y agregar columna 'hora_fin' si no existe
-SET @col_exists = (
-    SELECT COUNT(*) 
-    FROM INFORMATION_SCHEMA.COLUMNS 
-    WHERE TABLE_SCHEMA = DATABASE() 
-    AND TABLE_NAME = 'Responsables_Equipo' 
-    AND COLUMN_NAME = 'hora_fin'
-);
-
-SET @sql = IF(@col_exists = 0,
-    'ALTER TABLE Responsables_Equipo ADD COLUMN hora_fin TIME NULL COMMENT ''Hora de fin del horario (formato HH:MM:SS)'' AFTER hora_inicio',
-    'SELECT ''Columna hora_fin ya existe'' AS mensaje'
-);
-
-PREPARE stmt FROM @sql;
-EXECUTE stmt;
-DEALLOCATE PREPARE stmt;
-
--- Crear índices para mejorar búsquedas por horarios
-SET @idx_exists = (
-    SELECT COUNT(*) 
-    FROM INFORMATION_SCHEMA.STATISTICS 
-    WHERE TABLE_SCHEMA = DATABASE() 
-    AND TABLE_NAME = 'Responsables_Equipo' 
-    AND INDEX_NAME = 'idx_horarios'
-);
-
-SET @sql = IF(@idx_exists = 0,
-    'CREATE INDEX idx_horarios ON Responsables_Equipo(hora_inicio, hora_fin, estado_responsabilidad)',
-    'SELECT ''Índice idx_horarios ya existe'' AS mensaje'
-);
-
-PREPARE stmt FROM @sql;
-EXECUTE stmt;
-DEALLOCATE PREPARE stmt;
-
--- Columna id_clase
-SET @col_clase = (
-    SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS
-    WHERE TABLE_SCHEMA = DATABASE()
-      AND TABLE_NAME = 'Historial_Uso_Equipos'
-      AND COLUMN_NAME = 'id_clase'
-);
-
-SET @sql = IF(@col_clase = 0,
-    'ALTER TABLE Historial_Uso_Equipos ADD COLUMN id_clase INT NULL COMMENT ''ID de clase asociada''',
-    'SELECT ''Columna id_clase ya existe'''
-);
-
-PREPARE stmt FROM @sql;
-EXECUTE stmt;
-DEALLOCATE PREPARE stmt;
-
--- Índice
-SET @idx_clase = (
-    SELECT COUNT(*) FROM INFORMATION_SCHEMA.STATISTICS
-    WHERE TABLE_SCHEMA = DATABASE()
-      AND TABLE_NAME = 'Historial_Uso_Equipos'
-      AND INDEX_NAME = 'idx_clase'
-);
-
-SET @sql = IF(@idx_clase = 0 AND @col_clase = 1,
-    'CREATE INDEX idx_clase ON Historial_Uso_Equipos(id_clase)',
-    'SELECT ''Índice idx_clase ya existe'''
-);
-
-PREPARE stmt FROM @sql;
-EXECUTE stmt;
-DEALLOCATE PREPARE stmt;
-
--- FK
-SET @fk_clase = (
-    SELECT COUNT(*) FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE
-    WHERE TABLE_SCHEMA = DATABASE()
-      AND TABLE_NAME = 'Historial_Uso_Equipos'
-      AND CONSTRAINT_NAME = 'fk_historial_clase'
-);
-
-SET @sql = IF(@fk_clase = 0 AND @col_clase = 1,
-    'ALTER TABLE Historial_Uso_Equipos ADD CONSTRAINT fk_historial_clase FOREIGN KEY (id_clase) REFERENCES Clases(id_clase) ON DELETE SET NULL',
-    'SELECT ''FK clase ya existe'''
-);
-
-PREPARE stmt FROM @sql;
-EXECUTE stmt;
-DEALLOCATE PREPARE stmt;
+-- Roles
+('roles:manage', 'ROLES', 'MANAGE', 'Gestionar roles y permisos');

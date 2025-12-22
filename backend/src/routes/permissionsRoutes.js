@@ -53,57 +53,73 @@ router.get('/', (req, res) => {
 /**
  * GET /api/permissions/roles
  * Obtiene todos los roles y sus permisos asignados
+ * Intenta obtener desde BD, si falla usa el sistema estático
  */
-router.get('/roles', (req, res) => {
+router.get('/roles', async (req, res) => {
   try {
-    const rolesWithPermissions = []
+    // Intentar obtener desde BD primero
+    const rolesController = await import('../controller/rolesController.js')
+    return rolesController.listarRoles(req, res)
+  } catch (error) {
+    // Fallback al sistema estático si la BD no tiene las tablas
+    try {
+      const rolesWithPermissions = []
 
-    for (const [roleName, permissions] of Object.entries(ROLE_PERMISSIONS)) {
-      rolesWithPermissions.push({
-        rol: roleName,
-        totalPermisos: permissions.length,
-        permisos: permissions,
+      for (const [roleName, permissions] of Object.entries(ROLE_PERMISSIONS)) {
+        rolesWithPermissions.push({
+          rol: roleName,
+          totalPermisos: permissions.length,
+          permisos: permissions,
+        })
+      }
+
+      return res.json({
+        total: rolesWithPermissions.length,
+        roles: rolesWithPermissions,
+      })
+    } catch (fallbackError) {
+      return res.status(500).json({
+        error: 'Error al obtener roles y permisos',
+        details: error.message,
       })
     }
-
-    return res.json({
-      total: rolesWithPermissions.length,
-      roles: rolesWithPermissions,
-    })
-  } catch (error) {
-    return res.status(500).json({
-      error: 'Error al obtener roles y permisos',
-      details: error.message,
-    })
   }
 })
 
 /**
  * GET /api/permissions/roles/:roleName
  * Obtiene los permisos de un rol específico
+ * Intenta obtener desde BD, si falla usa el sistema estático
  */
-router.get('/roles/:roleName', (req, res) => {
+router.get('/roles/:roleName', async (req, res) => {
   try {
-    const { roleName } = req.params
-    const permissions = getRolePermissions(roleName)
+    // Intentar obtener desde BD primero
+    const rolesController = await import('../controller/rolesController.js')
+    return rolesController.obtenerRol(req, res)
+  } catch (error) {
+    // Fallback al sistema estático
+    try {
+      const { roleName } = req.params
+      const permissions = getRolePermissions(roleName)
 
-    if (permissions.length === 0) {
-      return res.status(404).json({
-        error: 'Rol no encontrado',
-        message: `El rol "${roleName}" no existe en el sistema`,
+      if (permissions.length === 0) {
+        return res.status(404).json({
+          error: 'Rol no encontrado',
+          message: `El rol "${roleName}" no existe en el sistema`,
+        })
+      }
+
+      return res.json({
+        rol: roleName,
+        totalPermisos: permissions.length,
+        permisos: permissions,
+      })
+    } catch (fallbackError) {
+      return res.status(500).json({
+        error: 'Error al obtener permisos del rol',
+        details: error.message,
       })
     }
-
-    return res.json({
-      rol: roleName,
-      totalPermisos: permissions.length,
-      permisos: permissions,
-    })
-  } catch (error) {
-    return res.status(500).json({
-      error: 'Error al obtener permisos del rol',
-      details: error.message,
-    })
   }
 })
 
@@ -167,33 +183,50 @@ router.post('/check', (req, res) => {
 })
 
 // ============================================
-// RUTAS FUTURAS (requieren implementación adicional)
+// RUTAS DE GESTIÓN DE ROLES Y PERMISOS
 // ============================================
+
+import * as rolesController from '../controller/rolesController.js'
+
+/**
+ * GET /api/permissions/permisos
+ * Obtiene todos los permisos disponibles
+ */
+router.get('/permisos', rolesController.listarPermisos)
+
+/**
+ * POST /api/permissions/roles
+ * Crea un nuevo rol
+ * Body: { nombre_rol: 'NuevoRol', descripcion: '...', permisos: ['users:view', ...] }
+ */
+router.post('/roles', requirePermission(PERMISSIONS.ROLES.MANAGE), rolesController.crearRol)
 
 /**
  * PUT /api/permissions/roles/:roleName
- * Actualiza los permisos de un rol (requiere tabla de permisos en BD)
- * 
- * Body: { permisos: ['users:view', 'equipos:view'] }
- * 
- * Implementación futura:
- * 1. Validar que todos los permisos existan
- * 2. Actualizar en tabla Rol_Permisos
- * 3. Invalidar caché de permisos
- * 4. Auditar el cambio
+ * Actualiza un rol (nombre, descripción, estado)
+ * Body: { nombre_rol: '...', descripcion: '...', estado: 'Activo'|'Inactivo' }
  */
+router.put('/roles/:roleName', requirePermission(PERMISSIONS.ROLES.MANAGE), rolesController.actualizarRol)
 
 /**
- * POST /api/permissions
- * Crea un nuevo permiso en el sistema (requiere tabla de permisos en BD)
- * 
- * Body: { 
- *   codigo_permiso: 'inventario:audit',
- *   modulo: 'INVENTARIO',
- *   accion: 'AUDIT',
- *   descripcion: 'Ver auditoría de inventario'
- * }
+ * DELETE /api/permissions/roles/:roleName
+ * Elimina un rol (solo si no tiene usuarios asignados)
  */
+router.delete('/roles/:roleName', requirePermission(PERMISSIONS.ROLES.MANAGE), rolesController.eliminarRol)
+
+/**
+ * PUT /api/permissions/roles/:roleName/permisos
+ * Actualiza todos los permisos de un rol
+ * Body: { permisos: ['users:view', 'equipos:view', ...] }
+ */
+router.put('/roles/:roleName/permisos', requirePermission(PERMISSIONS.ROLES.MANAGE), rolesController.actualizarPermisosRol)
+
+/**
+ * PATCH /api/permissions/roles/:roleName/permisos/:permissionCode
+ * Activa o desactiva un permiso específico de un rol
+ * Body: { activo: true|false }
+ */
+router.patch('/roles/:roleName/permisos/:permissionCode', requirePermission(PERMISSIONS.ROLES.MANAGE), rolesController.togglePermisoRol)
 
 export default router
 

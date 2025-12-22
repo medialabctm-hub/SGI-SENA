@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FiUser, FiMail, FiShield, FiCamera, FiArrowLeft, FiCreditCard, FiPhone, FiEdit2 } from 'react-icons/fi';
+import { FiUser, FiMail, FiShield, FiCamera, FiArrowLeft, FiCreditCard, FiPhone, FiEdit2, FiTrash2 } from 'react-icons/fi';
 import { parseApiResponse, buildErrorMessage, handleError } from '../utils/api';
 import Toast from '../components/Toast';
 import Header from '../components/Header';
 import Sidebar from '../components/Sidebar';
+import DestructiveConfirmModal from '../components/DestructiveConfirmModal';
 import '../styles/perfil.css';
 
 export default function Perfil() {
@@ -17,6 +18,8 @@ export default function Perfil() {
   const [toast, setToast] = useState(null);
   const fileInputRef = useRef(null);
   const [currentUser, setCurrentUser] = useState(null);
+  const [showDeleteAccountConfirm, setShowDeleteAccountConfirm] = useState(false);
+  const [deletingAccount, setDeletingAccount] = useState(false);
 
   // Funciones helper (definidas antes de los hooks que las usan)
   const getInitials = useCallback((name) => {
@@ -178,6 +181,34 @@ export default function Perfil() {
     setForm(prev => ({ ...prev, [name]: value }));
   };
 
+  const handleDeleteAccount = async () => {
+    const token = localStorage.getItem('token');
+    if (!token) return setToast({ message: 'No autorizado', type: 'error' });
+    const id = userData?.id_usuario || userData?.id;
+    if (!id) return setToast({ message: 'ID de usuario no disponible', type: 'error' });
+    
+    setDeletingAccount(true);
+    try {
+      const res = await fetch(`/api/auth/user/${id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      await parseApiResponse(res, 'No se pudo eliminar la cuenta');
+      setToast({ message: 'Tu cuenta ha sido eliminada correctamente', type: 'success' });
+      // Cerrar sesión y redirigir al login
+      setTimeout(() => {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        window.location.href = '/login';
+      }, 1500);
+    } catch (err) {
+      handleError(err, setToast, 'No se pudo eliminar la cuenta');
+      setShowDeleteAccountConfirm(false);
+    } finally {
+      setDeletingAccount(false);
+    }
+  };
+
   // TODOS LOS HOOKS DEBEN ESTAR AQUÍ, ANTES DE CUALQUIER RETURN CONDICIONAL
   useEffect(() => {
     try {
@@ -228,6 +259,17 @@ export default function Perfil() {
   return (
     <div className="page simple-page perfil-page">
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+      <DestructiveConfirmModal
+        open={showDeleteAccountConfirm}
+        title="Eliminar Cuenta"
+        message="¿Estás seguro de que quieres eliminar tu cuenta? Esta acción es destructiva e irreversible. Perderás acceso a todos tus datos y no podrás recuperarlos."
+        confirmText="Eliminar Cuenta"
+        cancelText="Cancelar"
+        confirmationPhrase="confirmar accion"
+        loading={deletingAccount}
+        onConfirm={handleDeleteAccount}
+        onCancel={() => setShowDeleteAccountConfirm(false)}
+      />
       <Header />
       <div className="dashboard-layout">
         <Sidebar user={currentUser} />
@@ -389,6 +431,24 @@ export default function Perfil() {
                       <div className="perfil-role-badge">{rol}</div>
                     </div>
                   </div>
+                </div>
+              </div>
+
+              {/* Sección de eliminación de cuenta */}
+              <div className="perfil-info-section">
+                <div className="perfil-info-card perfil-danger-zone">
+                  <h3 className="perfil-info-card-title perfil-danger-title">Zona de Peligro</h3>
+                  <p className="perfil-danger-description">
+                    Una vez que elimines tu cuenta, no hay vuelta atrás. Por favor, ten cuidado.
+                  </p>
+                  <button
+                    className="btn btn-delete perfil-delete-account-btn"
+                    onClick={() => setShowDeleteAccountConfirm(true)}
+                    disabled={deletingAccount}
+                  >
+                    <FiTrash2 size={16} />
+                    Eliminar Mi Cuenta
+                  </button>
                 </div>
               </div>
             </div>
