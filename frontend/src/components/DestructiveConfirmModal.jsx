@@ -57,7 +57,7 @@ export default function DestructiveConfirmModal({
         <div className="destructive-confirm-modal-header">
           <div className="destructive-confirm-modal-title-wrapper">
             <div className="destructive-confirm-modal-icon danger">
-              <FiAlertTriangle size={24} color="var(--error-700)" />
+              <FiAlertTriangle size={24} color="var(--error-600)" />
             </div>
             <h3 className="destructive-confirm-modal-title">
               {title}

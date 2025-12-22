@@ -5,24 +5,26 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.6);
+  background: rgba(0, 0, 0, 0.5);
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 10000;
+  z-index: 99999;
   backdrop-filter: blur(4px);
 }
 
 .destructive-confirm-modal-sheet {
   background: white;
   border-radius: 16px;
-  box-shadow: 0 20px 60px rgba(220, 53, 69, 0.3);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
   padding: 0;
   max-width: 500px;
   width: 90%;
   overflow: hidden;
   animation: destructive-confirm-modal-in 0.3s ease-out;
-  border: 2px solid var(--error-200);
+  border: 1px solid var(--neutral-300);
+  position: relative;
+  z-index: 100000;
 }
 
 @keyframes destructive-confirm-modal-in {
@@ -38,8 +40,8 @@
 
 .destructive-confirm-modal-header {
   padding: 24px 24px 20px 24px;
-  border-bottom: 1px solid var(--error-100);
-  background: var(--error-50);
+  border-bottom: 1px solid var(--neutral-200);
+  background: var(--neutral-50);
 }
 
 .destructive-confirm-modal-title-wrapper {
@@ -57,27 +59,27 @@
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  background: var(--error-100);
+  background: rgba(220, 53, 69, 0.1);
 }
 
 .destructive-confirm-modal-icon.danger {
-  background: var(--error-100);
+  background: rgba(220, 53, 69, 0.1);
 }
 
 .destructive-confirm-modal-title {
   margin: 0;
   font-size: 22px;
   font-weight: 700;
-  color: var(--error-800);
+  color: var(--neutral-800);
 }
 
 .destructive-confirm-modal-message {
   margin: 0;
   font-size: 15px;
-  color: var(--error-700);
+  color: var(--neutral-700);
   line-height: 1.6;
   padding-left: 60px;
-  font-weight: 500;
+  font-weight: 400;
 }
 
 .destructive-confirm-modal-body {
@@ -99,7 +101,7 @@
 }
 
 .destructive-confirm-modal-label strong {
-  color: var(--error-600);
+  color: var(--error-500);
   font-weight: 700;
 }
 
@@ -134,12 +136,12 @@
 
 .destructive-confirm-modal-input-error {
   border-color: var(--error-500);
-  background: var(--error-50);
+  background: rgba(220, 53, 69, 0.05);
 }
 
 .destructive-confirm-modal-input-error:focus {
-  border-color: var(--error-600);
-  box-shadow: 0 0 0 3px rgba(220, 53, 69, 0.2);
+  border-color: var(--error-500);
+  box-shadow: 0 0 0 3px rgba(220, 53, 69, 0.15);
 }
 
 .destructive-confirm-modal-hint {
@@ -148,7 +150,7 @@
   color: var(--error-600);
   font-weight: 500;
   padding: 8px 12px;
-  background: var(--error-50);
+  background: rgba(220, 53, 69, 0.08);
   border-radius: 6px;
   border-left: 3px solid var(--error-500);
 }

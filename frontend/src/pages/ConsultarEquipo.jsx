@@ -19,7 +19,7 @@ export default function ConsultarEquipo() {
   const [editingCodigo, setEditingCodigo] = useState(null)
   const [draft, setDraft] = useState({})
   const [toast, setToast] = useState(null)
-  const [deleteConfirm, setDeleteConfirm] = useState({ open: false, codigo: null })
+  const [deleteConfirm, setDeleteConfirm] = useState({ open: false, codigo: null, equipo: null })
   const [user, setUser] = useState(null)
   const [showColumnFilter, setShowColumnFilter] = useState(false)
   const [ambientes, setAmbientes] = useState([])
@@ -254,7 +254,8 @@ export default function ConsultarEquipo() {
   }
 
   function confirmDelete(codigoEq) {
-    setDeleteConfirm({ open: true, codigo: codigoEq })
+    const equipo = equipos.find(eq => eq.codigo_equipo === codigoEq)
+    setDeleteConfirm({ open: true, codigo: codigoEq, equipo })
   }
 
   async function handleDelete() {
@@ -272,11 +273,15 @@ export default function ConsultarEquipo() {
       await parseApiResponse(res, 'No se pudo eliminar el equipo')
       setEquipos(prev => prev.filter(eq => eq.codigo_equipo !== codigoEq))
       if (editingCodigo === codigoEq) cancelEdit()
-      setDeleteConfirm({ open: false, codigo: null })
-      setToast({ message: `Equipo ${codigoEq} eliminado correctamente`, type: 'success' })
+      setDeleteConfirm({ open: false, codigo: null, equipo: null })
+      const equipoInfo = deleteConfirm.equipo
+      const equipoDesc = equipoInfo?.modelo && equipoInfo?.placa 
+        ? `${equipoInfo.modelo} (Placa: ${equipoInfo.placa})`
+        : equipoInfo?.modelo || equipoInfo?.placa || codigoEq
+      setToast({ message: `Equipo ${equipoDesc} eliminado correctamente`, type: 'success' })
     } catch (err) {
       setToast({ message: buildErrorMessage(err, 'No se pudo eliminar el equipo'), type: 'error' })
-      setDeleteConfirm({ open: false, codigo: null })
+      setDeleteConfirm({ open: false, codigo: null, equipo: null })
     } finally {
       setLoading(false)
     }
@@ -493,13 +498,24 @@ export default function ConsultarEquipo() {
           <DestructiveConfirmModal
             open={deleteConfirm.open}
             title="Eliminar Equipo"
-            message={`¿Estás seguro de que quieres eliminar el equipo ${deleteConfirm.codigo}? Esta acción es destructiva e irreversible.`}
+            message={(() => {
+              const equipo = deleteConfirm.equipo
+              if (equipo?.modelo && equipo?.placa) {
+                return `¿Estás seguro de que quieres eliminar el equipo ${equipo.modelo} (Placa: ${equipo.placa})? Esta acción es destructiva e irreversible.`
+              } else if (equipo?.modelo) {
+                return `¿Estás seguro de que quieres eliminar el equipo ${equipo.modelo}? Esta acción es destructiva e irreversible.`
+              } else if (equipo?.placa) {
+                return `¿Estás seguro de que quieres eliminar el equipo (Placa: ${equipo.placa})? Esta acción es destructiva e irreversible.`
+              } else {
+                return `¿Estás seguro de que quieres eliminar el equipo ${deleteConfirm.codigo}? Esta acción es destructiva e irreversible.`
+              }
+            })()}
             confirmText="Eliminar Equipo"
             cancelText="Cancelar"
             confirmationPhrase="confirmar accion"
             loading={loading}
             onConfirm={handleDelete}
-            onCancel={() => setDeleteConfirm({ open: false, codigo: null })}
+            onCancel={() => setDeleteConfirm({ open: false, codigo: null, equipo: null })}
           />
           <div className="users-panel">
           <div className="users-toolbar">
