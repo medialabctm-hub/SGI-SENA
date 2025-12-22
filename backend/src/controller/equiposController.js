@@ -3004,6 +3004,34 @@ export async function registrarUsoEquipoExterno(req, res) {
           const usuario = usuarioRow || null;
 
           if (!usuario) {
+            // Si no existe en Usuarios, intentar buscar en la tabla Aprendices (importados)
+            const [[aprendizRow]] = await connection.execute(
+              `SELECT id_aprendiz, ficha, nombre, documento, jornada, fecha_creacion
+               FROM Aprendices WHERE documento = ? LIMIT 1`,
+              [documentoNormalizado]
+            )
+
+            if (aprendizRow) {
+              // No creamos asignación ni historial (porque no hay id_usuario),
+              // pero devolvemos la información del aprendiz importado para que
+              // la página externa pueda mostrar los datos oficiales.
+              resultados.push({
+                origen: 'aprendiz',
+                id_aprendiz: aprendizRow.id_aprendiz,
+                nombre: aprendizRow.nombre,
+                documento: aprendizRow.documento,
+                ficha: aprendizRow.ficha || null,
+                jornada: aprendizRow.jornada || null,
+                fecha_creacion: aprendizRow.fecha_creacion
+              })
+              logger.info('Registro externo: se encontró aprendiz importado, no se asigna (solo se informa)', {
+                documento: aprendizRow.documento,
+                id_aprendiz: aprendizRow.id_aprendiz,
+                placa: placa
+              });
+              continue;
+            }
+
             errores.push({
               documento: documentoNormalizado,
               ficha: fichaNormalizada || 'N/A',
