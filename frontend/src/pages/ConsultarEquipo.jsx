@@ -500,12 +500,25 @@ export default function ConsultarEquipo() {
             title="Eliminar Equipo"
             message={(() => {
               const equipo = deleteConfirm.equipo
-              if (equipo?.modelo && equipo?.placa) {
-                return `¿Estás seguro de que quieres eliminar el equipo ${equipo.modelo} (Placa: ${equipo.placa})? Esta acción es destructiva e irreversible.`
-              } else if (equipo?.modelo) {
-                return `¿Estás seguro de que quieres eliminar el equipo ${equipo.modelo}? Esta acción es destructiva e irreversible.`
-              } else if (equipo?.placa) {
-                return `¿Estás seguro de que quieres eliminar el equipo (Placa: ${equipo.placa})? Esta acción es destructiva e irreversible.`
+              if (!equipo) {
+                return `¿Estás seguro de que quieres eliminar el equipo ${deleteConfirm.codigo}? Esta acción es destructiva e irreversible.`
+              }
+              
+              const modelo = equipo.modelo || ''
+              const placa = equipo.placa || ''
+              const codigoInventario = equipo.codigo_inventario || ''
+              
+              // Construir identificadores adicionales (priorizar placa, luego código de inventario)
+              const identificadores = []
+              if (placa) identificadores.push(`Placa: ${placa}`)
+              if (codigoInventario && !placa) identificadores.push(`Código: ${codigoInventario}`)
+              
+              const identificadoresStr = identificadores.length > 0 ? ` (${identificadores.join(', ')})` : ''
+              
+              if (modelo) {
+                return `¿Estás seguro de que quieres eliminar el equipo ${modelo}${identificadoresStr}? Esta acción es destructiva e irreversible.`
+              } else if (identificadores.length > 0) {
+                return `¿Estás seguro de que quieres eliminar el equipo${identificadoresStr}? Esta acción es destructiva e irreversible.`
               } else {
                 return `¿Estás seguro de que quieres eliminar el equipo ${deleteConfirm.codigo}? Esta acción es destructiva e irreversible.`
               }
