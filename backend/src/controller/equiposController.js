@@ -415,6 +415,30 @@ export async function obtenerEquipoPorCodigo(req, res) {
       [codigoEquipoParaResponsables]
     );
 
+    // Enriquecer responsables externos con datos de Aprendices si coinciden por documento_externo
+    const documentosExternos = [...new Set(
+      (responsables || [])
+        .filter(r => !r.id_usuario && r.documento_externo)
+        .map(r => (typeof r.documento_externo === 'string' ? r.documento_externo.trim() : r.documento_externo))
+        .filter(Boolean)
+    )];
+
+    let aprendizPorDocumento = new Map();
+    if (documentosExternos.length > 0) {
+      try {
+        const placeholders = documentosExternos.map(() => '?').join(',');
+        const [aprRows] = await defaultDb.execute(
+          `SELECT id_aprendiz, nombre, documento, ficha, jornada FROM Aprendices WHERE documento IN (${placeholders})`,
+          documentosExternos
+        );
+        aprendizPorDocumento = new Map(
+          (aprRows || []).map(a => [String(a.documento).trim(), a])
+        );
+      } catch (eApr) {
+        logger.warn('No se pudieron cargar datos de aprendices para responsables externos', { error: eApr?.message });
+      }
+    }
+
     // Parsear JSON de dias_semana para cada responsable y asegurar campos externos
     const responsablesConDias = responsables.map(resp => {
       // Parsear dias_semana si existe
@@ -442,13 +466,26 @@ export async function obtenerEquipoPorCodigo(req, res) {
         resp.dias_semana = null;
       }
       
-      // Asegurar que los campos externos estén presentes y tengan prioridad
-      // Los datos externos son más confiables porque vienen directamente de la página externa
+      // Enriquecer datos externos y de aprendices importados
+      if (resp.documento_externo) {
+        resp.cedula = resp.documento_externo;
+      }
       if (resp.nombre_externo) {
         resp.nombre_usuario = resp.nombre_externo;
       }
-      if (resp.documento_externo) {
-        resp.cedula = resp.documento_externo;
+
+      const docKey = resp.documento_externo ? String(resp.documento_externo).trim() : null;
+      const aprendizMatch = docKey ? aprendizPorDocumento.get(docKey) : null;
+      if (!resp.id_usuario && aprendizMatch) {
+        resp.origen = 'aprendiz';
+        resp.nombre_aprendiz = aprendizMatch.nombre || resp.nombre_usuario;
+        resp.documento_aprendiz = aprendizMatch.documento || resp.cedula;
+        resp.ficha_aprendiz = aprendizMatch.ficha || resp.ficha;
+        resp.jornada_aprendiz = aprendizMatch.jornada || null;
+        // Dar prioridad a datos de aprendiz importado
+        if (resp.nombre_aprendiz) resp.nombre_usuario = resp.nombre_aprendiz;
+        if (resp.documento_aprendiz) resp.cedula = resp.documento_aprendiz;
+        if (resp.ficha_aprendiz) resp.ficha = resp.ficha_aprendiz;
       }
       
       // Formatear horas para mostrar (remover segundos si existen)
@@ -2722,6 +2759,18 @@ export async function registrarUsoEquipoExterno(req, res) {
     // Procesar imágenes si se enviaron
     const imagenesSubidas = [];
     if (files && files.length > 0) {
+      // Verificar si ya existe imagen principal para el equipo
+      let tienePrincipal = false;
+      try {
+        const [[rowPrincipal]] = await defaultDb.execute(
+          `SELECT EXISTS(SELECT 1 FROM Imagenes_Equipo WHERE codigo_equipo = ? AND es_principal = TRUE LIMIT 1) AS existe`,
+          [codigoEquipo]
+        );
+        tienePrincipal = !!rowPrincipal?.existe;
+      } catch (eCheck) {
+        logger.warn('No se pudo verificar imagen principal previa', { error: eCheck?.message, codigo_equipo: codigoEquipo });
+      }
+
       try {
         // Renombrar archivos con el codigo_equipo correcto
         const __filename = fileURLToPath(import.meta.url);
@@ -2759,12 +2808,27 @@ export async function registrarUsoEquipoExterno(req, res) {
           const tipoImagen = 'Detalle'; // Por defecto
           const descripcion = `Imagen subida desde registro externo - Placa: ${placa}`;
 
+          const esPrincipal = tienePrincipal ? false : imagenesSubidas.length === 0; // La primera subida será principal si no hay otra
+
           const [resultImagen] = await defaultDb.execute(
             `INSERT INTO Imagenes_Equipo 
              (codigo_equipo, ruta_imagen, nombre_archivo, tipo_imagen, descripcion, subida_por, es_principal)
-             VALUES (?, ?, ?, ?, ?, NULL, FALSE)`,
-            [codigoEquipo, rutaImagen, nuevoFilename, tipoImagen, descripcion]
+             VALUES (?, ?, ?, ?, ?, NULL, ?)`,
+            [codigoEquipo, rutaImagen, nuevoFilename, tipoImagen, descripcion, esPrincipal]
           );
+
+          // Si marcamos esta como principal, opcionalmente desmarcar otras (defensivo)
+          if (esPrincipal) {
+            try {
+              await defaultDb.execute(
+                'UPDATE Imagenes_Equipo SET es_principal = FALSE WHERE codigo_equipo = ? AND id_imagen_equipo != ?',
+                [codigoEquipo, resultImagen.insertId]
+              );
+            } catch (ePrincipal) {
+              logger.warn('No se pudo desmarcar otras imágenes al establecer principal', { error: ePrincipal?.message, codigo_equipo: codigoEquipo });
+            }
+            tienePrincipal = true;
+          }
 
           imagenesSubidas.push({
             id_imagen_equipo: resultImagen.insertId,
@@ -2773,7 +2837,7 @@ export async function registrarUsoEquipoExterno(req, res) {
             nombre_archivo: nuevoFilename,
             tipo_imagen: tipoImagen,
             descripcion: descripcion,
-            es_principal: false,
+            es_principal: esPrincipal,
           });
 
           logger.info('Imagen guardada desde registro externo', {

@@ -920,7 +920,14 @@ export default function DetalleEquipo() {
                   </h3>
                 </div>
                 <div style={{ display: 'grid', gap: '12px' }}>
-                  {equipo.responsables.map((responsable) => (
+                  {equipo.responsables.map((responsable) => {
+                    const displayName = responsable.nombre_aprendiz || responsable.nombre_usuario || responsable.nombre_externo || 'Usuario sin nombre';
+                    const displayDocumento = responsable.documento_aprendiz || responsable.cedula || responsable.documento_externo || '-';
+                    const displayFicha = responsable.ficha_aprendiz || responsable.ficha;
+                    const displayJornada = responsable.jornada_aprendiz;
+                    const esAprendizImportado = responsable.origen === 'aprendiz' || (!responsable.id_usuario && !!responsable.documento_aprendiz);
+
+                    return (
                     <div
                       key={responsable.id_responsable}
                       style={{
@@ -951,8 +958,20 @@ export default function DetalleEquipo() {
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                             <strong style={{ fontSize: '16px', color: '#111827' }}>
-                              {responsable.nombre_usuario || responsable.nombre_externo || 'Usuario sin nombre'}
+                              {displayName}
                             </strong>
+                            {esAprendizImportado && (
+                              <span style={{
+                                padding: '4px 10px',
+                                borderRadius: '12px',
+                                fontSize: '0.75rem',
+                                fontWeight: 700,
+                                background: '#ecfeff',
+                                color: '#0f766e'
+                              }}>
+                                Aprendiz importado
+                              </span>
+                            )}
                             {responsable.nombre_rol && (
                               <span style={{
                                 padding: '4px 10px',
@@ -1011,11 +1030,16 @@ export default function DetalleEquipo() {
                         </div>
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '8px', fontSize: '14px', color: '#6b7280' }}>
                           <div>
-                            <strong>Documento:</strong> {responsable.cedula || responsable.documento_externo || '-'}
+                            <strong>Documento:</strong> {displayDocumento}
                           </div>
-                          {responsable.ficha && (
+                          {displayFicha && (
                             <div>
-                              <strong>Ficha:</strong> {responsable.ficha}
+                              <strong>Ficha:</strong> {displayFicha}
+                            </div>
+                          )}
+                          {displayJornada && (
+                            <div>
+                              <strong>Jornada:</strong> {displayJornada}
                             </div>
                           )}
                           <div>
@@ -1059,7 +1083,8 @@ export default function DetalleEquipo() {
                         )}
                       </div>
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             )}
