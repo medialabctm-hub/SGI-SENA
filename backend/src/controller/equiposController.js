@@ -2983,11 +2983,9 @@ export async function registrarUsoEquipoExterno(req, res) {
         const fichaNormalizada = typeof ficha === 'string' && ficha.trim().length > 0 ? ficha.trim() : null;
 
         if (!documentoNormalizado) {
-          errores.push({
-            documento: 'N/A',
-            ficha: fichaNormalizada || 'N/A',
-            error: 'El documento del usuario es obligatorio'
-          });
+          const errObj = { documento: 'N/A', error: 'El documento del usuario es obligatorio' };
+          if (fichaNormalizada) errObj.ficha = fichaNormalizada;
+          errores.push(errObj);
           continue;
         }
 
@@ -3012,31 +3010,85 @@ export async function registrarUsoEquipoExterno(req, res) {
             )
 
             if (aprendizRow) {
-              // No creamos asignación ni historial (porque no hay id_usuario),
-              // pero devolvemos la información del aprendiz importado para que
-              // la página externa pueda mostrar los datos oficiales.
-              resultados.push({
+              // Si existe un aprendiz importado, crear una asignación externa
+              // en Responsables_Equipo con id_usuario = NULL y crear un
+              // registro en Historial_Uso_Equipos para que aparezca en la UI.
+              const aprendizNombre = aprendizRow.nombre || null
+              const aprendizDocumento = aprendizRow.documento || documentoNormalizado
+              const fichaAprendiz = aprendizRow.ficha || null
+
+              // Insertar en Responsables_Equipo usando las mismas columnas condicionales
+              const camposResp = ['codigo_equipo', 'id_usuario', 'tipo_responsabilidad', 'observaciones', 'fecha_asignacion']
+              const valoresResp = [equipo.codigo_equipo, null, 'Principal', `Registro externo - Aprendiz importado: ${aprendizNombre || aprendizDocumento}`, 'NOW()']
+              const placeholdersResp = ['?', 'NULL', '?', '?', 'NOW()']
+
+              if (tieneFicha && fichaAprendiz) {
+                camposResp.push('ficha')
+                valoresResp.push(fichaAprendiz)
+                placeholdersResp.push('?')
+              }
+              if (tieneNombreExterno && aprendizNombre) {
+                camposResp.push('nombre_externo')
+                valoresResp.push(aprendizNombre)
+                placeholdersResp.push('?')
+              }
+              if (tieneDocumentoExterno && aprendizDocumento) {
+                camposResp.push('documento_externo')
+                valoresResp.push(aprendizDocumento)
+                placeholdersResp.push('?')
+              }
+
+              // Ejecutar inserción
+              const [resultAsignacionAprendiz] = await connection.execute(
+                `INSERT INTO Responsables_Equipo (${camposResp.join(', ')}) VALUES (${placeholdersResp.join(', ')})`,
+                valoresResp
+              )
+
+              // Insertar historial de uso para que aparezca en el historial del equipo
+              let resultHistAprendiz
+              try {
+                if (tieneNombreUsuarioHistorial) {
+                  [resultHistAprendiz] = await connection.execute(
+                    `INSERT INTO Historial_Uso_Equipos (codigo_equipo, id_usuario, nombre_usuario, fecha_hora_inicio, estado, observaciones) VALUES (?, NULL, ?, NOW(), 'En Uso', ?)`,
+                    [equipo.codigo_equipo, aprendizNombre || 'N/A', `Registro externo - Aprendiz importado: ${aprendizDocumento}`]
+                  )
+                } else {
+                  [resultHistAprendiz] = await connection.execute(
+                    `INSERT INTO Historial_Uso_Equipos (codigo_equipo, id_usuario, fecha_hora_inicio, estado, observaciones) VALUES (?, NULL, NOW(), 'En Uso', ?)`,
+                    [equipo.codigo_equipo, `Registro externo - Aprendiz importado: ${aprendizDocumento}`]
+                  )
+                }
+              } catch (histErr) {
+                logger.warn('No se pudo crear historial para aprendiz importado', { error: histErr?.message })
+              }
+
+              // Añadir al resultado para respuesta
+              const resultAprendiz = {
                 origen: 'aprendiz',
                 id_aprendiz: aprendizRow.id_aprendiz,
-                nombre: aprendizRow.nombre,
-                documento: aprendizRow.documento,
-                ficha: aprendizRow.ficha || null,
+                id_responsable: resultAsignacionAprendiz.insertId,
+                id_historial: resultHistAprendiz?.insertId,
+                nombre: aprendizNombre,
+                documento: aprendizDocumento,
                 jornada: aprendizRow.jornada || null,
                 fecha_creacion: aprendizRow.fecha_creacion
-              })
-              logger.info('Registro externo: se encontró aprendiz importado, no se asigna (solo se informa)', {
-                documento: aprendizRow.documento,
+              };
+              if (fichaAprendiz) resultAprendiz.ficha = fichaAprendiz;
+              resultados.push(resultAprendiz);
+
+              logger.info('Registro externo: aprendiz importado asignado temporalmente al equipo', {
                 id_aprendiz: aprendizRow.id_aprendiz,
+                id_responsable: resultAsignacionAprendiz.insertId,
+                id_historial: resultHistAprendiz?.insertId,
                 placa: placa
-              });
+              })
+
               continue;
             }
 
-            errores.push({
-              documento: documentoNormalizado,
-              ficha: fichaNormalizada || 'N/A',
-              error: `Usuario no encontrado con documento "${documentoNormalizado}". Debe registrarse primero en SGI-SENA.`
-            });
+            const errObj2 = { documento: documentoNormalizado, error: `Usuario no encontrado con documento "${documentoNormalizado}". Debe registrarse primero en SGI-SENA.` };
+            if (fichaNormalizada) errObj2.ficha = fichaNormalizada;
+            errores.push(errObj2);
             continue;
           }
 
@@ -3310,7 +3362,7 @@ export async function registrarUsoEquipoExterno(req, res) {
               tiene_asignacion: !!asignacionExistente
             });
 
-            resultados.push({
+            const sesionObj = {
               id_historial: sesionActiva.id_historial,
               usuario: usuarioDetalle,
               nombre: usuarioDetalle.nombre,
@@ -3318,13 +3370,14 @@ export async function registrarUsoEquipoExterno(req, res) {
               correo: usuarioDetalle.correo,
               telefono: usuarioDetalle.telefono,
               rol: usuarioDetalle.rol,
-              ficha: fichaNormalizada,
               fecha_hora_inicio: new Date(),
               dias_semana: diasSemanaJson ? (typeof diasSemanaJson === 'string' ? JSON.parse(diasSemanaJson) : diasSemanaJson) : null,
               hora_inicio: horaInicioTime,
               hora_fin: horaFinTime,
               sesion_existente: true
-            });
+            };
+            if (fichaNormalizada) sesionObj.ficha = fichaNormalizada;
+            resultados.push(sesionObj);
 
             continue;
           }
@@ -3377,7 +3430,7 @@ export async function registrarUsoEquipoExterno(req, res) {
             }
           }
 
-          resultados.push({
+          const historialObj = {
             id_historial: resultHistorial.insertId,
             usuario: usuarioDetalle,
             nombre: usuarioDetalle.nombre,
@@ -3385,12 +3438,13 @@ export async function registrarUsoEquipoExterno(req, res) {
             correo: usuarioDetalle.correo,
             telefono: usuarioDetalle.telefono,
             rol: usuarioDetalle.rol,
-            ficha: fichaNormalizada,
             fecha_hora_inicio: fechaInicio,
             dias_semana: diasSemanaParsed,
             hora_inicio: horaInicioTime,
             hora_fin: horaFinTime
-          });
+          };
+          if (fichaNormalizada) historialObj.ficha = fichaNormalizada;
+          resultados.push(historialObj);
 
           logger.info('Uso de equipo registrado para usuario', {
             id_historial: resultHistorial.insertId,

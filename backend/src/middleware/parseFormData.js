@@ -61,9 +61,8 @@ export const parseFormData = (req, res, next) => {
 
     // Si no hay usuarios pero hay campos de usuario en el nivel raíz (formato antiguo)
     // Convertir a formato nuevo
-    if (!parsedBody.usuarios && (parsedBody.ficha || parsedBody.documento)) {
+    if (!parsedBody.usuarios && (parsedBody.documento)) {
       const usuario = {
-        ficha: parsedBody.ficha || null,
         documento: parsedBody.documento || '',
       };
 
@@ -135,12 +134,47 @@ export const parseFormData = (req, res, next) => {
       });
     }
 
-    // Reemplazar el body con el parseado
-    req.body = parsedBody;
+    // Sanitizar: aceptar únicamente los campos esperados para el registro externo
+    // Campos permitidos: placa, ambiente, usuarios (array) o documento en nivel raíz
+    const sanitized = {};
 
-    logger.debug('Body parseado después de procesar', {
-      body: req.body,
-      tiene_usuarios: !!req.body.usuarios,
+    if (parsedBody.placa) sanitized.placa = String(parsedBody.placa).trim();
+    if (parsedBody.ambiente) sanitized.ambiente = String(parsedBody.ambiente).trim();
+
+    // Si ya venía un array de usuarios válido, usarlo (cada usuario debe tener documento y opcional campos de horario)
+    if (parsedBody.usuarios && Array.isArray(parsedBody.usuarios)) {
+      sanitized.usuarios = parsedBody.usuarios.map(u => {
+        const usuarioSanitizado = {
+          documento: u.documento ? String(u.documento).trim() : undefined,
+          dias_semana: u.dias_semana || null,
+          hora_inicio: u.hora_inicio || null,
+          hora_fin: u.hora_fin || null
+        };
+        // Incluir ficha solo si viene explícita y no vacía
+        if (u.ficha && String(u.ficha).trim().length > 0) {
+          usuarioSanitizado.ficha = String(u.ficha).trim();
+        }
+        return usuarioSanitizado;
+      });
+    } else if (parsedBody.documento) {
+      // Formato antiguo / simple: documento (y opcional ficha) en nivel raíz
+      const usuarioRoot = { documento: String(parsedBody.documento).trim() };
+      if (parsedBody.ficha && String(parsedBody.ficha).trim().length > 0) {
+        usuarioRoot.ficha = String(parsedBody.ficha).trim();
+      }
+      sanitized.usuarios = [usuarioRoot];
+    } else {
+      // No se incluyó documento ni usuarios: dejar usuarios como array vacío para que el validador maneje el error
+      sanitized.usuarios = [];
+    }
+
+    // Reemplazar el body con el objeto sanitizado (solo campos permitidos)
+    req.body = sanitized;
+
+    logger.debug('Body parseado y sanitizado', {
+      placa: req.body.placa,
+      ambiente: req.body.ambiente,
+      tiene_usuarios: Array.isArray(req.body.usuarios) && req.body.usuarios.length > 0,
       cantidad_usuarios: Array.isArray(req.body.usuarios) ? req.body.usuarios.length : 0
     });
 
