@@ -1351,6 +1351,11 @@
   flex-shrink: 0;
 }
 
+.form-icon-wrapper svg {
+  display: block;
+  flex-shrink: 0;
+}
+
 .form-icon-wrapper-green {
   background: var(--success-800);
 }

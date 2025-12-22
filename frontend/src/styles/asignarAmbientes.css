@@ -55,6 +55,9 @@
 .asignar-ambientes-form-label-icon {
   margin-right: 4px;
   vertical-align: middle;
+  display: inline-block;
+  flex-shrink: 0;
+  color: var(--success-800);
 }
 
 .asignar-ambientes-form-input,

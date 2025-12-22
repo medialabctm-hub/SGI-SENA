@@ -31,6 +31,9 @@
 .crear-mantenimiento-option-icon {
   margin-right: 6px;
   vertical-align: middle;
+  display: inline-block;
+  flex-shrink: 0;
+  color: var(--success-800);
 }
 
 .crear-mantenimiento-help-text {

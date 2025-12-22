@@ -184,3 +184,104 @@
   }
 }
 
+/* Header de horarios */
+.horarios-header-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--success-800);
+}
+
+.horarios-header-title svg {
+  color: var(--success-800);
+  flex-shrink: 0;
+}
+
+.horarios-header-actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.horarios-btn-icon {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.horarios-btn-icon svg {
+  flex-shrink: 0;
+  display: block;
+}
+
+/* Icono de calendario en estado vacío */
+.horarios-empty-icon {
+  color: var(--neutral-400);
+  margin-bottom: 1rem;
+  display: block;
+}
+
+.horarios-empty {
+  text-align: center;
+  padding: 3rem 1rem;
+  color: var(--neutral-600);
+}
+
+.horarios-empty p {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 500;
+  color: var(--neutral-700);
+}
+
+/* Estilos para inputs de fecha */
+.horarios-filter-input[type="date"],
+.horarios-form-input[type="date"] {
+  position: relative;
+  padding-right: 40px;
+}
+
+.horarios-filter-input[type="date"]::-webkit-calendar-picker-indicator,
+.horarios-form-input[type="date"]::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  opacity: 1;
+  width: 20px;
+  height: 20px;
+  margin-right: 8px;
+  filter: invert(27%) sepia(51%) saturate(2878%) hue-rotate(106deg) brightness(0%) contrast(100%);
+  transition: filter 0.2s ease;
+}
+
+.horarios-filter-input[type="date"]::-webkit-calendar-picker-indicator:hover,
+.horarios-form-input[type="date"]::-webkit-calendar-picker-indicator:hover {
+  filter: invert(27%) sepia(51%) saturate(2878%) hue-rotate(106deg) brightness(20%) contrast(100%);
+}
+
+/* Estilos para inputs de fecha en otros componentes */
+input[type="date"],
+input[type="datetime-local"] {
+  position: relative;
+  padding-right: 40px;
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  opacity: 1;
+  width: 20px;
+  height: 20px;
+  margin-right: 8px;
+  filter: invert(27%) sepia(51%) saturate(2878%) hue-rotate(106deg) brightness(0%) contrast(100%);
+  transition: filter 0.2s ease;
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator:hover,
+input[type="datetime-local"]::-webkit-calendar-picker-indicator:hover {
+  filter: invert(27%) sepia(51%) saturate(2878%) hue-rotate(106deg) brightness(20%) contrast(100%);
+}
+

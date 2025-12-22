@@ -35,7 +35,8 @@
   padding-bottom: 0;
 }
 
-.reportes-tab {
+.reportes-tab,
+.reportes-tab-button {
   padding: 0.75rem 1.5rem;
   border: none;
   background: transparent;
@@ -45,18 +46,28 @@
   cursor: pointer;
   border-bottom: 3px solid transparent;
   transition: all 0.2s;
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 8px;
+  white-space: nowrap;
 }
 
-.reportes-tab.active {
+.reportes-tab svg,
+.reportes-tab-button svg {
+  flex-shrink: 0;
+  display: block;
+  color: inherit;
+}
+
+.reportes-tab.active,
+.reportes-tab-button.active {
   color: var(--info-600);
   font-weight: 600;
   border-bottom-color: var(--info-600);
 }
 
-.reportes-tab:hover {
+.reportes-tab:hover,
+.reportes-tab-button:hover {
   color: var(--info-600);
 }
 
@@ -129,7 +140,8 @@
     gap: 0.25rem;
   }
 
-  .reportes-tab {
+  .reportes-tab,
+  .reportes-tab-button {
     padding: 0.5rem 1rem;
     font-size: 0.9rem;
   }
