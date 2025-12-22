@@ -3072,7 +3072,7 @@ export async function registrarUsoEquipoExterno(req, res) {
 
               // Insertar en Responsables_Equipo usando las mismas columnas condicionales
               const camposResp = ['codigo_equipo', 'id_usuario', 'tipo_responsabilidad', 'observaciones', 'fecha_asignacion']
-              const valoresResp = [equipo.codigo_equipo, 'Principal', `Registro externo - Aprendiz importado: ${aprendizNombre || aprendizDocumento}`]
+              const valoresResp = [equipo.codigo_equipo, 'Principal', `Aprendiz: ${aprendizNombre || aprendizDocumento}`]
               const placeholdersResp = ['?', 'NULL', '?', '?', 'NOW()']
 
               if (tieneFicha && fichaAprendiz) {
@@ -3103,16 +3103,16 @@ export async function registrarUsoEquipoExterno(req, res) {
                 if (tieneNombreUsuarioHistorial) {
                   [resultHistAprendiz] = await connection.execute(
                     `INSERT INTO Historial_Uso_Equipos (codigo_equipo, id_usuario, nombre_usuario, fecha_hora_inicio, estado, observaciones) VALUES (?, NULL, ?, NOW(), 'En Uso', ?)`,
-                    [equipo.codigo_equipo, aprendizNombre || 'N/A', `Registro externo - Aprendiz importado: ${aprendizDocumento}`]
+                    [equipo.codigo_equipo, aprendizNombre || 'N/A', `Aprendiz : ${aprendizDocumento}`]
                   )
                 } else {
                   [resultHistAprendiz] = await connection.execute(
                     `INSERT INTO Historial_Uso_Equipos (codigo_equipo, id_usuario, fecha_hora_inicio, estado, observaciones) VALUES (?, NULL, NOW(), 'En Uso', ?)`,
-                    [equipo.codigo_equipo, `Registro externo - Aprendiz importado: ${aprendizDocumento}`]
+                    [equipo.codigo_equipo, `Aprendiz : ${aprendizDocumento}`]
                   )
                 }
               } catch (histErr) {
-                logger.warn('No se pudo crear historial para aprendiz importado', { error: histErr?.message })
+                logger.warn('No se pudo crear historial para aprendiz', { error: histErr?.message })
               }
 
               // Añadir al resultado para respuesta

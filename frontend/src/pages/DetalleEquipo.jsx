@@ -967,9 +967,9 @@ export default function DetalleEquipo() {
                                 fontSize: '0.75rem',
                                 fontWeight: 700,
                                 background: '#ecfeff',
-                                color: '#0f766e'
+                                color: '#03ca0dff'
                               }}>
-                                Aprendiz importado
+                                Aprendiz
                               </span>
                             )}
                             {responsable.nombre_rol && (
