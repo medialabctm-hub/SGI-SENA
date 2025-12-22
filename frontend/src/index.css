@@ -81,6 +81,10 @@
   --darkmode-700: #091213;
   --darkmode-800: #05090a;
   --darkmode-900: #000000;
+
+  /* otros */
+
+  --purple-700: #6e06b3;
 }
 
 * {font-family: Urbanist;}

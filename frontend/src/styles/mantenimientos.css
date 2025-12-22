@@ -7,7 +7,7 @@
 }
 
 .mantenimientos-header-icon {
-  background: linear-gradient(135deg, var(--purple-600) 0%, var(--purple-700) 100%);
+  background: var(--purple-700);
 }
 
 .mantenimientos-header-content {
