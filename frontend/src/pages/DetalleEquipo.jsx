@@ -29,6 +29,7 @@ export default function DetalleEquipo() {
   const [viewerImageIndex, setViewerImageIndex] = useState(null);
   const [editAsignacionModal, setEditAsignacionModal] = useState({ open: false, asignacion: null });
   const [deleteAsignacionConfirm, setDeleteAsignacionConfirm] = useState({ open: false, id: null });
+  const [deletingAsignacion, setDeletingAsignacion] = useState(false);
   const [editAsignacionData, setEditAsignacionData] = useState({
     ficha: '',
     nombre_externo: '',
@@ -134,9 +135,16 @@ export default function DetalleEquipo() {
   }
 
   async function handleDeleteAsignacion() {
+    if (deletingAsignacion) return; // Prevent multiple clicks
+    
+    setDeletingAsignacion(true);
+    const asignacionId = deleteAsignacionConfirm.id;
+    // Close modal immediately to prevent double-clicks
+    setDeleteAsignacionConfirm({ open: false, id: null });
+    
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`/api/equipos/asignaciones/${deleteAsignacionConfirm.id}`, {
+      const res = await fetch(`/api/equipos/asignaciones/${asignacionId}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -144,10 +152,11 @@ export default function DetalleEquipo() {
       const data = await parseApiResponse(res, 'No se pudo eliminar la asignación');
       
       setToast({ message: data.message || 'Asignación eliminada correctamente', type: 'success' });
-      setDeleteAsignacionConfirm({ open: false, id: null });
       fetchEquipo(); // Recargar datos del equipo
     } catch (err) {
       setToast({ message: buildErrorMessage(err, 'Error al eliminar la asignación'), type: 'error' });
+    } finally {
+      setDeletingAsignacion(false);
     }
   }
 
@@ -1095,10 +1104,12 @@ export default function DetalleEquipo() {
       {/* Modal de confirmación para eliminar asignación */}
       <ConfirmModal
         open={deleteAsignacionConfirm.open}
-        onClose={() => setDeleteAsignacionConfirm({ open: false, id: null })}
+        onClose={() => !deletingAsignacion && setDeleteAsignacionConfirm({ open: false, id: null })}
+        onCancel={() => !deletingAsignacion && setDeleteAsignacionConfirm({ open: false, id: null })}
         onConfirm={handleDeleteAsignacion}
         title="Eliminar Asignación"
         message="¿Estás seguro de que deseas eliminar esta asignación? Esta acción no se puede deshacer."
+        loading={deletingAsignacion}
       />
 
       {/* Modal de edición de asignación */}

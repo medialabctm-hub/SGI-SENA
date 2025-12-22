@@ -852,23 +852,35 @@ export async function eliminarAsignacion(req, res) {
     const userId = req.user?.id
     const userRole = req.user?.rol
 
-    // Obtener la asignación
-    const [[asignacion]] = await defaultDb.execute(
+    // Primero verificar si la asignación existe (sin importar el estado)
+    const [[exists]] = await defaultDb.execute(
       `SELECT 
         re.id_responsable,
         re.id_usuario,
         re.codigo_equipo,
+        re.estado_responsabilidad,
         r.nombre_rol AS usuario_rol
       FROM Responsables_Equipo re
       INNER JOIN Usuarios u ON re.id_usuario = u.id_usuario
       LEFT JOIN Roles r ON u.id_rol = r.id_rol
-      WHERE re.id_responsable = ? AND re.estado_responsabilidad = 'Activo'`,
+      WHERE re.id_responsable = ?`,
       [id]
     )
 
-    if (!asignacion) {
-      return res.status(404).json({ error: 'Habilitación no encontrada o ya está inactiva' })
+    if (!exists) {
+      return res.status(404).json({ error: 'Habilitación no encontrada' })
     }
+
+    // Si ya está inactiva, retornar éxito (idempotente)
+    if (exists.estado_responsabilidad !== 'Activo') {
+      return res.json({ 
+        ok: true,
+        message: 'La habilitación ya estaba eliminada',
+        alreadyDeleted: true
+      })
+    }
+
+    const asignacion = exists
 
     // Si es Instructor, solo puede eliminar habilitaciones de Aprendices
     if (userRole === 'Instructor' && asignacion.usuario_rol !== 'Aprendiz') {

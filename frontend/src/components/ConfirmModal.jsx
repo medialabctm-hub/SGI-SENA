@@ -2,7 +2,7 @@ import React from 'react'
 import { FiAlertTriangle } from 'react-icons/fi'
 import '../styles/confirmModal.css'
 
-export default function ConfirmModal({ open, message, onConfirm, onCancel, title = 'Confirmar acción', confirmText = 'Aceptar', cancelText = 'Cancelar', type = 'danger' }) {
+export default function ConfirmModal({ open, message, onConfirm, onCancel, title = 'Confirmar acción', confirmText = 'Aceptar', cancelText = 'Cancelar', type = 'danger', loading = false }) {
   if (!open) return null;
   
   const typeStyles = {
@@ -22,7 +22,7 @@ export default function ConfirmModal({ open, message, onConfirm, onCancel, title
   return (
     <div 
       className="confirm-modal-overlay" 
-      onClick={onCancel}
+      onClick={loading ? undefined : onCancel}
     >
       <div 
         className="confirm-modal-sheet" 
@@ -46,14 +46,18 @@ export default function ConfirmModal({ open, message, onConfirm, onCancel, title
           <button 
             className="confirm-modal-btn confirm-modal-btn-secondary"
             onClick={onCancel}
+            disabled={loading}
+            style={{ opacity: loading ? 0.5 : 1, cursor: loading ? 'not-allowed' : 'pointer' }}
           >
             {cancelText}
           </button>
           <button 
             className={`confirm-modal-btn confirm-modal-btn-primary ${type}`}
             onClick={onConfirm}
+            disabled={loading}
+            style={{ opacity: loading ? 0.7 : 1, cursor: loading ? 'not-allowed' : 'pointer' }}
           >
-            {confirmText}
+            {loading ? 'Procesando...' : confirmText}
           </button>
         </div>
       </div>
