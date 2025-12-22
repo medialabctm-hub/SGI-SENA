@@ -2759,18 +2759,6 @@ export async function registrarUsoEquipoExterno(req, res) {
     // Procesar imágenes si se enviaron
     const imagenesSubidas = [];
     if (files && files.length > 0) {
-      // Verificar si ya existe imagen principal para el equipo
-      let tienePrincipal = false;
-      try {
-        const [[rowPrincipal]] = await defaultDb.execute(
-          `SELECT EXISTS(SELECT 1 FROM Imagenes_Equipo WHERE codigo_equipo = ? AND es_principal = TRUE LIMIT 1) AS existe`,
-          [codigoEquipo]
-        );
-        tienePrincipal = !!rowPrincipal?.existe;
-      } catch (eCheck) {
-        logger.warn('No se pudo verificar imagen principal previa', { error: eCheck?.message, codigo_equipo: codigoEquipo });
-      }
-
       try {
         // Renombrar archivos con el codigo_equipo correcto
         const __filename = fileURLToPath(import.meta.url);
@@ -2808,19 +2796,12 @@ export async function registrarUsoEquipoExterno(req, res) {
           const tipoImagen = 'Detalle'; // Por defecto
           const descripcion = `Imagen subida desde registro externo - Placa: ${placa}`;
 
-          const esPrincipal = tienePrincipal ? false : imagenesSubidas.length === 0; // La primera subida será principal si no hay otra
-
           const [resultImagen] = await defaultDb.execute(
             `INSERT INTO Imagenes_Equipo 
              (codigo_equipo, ruta_imagen, nombre_archivo, tipo_imagen, descripcion, subida_por, es_principal)
-             VALUES (?, ?, ?, ?, ?, NULL, ?)`,
-            [codigoEquipo, rutaImagen, nuevoFilename, tipoImagen, descripcion, esPrincipal]
+             VALUES (?, ?, ?, ?, ?, NULL, FALSE)`,
+            [codigoEquipo, rutaImagen, nuevoFilename, tipoImagen, descripcion]
           );
-
-          if (esPrincipal) {
-            // Evitar updates adicionales para no chocar con triggers en Imagenes_Equipo
-            tienePrincipal = true;
-          }
 
           imagenesSubidas.push({
             id_imagen_equipo: resultImagen.insertId,
@@ -2829,7 +2810,7 @@ export async function registrarUsoEquipoExterno(req, res) {
             nombre_archivo: nuevoFilename,
             tipo_imagen: tipoImagen,
             descripcion: descripcion,
-            es_principal: esPrincipal,
+            es_principal: false,
           });
 
           logger.info('Imagen guardada desde registro externo', {
@@ -3076,7 +3057,7 @@ export async function registrarUsoEquipoExterno(req, res) {
 
               // Insertar en Responsables_Equipo usando las mismas columnas condicionales
               const camposResp = ['codigo_equipo', 'id_usuario', 'tipo_responsabilidad', 'observaciones', 'fecha_asignacion']
-              const valoresResp = [equipo.codigo_equipo, null, 'Principal', `Registro externo - Aprendiz importado: ${aprendizNombre || aprendizDocumento}`, 'NOW()']
+              const valoresResp = [equipo.codigo_equipo, 'Principal', `Registro externo - Aprendiz importado: ${aprendizNombre || aprendizDocumento}`]
               const placeholdersResp = ['?', 'NULL', '?', '?', 'NOW()']
 
               if (tieneFicha && fichaAprendiz) {
