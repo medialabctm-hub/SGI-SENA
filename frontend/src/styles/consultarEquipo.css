@@ -62,11 +62,19 @@
   border: 2px solid var(--neutral-300);
 }
 
+.consultar-equipo-btn-gris svg {
+  color: var(--neutral-700) !important;
+}
+
 .consultar-equipo-btn-gris:hover:not(:disabled) {
   background: var(--neutral-50);
   border-color: var(--neutral-400);
   transform: translateY(-1px);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.consultar-equipo-btn-gris:hover:not(:disabled) svg {
+  color: var(--neutral-800) !important;
 }
 
 .consultar-equipo-btn:disabled {
@@ -96,13 +104,69 @@
 }
 
 .consultar-equipo-action-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
   font-size: 0.85rem;
-  padding: 6px 12px;
+  padding: 8px 14px;
   margin-right: 6px;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  border: none;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+}
+
+.consultar-equipo-action-button svg {
+  flex-shrink: 0;
+  display: block;
+  width: 14px;
+  height: 14px;
+  color: inherit;
+}
+
+/* Iconos en botones con fondo blanco/claro deben ser oscuros */
+.consultar-equipo-action-button:not(.btn-view):not(.btn-edit):not(.btn-delete) svg {
+  color: var(--neutral-700) !important;
+}
+
+.consultar-equipo-action-button:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+}
+
+.consultar-equipo-action-button:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.consultar-equipo-action-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none !important;
+}
+
+/* Estilos específicos para botones dentro de la tabla */
+.consultar-equipo-table .btn-view,
+.consultar-equipo-table .consultar-equipo-action-button.btn-view {
+  background: var(--info-600);
+  color: white;
+  border: 1px solid rgba(23, 112, 230, 0.2);
+}
+
+.consultar-equipo-table .btn-view:hover:not(:disabled),
+.consultar-equipo-table .consultar-equipo-action-button.btn-view:hover:not(:disabled) {
+  background: var(--info-700);
+  border-color: rgba(23, 112, 230, 0.3);
 }
 
 .consultar-equipo-action-icon {
-  margin-right: 6px;
+  margin-right: 0;
+  display: inline-block;
+  flex-shrink: 0;
 }
 
 .consultar-equipo-help-text {

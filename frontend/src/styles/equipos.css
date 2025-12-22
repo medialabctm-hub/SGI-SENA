@@ -1178,14 +1178,14 @@
 
 /* Colorful action buttons - Estilo mejorado */
 .users-table .btn-view {
-  background: linear-gradient(135deg, var(--info-600) 0%, var(--info-700) 100%);
+  background: var(--info-600);
   color: white;
   border: 1px solid rgba(59, 139, 255, 0.28);
   box-shadow: 0 4px 12px rgba(11, 77, 160, 0.2);
 }
 
 .users-table .btn-view:hover {
-  background: linear-gradient(135deg, var(--info-700) 0%, var(--info-800) 100%);
+  background: var(--info-700);
   transform: translateY(-2px);
   box-shadow: 0 6px 18px rgba(11, 77, 160, 0.3);
   border-color: rgba(59, 139, 255, 0.4);
@@ -1197,14 +1197,14 @@
 }
 
 .users-table .btn-edit {
-  background: linear-gradient(135deg, var(--success-800) 0%, var(--success-900) 100%);
+  background: var(--success-800);
   color: white;
   border: 1px solid rgba(1, 175, 0, 0.12);
   box-shadow: 0 4px 12px rgba(1, 175, 0, 0.2);
 }
 
 .users-table .btn-edit:hover {
-  background: linear-gradient(135deg, var(--success-900) 0%, var(--success-800) 100%);
+  background: var(--success-900);
   transform: translateY(-2px);
   box-shadow: 0 6px 18px rgba(1, 175, 0, 0.3);
   border-color: rgba(1, 175, 0, 0.2);
@@ -1217,7 +1217,7 @@
 
 /* Delete button (red) - Estilo mejorado */
 .users-table .btn-delete {
-  background: linear-gradient(135deg, var(--error-500) 0%, var(--error-600) 100%);
+  background: var(--error-500);
   color: white;
   border: 1px solid rgba(220, 53, 69, 0.12);
   box-shadow: 0 4px 14px rgba(220, 53, 69, 0.25);
@@ -1225,7 +1225,7 @@
 }
 
 .users-table .btn-delete:hover {
-  background: linear-gradient(135deg, var(--error-600) 0%, var(--error-700) 100%);
+  background: var(--error-600);
   transform: translateY(-2px);
   box-shadow: 0 6px 20px rgba(220, 53, 69, 0.35);
   border-color: rgba(220, 53, 69, 0.2);
@@ -1354,6 +1354,20 @@
 .form-icon-wrapper svg {
   display: block;
   flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+}
+
+/* Iconos en headers con fondo de color - deben ser blancos */
+.form-icon-wrapper[class*="header-icon"] svg {
+  color: #fff !important;
+}
+
+/* Iconos en wrappers sin fondo de color o con fondo blanco - deben ser oscuros */
+.form-icon-wrapper:not([class*="header-icon"]) svg,
+.form-icon-wrapper[style*="background: white"] svg,
+.form-icon-wrapper[style*="background: #fff"] svg {
+  color: var(--neutral-700) !important;
 }
 
 .form-icon-wrapper-green {
@@ -1532,6 +1546,14 @@
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+.empty-icon-wrapper svg {
+  display: block;
+  flex-shrink: 0;
+  width: 48px;
+  height: 48px;
+  color: var(--neutral-600) !important;
 }
 
 .empty-state h3 {
