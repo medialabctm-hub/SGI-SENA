@@ -2817,16 +2817,8 @@ export async function registrarUsoEquipoExterno(req, res) {
             [codigoEquipo, rutaImagen, nuevoFilename, tipoImagen, descripcion, esPrincipal]
           );
 
-          // Si marcamos esta como principal, opcionalmente desmarcar otras (defensivo)
           if (esPrincipal) {
-            try {
-              await defaultDb.execute(
-                'UPDATE Imagenes_Equipo SET es_principal = FALSE WHERE codigo_equipo = ? AND id_imagen_equipo != ?',
-                [codigoEquipo, resultImagen.insertId]
-              );
-            } catch (ePrincipal) {
-              logger.warn('No se pudo desmarcar otras imágenes al establecer principal', { error: ePrincipal?.message, codigo_equipo: codigoEquipo });
-            }
+            // Evitar updates adicionales para no chocar con triggers en Imagenes_Equipo
             tienePrincipal = true;
           }
 
@@ -3045,6 +3037,7 @@ export async function registrarUsoEquipoExterno(req, res) {
         const { ficha, documento, dias_semana, hora_inicio, hora_fin } = usuarioData || {};
         const documentoNormalizado = typeof documento === 'string' ? documento.trim() : '';
         const fichaNormalizada = typeof ficha === 'string' && ficha.trim().length > 0 ? ficha.trim() : null;
+        let documentoOficial = documentoNormalizado;
 
         if (!documentoNormalizado) {
           const errObj = { documento: 'N/A', error: 'El documento del usuario es obligatorio' };
