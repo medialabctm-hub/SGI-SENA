@@ -93,16 +93,18 @@
 }
 
 .role-item {
-  padding: 1.25rem;
+  padding: 1.5rem;
   background: white;
-  border-radius: 10px;
-  border: 2px solid var(--neutral-200);
+  border-radius: 12px;
+  border: 1px solid var(--neutral-200);
   transition: all 0.2s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
 .role-item:hover {
   border-color: var(--success-300);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  transform: translateY(-1px);
 }
 
 .role-header {
@@ -148,16 +150,18 @@
 }
 
 .role-permissions {
-  margin: 0.25rem 0 0 0;
-  color: var(--neutral-600);
-  font-size: 0.85rem;
-}
-
-.role-description {
   margin: 0.5rem 0 0 0;
   color: var(--neutral-600);
   font-size: 0.9rem;
-  font-style: italic;
+  font-weight: 500;
+}
+
+.role-description {
+  margin: 0.75rem 0 0 0;
+  color: var(--neutral-600);
+  font-size: 0.9rem;
+  line-height: 1.5;
+  padding: 0.5rem 0;
 }
 
 .role-actions {
@@ -208,7 +212,19 @@
 .role-permissions-detail {
   margin-top: 1.5rem;
   padding-top: 1.5rem;
-  border-top: 2px solid var(--neutral-200);
+  border-top: 1px solid var(--neutral-200);
+  animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .role-permissions-detail-title {
