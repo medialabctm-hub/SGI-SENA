@@ -962,3 +962,118 @@ export async function importarUsuarios(req, res) {
   }
 }
 
+/**
+ * Importar aprendices desde archivo Excel
+ * Columnas esperadas: Ficha, Nombre, Documento, Jornada
+ */
+export async function importarAprendices(req, res) {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No se proporcionó ningún archivo' });
+    }
+
+    const workbook = XLSX.read(req.file.buffer, { type: 'buffer' });
+    const sheetName = workbook.SheetNames[0];
+    const worksheet = workbook.Sheets[sheetName];
+    const data = XLSX.utils.sheet_to_json(worksheet);
+
+    if (!data || data.length === 0) {
+      return res.status(400).json({ error: 'El archivo Excel está vacío' });
+    }
+
+    const resultados = {
+      total: data.length,
+      exitosos: 0,
+      fallidos: 0,
+      errores: []
+    };
+
+    const userId = req.user?.id || null;
+
+    // Asegurar que exista tabla para almacenar aprendices (sin crear cuentas de usuario)
+    try {
+      const [[tablaExiste]] = await defaultDb.execute(
+        `SELECT COUNT(*) AS cnt FROM INFORMATION_SCHEMA.TABLES 
+         WHERE TABLE_SCHEMA = DATABASE() 
+         AND TABLE_NAME = 'Aprendices'`
+      );
+
+      if (tablaExiste.cnt === 0) {
+        await defaultDb.execute(
+          `CREATE TABLE Aprendices (
+            id_aprendiz INT PRIMARY KEY AUTO_INCREMENT,
+            ficha VARCHAR(100) NULL,
+            nombre VARCHAR(200) NOT NULL,
+            documento VARCHAR(50) NOT NULL,
+            jornada ENUM('Mañana','Tarde','Noche') NULL,
+            creado_por INT NULL,
+            fecha_creacion DATETIME DEFAULT NOW(),
+            FOREIGN KEY (creado_por) REFERENCES Usuarios(id_usuario) ON DELETE SET NULL,
+            UNIQUE KEY uk_documento (documento),
+            INDEX idx_ficha (ficha),
+            INDEX idx_jornada (jornada)
+          ) COMMENT = 'Registro de aprendices (no habilitados para iniciar sesión)'
+          `
+        );
+      }
+    } catch (err) {
+      logger.warn('No se pudo crear tabla Aprendices', { err: err.message });
+    }
+
+    for (let i = 0; i < data.length; i++) {
+      const row = data[i];
+      const numeroFila = i + 2;
+
+      try {
+        const ficha = String(row['Ficha'] || row['ficha'] || row['FICHA'] || '').trim() || null;
+        const nombre = String(row['Nombre'] || row['nombre'] || row['NOMBRE'] || '').trim();
+        const documento = String(row['Documento'] || row['documento'] || row['CEDULA'] || row['Documento Identidad'] || '').trim();
+        let jornada = String(row['Jornada'] || row['jornada'] || '').trim() || null;
+
+        if (!nombre || !documento) {
+          resultados.errores.push({ fila: numeroFila, documento: documento || 'N/A', error: 'Nombre y documento son obligatorios' });
+          resultados.fallidos++;
+          continue;
+        }
+
+        // Normalizar jornada a valores válidos
+        if (jornada) {
+          const j = jornada.toLowerCase();
+          if (j.startsWith('m')) jornada = 'Mañana';
+          else if (j.startsWith('t')) jornada = 'Tarde';
+          else if (j.startsWith('n')) jornada = 'Noche';
+          else jornada = null;
+        }
+
+        // Verificar documento único dentro de Aprendices
+        const [[existAprendiz]] = await defaultDb.execute(
+          'SELECT id_aprendiz FROM Aprendices WHERE documento = ? LIMIT 1',
+          [documento]
+        );
+        if (existAprendiz) {
+          resultados.errores.push({ fila: numeroFila, documento, error: 'El documento ya está registrado en aprendices' });
+          resultados.fallidos++;
+          continue;
+        }
+
+        // Insertar registro de aprendiz (sin crear cuenta de usuario)
+        await defaultDb.execute(
+          'INSERT INTO Aprendices (ficha, nombre, documento, jornada, creado_por) VALUES (?, ?, ?, ?, ?)',
+          [ficha, nombre, documento, jornada, userId]
+        );
+
+        resultados.exitosos++;
+      } catch (error) {
+        resultados.errores.push({ fila: numeroFila, documento: row['Documento'] || 'N/A', error: error.message || 'Error desconocido' });
+        resultados.fallidos++;
+      }
+    }
+
+    const mensaje = `Importación aprendices: ${resultados.exitosos} exitosos, ${resultados.fallidos} fallidos`;
+    return res.json({ message: mensaje, resultados });
+  } catch (error) {
+    logger.error('Error en importarAprendices', { error: error.message, stack: error.stack });
+    return res.status(500).json({ error: 'Error al procesar el archivo Excel', detalle: error.message });
+  }
+}
+

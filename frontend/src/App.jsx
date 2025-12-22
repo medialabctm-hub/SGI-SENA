@@ -8,6 +8,7 @@ import Dashboard from './pages/Dashboard';
 import Equipos from './pages/Equipos';
 import ConsultarEquipo from './pages/ConsultarEquipo';
 import Usuarios from './pages/Usuarios';
+import Aprendices from './pages/Aprendices';
 import Config from './pages/Config';
 import CrearNovedad from './pages/CrearNovedad';
 import CrearReporte from './pages/CrearReporte';
@@ -116,6 +117,14 @@ export default function App() {
         element={
           <ProtectedRoute>
             <Usuarios />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/aprendices"
+        element={
+          <ProtectedRoute>
+            <Aprendices />
           </ProtectedRoute>
         }
       />

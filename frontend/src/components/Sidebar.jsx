@@ -82,7 +82,7 @@ export default function Sidebar({ user }) {
         horarios: true,
         config: false
       })
-    } else if (path.startsWith('/usuarios') || path.startsWith('/config')) {
+    } else if (path.startsWith('/usuarios') || path.startsWith('/aprendices') || path.startsWith('/config')) {
       setExpandedMenus({
         equipos: false,
         incidencias: false,
@@ -141,6 +141,7 @@ export default function Sidebar({ user }) {
     ],
     config: [
       { title: 'Usuarios', path: '/usuarios', icon: <FiUsers />, roles: ['Administrador', 'Instructor'] },
+      { title: 'Aprendices', path: '/aprendices', icon: <FiUser />, roles: ['Administrador'] },
       { title: 'Seguridad', path: '/config?section=security', icon: <FiShield />, roles: ['all'] },
       { title: 'Códigos de Seguridad', path: '/config?section=invitation-codes', icon: <FiKey />, roles: ['Administrador'] },
       { title: 'Tipos de Equipos', path: '/config?section=tipos-equipo', icon: <FiPackage />, roles: ['Administrador'] },

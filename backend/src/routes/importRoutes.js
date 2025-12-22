@@ -3,6 +3,7 @@ import multer from 'multer';
 import { 
   importarEquipos, 
   importarUsuarios, 
+  importarAprendices, 
   obtenerDuplicadosPendientes, 
   procesarDuplicado, 
   procesarDuplicadosMasivo 
@@ -49,6 +50,14 @@ router.post('/usuarios',
   requirePermission(PERMISSIONS.USERS.CREATE),
   upload.single('archivo'),
   importarUsuarios
+);
+
+// Importar aprendices desde Excel - Solo Admin
+router.post('/aprendices',
+  authenticate,
+  requirePermission(PERMISSIONS.USERS.CREATE),
+  upload.single('archivo'),
+  importarAprendices
 );
 
 // Obtener duplicados pendientes de revisión - Admin y Cuentadante
