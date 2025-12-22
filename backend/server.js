@@ -58,14 +58,57 @@ app.set('trust proxy', 1);
 app.use(helmet());
 
 // CORS - Configuración de origen cruzado
-app.use(
-  cors({
-    origin: config.cors.origin || 'http://localhost:5173',
-    credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'x-api-key'],
-  })
-);
+// Configuración base: permite múltiples orígenes si están separados por comas
+const getAllowedOrigins = () => {
+  const origins = [];
+  
+  if (config.cors.origin) {
+    // Si CORS_ORIGIN es una lista separada por comas, dividirla
+    const originList = config.cors.origin.split(',').map(o => o.trim()).filter(o => o);
+    origins.push(...originList);
+  } else {
+    origins.push('http://localhost:5173');
+  }
+  
+  // Agregar dominio de página externa para endpoints públicos
+  // Este dominio también puede ser usado para endpoints protegidos si está configurado
+  const externalDomain = 'https://sgi-senadata.up.railway.app';
+  if (!origins.includes(externalDomain)) {
+    origins.push(externalDomain);
+  }
+  
+  return origins;
+};
+
+const corsOptions = {
+  origin: (origin, callback) => {
+    // Permitir requests sin origen (Postman, curl, mobile apps, etc.)
+    if (!origin) {
+      return callback(null, true);
+    }
+
+    const allowedOrigins = getAllowedOrigins();
+    
+    // Verificar si el origen está en la lista permitida
+    if (allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      // En desarrollo, permitir cualquier origen para facilitar pruebas
+      if (process.env.NODE_ENV === 'development') {
+        callback(null, true);
+      } else {
+        // En producción, rechazar orígenes no permitidos
+        callback(new Error('No permitido por CORS'));
+      }
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-api-key'],
+  exposedHeaders: ['Content-Type'],
+};
+
+app.use(cors(corsOptions));
 
 // HPP - Protección contra HTTP Parameter Pollution
 app.use(hpp());

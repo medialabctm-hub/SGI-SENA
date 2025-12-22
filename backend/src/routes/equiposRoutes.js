@@ -7,6 +7,7 @@ import { writeLimiter, readLimiter, strictLimiter, webhookLimiter } from '../mid
 import { validate, registrarEquipoSchema, actualizarEquipoSchema, asignarEquipoSchema, verificarInventarioSchema, crearCategoriaSchema, actualizarCategoriaSchema, registrarUsoEquipoSchema, actualizarUsoEquipoSchema, registrarUsoEquipoExternoSchema, actualizarAsignacionEquipoSchema } from '../validators/equiposValidator.js';
 import { uploadEquipoImagePublico, handleUploadError } from '../middleware/uploadMiddleware.js';
 import { parseFormData } from '../middleware/parseFormData.js';
+import { corsPublic } from '../middleware/corsPublicMiddleware.js';
 
 const router = express.Router();
 
@@ -19,6 +20,7 @@ const router = express.Router();
 // El nombre se obtiene automáticamente buscando el usuario por documento en la BD
 // Las imágenes se guardan en Imagenes_Equipo asociadas al equipo identificado por la placa
 router.post('/uso/registro-externo', 
+  corsPublic, // Permitir cualquier origen para este endpoint público
   webhookLimiter,
   uploadEquipoImagePublico.array('imagenes', 10), // Aceptar hasta 10 imágenes
   handleUploadError,
