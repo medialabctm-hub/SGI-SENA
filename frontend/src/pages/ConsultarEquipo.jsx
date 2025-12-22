@@ -505,20 +505,14 @@ export default function ConsultarEquipo() {
               }
               
               const modelo = equipo.modelo || ''
-              const placa = equipo.placa || ''
-              const codigoInventario = equipo.codigo_inventario || ''
+              const codigoInventario = equipo.codigo_inventario || equipo.placa || ''
               
-              // Construir identificadores adicionales (priorizar placa, luego código de inventario)
-              const identificadores = []
-              if (placa) identificadores.push(`Placa: ${placa}`)
-              if (codigoInventario && !placa) identificadores.push(`Código: ${codigoInventario}`)
-              
-              const identificadoresStr = identificadores.length > 0 ? ` (${identificadores.join(', ')})` : ''
-              
-              if (modelo) {
-                return `¿Estás seguro de que quieres eliminar el equipo ${modelo}${identificadoresStr}? Esta acción es destructiva e irreversible.`
-              } else if (identificadores.length > 0) {
-                return `¿Estás seguro de que quieres eliminar el equipo${identificadoresStr}? Esta acción es destructiva e irreversible.`
+              if (modelo && codigoInventario) {
+                return `¿Estás seguro de que quieres eliminar el equipo ${modelo} (${codigoInventario})? Esta acción es destructiva e irreversible.`
+              } else if (modelo) {
+                return `¿Estás seguro de que quieres eliminar el equipo ${modelo}? Esta acción es destructiva e irreversible.`
+              } else if (codigoInventario) {
+                return `¿Estás seguro de que quieres eliminar el equipo ${codigoInventario}? Esta acción es destructiva e irreversible.`
               } else {
                 return `¿Estás seguro de que quieres eliminar el equipo ${deleteConfirm.codigo}? Esta acción es destructiva e irreversible.`
               }
