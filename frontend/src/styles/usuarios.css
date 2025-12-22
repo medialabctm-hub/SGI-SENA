@@ -339,6 +339,17 @@
   margin-top: 6px;
 }
 
+/* Aprendices page specific styles */
+.users-toolbar-description {
+  margin: 0.25rem 0 0;
+  color: #4b5563;
+  max-width: 620px;
+}
+
+.users-actions-compact {
+  gap: 0.5rem;
+}
+
 .user-detail-content {
   margin-top: 12px;
 }

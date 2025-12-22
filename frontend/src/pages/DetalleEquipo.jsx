@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
-import { useNavigate } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import Header from '../components/Header';
 import Sidebar from '../components/Sidebar';
 import Toast from '../components/Toast';
@@ -53,7 +52,6 @@ export default function DetalleEquipo() {
     fetchImagenes();
   }, [codigoEquipo]);
 
-
   async function fetchEquipo() {
     setLoading(true);
     try {
@@ -77,7 +75,6 @@ export default function DetalleEquipo() {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await parseApiResponse(res, 'No se pudieron cargar las imágenes');
-      console.log('Imágenes cargadas:', data);
       setImagenes(data.imagenes || []);
       const principal = (data.imagenes || []).find(img => img.es_principal);
       setImagenPrincipal(principal || (data.imagenes && data.imagenes[0]) || null);

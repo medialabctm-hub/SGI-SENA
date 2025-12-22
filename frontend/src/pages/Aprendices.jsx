@@ -206,7 +206,7 @@ export default function Aprendices() {
             <div className="users-toolbar">
               <div>
                 <h2>Aprendices</h2>
-                <p style={{ margin: '0.25rem 0 0', color: '#4b5563', maxWidth: '620px' }}>
+                <p className="users-toolbar-description">
                   Registra las fichas, documentos y jornadas para llevar el control académico de cada aprendiz.
                 </p>
               </div>
@@ -280,7 +280,7 @@ export default function Aprendices() {
                           <td>{formatDate(aprendiz.fecha_creacion)}</td>
                           {canImport && (
                             <td>
-                              <div className="users-actions" style={{ gap: '0.5rem' }}>
+                              <div className="users-actions users-actions-compact">
                                 <button
                                   className="btn btn-edit"
                                   onClick={() => openEditModal(aprendiz)}

@@ -849,10 +849,9 @@ export async function listarAsignaciones(req, res) {
 export async function eliminarAsignacion(req, res) {
   try {
     const { id } = req.params
-    const userId = req.user?.id
     const userRole = req.user?.rol
 
-    // Primero verificar si la asignación existe (sin importar el estado)
+    // Verificar si la asignación existe (usar LEFT JOIN para incluir asignaciones externas)
     const [[exists]] = await defaultDb.execute(
       `SELECT 
         re.id_responsable,
@@ -861,35 +860,37 @@ export async function eliminarAsignacion(req, res) {
         re.estado_responsabilidad,
         r.nombre_rol AS usuario_rol
       FROM Responsables_Equipo re
-      INNER JOIN Usuarios u ON re.id_usuario = u.id_usuario
+      LEFT JOIN Usuarios u ON re.id_usuario = u.id_usuario
       LEFT JOIN Roles r ON u.id_rol = r.id_rol
       WHERE re.id_responsable = ?`,
       [id]
     )
 
     if (!exists) {
-      return res.status(404).json({ error: 'Habilitación no encontrada' })
+      return res.status(404).json({ error: 'Asignación no encontrada' })
     }
 
     // Si ya está inactiva, retornar éxito (idempotente)
     if (exists.estado_responsabilidad !== 'Activo') {
       return res.json({ 
         ok: true,
-        message: 'La habilitación ya estaba eliminada',
+        message: 'La asignación ya estaba eliminada',
         alreadyDeleted: true
       })
     }
 
-    const asignacion = exists
-
-    // Si es Instructor, solo puede eliminar habilitaciones de Aprendices
-    if (userRole === 'Instructor' && asignacion.usuario_rol !== 'Aprendiz') {
-      return res.status(403).json({ 
-        error: 'Solo puedes eliminar habilitaciones de aprendices' 
-      })
+    // Si es Instructor, solo puede eliminar asignaciones de Aprendices o asignaciones externas
+    // Las asignaciones externas (sin id_usuario) se consideran como de aprendices
+    if (userRole === 'Instructor') {
+      const esAprendiz = exists.usuario_rol === 'Aprendiz' || !exists.id_usuario
+      if (!esAprendiz) {
+        return res.status(403).json({ 
+          error: 'Solo puedes eliminar asignaciones de aprendices' 
+        })
+      }
     }
 
-    // Desactivar la habilitación (cambiar estado a 'Finalizado' y establecer fecha_desvinculacion)
+    // Desactivar la asignación (cambiar estado a 'Finalizado' y establecer fecha_desvinculacion)
     await defaultDb.execute(
       `UPDATE Responsables_Equipo 
        SET estado_responsabilidad = 'Finalizado', 
@@ -900,7 +901,7 @@ export async function eliminarAsignacion(req, res) {
 
     return res.json({ 
       ok: true,
-      message: 'Habilitación eliminada correctamente' 
+      message: 'Asignación eliminada correctamente' 
     })
   } catch (err) {
     logger.error('Error al eliminar asignación', { error: err.message, stack: err.stack })
@@ -920,7 +921,7 @@ export async function actualizarAsignacionEquipo(req, res) {
     const { ficha, nombre_externo, documento_externo, dias_semana, hora_inicio, hora_fin, observaciones } = req.body;
     const userRole = req.user?.rol;
 
-    // Obtener la asignación actual
+    // Obtener la asignación actual (usar LEFT JOIN para incluir asignaciones externas)
     const [[asignacion]] = await defaultDb.execute(
       `SELECT 
         re.id_responsable,
@@ -935,7 +936,7 @@ export async function actualizarAsignacionEquipo(req, res) {
         re.observaciones,
         r.nombre_rol AS usuario_rol
       FROM Responsables_Equipo re
-      INNER JOIN Usuarios u ON re.id_usuario = u.id_usuario
+      LEFT JOIN Usuarios u ON re.id_usuario = u.id_usuario
       LEFT JOIN Roles r ON u.id_rol = r.id_rol
       WHERE re.id_responsable = ? AND re.estado_responsabilidad = 'Activo'`,
       [id]
@@ -945,61 +946,16 @@ export async function actualizarAsignacionEquipo(req, res) {
       return res.status(404).json({ error: 'Asignación no encontrada o ya está inactiva' });
     }
 
-    // Si es Instructor, solo puede actualizar asignaciones de Aprendices
-    if (userRole === 'Instructor' && asignacion.usuario_rol !== 'Aprendiz') {
-      return res.status(403).json({ 
-        error: 'Solo puedes actualizar asignaciones de aprendices' 
-      });
+    // Si es Instructor, solo puede actualizar asignaciones de Aprendices o asignaciones externas
+    // Las asignaciones externas (sin id_usuario) se consideran como de aprendices
+    if (userRole === 'Instructor') {
+      const esAprendiz = asignacion.usuario_rol === 'Aprendiz' || !asignacion.id_usuario
+      if (!esAprendiz) {
+        return res.status(403).json({ 
+          error: 'Solo puedes actualizar asignaciones de aprendices' 
+        });
+      }
     }
-
-    // Verificar columnas disponibles en la tabla
-    const [colFicha] = await defaultDb.execute(
-      `SELECT COUNT(*) AS cnt FROM INFORMATION_SCHEMA.COLUMNS 
-       WHERE TABLE_SCHEMA = DATABASE() 
-       AND TABLE_NAME = 'Responsables_Equipo' 
-       AND COLUMN_NAME = 'ficha'`
-    );
-    const tieneFicha = colFicha[0].cnt > 0;
-
-    const [colNombreExterno] = await defaultDb.execute(
-      `SELECT COUNT(*) AS cnt FROM INFORMATION_SCHEMA.COLUMNS 
-       WHERE TABLE_SCHEMA = DATABASE() 
-       AND TABLE_NAME = 'Responsables_Equipo' 
-       AND COLUMN_NAME = 'nombre_externo'`
-    );
-    const tieneNombreExterno = colNombreExterno[0].cnt > 0;
-
-    const [colDocumentoExterno] = await defaultDb.execute(
-      `SELECT COUNT(*) AS cnt FROM INFORMATION_SCHEMA.COLUMNS 
-       WHERE TABLE_SCHEMA = DATABASE() 
-       AND TABLE_NAME = 'Responsables_Equipo' 
-       AND COLUMN_NAME = 'documento_externo'`
-    );
-    const tieneDocumentoExterno = colDocumentoExterno[0].cnt > 0;
-
-    const [colDiasSemana] = await defaultDb.execute(
-      `SELECT COUNT(*) AS cnt FROM INFORMATION_SCHEMA.COLUMNS 
-       WHERE TABLE_SCHEMA = DATABASE() 
-       AND TABLE_NAME = 'Responsables_Equipo' 
-       AND COLUMN_NAME = 'dias_semana'`
-    );
-    const tieneDiasSemana = colDiasSemana[0].cnt > 0;
-
-    const [colHoraInicio] = await defaultDb.execute(
-      `SELECT COUNT(*) AS cnt FROM INFORMATION_SCHEMA.COLUMNS 
-       WHERE TABLE_SCHEMA = DATABASE() 
-       AND TABLE_NAME = 'Responsables_Equipo' 
-       AND COLUMN_NAME = 'hora_inicio'`
-    );
-    const tieneHoraInicio = colHoraInicio[0].cnt > 0;
-
-    const [colHoraFin] = await defaultDb.execute(
-      `SELECT COUNT(*) AS cnt FROM INFORMATION_SCHEMA.COLUMNS 
-       WHERE TABLE_SCHEMA = DATABASE() 
-       AND TABLE_NAME = 'Responsables_Equipo' 
-       AND COLUMN_NAME = 'hora_fin'`
-    );
-    const tieneHoraFin = colHoraFin[0].cnt > 0;
 
     // Preparar datos de horarios
     let diasSemanaJson = null;
@@ -1106,35 +1062,35 @@ export async function actualizarAsignacionEquipo(req, res) {
     const updates = [];
     const valores = [];
 
-    if (ficha !== undefined && tieneFicha) {
+    if (ficha !== undefined) {
       updates.push('ficha = ?');
       valores.push(ficha || null);
     }
-    if (nombre_externo !== undefined && tieneNombreExterno) {
+    if (nombre_externo !== undefined) {
       updates.push('nombre_externo = ?');
       valores.push(nombre_externo || null);
     }
-    if (documento_externo !== undefined && tieneDocumentoExterno) {
+    if (documento_externo !== undefined) {
       updates.push('documento_externo = ?');
       valores.push(documento_externo || null);
     }
-    if (diasSemanaJson !== null && tieneDiasSemana) {
+    if (diasSemanaJson !== null) {
       updates.push('dias_semana = ?');
       valores.push(diasSemanaJson);
-    } else if (diasSemanaJson === null && tieneDiasSemana && dias_semana === null) {
+    } else if (diasSemanaJson === null && dias_semana === null) {
       // Permitir establecer a null explícitamente
       updates.push('dias_semana = NULL');
     }
-    if (horaInicioTime !== null && tieneHoraInicio) {
+    if (horaInicioTime !== null) {
       updates.push('hora_inicio = ?');
       valores.push(horaInicioTime);
-    } else if (horaInicioTime === null && tieneHoraInicio && hora_inicio === null) {
+    } else if (horaInicioTime === null && hora_inicio === null) {
       updates.push('hora_inicio = NULL');
     }
-    if (horaFinTime !== null && tieneHoraFin) {
+    if (horaFinTime !== null) {
       updates.push('hora_fin = ?');
       valores.push(horaFinTime);
-    } else if (horaFinTime === null && tieneHoraFin && hora_fin === null) {
+    } else if (horaFinTime === null && hora_fin === null) {
       updates.push('hora_fin = NULL');
     }
     if (observaciones !== undefined) {
