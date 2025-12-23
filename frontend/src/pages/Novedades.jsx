@@ -1242,7 +1242,7 @@ export default function Novedades() {
                       </tbody>
                     </table>
                   </div>
-                )
+                )}
               </>
             ) : null}
           </div>
