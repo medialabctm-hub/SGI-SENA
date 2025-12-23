@@ -705,7 +705,7 @@ export default function Novedades() {
                   </div>
                 )}
               </>
-            ) : (
+            ) : activeTab === 'crear' ? (
               <form onSubmit={handleSubmit}>
                 {/* Sección: Equipo */}
                 <div className="form-section">
@@ -997,7 +997,7 @@ export default function Novedades() {
                       </div>
                     )}
                   </div>
-                ) : reportesTab === 'crear' ? (
+                ) : reportesTab === 'crear' || formReporte.titulo ? (
                     // Formulario de creación
                     <form onSubmit={handleSubmitReporte}>
                       <div className="form-section">
