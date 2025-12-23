@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import Header from '../components/Header'
 import Sidebar from '../components/Sidebar'
 import Toast from '../components/Toast'
-import { FiPlus, FiAlertCircle, FiPackage, FiCheckCircle, FiTrendingDown, FiDollarSign } from 'react-icons/fi'
+import { FiPlus, FiAlertCircle, FiPackage, FiCheckCircle, FiDollarSign } from 'react-icons/fi'
 import { parseApiResponse, buildErrorMessage, handleError } from '../utils/api'
 import '../styles/dashboard.css'
 
@@ -162,26 +162,15 @@ export default function Dashboard() {
                     <div className="stat-label-small">Equipos en Buen Estado</div>
                   </div>
 
-                  {/* Equipos en Estado Regular */}
+                  {/* Equipos con Novedades */}
                   <div className="stat-card stat-card-yellow">
                     <div className="stat-icon-wrapper">
                       <FiAlertCircle size={36} />
                     </div>
                     <div className="stat-value-large">
-                      {stats.equipos_regulares || 0}
+                      {(stats.equipos_regulares || 0) + (stats.equipos_danados || 0)}
                     </div>
-                    <div className="stat-label-small">Equipos en Estado Regular</div>
-                  </div>
-
-                  {/* Equipos Dañados */}
-                  <div className="stat-card stat-card-red">
-                    <div className="stat-icon-wrapper">
-                      <FiTrendingDown size={36} />
-                    </div>
-                    <div className="stat-value-large">
-                      {stats.equipos_danados || 0}
-                    </div>
-                    <div className="stat-label-small">Equipos Dañados</div>
+                    <div className="stat-label-small">Equipos con Novedades</div>
                   </div>
 
                   {/* Valor Total Inventario */}

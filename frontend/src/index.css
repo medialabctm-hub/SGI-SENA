@@ -446,6 +446,7 @@ body::after {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  width: 160px;
   gap: 0.5rem;
   transition: background 0.2s, border-color 0.2s;
 }

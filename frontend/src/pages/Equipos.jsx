@@ -3,6 +3,7 @@ import Header from '../components/Header'
 import Sidebar from '../components/Sidebar'
 import Toast from '../components/Toast'
 import ImportarEquipos from '../components/ImportarEquipos'
+import CustomSelect from '../components/CustomSelect'
 import { FiPlus, FiUpload } from 'react-icons/fi'
 import { parseApiResponse, buildErrorMessage } from '../utils/api'
 import '../styles/equipos.css'
@@ -226,20 +227,16 @@ export default function Equipos() {
           </div>
           <div className="form-row">
             <label>Tipo *</label>
-            <select name="tipo" value={form.tipo} onChange={handleChange}>
-              <option value="">Seleccionar tipo</option>
-              {categorias.map(tipo => (
-                <option key={tipo} value={tipo}>
-                  {tipo}
-                </option>
-              ))}
-            </select>
-            {errores.tipo && <span className="error-text">{errores.tipo}</span>}
-            {categorias.length === 0 && (
-              <small className="form-help-text">
-                No hay categorías disponibles. Contacta al administrador.
-              </small>
-            )}
+            <CustomSelect
+              name="tipo"
+              value={form.tipo}
+              onChange={handleChange}
+              options={categorias}
+              placeholder="Seleccionar tipo"
+              required
+              error={errores.tipo}
+              helpText={categorias.length === 0 ? 'No hay categorías disponibles. Contacta al administrador.' : ''}
+            />
           </div>
           <div className="form-row">
             <label>Placa</label>
