@@ -64,10 +64,17 @@ export default function Novedades() {
   }, [])
 
   useEffect(() => {
-    // Verificar si hay un parámetro de URL para la pestaña
+    // Verificar si hay un parámetro de URL para la pestaña o si la ruta es /reportes
     const urlParams = new URLSearchParams(window.location.search)
     const tabParam = urlParams.get('tab')
-    if (tabParam === 'crear') {
+    const currentPath = window.location.pathname
+    
+    if (currentPath === '/reportes' || currentPath === '/reportes/crear' || tabParam === 'reportes') {
+      setActiveTab('reportes')
+      if (currentPath === '/reportes/crear' || tabParam === 'crear') {
+        setReportesTab('crear')
+      }
+    } else if (tabParam === 'crear') {
       setActiveTab('crear')
     }
   }, [])

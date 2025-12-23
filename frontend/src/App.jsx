@@ -160,11 +160,12 @@ export default function App() {
           </ProtectedRoute>
         }
       />
+      {/* Ruta de reportes redirige a novedades con pestaña de reportes */}
       <Route
         path="/reportes"
         element={
           <ProtectedRoute>
-            <Reportes />
+            <Novedades />
           </ProtectedRoute>
         }
       />
@@ -172,7 +173,7 @@ export default function App() {
         path="/reportes/crear"
         element={
           <ProtectedRoute>
-            <CrearReporte />
+            <Novedades />
           </ProtectedRoute>
         }
       />
