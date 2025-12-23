@@ -200,8 +200,7 @@ export default function Profile() {
               />
             ) : null}
             <div 
-              className="profile-photo-placeholder"
-              className={user?.foto_perfil ? 'perfil-avatar-upload-hidden' : 'perfil-avatar-upload-visible'}
+              className={`profile-photo-placeholder ${user?.foto_perfil ? 'perfil-avatar-upload-hidden' : 'perfil-avatar-upload-visible'}`}
             >
               {getInitials(user?.nombre_usuario || 'Usuario')}
             </div>

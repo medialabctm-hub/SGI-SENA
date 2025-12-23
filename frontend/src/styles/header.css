@@ -219,6 +219,14 @@
   border-radius: 50%;
 }
 
+.header-avatar-placeholder-hidden {
+  display: none !important;
+}
+
+.header-avatar-placeholder-visible {
+  display: flex !important;
+}
+
 /* Responsive para móviles */
 @media (max-width: 768px) {
   .app-header-wrapper {

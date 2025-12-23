@@ -1,7 +1,11 @@
 import defaultDb from '../config/dbconfig.js'
 import { createForUsers, createForRole } from '../services/notificationService.js'
 import { logger } from '../utils/logger.js'
-import { obtenerEquipoPorCodigo, obtenerUsuarioActivo } from '../utils/sqlQueries.js'
+import { 
+  obtenerEquipoPorCodigo, 
+  obtenerUsuarioActivo,
+  deshabilitarAsignacionesActivas
+} from '../utils/sqlQueries.js'
 
 /**
  * Actualiza automáticamente el estado de mantenimientos programados a "En Proceso"
@@ -491,6 +495,34 @@ export async function actualizarEstadoMantenimiento(req, res) {
            WHERE codigo_equipo = ?`,
           [nuevoEstadoOperativo, mantenimiento.codigo_equipo]
         )
+
+        // Si el equipo pasa a "En Mantenimiento", deshabilitar asignaciones activas
+        if (nuevoEstadoOperativo === 'En Mantenimiento') {
+          try {
+            const razonDeshabilitacion = `Equipo deshabilitado automáticamente por inicio de mantenimiento`
+            const resultadoDeshabilitacion = await deshabilitarAsignacionesActivas(
+              defaultDb,
+              mantenimiento.codigo_equipo,
+              userId,
+              razonDeshabilitacion
+            )
+
+            if (resultadoDeshabilitacion.deshabilitadas > 0) {
+              logger.info('Asignaciones deshabilitadas automáticamente por inicio de mantenimiento', {
+                codigo_equipo: mantenimiento.codigo_equipo,
+                asignaciones_deshabilitadas: resultadoDeshabilitacion.deshabilitadas,
+                usuarios_afectados: resultadoDeshabilitacion.usuarios_afectados
+              })
+            }
+          } catch (deshabErr) {
+            // No fallar si hay error al deshabilitar, solo loguear
+            logger.error('Error al deshabilitar asignaciones activas por inicio de mantenimiento', {
+              error: deshabErr.message,
+              stack: deshabErr.stack,
+              codigo_equipo: mantenimiento.codigo_equipo
+            })
+          }
+        }
       }
     } catch (syncErr) {
       // No romper la actualización del mantenimiento si falla la sincronización de estado operativo

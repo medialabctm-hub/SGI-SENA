@@ -1,7 +1,11 @@
 import defaultDb from '../config/dbconfig.js'
 import { createForUsers, createForRole } from '../services/notificationService.js'
 import { logger } from '../utils/logger.js'
-import { obtenerEquipoPorCodigo, obtenerUsuarioActivo } from '../utils/sqlQueries.js'
+import { 
+  obtenerEquipoPorCodigo, 
+  obtenerUsuarioActivo,
+  deshabilitarAsignacionesActivas
+} from '../utils/sqlQueries.js'
 import emailService from '../services/emailService.js'
 import { config } from '../config/config.js'
 
@@ -192,6 +196,39 @@ export async function crearNovedad(req, res) {
                  WHERE codigo_equipo = ?`,
                 [nuevoEstadoFisico, codigo_equipo]
               )
+            }
+
+            // Deshabilitar todas las asignaciones activas del equipo
+            // Esto asegura que ningún usuario pueda seguir usando un equipo dañado o dado de baja
+            try {
+              const razonDeshabilitacion = `Equipo deshabilitado automáticamente por novedad: ${tipoNovedadNormalizado}`
+              const resultadoDeshabilitacion = await deshabilitarAsignacionesActivas(
+                defaultDb,
+                codigo_equipo,
+                userId,
+                razonDeshabilitacion
+              )
+
+              if (resultadoDeshabilitacion.deshabilitadas > 0) {
+                logger.info('Asignaciones deshabilitadas automáticamente por cambio de estado crítico', {
+                  codigo_equipo,
+                  asignaciones_deshabilitadas: resultadoDeshabilitacion.deshabilitadas,
+                  usuarios_afectados: resultadoDeshabilitacion.usuarios_afectados,
+                  nuevo_estado: nuevoEstadoOperativo
+                })
+
+                // Notificar a los usuarios afectados (se agregará a los destinatarios más adelante)
+                resultadoDeshabilitacion.usuarios_afectados.forEach(userIdAfectado => {
+                  destinatariosIds.add(userIdAfectado)
+                })
+              }
+            } catch (deshabErr) {
+              // No fallar si hay error al deshabilitar, solo loguear
+              logger.error('Error al deshabilitar asignaciones activas por cambio de estado', {
+                error: deshabErr.message,
+                stack: deshabErr.stack,
+                codigo_equipo
+              })
             }
 
             logger.info('Estado del equipo actualizado por novedad crítica', {

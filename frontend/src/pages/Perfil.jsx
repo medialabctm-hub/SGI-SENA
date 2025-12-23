@@ -326,8 +326,7 @@ export default function Perfil() {
                       />
                     )}
                     <div 
-                      className="perfil-photo-placeholder"
-                      className={fotoPerfil ? 'perfil-avatar-upload-hidden' : 'perfil-avatar-placeholder-visible'}
+                      className={`perfil-photo-placeholder ${fotoPerfil ? 'perfil-avatar-upload-hidden' : 'perfil-avatar-placeholder-visible'}`}
                     >
                       {getInitials(nombreCompleto)}
                     </div>

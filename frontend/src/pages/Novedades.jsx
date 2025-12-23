@@ -2,13 +2,17 @@ import { useState, useEffect } from 'react'
 import Header from '../components/Header'
 import Sidebar from '../components/Sidebar'
 import Toast from '../components/Toast'
-import { FiAlertCircle, FiEye, FiCheckCircle, FiXCircle, FiEdit, FiPackage, FiFileText, FiSearch, FiCheck, FiX, FiList } from 'react-icons/fi'
+import ConfirmModal from '../components/ConfirmModal'
+import { FiAlertCircle, FiEye, FiCheckCircle, FiXCircle, FiEdit, FiPackage, FiFileText, FiSearch, FiCheck, FiX, FiList, FiType, FiTrash2, FiDownload } from 'react-icons/fi'
 import { parseApiResponse, buildErrorMessage } from '../utils/api'
+import jsPDF from 'jspdf'
 import '../styles/equipos.css'
 import '../styles/novedades.css'
+import '../styles/reportes.css'
+import '../styles/reportesModal.css'
 
 export default function Novedades() {
-  const [activeTab, setActiveTab] = useState('ver') // 'ver' o 'crear'
+  const [activeTab, setActiveTab] = useState('ver') // 'ver', 'crear', o 'reportes'
   const [novedades, setNovedades] = useState([])
   const [loading, setLoading] = useState(false)
   const [toast, setToast] = useState(null)
@@ -28,6 +32,25 @@ export default function Novedades() {
   const [equipoEncontrado, setEquipoEncontrado] = useState(null)
   const [buscandoEquipo, setBuscandoEquipo] = useState(false)
   const [loadingCrear, setLoadingCrear] = useState(false)
+
+  // Estados para reportes
+  const [reportes, setReportes] = useState([])
+  const [loadingReportes, setLoadingReportes] = useState(false)
+  const [selectedReporte, setSelectedReporte] = useState(null)
+  const [editingReporte, setEditingReporte] = useState(null)
+  const [editForm, setEditForm] = useState({})
+  const [deleteConfirm, setDeleteConfirm] = useState({ open: false, id: null })
+  const [reportesTab, setReportesTab] = useState('ver') // 'ver' o 'crear'
+  const [formReporte, setFormReporte] = useState({
+    tipo_reporte: 'General',
+    titulo: '',
+    descripcion: '',
+    codigo_equipo: '',
+  })
+  const [codigoInventarioReporte, setCodigoInventarioReporte] = useState('')
+  const [equipoEncontradoReporte, setEquipoEncontradoReporte] = useState(null)
+  const [buscandoEquipoReporte, setBuscandoEquipoReporte] = useState(false)
+  const [loadingCrearReporte, setLoadingCrearReporte] = useState(false)
 
   useEffect(() => {
     try {
@@ -52,6 +75,8 @@ export default function Novedades() {
   useEffect(() => {
     if (activeTab === 'ver') {
       fetchNovedades()
+    } else if (activeTab === 'reportes') {
+      fetchReportes()
     }
   }, [activeTab])
 
@@ -249,6 +274,325 @@ export default function Novedades() {
     }
   }
 
+  // ========== FUNCIONES DE REPORTES ==========
+  
+  async function fetchReportes() {
+    setLoadingReportes(true)
+    try {
+      const token = localStorage.getItem('token')
+      const res = await fetch('/api/reportes', {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      const data = await parseApiResponse(res, 'No se pudo cargar los reportes')
+      setReportes(Array.isArray(data) ? data : [])
+    } catch (err) {
+      setToast({ message: buildErrorMessage(err, 'Error al cargar reportes'), type: 'error' })
+      setReportes([])
+    } finally {
+      setLoadingReportes(false)
+    }
+  }
+
+  async function buscarEquipoReporte() {
+    if (!codigoInventarioReporte.trim()) {
+      setToast({ message: 'Ingresa un código de inventario', type: 'error' })
+      return
+    }
+
+    try {
+      setBuscandoEquipoReporte(true)
+      setEquipoEncontradoReporte(null)
+      const token = localStorage.getItem('token')
+      const res = await fetch(`/api/equipos/${encodeURIComponent(codigoInventarioReporte.trim())}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      
+      if (res.ok) {
+        const data = await parseApiResponse(res)
+        setEquipoEncontradoReporte(data)
+        setFormReporte(prev => ({ ...prev, codigo_equipo: data.codigo_equipo }))
+        setToast({ message: 'Equipo encontrado correctamente', type: 'success' })
+      } else {
+        const errorData = await res.json().catch(() => ({}))
+        setToast({ 
+          message: errorData.error || 'Equipo no encontrado', 
+          type: 'error' 
+        })
+        setEquipoEncontradoReporte(null)
+        setFormReporte(prev => ({ ...prev, codigo_equipo: '' }))
+      }
+    } catch (err) {
+      setToast({ 
+        message: buildErrorMessage(err, 'Error al buscar el equipo'), 
+        type: 'error' 
+      })
+      setEquipoEncontradoReporte(null)
+      setFormReporte(prev => ({ ...prev, codigo_equipo: '' }))
+    } finally {
+      setBuscandoEquipoReporte(false)
+    }
+  }
+
+  function limpiarEquipoReporte() {
+    setCodigoInventarioReporte('')
+    setEquipoEncontradoReporte(null)
+    setFormReporte(prev => ({ ...prev, codigo_equipo: '' }))
+  }
+
+  function handleChangeReporte(field, value) {
+    setFormReporte(prev => ({ ...prev, [field]: value }))
+  }
+
+  async function handleSubmitReporte(e) {
+    e.preventDefault()
+    
+    if (!formReporte.tipo_reporte || !formReporte.titulo.trim() || !formReporte.descripcion.trim()) {
+      setToast({ message: 'El tipo, título y descripción son obligatorios', type: 'error' })
+      return
+    }
+
+    try {
+      setLoadingCrearReporte(true)
+      const token = localStorage.getItem('token')
+      const res = await fetch('/api/reportes', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify(formReporte)
+      })
+
+      const data = await res.json()
+
+      if (res.ok) {
+        setToast({ 
+          message: data.message || 'Reporte creado correctamente', 
+          type: 'success' 
+        })
+        setFormReporte({
+          tipo_reporte: 'General',
+          titulo: '',
+          descripcion: '',
+          codigo_equipo: '',
+        })
+        limpiarEquipoReporte()
+        setReportesTab('ver')
+        await fetchReportes()
+      } else {
+        setToast({ 
+          message: data.error || 'Error al crear el reporte', 
+          type: 'error' 
+        })
+      }
+    } catch (err) {
+      setToast({ message: 'Error de conexión con el servidor', type: 'error' })
+    } finally {
+      setLoadingCrearReporte(false)
+    }
+  }
+
+  function startEditReporte(reporte) {
+    setEditingReporte(reporte.id_reporte)
+    setEditForm({
+      tipo_reporte: reporte.tipo_reporte,
+      titulo: reporte.titulo,
+      descripcion: reporte.descripcion,
+      codigo_equipo: reporte.codigo_equipo || ''
+    })
+  }
+
+  function cancelEditReporte() {
+    setEditingReporte(null)
+    setEditForm({})
+  }
+
+  async function saveEditReporte() {
+    if (!editingReporte) return
+    setLoadingReportes(true)
+    setToast(null)
+    try {
+      const token = localStorage.getItem('token')
+      const res = await fetch(`/api/reportes/${editingReporte}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify(editForm)
+      })
+      const data = await parseApiResponse(res, 'No se pudo actualizar el reporte')
+      setToast({ message: data.message || 'Reporte actualizado correctamente', type: 'success' })
+      await fetchReportes()
+      cancelEditReporte()
+    } catch (err) {
+      setToast({ message: buildErrorMessage(err, 'Error al actualizar el reporte'), type: 'error' })
+    } finally {
+      setLoadingReportes(false)
+    }
+  }
+
+  function confirmDeleteReporte(id) {
+    setDeleteConfirm({ open: true, id })
+  }
+
+  async function handleDeleteReporte() {
+    const id = deleteConfirm.id
+    if (!id) return
+    
+    setDeleteConfirm({ open: false, id: null })
+    setLoadingReportes(true)
+    setToast(null)
+    try {
+      const token = localStorage.getItem('token')
+      const res = await fetch(`/api/reportes/${id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      const data = await parseApiResponse(res, 'No se pudo eliminar el reporte')
+      setToast({ message: data.message || 'Reporte eliminado correctamente', type: 'success' })
+      await fetchReportes()
+      if (selectedReporte?.id_reporte === id) {
+        setSelectedReporte(null)
+      }
+    } catch (err) {
+      setToast({ message: buildErrorMessage(err, 'Error al eliminar el reporte'), type: 'error' })
+    } finally {
+      setLoadingReportes(false)
+    }
+  }
+
+  function generarPDFReporte(reporte) {
+    try {
+      const doc = new jsPDF()
+      const pageWidth = doc.internal.pageSize.getWidth()
+      const pageHeight = doc.internal.pageSize.getHeight()
+      const margin = 20
+      let yPos = margin
+
+      // Encabezado
+      doc.setFontSize(18)
+      doc.setFont('helvetica', 'bold')
+      doc.text('REPORTE DE EQUIPOS', pageWidth / 2, yPos, { align: 'center' })
+      yPos += 10
+
+      doc.setFontSize(10)
+      doc.setFont('helvetica', 'normal')
+      doc.text(`Sistema de Gestión de Inventarios SENA`, pageWidth / 2, yPos, { align: 'center' })
+      yPos += 15
+
+      // Línea separadora
+      doc.setLineWidth(0.5)
+      doc.line(margin, yPos, pageWidth - margin, yPos)
+      yPos += 10
+
+      // Información del reporte
+      doc.setFontSize(12)
+      doc.setFont('helvetica', 'bold')
+      doc.text('Información del Reporte', margin, yPos)
+      yPos += 8
+
+      doc.setFontSize(10)
+      doc.setFont('helvetica', 'normal')
+      
+      const info = [
+        ['ID:', reporte.id_reporte.toString()],
+        ['Tipo:', reporte.tipo_reporte],
+        ['Título:', reporte.titulo],
+        ['Fecha:', formatDate(reporte.fecha_generacion)],
+        ['Generado por:', reporte.generado_por_nombre]
+      ]
+
+      info.forEach(([label, value]) => {
+        doc.setFont('helvetica', 'bold')
+        doc.text(label, margin, yPos)
+        doc.setFont('helvetica', 'normal')
+        const textWidth = doc.getTextWidth(value)
+        if (textWidth > pageWidth - margin * 2 - 40) {
+          const lines = doc.splitTextToSize(value, pageWidth - margin * 2 - 40)
+          doc.text(lines, margin + 40, yPos)
+          yPos += lines.length * 5
+        } else {
+          doc.text(value, margin + 40, yPos)
+          yPos += 6
+        }
+      })
+
+      yPos += 5
+
+      // Información del equipo si existe
+      if (reporte.equipo_tipo) {
+        doc.setFontSize(12)
+        doc.setFont('helvetica', 'bold')
+        doc.text('Equipo Relacionado', margin, yPos)
+        yPos += 8
+
+        doc.setFontSize(10)
+        doc.setFont('helvetica', 'normal')
+        
+        const equipoInfo = [
+          ['Tipo:', reporte.equipo_tipo],
+          ['Marca:', reporte.equipo_marca || '-'],
+          ['Modelo:', reporte.equipo_modelo || '-'],
+          ['Placa:', reporte.equipo_placa || '-']
+        ]
+
+        equipoInfo.forEach(([label, value]) => {
+          doc.setFont('helvetica', 'bold')
+          doc.text(label, margin, yPos)
+          doc.setFont('helvetica', 'normal')
+          doc.text(value, margin + 40, yPos)
+          yPos += 6
+        })
+
+        yPos += 5
+      }
+
+      // Descripción
+      doc.setFontSize(12)
+      doc.setFont('helvetica', 'bold')
+      doc.text('Descripción', margin, yPos)
+      yPos += 8
+
+      doc.setFontSize(10)
+      doc.setFont('helvetica', 'normal')
+      const descLines = doc.splitTextToSize(reporte.descripcion || 'Sin descripción', pageWidth - margin * 2)
+      descLines.forEach((line) => {
+        if (yPos > pageHeight - margin - 10) {
+          doc.addPage()
+          yPos = margin
+        }
+        doc.text(line, margin, yPos)
+        yPos += 6
+      })
+
+      // Pie de página
+      const totalPages = doc.internal.pages.length - 1
+      for (let i = 1; i <= totalPages; i++) {
+        doc.setPage(i)
+        doc.setFontSize(8)
+        doc.setFont('helvetica', 'italic')
+        doc.text(
+          `Página ${i} de ${totalPages} - Generado el ${new Date().toLocaleDateString('es-ES')}`,
+          pageWidth / 2,
+          pageHeight - 10,
+          { align: 'center' }
+        )
+      }
+
+      // Descargar PDF
+      const fileName = `Reporte_${reporte.id_reporte}_${reporte.titulo.substring(0, 30).replace(/[^a-z0-9]/gi, '_')}.pdf`
+      doc.save(fileName)
+      
+      setToast({ message: 'PDF generado correctamente', type: 'success' })
+    } catch (err) {
+      console.error('Error al generar PDF:', err)
+      setToast({ message: 'Error al generar el PDF', type: 'error' })
+    }
+  }
+
+  const isAdmin = user?.nombre_rol === 'Administrador'
+
   return (
     <div className="page simple-page">
       <Header />
@@ -284,6 +628,13 @@ export default function Novedades() {
               >
                 <FiAlertCircle size={18} />
                 Registrar Novedad
+              </button>
+              <button
+                onClick={() => setActiveTab('reportes')}
+                className={`novedades-tab ${activeTab === 'reportes' ? 'active' : ''}`}
+              >
+                <FiFileText size={18} />
+                Reportes
               </button>
             </div>
 
@@ -487,7 +838,414 @@ export default function Novedades() {
                   </button>
                 </div>
               </form>
-            )}
+            ) : activeTab === 'reportes' ? (
+              <>
+                {/* Pestañas internas de reportes */}
+                {!selectedReporte && !editingReporte && (
+                  <div className="novedades-tabs" style={{ marginBottom: '20px' }}>
+                    <button
+                      onClick={() => {
+                        setReportesTab('ver')
+                        fetchReportes()
+                      }}
+                      className={`novedades-tab ${reportesTab === 'ver' ? 'active' : ''}`}
+                    >
+                      <FiList size={18} />
+                      Ver Reportes
+                    </button>
+                    <button
+                      onClick={() => {
+                        setReportesTab('crear')
+                        setFormReporte({
+                          tipo_reporte: 'General',
+                          titulo: '',
+                          descripcion: '',
+                          codigo_equipo: '',
+                        })
+                        limpiarEquipoReporte()
+                      }}
+                      className={`novedades-tab ${reportesTab === 'crear' ? 'active' : ''}`}
+                    >
+                      <FiFileText size={18} />
+                      Crear Reporte
+                    </button>
+                  </div>
+                )}
+
+                {selectedReporte || editingReporte ? (
+                  // Vista de detalle/edición de reporte
+                  <div className="reportes-detail-view">
+                    {editingReporte === selectedReporte?.id_reporte ? (
+                      <div className="reportes-edit-form">
+                        <h3 className="form-section-title">Editar Reporte</h3>
+                        <div className="form-group">
+                          <label>Tipo de Reporte *</label>
+                          <select
+                            value={editForm.tipo_reporte}
+                            onChange={(e) => setEditForm(prev => ({ ...prev, tipo_reporte: e.target.value }))}
+                          >
+                            <option value="General">General</option>
+                            <option value="Equipos">Equipos</option>
+                            <option value="Mantenimiento">Mantenimiento</option>
+                            <option value="Novedades">Novedades</option>
+                            <option value="Uso">Uso</option>
+                            <option value="Otro">Otro</option>
+                          </select>
+                        </div>
+                        <div className="form-group">
+                          <label>Título *</label>
+                          <input
+                            type="text"
+                            value={editForm.titulo}
+                            onChange={(e) => setEditForm(prev => ({ ...prev, titulo: e.target.value }))}
+                          />
+                        </div>
+                        <div className="form-group">
+                          <label>Descripción *</label>
+                          <textarea
+                            value={editForm.descripcion}
+                            onChange={(e) => setEditForm(prev => ({ ...prev, descripcion: e.target.value }))}
+                            rows={6}
+                          />
+                        </div>
+                        <div className="form-actions">
+                          <button
+                            onClick={saveEditReporte}
+                            className="btn-primary btn-modern"
+                            disabled={loadingReportes}
+                          >
+                            {loadingReportes ? 'Guardando...' : 'Guardar'}
+                          </button>
+                          <button
+                            onClick={() => {
+                              cancelEditReporte()
+                              setSelectedReporte(null)
+                              setReportesTab('ver')
+                            }}
+                            className="btn-secondary btn-modern"
+                            disabled={loadingReportes}
+                          >
+                            Cancelar
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="reportes-detail-content">
+                        <div className="reportes-detail-header">
+                          <h3>Detalle del Reporte</h3>
+                          <button
+                            onClick={() => {
+                              setSelectedReporte(null)
+                              setReportesTab('ver')
+                            }}
+                            className="btn-secondary btn-modern"
+                          >
+                            <FiX size={16} />
+                            Cerrar
+                          </button>
+                        </div>
+                        <div className="reportes-modal-info-grid">
+                          <div><strong>ID:</strong> {selectedReporte.id_reporte}</div>
+                          <div>
+                            <strong>Tipo:</strong> 
+                            <span className={`reportes-tipo-badge reportes-tipo-badge-${selectedReporte.tipo_reporte.toLowerCase()}`}>
+                              {selectedReporte.tipo_reporte}
+                            </span>
+                          </div>
+                          <div><strong>Título:</strong> {selectedReporte.titulo}</div>
+                          {selectedReporte.equipo_tipo && (
+                            <div>
+                              <strong>Equipo:</strong> {selectedReporte.equipo_tipo} {selectedReporte.equipo_marca} {selectedReporte.equipo_modelo}
+                            </div>
+                          )}
+                          <div>
+                            <strong>Descripción:</strong>
+                            <div className="reportes-modal-description-box">
+                              {selectedReporte.descripcion}
+                            </div>
+                          </div>
+                          <div><strong>Generado por:</strong> {selectedReporte.generado_por_nombre}</div>
+                          <div><strong>Fecha de generación:</strong> {formatDate(selectedReporte.fecha_generacion)}</div>
+                          <div className="reportes-detail-actions">
+                            <button
+                              onClick={() => generarPDFReporte(selectedReporte)}
+                              className="btn-primary btn-modern"
+                            >
+                              <FiDownload size={16} />
+                              Descargar PDF
+                            </button>
+                            {isAdmin && (
+                              <>
+                                <button
+                                  onClick={() => startEditReporte(selectedReporte)}
+                                  className="btn btn-modern"
+                                >
+                                  <FiEdit size={16} />
+                                  Editar
+                                </button>
+                                <button
+                                  onClick={() => confirmDeleteReporte(selectedReporte.id_reporte)}
+                                  className="btn danger btn-modern"
+                                >
+                                  <FiTrash2 size={16} />
+                                  Eliminar
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ) : reportesTab === 'crear' ? (
+                    // Formulario de creación
+                    <form onSubmit={handleSubmitReporte}>
+                      <div className="form-section">
+                        <h3 className="form-section-title">
+                          <FiFileText size={18} className="novedades-icon-inline" />
+                          Información del Reporte
+                        </h3>
+                        <div className="form-grid">
+                          <div className="form-group">
+                            <label>
+                              <FiType size={16} className="novedades-icon-inline" />
+                              Tipo de Reporte *
+                            </label>
+                            <select
+                              value={formReporte.tipo_reporte}
+                              onChange={(e) => handleChangeReporte('tipo_reporte', e.target.value)}
+                              required
+                            >
+                              <option value="General">General</option>
+                              <option value="Equipos">Equipos</option>
+                              <option value="Mantenimiento">Mantenimiento</option>
+                              <option value="Novedades">Novedades</option>
+                              <option value="Uso">Uso</option>
+                              <option value="Otro">Otro</option>
+                            </select>
+                          </div>
+                          <div className="form-group">
+                            <label>
+                              <FiFileText size={16} className="novedades-icon-inline" />
+                              Título *
+                            </label>
+                            <input
+                              type="text"
+                              value={formReporte.titulo}
+                              onChange={(e) => handleChangeReporte('titulo', e.target.value)}
+                              placeholder="Título descriptivo del reporte"
+                              required
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="form-section">
+                        <h3 className="form-section-title">
+                          <FiPackage size={18} className="novedades-icon-inline" />
+                          Equipo Relacionado (Opcional)
+                        </h3>
+                        <div className="form-group">
+                          <label>Código de Inventario</label>
+                          <div className="search-equipo-wrapper">
+                            <input
+                              type="text"
+                              value={codigoInventarioReporte}
+                              onChange={(e) => setCodigoInventarioReporte(e.target.value)}
+                              onKeyPress={(e) => {
+                                if (e.key === 'Enter') {
+                                  e.preventDefault()
+                                  buscarEquipoReporte()
+                                }
+                              }}
+                              placeholder="Ingresa el código de inventario (opcional)"
+                              className="search-equipo-input"
+                            />
+                            <button
+                              type="button"
+                              onClick={buscarEquipoReporte}
+                              disabled={buscandoEquipoReporte || !codigoInventarioReporte.trim()}
+                              className="btn-search-equipo"
+                            >
+                              {buscandoEquipoReporte ? 'Buscando...' : (
+                                <>
+                                  <FiSearch size={16} />
+                                  Buscar
+                                </>
+                              )}
+                            </button>
+                          </div>
+                          <p className="form-help-text">Si no especificas un equipo, el reporte será general</p>
+                        </div>
+
+                        {equipoEncontradoReporte && (
+                          <div className="equipo-found-card">
+                            <div className="equipo-found-header">
+                              <FiCheck size={20} color="#43a047" />
+                              <span>Equipo encontrado</span>
+                            </div>
+                            <div className="equipo-found-info">
+                              <div><strong>Código:</strong> {equipoEncontradoReporte.codigo_inventario}</div>
+                              <div><strong>Equipo:</strong> {equipoEncontradoReporte.tipo} {equipoEncontradoReporte.marca} {equipoEncontradoReporte.modelo}</div>
+                              {equipoEncontradoReporte.nombre_ambiente && (
+                                <div><strong>Ambiente:</strong> {equipoEncontradoReporte.nombre_ambiente}</div>
+                              )}
+                            </div>
+                            <button
+                              type="button"
+                              onClick={limpiarEquipoReporte}
+                              className="btn-clear-equipo"
+                            >
+                              <FiX size={14} />
+                              Quitar equipo
+                            </button>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="form-section">
+                        <h3 className="form-section-title">
+                          <FiFileText size={18} className="novedades-icon-inline" />
+                          Descripción del Reporte
+                        </h3>
+                        <div className="form-group">
+                          <label>Descripción Detallada *</label>
+                          <textarea
+                            value={formReporte.descripcion}
+                            onChange={(e) => handleChangeReporte('descripcion', e.target.value)}
+                            placeholder="Describe detalladamente el contenido del reporte..."
+                            rows={8}
+                            required
+                          />
+                        </div>
+                      </div>
+
+                      <div className="form-actions">
+                        <button 
+                          type="submit" 
+                          className="btn-primary btn-modern"
+                          disabled={loadingCrearReporte}
+                        >
+                          {loadingCrearReporte ? 'Creando...' : 'Crear Reporte'}
+                        </button>
+                        <button 
+                          type="button" 
+                          className="btn-secondary btn-modern"
+                          onClick={() => {
+                            setFormReporte({
+                              tipo_reporte: 'General',
+                              titulo: '',
+                              descripcion: '',
+                              codigo_equipo: '',
+                            })
+                            limpiarEquipoReporte()
+                          }}
+                        >
+                          Cancelar
+                        </button>
+                      </div>
+                    </form>
+                ) : loadingReportes ? (
+                  <div className="loading-state">
+                    <div className="loading-spinner"></div>
+                    <p>Cargando reportes...</p>
+                  </div>
+                ) : reportes.length === 0 ? (
+                  <div className="empty-state">
+                    <div className="empty-icon-wrapper">
+                      <FiFileText size={48} color="#9ca3af" />
+                    </div>
+                    <h3>No hay reportes registrados</h3>
+                    <p>Los reportes generados aparecerán aquí</p>
+                  </div>
+                ) : (
+                  // Lista de reportes
+                  <div className="table-wrapper">
+                      <table className="consulta-table novedades-table">
+                        <thead>
+                          <tr>
+                            <th>ID</th>
+                            <th>Tipo</th>
+                            <th>Título</th>
+                            <th>Equipo</th>
+                            <th>Generado por</th>
+                            <th>Fecha</th>
+                            <th>Acciones</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {reportes.map((reporte) => (
+                            <tr key={reporte.id_reporte}>
+                              <td>{reporte.id_reporte}</td>
+                              <td>
+                                <span className={`reportes-tipo-badge ${
+                                  reporte.tipo_reporte === 'General' ? 'reportes-tipo-badge-general' :
+                                  reporte.tipo_reporte === 'Mantenimiento' ? 'reportes-tipo-badge-mantenimiento' :
+                                  'reportes-tipo-badge-uso'
+                                }`}>
+                                  {reporte.tipo_reporte}
+                                </span>
+                              </td>
+                              <td><strong>{reporte.titulo}</strong></td>
+                              <td>
+                                {reporte.equipo_tipo ? (
+                                  <div>
+                                    {reporte.equipo_tipo} {reporte.equipo_marca} {reporte.equipo_modelo}
+                                  </div>
+                                ) : (
+                                  <span className="text-muted-italic">General</span>
+                                )}
+                              </td>
+                              <td>{reporte.generado_por_nombre}</td>
+                              <td>{formatDate(reporte.fecha_generacion)}</td>
+                              <td>
+                                <div className="reportes-actions">
+                                  <button
+                                    className="btn novedades-ver-btn"
+                                    onClick={() => setSelectedReporte(reporte)}
+                                  >
+                                    <FiEye size={14} />
+                                    Ver
+                                  </button>
+                                  <button
+                                    className="btn novedades-ver-btn"
+                                    onClick={() => generarPDFReporte(reporte)}
+                                    title="Descargar PDF"
+                                  >
+                                    <FiDownload size={14} />
+                                    PDF
+                                  </button>
+                                  {isAdmin && (
+                                    <>
+                                      <button
+                                        className="btn novedades-ver-btn"
+                                        onClick={() => startEditReporte(reporte)}
+                                        disabled={loadingReportes}
+                                      >
+                                        <FiEdit size={14} />
+                                        Editar
+                                      </button>
+                                      <button
+                                        className="btn danger novedades-ver-btn"
+                                        onClick={() => confirmDeleteReporte(reporte.id_reporte)}
+                                        disabled={loadingReportes}
+                                      >
+                                        <FiTrash2 size={14} />
+                                        Eliminar
+                                      </button>
+                                    </>
+                                  )}
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )
+                )}
+              </>
+            ) : null}
           </div>
 
           {selectedNovedad && (
@@ -601,6 +1359,17 @@ export default function Novedades() {
               </div>
             </div>
           )}
+
+          <ConfirmModal
+            open={deleteConfirm.open}
+            title="Eliminar Reporte"
+            message="¿Estás seguro de que deseas eliminar este reporte? Esta acción no se puede deshacer."
+            confirmText="Eliminar"
+            cancelText="Cancelar"
+            type="danger"
+            onConfirm={handleDeleteReporte}
+            onCancel={() => setDeleteConfirm({ open: false, id: null })}
+          />
         </main>
       </div>
     </div>

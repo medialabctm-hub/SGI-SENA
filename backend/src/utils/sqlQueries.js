@@ -167,3 +167,251 @@ export async function contarEquipos(db) {
   return Number(result?.total) || 0;
 }
 
+/**
+ * Verificar si un equipo está disponible para asignación
+ * Valida estado_operativo y estado_fisico para determinar si puede ser asignado
+ * @param {Object} db - Instancia de la base de datos
+ * @param {number} codigoEquipo - Código del equipo
+ * @returns {Promise<Object>} { disponible: boolean, razon: string|null, estado_operativo: string|null, estado_fisico: string|null }
+ */
+export async function verificarDisponibilidadEquipo(db, codigoEquipo) {
+  const [[equipo]] = await db.execute(
+    `SELECT 
+       e.estado_fisico,
+       COALESCE(ee.estado_operativo, 'Disponible') AS estado_operativo,
+       ee.detalles AS detalles_estado
+     FROM Elementos e
+     LEFT JOIN Estado_Equipo ee ON e.codigo_equipo = ee.codigo_equipo
+     WHERE e.codigo_equipo = ?`,
+    [codigoEquipo]
+  );
+
+  if (!equipo) {
+    return {
+      disponible: false,
+      razon: 'Equipo no encontrado',
+      estado_operativo: null,
+      estado_fisico: null
+    };
+  }
+
+  const estadoOperativo = equipo.estado_operativo || 'Disponible';
+  const estadoFisico = equipo.estado_fisico;
+
+  // Estados operativos que bloquean la asignación
+  const estadosBloqueados = ['Dañado', 'En Mantenimiento', 'Dado de Baja'];
+  
+  if (estadosBloqueados.includes(estadoOperativo)) {
+    const razones = {
+      'Dañado': 'Equipo dañado, no disponible para asignación',
+      'En Mantenimiento': 'Equipo en mantenimiento, no disponible para asignación',
+      'Dado de Baja': 'Equipo dado de baja, no disponible para asignación'
+    };
+    
+    return {
+      disponible: false,
+      razon: razones[estadoOperativo] || `Equipo no disponible (${estadoOperativo})`,
+      estado_operativo: estadoOperativo,
+      estado_fisico: estadoFisico,
+      detalles: equipo.detalles_estado
+    };
+  }
+
+  // Si el estado físico es 'Dañado' pero el operativo no está sincronizado, también bloquear
+  if (estadoFisico === 'Dañado' && estadoOperativo !== 'Dañado') {
+    return {
+      disponible: false,
+      razon: 'Equipo con estado físico dañado, requiere revisión antes de asignación',
+      estado_operativo: estadoOperativo,
+      estado_fisico: estadoFisico,
+      requiere_sincronizacion: true
+    };
+  }
+
+  // Si está 'En Uso', verificar si ya está asignado (esto se maneja en otra validación)
+  // pero no bloqueamos aquí porque podría ser reasignación al mismo usuario
+
+  return {
+    disponible: true,
+    razon: null,
+    estado_operativo: estadoOperativo,
+    estado_fisico: estadoFisico
+  };
+}
+
+/**
+ * Deshabilitar todas las asignaciones activas de un equipo
+ * Se usa cuando un equipo cambia a un estado crítico (Dañado, Dado de Baja, etc.)
+ * @param {Object} db - Instancia de la base de datos
+ * @param {number} codigoEquipo - Código del equipo
+ * @param {number} deshabilitadoPor - ID del usuario que realiza la deshabilitación
+ * @param {string} razon - Razón de la deshabilitación
+ * @returns {Promise<Object>} { deshabilitadas: number, usuarios_afectados: Array<number> }
+ */
+export async function deshabilitarAsignacionesActivas(db, codigoEquipo, deshabilitadoPor, razon = 'Equipo deshabilitado por cambio de estado') {
+  // Obtener todas las asignaciones activas
+  const [asignaciones] = await db.execute(
+    `SELECT id_responsable, id_usuario, fecha_asignacion
+     FROM Responsables_Equipo
+     WHERE codigo_equipo = ? AND estado_responsabilidad = 'Activo'`,
+    [codigoEquipo]
+  );
+
+  if (asignaciones.length === 0) {
+    return { deshabilitadas: 0, usuarios_afectados: [] };
+  }
+
+  const usuariosAfectados = asignaciones.map(a => a.id_usuario);
+
+  // Deshabilitar todas las asignaciones
+  await db.execute(
+    `UPDATE Responsables_Equipo
+     SET estado_responsabilidad = 'Finalizado',
+         fecha_desvinculacion = NOW(),
+         observaciones = CONCAT(COALESCE(observaciones, ''), 
+           CASE WHEN observaciones IS NOT NULL AND observaciones != '' THEN ' | ' ELSE '' END,
+           ?)
+     WHERE codigo_equipo = ? AND estado_responsabilidad = 'Activo'`,
+    [razon, codigoEquipo]
+  );
+
+  // Registrar en historial si existe la tabla
+  try {
+    for (const asignacion of asignaciones) {
+      await db.execute(
+        `INSERT INTO Historial_Equipos 
+         (codigo_equipo, tipo_evento, descripcion, estado_nuevo, registrado_por)
+         VALUES (?, 'Deshabilitación', ?, 'Finalizado', ?)`,
+        [codigoEquipo, razon, deshabilitadoPor]
+      );
+    }
+  } catch (histErr) {
+    // No fallar si no existe la tabla de historial
+    // Solo loguear el error
+    console.warn('No se pudo registrar en historial:', histErr.message);
+  }
+
+  return {
+    deshabilitadas: asignaciones.length,
+    usuarios_afectados: usuariosAfectados
+  };
+}
+
+/**
+ * Obtener los ambientes válidos para un aprendiz basado en su ficha y clases
+ * Un aprendiz solo puede recibir equipos de los ambientes donde tiene clases activas
+ * @param {Object} db - Instancia de la base de datos
+ * @param {number} idAprendiz - ID del usuario aprendiz
+ * @returns {Promise<Array<number>>} Array de IDs de ambientes válidos
+ */
+export async function obtenerAmbientesValidosAprendiz(db, idAprendiz) {
+  // Obtener la ficha del aprendiz desde la tabla Aprendices o desde Participantes_Clase
+  // Primero intentar obtener desde Usuarios si tiene ficha asociada, luego desde clases
+  
+  // Opción 1: Si el aprendiz tiene ficha directa en Aprendices (tabla de aprendices importados)
+  const [[aprendizData]] = await db.execute(
+    `SELECT a.ficha 
+     FROM Aprendices a
+     INNER JOIN Usuarios u ON a.documento = u.cedula
+     WHERE u.id_usuario = ? AND u.estado = 'Activo'
+     LIMIT 1`,
+    [idAprendiz]
+  );
+
+  const fichaAprendiz = aprendizData?.ficha || null;
+
+  // Obtener ambientes desde clases donde el aprendiz participa
+  // Un aprendiz puede estar en múltiples clases, cada una con su ambiente
+  const [ambientesDesdeClases] = await db.execute(
+    `SELECT DISTINCT c.id_ambiente
+     FROM Participantes_Clase pc
+     INNER JOIN Clases c ON pc.id_clase = c.id_clase
+     WHERE pc.id_aprendiz = ?
+       AND c.estado_clase IN ('Programada', 'En Curso')
+       AND c.fecha_clase >= CURDATE()`,
+    [idAprendiz]
+  );
+
+  // Si tiene ficha, también buscar clases por código de ficha
+  let ambientesDesdeFicha = [];
+  if (fichaAprendiz) {
+    const [ambientesFicha] = await db.execute(
+      `SELECT DISTINCT c.id_ambiente
+       FROM Clases c
+       WHERE c.codigo_ficha = ?
+         AND c.estado_clase IN ('Programada', 'En Curso')
+         AND c.fecha_clase >= CURDATE()`,
+      [fichaAprendiz]
+    );
+    ambientesDesdeFicha = ambientesFicha;
+  }
+
+  // Combinar y deduplicar ambientes
+  const ambientesUnicos = new Set();
+  ambientesDesdeClases.forEach(a => ambientesUnicos.add(a.id_ambiente));
+  ambientesDesdeFicha.forEach(a => ambientesUnicos.add(a.id_ambiente));
+
+  return Array.from(ambientesUnicos);
+}
+
+/**
+ * Verificar si un equipo puede ser asignado a un aprendiz
+ * Valida que el equipo pertenezca a un ambiente válido para el aprendiz
+ * @param {Object} db - Instancia de la base de datos
+ * @param {number} codigoEquipo - Código del equipo
+ * @param {number} idAprendiz - ID del usuario aprendiz
+ * @returns {Promise<Object>} { valido: boolean, razon: string|null, ambiente_equipo: number|null, ambientes_validos: Array<number> }
+ */
+export async function verificarAmbienteEquipoAprendiz(db, codigoEquipo, idAprendiz) {
+  // Obtener el ambiente del equipo
+  const [[equipo]] = await db.execute(
+    `SELECT e.id_ambiente, a.nombre_ambiente
+     FROM Elementos e
+     LEFT JOIN Ambientes a ON e.id_ambiente = a.id_ambiente
+     WHERE e.codigo_equipo = ?`,
+    [codigoEquipo]
+  );
+
+  if (!equipo) {
+    return {
+      valido: false,
+      razon: 'Equipo no encontrado',
+      ambiente_equipo: null,
+      ambientes_validos: []
+    };
+  }
+
+  const ambienteEquipo = equipo.id_ambiente;
+
+  // Obtener ambientes válidos para el aprendiz
+  const ambientesValidos = await obtenerAmbientesValidosAprendiz(db, idAprendiz);
+
+  if (ambientesValidos.length === 0) {
+    return {
+      valido: false,
+      razon: 'El aprendiz no tiene clases activas asignadas. No se puede asignar equipos sin un ambiente asociado.',
+      ambiente_equipo: ambienteEquipo,
+      ambientes_validos: [],
+      nombre_ambiente_equipo: equipo.nombre_ambiente
+    };
+  }
+
+  if (!ambientesValidos.includes(ambienteEquipo)) {
+    return {
+      valido: false,
+      razon: `El equipo pertenece al ambiente "${equipo.nombre_ambiente || 'N/A'}", que no corresponde a las clases activas del aprendiz. Solo se pueden asignar equipos de los ambientes de su ficha.`,
+      ambiente_equipo: ambienteEquipo,
+      ambientes_validos: ambientesValidos,
+      nombre_ambiente_equipo: equipo.nombre_ambiente
+    };
+  }
+
+  return {
+    valido: true,
+    razon: null,
+    ambiente_equipo: ambienteEquipo,
+    ambientes_validos: ambientesValidos,
+    nombre_ambiente_equipo: equipo.nombre_ambiente
+  };
+}
+

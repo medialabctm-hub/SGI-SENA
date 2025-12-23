@@ -1,7 +1,12 @@
 import defaultDb, { pool } from '../config/dbconfig.js';
 import { notifyNuevoEquipo } from '../services/notificationService.js';
 import { logger } from '../utils/logger.js';
-import { obtenerEquipoPorCodigo as obtenerEquipoPorCodigoUtil, obtenerUsuarioPorCedula } from '../utils/sqlQueries.js';
+import { 
+  obtenerEquipoPorCodigo as obtenerEquipoPorCodigoUtil, 
+  obtenerUsuarioPorCedula,
+  verificarDisponibilidadEquipo,
+  verificarAmbienteEquipoAprendiz
+} from '../utils/sqlQueries.js';
 import { getImagePath, deleteImageFile } from '../middleware/uploadMiddleware.js';
 import path from 'path';
 import fs from 'fs';
@@ -17,9 +22,13 @@ export async function listarEquipos(req, res) {
       SELECT e.codigo_equipo, e.placa AS codigo_inventario, e.tipo, e.modelo, e.consecutivo, e.descripcion,
              e.fecha_adquisicion, e.valor_ingreso AS costo, e.vida_util_meses, e.estado_fisico,
              e.specs_completas, e.id_cuentadante, e.cuentadante_principal,
-             a.id_ambiente, a.nombre_ambiente, a.codigo_ambiente
+             a.id_ambiente, a.nombre_ambiente, a.codigo_ambiente,
+             COALESCE(ee.estado_operativo, 'Disponible') AS estado_operativo,
+             ee.detalles AS detalles_estado,
+             ee.fecha_actualizacion AS fecha_actualizacion_estado
       FROM Elementos e
       LEFT JOIN Ambientes a ON a.id_ambiente = e.id_ambiente
+      LEFT JOIN Estado_Equipo ee ON e.codigo_equipo = ee.codigo_equipo
     `;
 
     const params = [];
@@ -308,6 +317,9 @@ export async function obtenerEquipoPorCodigo(req, res) {
              e.fecha_adquisicion, e.valor_ingreso AS costo, e.vida_util_meses, e.estado_fisico,
              e.specs_completas, e.id_cuentadante,
              a.id_ambiente, a.nombre_ambiente, a.codigo_ambiente,
+             COALESCE(ee.estado_operativo, 'Disponible') AS estado_operativo,
+             ee.detalles AS detalles_estado,
+             ee.fecha_actualizacion AS fecha_actualizacion_estado,
              (SELECT estado_mantenimiento FROM Mantenimiento 
               WHERE codigo_equipo = e.codigo_equipo AND estado_mantenimiento = 'En Proceso' 
               ORDER BY fecha_mantenimiento DESC LIMIT 1) as estado_mantenimiento_activo,
@@ -316,6 +328,7 @@ export async function obtenerEquipoPorCodigo(req, res) {
               ORDER BY fecha_mantenimiento DESC LIMIT 1) as tipo_mantenimiento_activo
       FROM Elementos e
       LEFT JOIN Ambientes a ON a.id_ambiente = e.id_ambiente
+      LEFT JOIN Estado_Equipo ee ON e.codigo_equipo = ee.codigo_equipo
     `;
 
     // Construir cláusula WHERE según el rol
@@ -681,7 +694,38 @@ export async function asignarEquipo(req, res) {
       })
     }
 
+    // Si el receptor es un Aprendiz, validar que el equipo pertenezca a su ambiente/ficha
+    if (usuarioReceptor.nombre_rol === 'Aprendiz') {
+      const validacionAmbiente = await verificarAmbienteEquipoAprendiz(
+        defaultDb,
+        codigo_equipo,
+        id_usuario
+      )
+
+      if (!validacionAmbiente.valido) {
+        return res.status(409).json({
+          error: validacionAmbiente.razon,
+          ambiente_equipo: validacionAmbiente.ambiente_equipo,
+          nombre_ambiente_equipo: validacionAmbiente.nombre_ambiente_equipo,
+          ambientes_validos: validacionAmbiente.ambientes_validos
+        })
+      }
+    }
+
+    // Verificar disponibilidad del equipo (estado_operativo y estado_fisico)
+    const disponibilidad = await verificarDisponibilidadEquipo(defaultDb, codigo_equipo)
+    
+    if (!disponibilidad.disponible) {
+      return res.status(409).json({ 
+        error: disponibilidad.razon,
+        estado_operativo: disponibilidad.estado_operativo,
+        estado_fisico: disponibilidad.estado_fisico,
+        detalles: disponibilidad.detalles || null
+      })
+    }
+
     // Verificar si el equipo está en mantenimiento (estado "En Proceso")
+    // Esta validación adicional cubre casos donde el estado_operativo no esté sincronizado
     const [[mantenimientoActivo]] = await defaultDb.execute(
       `SELECT id_mantenimiento, estado_mantenimiento, tipo_mantenimiento 
        FROM Mantenimiento 
@@ -2723,6 +2767,25 @@ export async function registrarUsoEquipoExterno(req, res) {
     }
 
     const codigoEquipo = equipo.codigo_equipo;
+
+    // Verificar disponibilidad del equipo (estado_operativo y estado_fisico)
+    const disponibilidad = await verificarDisponibilidadEquipo(defaultDb, codigoEquipo)
+    
+    if (!disponibilidad.disponible) {
+      // Eliminar archivos subidos si el equipo no está disponible
+      if (files && files.length > 0) {
+        files.forEach((file) => {
+          deleteImageFile(file.filename);
+        });
+      }
+      return res.status(409).json({ 
+        success: false,
+        error: disponibilidad.razon,
+        message: `El equipo con placa "${placa}" no está disponible para uso. Estado: ${disponibilidad.estado_operativo || 'N/A'}`,
+        estado_operativo: disponibilidad.estado_operativo,
+        estado_fisico: disponibilidad.estado_fisico
+      })
+    }
     
     // Procesar imágenes si se enviaron
     const imagenesSubidas = [];
