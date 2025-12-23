@@ -4,6 +4,7 @@ import { FiMail, FiLock, FiEye, FiEyeOff, FiUser, FiCreditCard, FiPhone } from '
 import { validarRegistro, validarContraseña, validarEmail, validarTelefono, validarCaracteresEspeciales, validarEspaciosInicioFinalNombre } from '../utils/validaciones';
 import Toast from '../components/Toast';
 import InteractiveBackground from '../components/InteractiveBackground';
+import CustomSelect from '../components/CustomSelect';
 import { parseApiResponse, buildErrorMessage } from '../utils/api';
 import '../styles/auth.css';
 
@@ -170,17 +171,19 @@ export default function Register() {
           {errores.confirmar_contraseña && <div className="error-msg">{errores.confirmar_contraseña}</div>}
           <label className="input">
             <span className="icon"></span>
-            <select value={rol} onChange={e => {
-              setRol(e.target.value);
-              if (e.target.value === 'Aprendiz') {
-                setCodigoInvitacion('');
-              }
-            }} className="auth-select-input">
-              <option value="Aprendiz">Aprendiz</option>
-              <option value="Instructor">Instructor</option>
-              <option value="Administrador">Administrador</option>
-              <option value="Cuentadante">Cuentadante</option>
-            </select>
+            <CustomSelect
+              name="rol"
+              value={rol}
+              onChange={e => {
+                setRol(e.target.value);
+                if (e.target.value === 'Aprendiz') {
+                  setCodigoInvitacion('');
+                }
+              }}
+              options={['Aprendiz', 'Instructor', 'Administrador', 'Cuentadante']}
+              placeholder="Seleccionar rol"
+              className="auth-select-input"
+            />
           </label>
           {(rol === 'Instructor' || rol === 'Administrador' || rol === 'Cuentadante') && (
             <>

@@ -3,6 +3,7 @@ import Header from '../components/Header'
 import Sidebar from '../components/Sidebar'
 import Toast from '../components/Toast'
 import ConfirmModal from '../components/ConfirmModal'
+import CustomSelect from '../components/CustomSelect'
 import { FiUserPlus, FiPackage, FiUsers, FiShield, FiFileText, FiSearch, FiCheck, FiUserCheck, FiTrash2, FiList, FiAlertCircle } from 'react-icons/fi'
 import { parseApiResponse, buildErrorMessage } from '../utils/api'
 import '../styles/equipos.css'
@@ -512,13 +513,13 @@ export default function AsignarEquipo() {
                 <FiShield size={16} className="asignar-equipo-shield-icon" />
                 Tipo de Responsabilidad
               </label>
-              <select
+              <CustomSelect
+                name="tipo_responsabilidad"
                 value={form.tipo_responsabilidad}
                 onChange={(e) => handleChange('tipo_responsabilidad', e.target.value)}
-              >
-                <option value="Principal">Principal</option>
-                <option value="Secundario">Secundario</option>
-              </select>
+                options={['Principal', 'Secundario']}
+                placeholder="Seleccionar tipo"
+              />
             </div>
 
             <div className="form-group">

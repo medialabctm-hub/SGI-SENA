@@ -3,6 +3,7 @@ import Header from '../components/Header'
 import Sidebar from '../components/Sidebar'
 import Toast from '../components/Toast'
 import ConfirmModal from '../components/ConfirmModal'
+import CustomSelect from '../components/CustomSelect'
 import { FiAlertCircle, FiEye, FiCheckCircle, FiXCircle, FiEdit, FiPackage, FiFileText, FiSearch, FiCheck, FiX, FiList, FiType, FiTrash2, FiDownload } from 'react-icons/fi'
 import { parseApiResponse, buildErrorMessage } from '../utils/api'
 import jsPDF from 'jspdf'
@@ -793,17 +794,14 @@ export default function Novedades() {
                     <label>
                       Tipo de Novedad *
                     </label>
-                    <select
+                    <CustomSelect
+                      name="tipo_novedad"
                       value={form.tipo_novedad}
                       onChange={(e) => handleChange('tipo_novedad', e.target.value)}
+                      options={['Mal Funcionamiento', 'Daño', 'Pérdida', 'Robo', 'Otro']}
+                      placeholder="Seleccionar tipo de novedad"
                       required
-                    >
-                      <option value="Mal Funcionamiento">Mal Funcionamiento</option>
-                      <option value="Daño">Daño</option>
-                      <option value="Pérdida">Pérdida</option>
-                      <option value="Robo">Robo</option>
-                      <option value="Otro">Otro</option>
-                    </select>
+                    />
                   </div>
                 </div>
 
@@ -887,17 +885,13 @@ export default function Novedades() {
                         <h3 className="form-section-title">Editar Reporte</h3>
                         <div className="form-group">
                           <label>Tipo de Reporte *</label>
-                          <select
+                          <CustomSelect
+                            name="tipo_reporte"
                             value={editForm.tipo_reporte}
                             onChange={(e) => setEditForm(prev => ({ ...prev, tipo_reporte: e.target.value }))}
-                          >
-                            <option value="General">General</option>
-                            <option value="Equipos">Equipos</option>
-                            <option value="Mantenimiento">Mantenimiento</option>
-                            <option value="Novedades">Novedades</option>
-                            <option value="Uso">Uso</option>
-                            <option value="Otro">Otro</option>
-                          </select>
+                            options={['General', 'Equipos', 'Mantenimiento', 'Novedades', 'Uso', 'Otro']}
+                            placeholder="Seleccionar tipo de reporte"
+                          />
                         </div>
                         <div className="form-group">
                           <label>Título *</label>
@@ -1018,18 +1012,14 @@ export default function Novedades() {
                               <FiType size={16} className="novedades-icon-inline" />
                               Tipo de Reporte *
                             </label>
-                            <select
+                            <CustomSelect
+                              name="tipo_reporte"
                               value={formReporte.tipo_reporte}
                               onChange={(e) => handleChangeReporte('tipo_reporte', e.target.value)}
+                              options={['General', 'Equipos', 'Mantenimiento', 'Novedades', 'Uso', 'Otro']}
+                              placeholder="Seleccionar tipo de reporte"
                               required
-                            >
-                              <option value="General">General</option>
-                              <option value="Equipos">Equipos</option>
-                              <option value="Mantenimiento">Mantenimiento</option>
-                              <option value="Novedades">Novedades</option>
-                              <option value="Uso">Uso</option>
-                              <option value="Otro">Otro</option>
-                            </select>
+                            />
                           </div>
                           <div className="form-group">
                             <label>
@@ -1305,16 +1295,14 @@ export default function Novedades() {
                     </div>
                     {editandoEstado ? (
                       <div className="novedades-editar-estado-grid">
-                        <select
+                        <CustomSelect
+                          name="nuevoEstado"
                           value={nuevoEstado}
                           onChange={(e) => setNuevoEstado(e.target.value)}
+                          options={['Pendiente', 'En Proceso', 'Resuelto', 'No Resuelto']}
+                          placeholder="Seleccionar estado"
                           className="novedades-estado-select"
-                        >
-                          <option value="Pendiente">Pendiente</option>
-                          <option value="En Proceso">En Proceso</option>
-                          <option value="Resuelto">Resuelto</option>
-                          <option value="No Resuelto">No Resuelto</option>
-                        </select>
+                        />
                         <textarea
                           value={observacionesResolucion}
                           onChange={(e) => setObservacionesResolucion(e.target.value)}

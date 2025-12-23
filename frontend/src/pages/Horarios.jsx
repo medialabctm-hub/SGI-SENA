@@ -3,6 +3,7 @@ import Header from '../components/Header'
 import Sidebar from '../components/Sidebar'
 import Toast from '../components/Toast'
 import ConfirmModal from '../components/ConfirmModal'
+import CustomSelect from '../components/CustomSelect'
 import { 
   FiCalendar, 
   FiClock, 
@@ -530,34 +531,38 @@ export default function Horarios() {
           <div className="horarios-filters-container">
             <div className="horarios-filter-item">
               <label className="horarios-filter-label">Ambiente</label>
-              <select
+              <CustomSelect
+                name="id_ambiente"
                 className="horarios-filter-select"
                 value={filtros.id_ambiente}
                 onChange={e => setFiltros({ ...filtros, id_ambiente: e.target.value })}
-              >
-                <option value="">Todos</option>
-                {ambientes.map(amb => (
-                  <option key={amb.id_ambiente} value={amb.id_ambiente}>
-                    {amb.codigo_ambiente} - {amb.nombre_ambiente}
-                  </option>
-                ))}
-              </select>
+                options={[
+                  { value: '', label: 'Todos' },
+                  ...ambientes.map(amb => ({
+                    value: amb.id_ambiente.toString(),
+                    label: `${amb.codigo_ambiente} - ${amb.nombre_ambiente}`
+                  }))
+                ]}
+                placeholder="Todos los ambientes"
+              />
             </div>
             {user?.nombre_rol === 'Administrador' && (
               <div className="horarios-filter-item">
                 <label className="horarios-filter-label">Instructor</label>
-                <select
+                <CustomSelect
+                  name="id_instructor"
                   className="horarios-filter-select"
                   value={filtros.id_instructor}
                   onChange={e => setFiltros({ ...filtros, id_instructor: e.target.value })}
-                >
-                  <option value="">Todos</option>
-                  {instructores.map(inst => (
-                    <option key={inst.id_usuario} value={inst.id_usuario}>
-                      {inst.nombre_usuario}
-                    </option>
-                  ))}
-                </select>
+                  options={[
+                    { value: '', label: 'Todos' },
+                    ...instructores.map(inst => ({
+                      value: inst.id_usuario.toString(),
+                      label: inst.nombre_usuario
+                    }))
+                  ]}
+                  placeholder="Todos los instructores"
+                />
               </div>
             )}
             <div className="horarios-filter-item">
@@ -571,17 +576,14 @@ export default function Horarios() {
             </div>
             <div className="horarios-filter-item">
               <label className="horarios-filter-label">Estado</label>
-              <select
+              <CustomSelect
+                name="estado_clase"
                 className="horarios-filter-select"
                 value={filtros.estado_clase}
                 onChange={e => setFiltros({ ...filtros, estado_clase: e.target.value })}
-              >
-                <option value="">Todos</option>
-                <option value="Programada">Programada</option>
-                <option value="En Curso">En Curso</option>
-                <option value="Finalizada">Finalizada</option>
-                <option value="Cancelada">Cancelada</option>
-              </select>
+                options={['', 'Programada', 'En Curso', 'Finalizada', 'Cancelada']}
+                placeholder="Todos los estados"
+              />
             </div>
           </div>
 
@@ -602,36 +604,40 @@ export default function Horarios() {
                 <div className="horarios-form-grid">
                   <div className="horarios-form-row">
                     <label className="horarios-form-label form-label-required">Ambiente</label>
-                    <select
+                    <CustomSelect
+                      name="id_ambiente"
                       className="horarios-form-select form-select"
                       value={form.id_ambiente}
                       onChange={e => setForm({ ...form, id_ambiente: e.target.value })}
+                      options={[
+                        { value: '', label: 'Seleccione...' },
+                        ...ambientes.map(amb => ({
+                          value: amb.id_ambiente.toString(),
+                          label: `${amb.codigo_ambiente} - ${amb.nombre_ambiente}`
+                        }))
+                      ]}
+                      placeholder="Seleccionar ambiente"
                       required
-                    >
-                      <option value="">Seleccione...</option>
-                      {ambientes.map(amb => (
-                        <option key={amb.id_ambiente} value={amb.id_ambiente}>
-                          {amb.codigo_ambiente} - {amb.nombre_ambiente}
-                        </option>
-                      ))}
-                    </select>
+                    />
                   </div>
                   {user?.nombre_rol === 'Administrador' && (
                     <div className="horarios-form-row">
                       <label className="horarios-form-label form-label-required">Instructor</label>
-                      <select
+                      <CustomSelect
+                        name="id_instructor"
                         className="horarios-form-select form-select"
                         value={form.id_instructor}
                         onChange={e => setForm({ ...form, id_instructor: e.target.value })}
+                        options={[
+                          { value: '', label: 'Seleccione...' },
+                          ...instructores.map(inst => ({
+                            value: inst.id_usuario.toString(),
+                            label: `${inst.nombre_usuario} (${inst.cedula})`
+                          }))
+                        ]}
+                        placeholder="Seleccionar instructor"
                         required
-                      >
-                        <option value="">Seleccione...</option>
-                        {instructores.map(inst => (
-                          <option key={inst.id_usuario} value={inst.id_usuario}>
-                            {inst.nombre_usuario} ({inst.cedula})
-                          </option>
-                        ))}
-                      </select>
+                      />
                     </div>
                   )}
                   {user?.nombre_rol === 'Instructor' && (

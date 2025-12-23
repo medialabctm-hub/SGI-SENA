@@ -3,6 +3,7 @@ import Header from '../components/Header'
 import Sidebar from '../components/Sidebar'
 import Toast from '../components/Toast'
 import DestructiveConfirmModal from '../components/DestructiveConfirmModal'
+import CustomSelect from '../components/CustomSelect'
 import { parseApiResponse, buildErrorMessage } from '../utils/api'
 import { FiDownload, FiSearch, FiList, FiClock, FiEye, FiUpload, FiSettings, FiCheckSquare, FiSquare } from 'react-icons/fi'
 import { useNavigate } from 'react-router-dom'
@@ -719,16 +720,14 @@ export default function ConsultarEquipo() {
                         {visibleColumns.includes('estado_fisico') && (
                           <td>
                             {editingCodigo === eq.codigo_equipo ? (
-                              <select 
-                                value={draft.estado_fisico || ''} 
-                                onChange={e=>onDraft('estado_fisico', e.target.value)} 
+                              <CustomSelect
+                                name="estado_fisico"
+                                value={draft.estado_fisico || ''}
+                                onChange={e => onDraft('estado_fisico', e.target.value)}
+                                options={['', ...ESTADOS_FISICOS]}
+                                placeholder="Seleccionar estado"
                                 className="cell-input"
-                              >
-                                <option value="">Seleccionar estado</option>
-                                {ESTADOS_FISICOS.map(estado => (
-                                  <option key={estado} value={estado}>{estado}</option>
-                                ))}
-                              </select>
+                              />
                             ) : getEstadoBadge(eq.estado_fisico)}
                           </td>
                         )}
@@ -749,18 +748,20 @@ export default function ConsultarEquipo() {
                         {visibleColumns.includes('nombre_ambiente') && (
                           <td>
                             {editingCodigo === eq.codigo_equipo ? (
-                              <select 
-                                value={draft.id_ambiente || eq.id_ambiente || ''} 
-                                onChange={e=>onDraft('id_ambiente', e.target.value)} 
+                              <CustomSelect
+                                name="id_ambiente"
+                                value={draft.id_ambiente || eq.id_ambiente || ''}
+                                onChange={e => onDraft('id_ambiente', e.target.value)}
+                                options={[
+                                  { value: '', label: 'Seleccionar ambiente' },
+                                  ...(ambientes || []).map(amb => ({
+                                    value: amb.id_ambiente.toString(),
+                                    label: `${amb.codigo_ambiente} - ${amb.nombre_ambiente}`
+                                  }))
+                                ]}
+                                placeholder="Seleccionar ambiente"
                                 className="cell-input"
-                              >
-                                <option value="">Seleccionar ambiente</option>
-                                {(ambientes || []).map(amb => (
-                                  <option key={amb.id_ambiente} value={amb.id_ambiente}>
-                                    {amb.codigo_ambiente} - {amb.nombre_ambiente}
-                                  </option>
-                                ))}
-                              </select>
+                              />
                             ) : (eq.nombre_ambiente || '-')}
                           </td>
                         )}

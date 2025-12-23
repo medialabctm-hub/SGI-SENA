@@ -5,6 +5,7 @@ import Sidebar from '../components/Sidebar';
 import Toast from '../components/Toast';
 import ConfirmModal from '../components/ConfirmModal';
 import ImageViewer from '../components/ImageViewer';
+import CustomSelect from '../components/CustomSelect';
 import { parseApiResponse, buildErrorMessage } from '../utils/api';
 import { FiArrowLeft, FiUpload, FiTrash2, FiStar, FiImage, FiX, FiInfo, FiPackage, FiMapPin, FiCalendar, FiDollarSign, FiUsers, FiUser, FiEdit2 } from 'react-icons/fi';
 import '../styles/equipos.css';
@@ -462,18 +463,15 @@ export default function DetalleEquipo() {
                   <label className="detalle-equipo-modal-label">
                     Tipo de imagen:
                   </label>
-                  <select
+                  <CustomSelect
+                    name="tipo_imagen"
                     value={uploadData.tipo_imagen}
                     onChange={(e) => setUploadData({ ...uploadData, tipo_imagen: e.target.value })}
+                    options={['Principal', 'Lateral', 'Detalle', 'Serie', 'Daño']}
+                    placeholder="Seleccionar tipo de imagen"
                     disabled={uploading}
                     className="detalle-equipo-modal-select"
-                  >
-                    <option value="Principal">Principal</option>
-                    <option value="Lateral">Lateral</option>
-                    <option value="Detalle">Detalle</option>
-                    <option value="Serie">Serie</option>
-                    <option value="Daño">Daño</option>
-                  </select>
+                  />
                 </div>
 
                 <div className="detalle-equipo-modal-section">

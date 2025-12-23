@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import Header from '../components/Header'
 import Sidebar from '../components/Sidebar'
 import Toast from '../components/Toast'
+import CustomSelect from '../components/CustomSelect'
 import { 
   FiClock, 
   FiUser, 
@@ -168,18 +169,20 @@ export default function HistorialVerificacionesGeneral() {
             {user?.nombre_rol === 'Administrador' && (
               <div>
                 <label className="historial-verificaciones-general-filter-label">Ambiente</label>
-                <select
+                <CustomSelect
+                  name="id_ambiente"
                   value={filtros.id_ambiente}
                   onChange={e => setFiltros({ ...filtros, id_ambiente: e.target.value })}
+                  options={[
+                    { value: '', label: 'Todos' },
+                    ...ambientes.map(amb => ({
+                      value: amb.id_ambiente.toString(),
+                      label: `${amb.codigo_ambiente} - ${amb.nombre_ambiente}`
+                    }))
+                  ]}
+                  placeholder="Todos"
                   className="historial-verificaciones-general-filter-input"
-                >
-                  <option value="">Todos</option>
-                  {ambientes.map(amb => (
-                    <option key={amb.id_ambiente} value={amb.id_ambiente}>
-                      {amb.codigo_ambiente} - {amb.nombre_ambiente}
-                    </option>
-                  ))}
-                </select>
+                />
               </div>
             )}
             <div>
@@ -202,16 +205,14 @@ export default function HistorialVerificacionesGeneral() {
             </div>
             <div>
               <label className="historial-verificaciones-general-filter-label">Estado</label>
-              <select
+              <CustomSelect
+                name="estado_verificacion"
                 value={filtros.estado_verificacion}
                 onChange={e => setFiltros({ ...filtros, estado_verificacion: e.target.value })}
+                options={['', 'Verificado', 'Con Novedad', 'No Verificado']}
+                placeholder="Todos"
                 className="historial-verificaciones-general-filter-input"
-              >
-                <option value="">Todos</option>
-                <option value="Verificado">Verificado</option>
-                <option value="Con Novedad">Con Novedad</option>
-                <option value="No Verificado">No Verificado</option>
-              </select>
+              />
             </div>
             <div className="historial-verificaciones-general-filter-actions">
               <button

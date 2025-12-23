@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import Header from '../components/Header'
 import Sidebar from '../components/Sidebar'
 import Toast from '../components/Toast'
+import CustomSelect from '../components/CustomSelect'
 import { 
   FiClock, 
   FiUser, 
@@ -174,16 +175,14 @@ export default function HistorialVerificaciones() {
             </div>
             <div>
               <label className="historial-verificaciones-filter-label">Estado</label>
-              <select
+              <CustomSelect
+                name="estado_verificacion"
                 value={filtros.estado_verificacion}
                 onChange={e => setFiltros({ ...filtros, estado_verificacion: e.target.value })}
+                options={['', 'Verificado', 'Con Novedad', 'No Verificado']}
+                placeholder="Todos"
                 className="historial-verificaciones-filter-input"
-              >
-                <option value="">Todos</option>
-                <option value="Verificado">Verificado</option>
-                <option value="Con Novedad">Con Novedad</option>
-                <option value="No Verificado">No Verificado</option>
-              </select>
+              />
             </div>
             <div className="historial-verificaciones-filter-actions">
               <button

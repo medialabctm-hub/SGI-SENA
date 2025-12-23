@@ -3,6 +3,7 @@ import Header from '../components/Header'
 import Sidebar from '../components/Sidebar'
 import Toast from '../components/Toast'
 import ConfirmModal from '../components/ConfirmModal'
+import CustomSelect from '../components/CustomSelect'
 import { FiCheckCircle, FiXCircle, FiAlertCircle, FiPackage, FiMapPin, FiRefreshCw } from 'react-icons/fi'
 import { parseApiResponse, buildErrorMessage } from '../utils/api'
 import { useNavigate } from 'react-router-dom'
@@ -271,18 +272,15 @@ export default function VerificarInventario() {
                     <label className="novedad-form-label">
                       Tipo de Novedad
                     </label>
-                    <select
+                    <CustomSelect
+                      name="tipo_novedad"
                       className="novedad-form-select form-select"
                       value={novedadForm.tipo_novedad}
                       onChange={e => setNovedadForm({ ...novedadForm, tipo_novedad: e.target.value })}
+                      options={['Mal Funcionamiento', 'Daño Físico', 'Falta de Componente', 'Robo', 'Otro']}
+                      placeholder="Seleccionar tipo de novedad"
                       disabled={loading}
-                    >
-                      <option value="Mal Funcionamiento">Mal Funcionamiento</option>
-                      <option value="Daño Físico">Daño Físico</option>
-                      <option value="Falta de Componente">Falta de Componente</option>
-                      <option value="Robo">Robo</option>
-                      <option value="Otro">Otro</option>
-                    </select>
+                    />
                   </div>
                   <div className="novedad-form-row">
                     <label className="novedad-form-label form-label-required">

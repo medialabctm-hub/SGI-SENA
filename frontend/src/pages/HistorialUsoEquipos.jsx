@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import Header from '../components/Header'
 import Sidebar from '../components/Sidebar'
 import Toast from '../components/Toast'
+import CustomSelect from '../components/CustomSelect'
 import { 
   FiClock, 
   FiUser, 
@@ -187,15 +188,14 @@ export default function HistorialUsoEquipos() {
             </div>
             <div>
               <label className="historial-uso-equipos-filter-label">Estado</label>
-              <select
+              <CustomSelect
+                name="estado"
                 value={filtros.estado}
                 onChange={e => setFiltros({ ...filtros, estado: e.target.value })}
+                options={['', 'En Uso', 'Finalizado']}
+                placeholder="Todos"
                 className="historial-uso-equipos-filter-input"
-              >
-                <option value="">Todos</option>
-                <option value="En Uso">En Uso</option>
-                <option value="Finalizado">Finalizado</option>
-              </select>
+              />
             </div>
             <div className="historial-uso-equipos-filter-actions">
               <button

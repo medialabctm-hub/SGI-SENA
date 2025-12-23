@@ -3,6 +3,7 @@ import Header from '../components/Header'
 import Sidebar from '../components/Sidebar'
 import Toast from '../components/Toast'
 import ConfirmModal from '../components/ConfirmModal'
+import CustomSelect from '../components/CustomSelect'
 import { FiFileText, FiEye, FiEdit, FiTrash2, FiX, FiPackage, FiType, FiSearch, FiCheck, FiList } from 'react-icons/fi'
 import { parseApiResponse, buildErrorMessage } from '../utils/api'
 import '../styles/equipos.css'
@@ -419,18 +420,14 @@ export default function Reportes() {
                       <FiType size={16} className="reportes-option-icon" />
                       Tipo de Reporte *
                     </label>
-                    <select
+                    <CustomSelect
+                      name="tipo_reporte"
                       value={form.tipo_reporte}
                       onChange={(e) => handleChange('tipo_reporte', e.target.value)}
+                      options={['General', 'Equipos', 'Mantenimiento', 'Novedades', 'Uso', 'Otro']}
+                      placeholder="Seleccionar tipo de reporte"
                       required
-                    >
-                      <option value="General">General</option>
-                      <option value="Equipos">Equipos</option>
-                      <option value="Mantenimiento">Mantenimiento</option>
-                      <option value="Novedades">Novedades</option>
-                      <option value="Uso">Uso</option>
-                      <option value="Otro">Otro</option>
-                    </select>
+                    />
                   </div>
 
                   <div className="form-group">
@@ -578,18 +575,14 @@ export default function Reportes() {
               <div className="reportes-modal-info-grid">
                 <div className="form-group">
                   <label>Tipo de Reporte *</label>
-                  <select
+                  <CustomSelect
+                    name="tipo_reporte"
                     value={editForm.tipo_reporte}
                     onChange={(e) => setEditForm(prev => ({ ...prev, tipo_reporte: e.target.value }))}
+                    options={['General', 'Equipos', 'Mantenimiento', 'Novedades', 'Uso', 'Otro']}
+                    placeholder="Seleccionar tipo de reporte"
                     className="reportes-modal-input"
-                  >
-                    <option value="General">General</option>
-                    <option value="Equipos">Equipos</option>
-                    <option value="Mantenimiento">Mantenimiento</option>
-                    <option value="Novedades">Novedades</option>
-                    <option value="Uso">Uso</option>
-                    <option value="Otro">Otro</option>
-                  </select>
+                  />
                 </div>
                 <div className="form-group">
                   <label>Título *</label>

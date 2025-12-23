@@ -257,21 +257,31 @@ export default function Equipos() {
           </div>
           <div className="form-row">
             <label>Ambiente *</label>
-            <select name="ambiente" value={form.ambiente} onChange={handleChange}>
-              <option value="">Seleccionar ambiente</option>
-              {ambientes.map(amb => (
-                <option key={amb.id_ambiente} value={amb.id_ambiente}>
-                  {amb.codigo_ambiente} - {amb.nombre_ambiente}
-                </option>
-              ))}
-            </select>
+            <CustomSelect
+              name="ambiente"
+              value={form.ambiente}
+              onChange={handleChange}
+              options={[
+                { value: '', label: 'Seleccionar ambiente' },
+                ...ambientes.map(amb => ({
+                  value: amb.id_ambiente.toString(),
+                  label: `${amb.codigo_ambiente} - ${amb.nombre_ambiente}`
+                }))
+              ]}
+              placeholder="Seleccionar ambiente"
+            />
             {errores.ambiente && <span className="error-text">{errores.ambiente}</span>}
           </div>
           <div className="form-row">
             <label>Estado Físico *</label>
-            <select name="estado_fisico" value={form.estado_fisico} onChange={handleChange}>
-              {ESTADOS_FISICOS.map(e => <option key={e} value={e}>{e}</option>)}
-            </select>
+            <CustomSelect
+              name="estado_fisico"
+              value={form.estado_fisico}
+              onChange={handleChange}
+              options={ESTADOS_FISICOS}
+              placeholder="Seleccionar estado físico"
+              error={errores.estado_fisico}
+            />
             {errores.estado_fisico && <span className="error-text">{errores.estado_fisico}</span>}
           </div>
           <div className="form-row">

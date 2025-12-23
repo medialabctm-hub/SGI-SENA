@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { FiPlus, FiTrash2, FiCopy, FiX, FiCheck, FiAlertCircle } from 'react-icons/fi';
 import Toast from '../../components/Toast';
 import ConfirmModal from '../../components/ConfirmModal';
+import CustomSelect from '../../components/CustomSelect';
 import { parseApiResponse, buildErrorMessage, getAuthHeaders } from '../../utils/api';
 import '../../styles/equipos.css';
 import '../../styles/invitationCodes.css';
@@ -156,16 +157,14 @@ export default function InvitationCodes() {
             <div className="form-grid">
               <div className="form-group">
                 <label>Rol Destinado</label>
-                <select
+                <CustomSelect
+                  name="rol_destinado"
                   value={form.rol_destinado}
                   onChange={e => setForm({ ...form, rol_destinado: e.target.value })}
+                  options={['Instructor', 'Administrador', 'Aprendiz', 'Cuentadante']}
+                  placeholder="Seleccionar rol"
                   required
-                >
-                  <option value="Instructor">Instructor</option>
-                  <option value="Administrador">Administrador</option>
-                  <option value="Aprendiz">Aprendiz</option>
-                  <option value="Cuentadante">Cuentadante</option>
-                </select>
+                />
               </div>
               <div className="form-group">
                 <label>Máximo de Usos</label>

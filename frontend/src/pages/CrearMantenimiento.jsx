@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import Header from '../components/Header'
 import Sidebar from '../components/Sidebar'
 import Toast from '../components/Toast'
+import CustomSelect from '../components/CustomSelect'
 import { FiTool, FiPackage, FiCalendar, FiUser, FiFileText, FiSearch, FiCheck, FiX, FiType } from 'react-icons/fi'
 import { parseApiResponse, buildErrorMessage } from '../utils/api'
 import '../styles/equipos.css'
@@ -319,15 +320,14 @@ export default function CrearMantenimiento() {
                     <FiTool size={16} className="crear-mantenimiento-option-icon" />
                     Tipo de Mantenimiento *
                   </label>
-                  <select
+                  <CustomSelect
+                    name="tipo_mantenimiento"
                     value={form.tipo_mantenimiento}
                     onChange={(e) => handleChange('tipo_mantenimiento', e.target.value)}
+                    options={['Preventivo', 'Correctivo', 'Actualización']}
+                    placeholder="Seleccionar tipo de mantenimiento"
                     required
-                  >
-                    <option value="Preventivo">Preventivo</option>
-                    <option value="Correctivo">Correctivo</option>
-                    <option value="Actualización">Actualización</option>
-                  </select>
+                  />
                 </div>
 
                 <div className="form-group">
@@ -335,16 +335,14 @@ export default function CrearMantenimiento() {
                     <FiCalendar size={16} className="crear-mantenimiento-option-icon" />
                     Estado *
                   </label>
-                  <select
+                  <CustomSelect
+                    name="estado_mantenimiento"
                     value={form.estado_mantenimiento}
                     onChange={(e) => handleChange('estado_mantenimiento', e.target.value)}
+                    options={['Programado', 'En Proceso', 'Completado', 'Cancelado']}
+                    placeholder="Seleccionar estado"
                     required
-                  >
-                    <option value="Programado">Programado</option>
-                    <option value="En Proceso">En Proceso</option>
-                    <option value="Completado">Completado</option>
-                    <option value="Cancelado">Cancelado</option>
-                  </select>
+                  />
                 </div>
               </div>
 

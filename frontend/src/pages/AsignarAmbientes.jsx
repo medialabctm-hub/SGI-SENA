@@ -3,6 +3,7 @@ import Header from '../components/Header'
 import Sidebar from '../components/Sidebar'
 import Toast from '../components/Toast'
 import ConfirmModal from '../components/ConfirmModal'
+import CustomSelect from '../components/CustomSelect'
 import { FiMapPin, FiUser, FiPlus, FiTrash2, FiRefreshCw, FiPackage, FiCalendar, FiClock } from 'react-icons/fi'
 import { parseApiResponse, buildErrorMessage } from '../utils/api'
 import '../styles/equipos.css'
@@ -326,38 +327,42 @@ export default function AsignarAmbientes() {
                         <FiMapPin size={14} className="asignar-ambientes-form-label-icon" />
                         Ambiente
                       </label>
-                      <select
+                      <CustomSelect
+                        name="id_ambiente"
                         className="asignar-ambientes-form-select form-select"
                         value={form.id_ambiente}
                         onChange={e => setForm({ ...form, id_ambiente: e.target.value })}
+                        options={[
+                          { value: '', label: 'Seleccione un ambiente...' },
+                          ...ambientes.map(amb => ({
+                            value: amb.id_ambiente.toString(),
+                            label: `${amb.codigo_ambiente} - ${amb.nombre_ambiente}`
+                          }))
+                        ]}
+                        placeholder="Seleccionar ambiente"
                         required
-                      >
-                        <option value="">Seleccione un ambiente...</option>
-                        {ambientes.map(amb => (
-                          <option key={amb.id_ambiente} value={amb.id_ambiente}>
-                            {amb.codigo_ambiente} - {amb.nombre_ambiente}
-                          </option>
-                        ))}
-                      </select>
+                      />
                     </div>
                     <div className="asignar-ambientes-form-row">
                       <label className="asignar-ambientes-form-label form-label-required">
                         <FiUser size={14} className="asignar-ambientes-form-label-icon" />
                         Instructor
                       </label>
-                      <select
+                      <CustomSelect
+                        name="id_instructor"
                         className="asignar-ambientes-form-select form-select"
                         value={form.id_instructor}
                         onChange={e => setForm({ ...form, id_instructor: e.target.value })}
+                        options={[
+                          { value: '', label: 'Seleccione un instructor...' },
+                          ...instructores.map(inst => ({
+                            value: inst.id_usuario.toString(),
+                            label: `${inst.nombre_usuario} (${inst.cedula})`
+                          }))
+                        ]}
+                        placeholder="Seleccionar instructor"
                         required
-                      >
-                        <option value="">Seleccione un instructor...</option>
-                        {instructores.map(inst => (
-                          <option key={inst.id_usuario} value={inst.id_usuario}>
-                            {inst.nombre_usuario} ({inst.cedula})
-                          </option>
-                        ))}
-                      </select>
+                      />
                     </div>
                   </div>
 

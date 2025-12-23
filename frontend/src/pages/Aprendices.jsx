@@ -5,6 +5,7 @@ import Header from '../components/Header'
 import Sidebar from '../components/Sidebar'
 import Toast from '../components/Toast'
 import ImportarAprendices from '../components/ImportarAprendices'
+import CustomSelect from '../components/CustomSelect'
 import { parseApiResponse, buildErrorMessage, getAuthHeaders } from '../utils/api'
 import '../styles/usuarios.css'
 
@@ -389,12 +390,13 @@ export default function Aprendices() {
               </label>
               <label>
                 Jornada
-                <select name="jornada" value={editForm.jornada} onChange={handleEditChange}>
-                  <option value="">Sin definir</option>
-                  <option value="Mañana">Mañana</option>
-                  <option value="Tarde">Tarde</option>
-                  <option value="Noche">Noche</option>
-                </select>
+                <CustomSelect
+                  name="jornada"
+                  value={editForm.jornada}
+                  onChange={handleEditChange}
+                  options={['', 'Mañana', 'Tarde', 'Noche']}
+                  placeholder="Sin definir"
+                />
               </label>
               <div className="modal-form-actions">
                 <button type="button" className="btn" onClick={closeEditModal}>

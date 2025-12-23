@@ -4,6 +4,7 @@ import Header from '../components/Header';
 import Sidebar from '../components/Sidebar';
 import Toast from '../components/Toast';
 import ConfirmModal from '../components/ConfirmModal';
+import CustomSelect from '../components/CustomSelect';
 import { parseApiResponse, buildErrorMessage, handleError, getAuthHeaders } from '../utils/api';
 import '../styles/equipos.css';
 import '../styles/usuarios.css';
@@ -408,30 +409,22 @@ export default function Ambientes() {
 
             <div className="users-content ambientes-content">
               <div className="ambientes-filters-row">
-                <select
+                <CustomSelect
+                  name="estado"
                   className="filter-control"
                   value={filtros.estado}
                   onChange={(e) => setFiltros({ ...filtros, estado: e.target.value })}
-                >
-                  <option value="">Todos los estados</option>
-                  {ESTADOS_AMBIENTE.map((est) => (
-                    <option key={est} value={est}>
-                      {est}
-                    </option>
-                  ))}
-                </select>
-                <select
+                  options={['', ...ESTADOS_AMBIENTE]}
+                  placeholder="Todos los estados"
+                />
+                <CustomSelect
+                  name="tipo"
                   className="filter-control"
                   value={filtros.tipo}
                   onChange={(e) => setFiltros({ ...filtros, tipo: e.target.value })}
-                >
-                  <option value="">Todos los tipos</option>
-                  {TIPOS_AMBIENTE.map((tipo) => (
-                    <option key={tipo} value={tipo}>
-                      {tipo}
-                    </option>
-                  ))}
-                </select>
+                  options={['', ...TIPOS_AMBIENTE]}
+                  placeholder="Todos los tipos"
+                />
                 <input
                   className="filter-control"
                   placeholder="Edificio (opcional)"
@@ -480,19 +473,15 @@ export default function Ambientes() {
 
                     <div className="form-row">
                         <label>Tipo Ambiente *</label>
-                        <select
-                            className="form-control"
+                        <CustomSelect
                             name="tipo_ambiente"
+                            className="form-control"
                             value={form.tipo_ambiente}
                             onChange={handleChange}
-                            aria-required="true"
-                        >
-                            {TIPOS_AMBIENTE.map((tipo) => (
-                                <option key={tipo} value={tipo}>
-                                    {tipo}
-                                </option>
-                            ))}
-                        </select>
+                            options={TIPOS_AMBIENTE}
+                            placeholder="Seleccionar tipo"
+                            required
+                        />
                         {errores.tipo_ambiente && (
                             <span className="error-text">{errores.tipo_ambiente}</span>
                         )}
@@ -525,18 +514,14 @@ export default function Ambientes() {
                   
                     <div className="form-row">
                         <label>Estado</label>
-                        <select
-                            className="form-control"
+                        <CustomSelect
                             name="estado_ambiente"
+                            className="form-control"
                             value={form.estado_ambiente}
                             onChange={handleChange}
-                        >
-                            {ESTADOS_AMBIENTE.map((est) => (
-                                <option key={est} value={est}>
-                                    {est}
-                                </option>
-                            ))}
-                        </select>
+                            options={ESTADOS_AMBIENTE}
+                            placeholder="Seleccionar estado"
+                        />
                     </div>
                 </div>
             </div>
@@ -890,9 +875,14 @@ export default function Ambientes() {
                             {errores.nombre_ambiente && <div className="error-text-inline">{errores.nombre_ambiente}</div>}
                           </td>
                           <td>
-                            <select className="cell-select-edit" name="tipo_ambiente" value={form.tipo_ambiente} onChange={handleChange}>
-                              {TIPOS_AMBIENTE.map((t) => <option key={t} value={t}>{t}</option>)}
-                            </select>
+                            <CustomSelect
+                              name="tipo_ambiente"
+                              className="cell-select-edit"
+                              value={form.tipo_ambiente}
+                              onChange={handleChange}
+                              options={TIPOS_AMBIENTE}
+                              placeholder="Tipo"
+                            />
                           </td>
                           <td>
                             <input className="cell-input-edit" name="edificio" value={form.edificio} onChange={handleChange} placeholder="Edificio" />
@@ -904,9 +894,14 @@ export default function Ambientes() {
                             <span className="equip-count">{amb.total_equipos || 0}</span>
                           </td>
                           <td>
-                            <select className="cell-select-edit" name="estado_ambiente" value={form.estado_ambiente} onChange={handleChange}>
-                              {ESTADOS_AMBIENTE.map((e) => <option key={e} value={e}>{e}</option>)}
-                            </select>
+                            <CustomSelect
+                              name="estado_ambiente"
+                              className="cell-select-edit"
+                              value={form.estado_ambiente}
+                              onChange={handleChange}
+                              options={ESTADOS_AMBIENTE}
+                              placeholder="Estado"
+                            />
                           </td>
                           <td>
                             <div className="row-actions-edit">

@@ -4,6 +4,7 @@ import Header from '../components/Header'
 import Sidebar from '../components/Sidebar'
 import Toast from '../components/Toast'
 import ConfirmModal from '../components/ConfirmModal'
+import CustomSelect from '../components/CustomSelect'
 import { FiTool, FiEye, FiCheckCircle, FiClock, FiXCircle, FiAlertCircle, FiPlus, FiEdit, FiTrash2 } from 'react-icons/fi'
 import { parseApiResponse, buildErrorMessage } from '../utils/api'
 import '../styles/equipos.css'
@@ -360,16 +361,14 @@ export default function Mantenimientos() {
                 </div>
                 {editandoEstado ? (
                   <div className="mantenimientos-modal-edit-grid">
-                    <select
+                    <CustomSelect
+                      name="nuevoEstado"
                       value={nuevoEstado}
                       onChange={(e) => setNuevoEstado(e.target.value)}
+                      options={['Programado', 'En Proceso', 'Completado', 'Cancelado']}
+                      placeholder="Seleccionar estado"
                       className="mantenimientos-modal-select form-select"
-                    >
-                      <option value="Programado">Programado</option>
-                      <option value="En Proceso">En Proceso</option>
-                      <option value="Completado">Completado</option>
-                      <option value="Cancelado">Cancelado</option>
-                    </select>
+                    />
                     <div className="mantenimientos-modal-actions-row">
                       <button
                         onClick={guardarEstado}

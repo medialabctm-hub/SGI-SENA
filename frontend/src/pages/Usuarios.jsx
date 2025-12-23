@@ -4,6 +4,7 @@ import Sidebar from '../components/Sidebar';
 import Toast from '../components/Toast';
 import DestructiveConfirmModal from '../components/DestructiveConfirmModal';
 import ImportarUsuarios from '../components/ImportarUsuarios';
+import CustomSelect from '../components/CustomSelect';
 import { FiUpload, FiDownload } from 'react-icons/fi';
 import * as XLSX from 'xlsx';
 import { parseApiResponse, buildErrorMessage, getAuthHeaders } from '../utils/api';
@@ -519,16 +520,15 @@ export default function Usuarios() {
                   </div>
                   <div className="form-row">
                     <label>Rol</label>
-                    <select
+                    <CustomSelect
+                      name="rol"
                       value={form.rol}
                       onChange={(e) =>
                         setForm((prev) => ({ ...prev, rol: e.target.value }))
                       }
-                    >
-                      <option>Administrador</option>
-                      <option>Instructor</option>
-                      <option>Aprendiz</option>
-                    </select>
+                      options={['Administrador', 'Instructor', 'Aprendiz']}
+                      placeholder="Seleccionar rol"
+                    />
                   </div>
                   {/* No se permite crear usuarios aquí; edición solamente. */}
                 </div>
