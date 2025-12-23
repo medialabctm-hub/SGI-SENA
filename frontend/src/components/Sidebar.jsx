@@ -128,8 +128,7 @@ export default function Sidebar({ user }) {
       { title: 'Asignar Ambientes', path: '/ambientes/asignar', icon: <FiUserCheck />, roles: ['Administrador'] }
     ],
     incidencias: [
-      { title: 'Novedades', path: '/novedades', icon: <FiAlertCircle />, roles: ['Administrador', 'Instructor', 'Cuentadante'] },
-      { title: 'Reportes', path: '/novedades?tab=reportes', icon: <FiFileText />, roles: ['Administrador', 'Instructor', 'Cuentadante'] }
+      { title: 'Novedades', path: '/novedades', icon: <FiAlertCircle />, roles: ['Administrador', 'Instructor', 'Cuentadante'] }
     ],
     mantenimiento: [
       { title: 'Historial de Mantenimientos', path: '/mantenimientos', icon: <FiTool />, roles: ['Administrador', 'Cuentadante'] }
