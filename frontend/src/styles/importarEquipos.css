@@ -144,6 +144,11 @@
   cursor: pointer;
   transition: all 0.2s ease;
   box-shadow: 0 2px 8px rgba(16, 185, 129, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 48px;
 }
 
 .importar-equipos-submit-button:hover:not(:disabled) {
@@ -153,10 +158,11 @@
 }
 
 .importar-equipos-submit-button:disabled {
-  background: var(--neutral-300);
-  border-color: var(--neutral-300);
+  background: linear-gradient(135deg, var(--success-600) 0%, var(--success-700) 100%);
+  border-color: var(--success-600);
   cursor: not-allowed;
   transform: none;
+  opacity: 0.8;
 }
 
 .importar-equipos-resultado {
@@ -271,17 +277,23 @@
   font-weight: 600;
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 0.5rem;
   transition: all 0.2s ease;
+  min-width: 100px;
 }
 
 .importar-equipos-cuentadante-search-button:hover:not(:disabled) {
   background: var(--info-700);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(59, 139, 255, 0.3);
 }
 
 .importar-equipos-cuentadante-search-button:disabled {
-  background: var(--neutral-300);
+  background: var(--info-500);
   cursor: not-allowed;
+  opacity: 0.7;
+  transform: none;
 }
 
 .importar-equipos-download-button {
@@ -328,9 +340,34 @@
 }
 
 .importar-equipos-loading-spinner-small {
-  width: 16px;
-  height: 16px;
-  border-width: 2px;
+  width: 18px;
+  height: 18px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  flex-shrink: 0;
+}
+
+.importar-equipos-loading-spinner-tiny {
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  flex-shrink: 0;
+}
+
+.importar-equipos-cuentadante-save-button .importar-equipos-loading-spinner-tiny {
+  border: 2px solid rgba(0, 0, 0, 0.2);
+  border-top-color: var(--neutral-900);
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .importar-equipos-cuentadante-found-info {
@@ -348,18 +385,25 @@
   font-weight: 600;
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 0.5rem;
   align-self: flex-start;
   transition: all 0.2s ease;
+  min-width: 180px;
+  box-shadow: 0 2px 8px rgba(255, 193, 7, 0.2);
 }
 
 .importar-equipos-cuentadante-save-button:hover:not(:disabled) {
   background: var(--warning-700);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(255, 193, 7, 0.3);
 }
 
 .importar-equipos-cuentadante-save-button:disabled {
-  background: var(--neutral-300);
+  background: var(--warning-500);
   cursor: not-allowed;
+  opacity: 0.7;
+  transform: none;
 }
 
 .importar-equipos-cuentadante-current {

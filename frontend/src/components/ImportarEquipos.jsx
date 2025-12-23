@@ -322,8 +322,8 @@ export default function ImportarEquipos({ onImportComplete, onEstadoDuplicadosCh
           className="btn btn-verde importar-equipos-submit-button"
           disabled={!archivo || loading}
         >
-          {loading ? 'Importando...' : 'Importar Equipos'}
           {loading && <div className="loading-spinner importar-equipos-loading-spinner-small"></div>}
+          {loading ? 'Importando...' : 'Importar Equipos'}
         </button>
       </form>
 
@@ -363,6 +363,7 @@ export default function ImportarEquipos({ onImportComplete, onEstadoDuplicadosCh
                 onClick={buscarCuentadante}
                 disabled={!cuentadantePrincipal.trim() || buscandoCuentadante || savingCuentadante}
               >
+                {buscandoCuentadante && <div className="loading-spinner importar-equipos-loading-spinner-tiny"></div>}
                 <FiSearch size={16} />
                 {buscandoCuentadante ? 'Buscando...' : 'Buscar'}
               </button>
@@ -383,6 +384,7 @@ export default function ImportarEquipos({ onImportComplete, onEstadoDuplicadosCh
               onClick={handleSaveCuentadante}
               disabled={!cuentadanteEncontrado || savingCuentadante || loadingCuentadante}
             >
+              {savingCuentadante && <div className="loading-spinner importar-equipos-loading-spinner-tiny"></div>}
               <FiSave size={16} />
               {savingCuentadante ? 'Guardando...' : 'Guardar Cuentadante'}
             </button>
