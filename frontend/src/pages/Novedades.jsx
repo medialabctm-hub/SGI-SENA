@@ -1161,89 +1161,88 @@ export default function Novedades() {
                 ) : (
                   // Lista de reportes
                   <div className="table-wrapper">
-                      <table className="consulta-table novedades-table">
-                        <thead>
-                          <tr>
-                            <th>ID</th>
-                            <th>Tipo</th>
-                            <th>Título</th>
-                            <th>Equipo</th>
-                            <th>Generado por</th>
-                            <th>Fecha</th>
-                            <th>Acciones</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {reportes.map((reporte) => (
-                            <tr key={reporte.id_reporte}>
-                              <td>{reporte.id_reporte}</td>
-                              <td>
-                                <span className={`reportes-tipo-badge ${
-                                  reporte.tipo_reporte === 'General' ? 'reportes-tipo-badge-general' :
-                                  reporte.tipo_reporte === 'Mantenimiento' ? 'reportes-tipo-badge-mantenimiento' :
-                                  'reportes-tipo-badge-uso'
-                                }`}>
-                                  {reporte.tipo_reporte}
-                                </span>
-                              </td>
-                              <td><strong>{reporte.titulo}</strong></td>
-                              <td>
-                                {reporte.equipo_tipo ? (
-                                  <div>
-                                    {reporte.equipo_tipo} {reporte.equipo_marca} {reporte.equipo_modelo}
-                                  </div>
-                                ) : (
-                                  <span className="text-muted-italic">General</span>
-                                )}
-                              </td>
-                              <td>{reporte.generado_por_nombre}</td>
-                              <td>{formatDate(reporte.fecha_generacion)}</td>
-                              <td>
-                                <div className="reportes-actions">
-                                  <button
-                                    className="btn novedades-ver-btn"
-                                    onClick={() => setSelectedReporte(reporte)}
-                                  >
-                                    <FiEye size={14} />
-                                    Ver
-                                  </button>
-                                  <button
-                                    className="btn novedades-ver-btn"
-                                    onClick={() => generarPDFReporte(reporte)}
-                                    title="Descargar PDF"
-                                  >
-                                    <FiDownload size={14} />
-                                    PDF
-                                  </button>
-                                  {isAdmin && (
-                                    <>
-                                      <button
-                                        className="btn novedades-ver-btn"
-                                        onClick={() => startEditReporte(reporte)}
-                                        disabled={loadingReportes}
-                                      >
-                                        <FiEdit size={14} />
-                                        Editar
-                                      </button>
-                                      <button
-                                        className="btn danger novedades-ver-btn"
-                                        onClick={() => confirmDeleteReporte(reporte.id_reporte)}
-                                        disabled={loadingReportes}
-                                      >
-                                        <FiTrash2 size={14} />
-                                        Eliminar
-                                      </button>
-                                    </>
-                                  )}
+                    <table className="consulta-table novedades-table">
+                      <thead>
+                        <tr>
+                          <th>ID</th>
+                          <th>Tipo</th>
+                          <th>Título</th>
+                          <th>Equipo</th>
+                          <th>Generado por</th>
+                          <th>Fecha</th>
+                          <th>Acciones</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {reportes.map((reporte) => (
+                          <tr key={reporte.id_reporte}>
+                            <td>{reporte.id_reporte}</td>
+                            <td>
+                              <span className={`reportes-tipo-badge ${
+                                reporte.tipo_reporte === 'General' ? 'reportes-tipo-badge-general' :
+                                reporte.tipo_reporte === 'Mantenimiento' ? 'reportes-tipo-badge-mantenimiento' :
+                                'reportes-tipo-badge-uso'
+                              }`}>
+                                {reporte.tipo_reporte}
+                              </span>
+                            </td>
+                            <td><strong>{reporte.titulo}</strong></td>
+                            <td>
+                              {reporte.equipo_tipo ? (
+                                <div>
+                                  {reporte.equipo_tipo} {reporte.equipo_marca} {reporte.equipo_modelo}
                                 </div>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  )
-                )}
+                              ) : (
+                                <span className="text-muted-italic">General</span>
+                              )}
+                            </td>
+                            <td>{reporte.generado_por_nombre}</td>
+                            <td>{formatDate(reporte.fecha_generacion)}</td>
+                            <td>
+                              <div className="reportes-actions">
+                                <button
+                                  className="btn novedades-ver-btn"
+                                  onClick={() => setSelectedReporte(reporte)}
+                                >
+                                  <FiEye size={14} />
+                                  Ver
+                                </button>
+                                <button
+                                  className="btn novedades-ver-btn"
+                                  onClick={() => generarPDFReporte(reporte)}
+                                  title="Descargar PDF"
+                                >
+                                  <FiDownload size={14} />
+                                  PDF
+                                </button>
+                                {isAdmin && (
+                                  <>
+                                    <button
+                                      className="btn novedades-ver-btn"
+                                      onClick={() => startEditReporte(reporte)}
+                                      disabled={loadingReportes}
+                                    >
+                                      <FiEdit size={14} />
+                                      Editar
+                                    </button>
+                                    <button
+                                      className="btn danger novedades-ver-btn"
+                                      onClick={() => confirmDeleteReporte(reporte.id_reporte)}
+                                      disabled={loadingReportes}
+                                    >
+                                      <FiTrash2 size={14} />
+                                      Eliminar
+                                    </button>
+                                  </>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )
               </>
             ) : null}
           </div>
