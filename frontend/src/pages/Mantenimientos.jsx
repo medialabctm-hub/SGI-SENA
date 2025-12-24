@@ -84,7 +84,7 @@ export default function Mantenimientos() {
     const tipos = {
       'Preventivo': { color: 'var(--success-800)', bg: '#d1fae5' },
       'Correctivo': { color: 'var(--warning-600)', bg: '#fef3c7' },
-      'Actualización': { color: '#3b82f6', bg: '#dbeafe' }
+      'Predictivo': { color: '#3b82f6', bg: '#dbeafe' }
     }
     const tipoInfo = tipos[tipo] || tipos['Preventivo']
     return (

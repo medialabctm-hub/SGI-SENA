@@ -2,7 +2,7 @@ import express from 'express'
 import { authenticate } from '../middleware/authMiddleware.js'
 import { requireAnyPermission, requirePermission } from '../middleware/authorization.js'
 import { PERMISSIONS } from '../config/permissions.js'
-import { crearMantenimiento, listarMantenimientos, obtenerMantenimientoPorId, actualizarEstadoMantenimiento, actualizarFechaProximo, eliminarMantenimiento } from '../controller/mantenimientoController.js'
+import { crearMantenimiento, listarMantenimientos, obtenerMantenimientoPorId, actualizarEstadoMantenimiento, actualizarFechaProximo, eliminarMantenimiento, obtenerTiposMantenimiento, obtenerEstadosMantenimiento } from '../controller/mantenimientoController.js'
 import { validate, actualizarEstadoMantenimientoSchema, actualizarFechaProximoSchema } from '../validators/mantenimientoValidator.js'
 
 const router = express.Router()
@@ -59,6 +59,12 @@ router.delete('/:id',
   requirePermission(PERMISSIONS.MANTENIMIENTO.DELETE),
   eliminarMantenimiento
 )
+
+// Obtener tipos de mantenimiento disponibles
+router.get('/tipos', obtenerTiposMantenimiento)
+
+// Obtener estados de mantenimiento disponibles
+router.get('/estados', obtenerEstadosMantenimiento)
 
 export default router
 

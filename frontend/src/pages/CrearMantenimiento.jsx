@@ -30,6 +30,8 @@ export default function CrearMantenimiento() {
   const [tecnicoEncontrado, setTecnicoEncontrado] = useState(null)
   const [buscandoTecnico, setBuscandoTecnico] = useState(false)
   const [user, setUser] = useState(null)
+  const [tiposMantenimiento, setTiposMantenimiento] = useState(['Preventivo', 'Correctivo', 'Predictivo'])
+  const [estadosMantenimiento, setEstadosMantenimiento] = useState(['Programado', 'En Proceso', 'Completado', 'Cancelado'])
 
   useEffect(() => {
     try {
@@ -46,6 +48,56 @@ export default function CrearMantenimiento() {
       console.error('Error al obtener datos del usuario:', error)
     }
   }, [navigate])
+
+  // Cargar tipos y estados de mantenimiento desde la API
+  useEffect(() => {
+    async function cargarOpcionesMantenimiento() {
+      try {
+        const token = localStorage.getItem('token')
+        
+        // Cargar tipos de mantenimiento
+        const resTipos = await fetch('/api/mantenimiento/tipos', {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+        if (resTipos.ok) {
+          const tipos = await parseApiResponse(resTipos)
+          if (Array.isArray(tipos) && tipos.length > 0) {
+            setTiposMantenimiento(tipos)
+            // Si el tipo por defecto no está en la lista, usar el primero
+            setForm(prev => {
+              if (!tipos.includes(prev.tipo_mantenimiento)) {
+                return { ...prev, tipo_mantenimiento: tipos[0] || 'Preventivo' }
+              }
+              return prev
+            })
+          }
+        }
+
+        // Cargar estados de mantenimiento
+        const resEstados = await fetch('/api/mantenimiento/estados', {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+        if (resEstados.ok) {
+          const estados = await parseApiResponse(resEstados)
+          if (Array.isArray(estados) && estados.length > 0) {
+            setEstadosMantenimiento(estados)
+            // Si el estado por defecto no está en la lista, usar el primero
+            setForm(prev => {
+              if (!estados.includes(prev.estado_mantenimiento)) {
+                return { ...prev, estado_mantenimiento: estados[0] || 'Programado' }
+              }
+              return prev
+            })
+          }
+        }
+      } catch (err) {
+        console.error('Error al cargar opciones de mantenimiento:', err)
+        // Mantener valores por defecto en caso de error
+      }
+    }
+
+    cargarOpcionesMantenimiento()
+  }, [])
 
   async function buscarEquipo() {
     if (!codigoInventario.trim()) {
@@ -324,7 +376,7 @@ export default function CrearMantenimiento() {
                     name="tipo_mantenimiento"
                     value={form.tipo_mantenimiento}
                     onChange={(e) => handleChange('tipo_mantenimiento', e.target.value)}
-                    options={['Preventivo', 'Correctivo', 'Actualización']}
+                    options={tiposMantenimiento}
                     placeholder="Seleccionar tipo de mantenimiento"
                     required
                   />
@@ -339,7 +391,7 @@ export default function CrearMantenimiento() {
                     name="estado_mantenimiento"
                     value={form.estado_mantenimiento}
                     onChange={(e) => handleChange('estado_mantenimiento', e.target.value)}
-                    options={['Programado', 'En Proceso', 'Completado', 'Cancelado']}
+                    options={estadosMantenimiento}
                     placeholder="Seleccionar estado"
                     required
                   />

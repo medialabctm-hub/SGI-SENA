@@ -583,3 +583,73 @@ export async function eliminarMantenimiento(req, res) {
   }
 }
 
+/**
+ * Obtener tipos de mantenimiento disponibles desde la base de datos
+ * Consulta los valores ENUM de la columna tipo_mantenimiento
+ */
+export async function obtenerTiposMantenimiento(req, res) {
+  try {
+    const [rows] = await defaultDb.execute(
+      `SELECT COLUMN_TYPE 
+       FROM INFORMATION_SCHEMA.COLUMNS 
+       WHERE TABLE_SCHEMA = DATABASE() 
+       AND TABLE_NAME = 'Mantenimiento' 
+       AND COLUMN_NAME = 'tipo_mantenimiento'`
+    )
+
+    if (!rows || rows.length === 0) {
+      // Si no se puede obtener de INFORMATION_SCHEMA, retornar valores por defecto
+      return res.json(['Preventivo', 'Correctivo', 'Predictivo'])
+    }
+
+    // Extraer valores del ENUM: ENUM('Preventivo','Correctivo','Predictivo')
+    const enumString = rows[0].COLUMN_TYPE
+    const valores = enumString
+      .replace(/^enum\(/i, '')
+      .replace(/\)$/i, '')
+      .split(',')
+      .map(val => val.trim().replace(/^'|'$/g, ''))
+
+    return res.json(valores)
+  } catch (err) {
+    logger.error('Error al obtener tipos de mantenimiento', { error: err.message, stack: err.stack })
+    // En caso de error, retornar valores por defecto
+    return res.json(['Preventivo', 'Correctivo', 'Predictivo'])
+  }
+}
+
+/**
+ * Obtener estados de mantenimiento disponibles desde la base de datos
+ * Consulta los valores ENUM de la columna estado_mantenimiento
+ */
+export async function obtenerEstadosMantenimiento(req, res) {
+  try {
+    const [rows] = await defaultDb.execute(
+      `SELECT COLUMN_TYPE 
+       FROM INFORMATION_SCHEMA.COLUMNS 
+       WHERE TABLE_SCHEMA = DATABASE() 
+       AND TABLE_NAME = 'Mantenimiento' 
+       AND COLUMN_NAME = 'estado_mantenimiento'`
+    )
+
+    if (!rows || rows.length === 0) {
+      // Si no se puede obtener de INFORMATION_SCHEMA, retornar valores por defecto
+      return res.json(['Programado', 'En Proceso', 'Completado', 'Cancelado'])
+    }
+
+    // Extraer valores del ENUM: ENUM('Programado','En Proceso','Completado','Cancelado')
+    const enumString = rows[0].COLUMN_TYPE
+    const valores = enumString
+      .replace(/^enum\(/i, '')
+      .replace(/\)$/i, '')
+      .split(',')
+      .map(val => val.trim().replace(/^'|'$/g, ''))
+
+    return res.json(valores)
+  } catch (err) {
+    logger.error('Error al obtener estados de mantenimiento', { error: err.message, stack: err.stack })
+    // En caso de error, retornar valores por defecto
+    return res.json(['Programado', 'En Proceso', 'Completado', 'Cancelado'])
+  }
+}
+
