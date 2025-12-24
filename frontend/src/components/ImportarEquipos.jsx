@@ -336,7 +336,7 @@ export default function ImportarEquipos({ onImportComplete, onEstadoDuplicadosCh
           </h4>
           <p className="importar-equipos-cuentadante-description">
             El cuentadante principal es la persona responsable permanente de todo el inventario. 
-            Debe ingresarse después de importar los equipos. Ingrese la <strong>Documento</strong> del cuentadante.
+            Debe ingresarse después de importar los equipos. Ingrese el <strong>Documento</strong> del cuentadante.
           </p>
           <div className="importar-equipos-cuentadante-form">
             <div className="importar-equipos-cuentadante-search-row">
