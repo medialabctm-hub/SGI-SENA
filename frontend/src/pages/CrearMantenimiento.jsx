@@ -404,7 +404,7 @@ export default function CrearMantenimiento() {
                         buscarTecnico()
                       }
                     }}
-                    placeholder="Ingresa la Documento del técnico"
+                    placeholder="Ingresa el Documento del técnico"
                     className="search-equipo-input"
                   />
                   <button
