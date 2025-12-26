@@ -7,7 +7,7 @@
 }
 
 .mantenimientos-header-icon {
-  background: var(--purple-700);
+  background: var(--success-700);
 }
 
 .mantenimientos-header-content {
@@ -81,18 +81,18 @@
   box-shadow: 0 2px 8px rgba(59, 130, 246, 0.15);
 }
 
-/* Botón Estado - Morado */
+/* Botón Estado - Verde */
 .mantenimientos-action-button.btn-status {
-  background: var(--purple-50);
-  color: var(--purple-700);
-  border: 1.5px solid var(--purple-200);
+  background: var(--success-50);
+  color: var(--success-700);
+  border: 1.5px solid var(--success-200);
 }
 
 .mantenimientos-action-button.btn-status:hover {
-  background: var(--purple-100);
-  border-color: var(--purple-300);
+  background: var(--success-100);
+  border-color: var(--success-300);
   transform: translateY(-1px);
-  box-shadow: 0 2px 8px rgba(124, 58, 237, 0.15);
+  box-shadow: 0 2px 8px rgba(34, 197, 94, 0.15);
 }
 
 /* Botón Eliminar - Rojo */
@@ -159,8 +159,8 @@
   justify-content: space-between;
   align-items: center;
   padding: 1.5rem 2rem;
-  background: linear-gradient(135deg, var(--purple-600) 0%, var(--purple-700) 100%);
-  border-bottom: 2px solid var(--purple-800);
+  background: linear-gradient(135deg, var(--success-600) 0%, var(--success-700) 100%);
+  border-bottom: 2px solid var(--success-800);
 }
 
 .mantenimientos-modal-title {
@@ -208,12 +208,12 @@
   background: var(--neutral-50);
   padding: 1rem;
   border-radius: 10px;
-  border-left: 4px solid var(--purple-500);
+  border-left: 4px solid var(--success-500);
 }
 
 .mantenimientos-modal-field-label {
   font-weight: 600;
-  color: var(--purple-700);
+  color: var(--success-700);
   display: block;
   margin-bottom: 6px;
   font-size: 0.875rem;
@@ -243,7 +243,7 @@
 .mantenimientos-modal-select {
   padding: 10px 12px;
   border-radius: 8px;
-  border: 2px solid var(--purple-200);
+  border: 2px solid var(--success-200);
   font-size: 0.95rem;
   width: 100%;
   transition: all 0.2s;
@@ -253,18 +253,18 @@
 
 .mantenimientos-modal-select:focus {
   outline: none;
-  border-color: var(--purple-500);
-  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.1);
+  border-color: var(--success-500);
+  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.1);
 }
 
 .mantenimientos-modal-select:hover {
-  border-color: var(--purple-300);
+  border-color: var(--success-300);
 }
 
 .mantenimientos-modal-input {
   padding: 10px 12px;
   border-radius: 8px;
-  border: 2px solid var(--purple-200);
+  border: 2px solid var(--success-200);
   font-size: 0.95rem;
   width: 100%;
   transition: all 0.2s;
@@ -273,12 +273,12 @@
 
 .mantenimientos-modal-input:focus {
   outline: none;
-  border-color: var(--purple-500);
-  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.1);
+  border-color: var(--success-500);
+  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.1);
 }
 
 .mantenimientos-modal-input:hover {
-  border-color: var(--purple-300);
+  border-color: var(--success-300);
 }
 
 .mantenimientos-modal-actions-row {
@@ -321,18 +321,18 @@
   border-radius: 8px;
   font-weight: 500;
   transition: all 0.2s;
-  background: var(--purple-50);
-  color: var(--purple-700);
-  border: 1.5px solid var(--purple-200);
+  background: var(--success-50);
+  color: var(--success-700);
+  border: 1.5px solid var(--success-200);
   cursor: pointer;
   white-space: nowrap;
 }
 
 .mantenimientos-modal-edit-button-small:hover {
-  background: var(--purple-100);
-  border-color: var(--purple-300);
+  background: var(--success-100);
+  border-color: var(--success-300);
   transform: translateY(-1px);
-  box-shadow: 0 2px 8px rgba(124, 58, 237, 0.15);
+  box-shadow: 0 2px 8px rgba(34, 197, 94, 0.15);
 }
 
 .mantenimientos-modal-footer {

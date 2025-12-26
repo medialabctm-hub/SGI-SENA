@@ -118,13 +118,31 @@ export default function Mantenimientos() {
 
   function formatDate(dateString) {
     if (!dateString) return '-'
-    const date = new Date(dateString)
+    // Parsear la fecha sin ajuste de zona horaria
+    // Formato esperado: YYYY-MM-DD HH:mm:ss o YYYY-MM-DDTHH:mm:ss
+    let date
+    if (dateString.includes('T')) {
+      // Formato ISO: YYYY-MM-DDTHH:mm:ss
+      const [datePart, timePart] = dateString.split('T')
+      const [year, month, day] = datePart.split('-')
+      const [hours, minutes] = timePart.split(':')
+      date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day), parseInt(hours), parseInt(minutes || 0))
+    } else if (dateString.includes(' ')) {
+      // Formato MySQL: YYYY-MM-DD HH:mm:ss
+      const [datePart, timePart] = dateString.split(' ')
+      const [year, month, day] = datePart.split('-')
+      const [hours, minutes] = timePart.split(':')
+      date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day), parseInt(hours), parseInt(minutes || 0))
+    } else {
+      date = new Date(dateString)
+    }
     return date.toLocaleDateString('es-ES', {
       year: 'numeric',
       month: 'short',
       day: 'numeric',
       hour: '2-digit',
-      minute: '2-digit'
+      minute: '2-digit',
+      hour12: true
     })
   }
 
@@ -482,20 +500,22 @@ export default function Mantenimientos() {
                           setEditandoFechaMantenimiento(true)
                           // Convertir la fecha a formato datetime-local sin ajuste de zona horaria
                           const fechaStr = selectedMantenimiento.fecha_mantenimiento
-                          // Si la fecha viene en formato ISO, extraer la parte de fecha y hora
+                          let fechaFormateada = ''
+                          
                           if (fechaStr.includes('T')) {
-                            setNuevaFechaMantenimiento(fechaStr.slice(0, 16))
+                            // Formato ISO: YYYY-MM-DDTHH:mm:ss
+                            fechaFormateada = fechaStr.slice(0, 16)
+                          } else if (fechaStr.includes(' ')) {
+                            // Formato MySQL: YYYY-MM-DD HH:mm:ss
+                            const [date, time] = fechaStr.split(' ')
+                            const timeShort = time.slice(0, 5) // HH:mm
+                            fechaFormateada = `${date}T${timeShort}`
                           } else {
-                            // Si viene en formato MySQL (YYYY-MM-DD HH:mm:ss), convertir a datetime-local
-                            const parts = fechaStr.split(' ')
-                            if (parts.length === 2) {
-                              const [date, time] = parts
-                              const timeShort = time.slice(0, 5) // HH:mm
-                              setNuevaFechaMantenimiento(`${date}T${timeShort}`)
-                            } else {
-                              setNuevaFechaMantenimiento(fechaStr)
-                            }
+                            // Fallback
+                            fechaFormateada = fechaStr
                           }
+                          
+                          setNuevaFechaMantenimiento(fechaFormateada)
                         }}
                         className="btn-secondary btn-modern mantenimientos-modal-edit-button-small"
                       >
