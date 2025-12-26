@@ -27,6 +27,12 @@ router.get('/',
   listarMantenimientos
 )
 
+// Obtener tipos de mantenimiento disponibles (DEBE ir antes de /:id)
+router.get('/tipos', obtenerTiposMantenimiento)
+
+// Obtener estados de mantenimiento disponibles (DEBE ir antes de /:id)
+router.get('/estados', obtenerEstadosMantenimiento)
+
 // Obtener detalle de mantenimiento
 router.get('/:id', 
   requireAnyPermission([
@@ -59,12 +65,6 @@ router.delete('/:id',
   requirePermission(PERMISSIONS.MANTENIMIENTO.DELETE),
   eliminarMantenimiento
 )
-
-// Obtener tipos de mantenimiento disponibles
-router.get('/tipos', obtenerTiposMantenimiento)
-
-// Obtener estados de mantenimiento disponibles
-router.get('/estados', obtenerEstadosMantenimiento)
 
 export default router
 

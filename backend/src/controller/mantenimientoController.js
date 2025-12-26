@@ -598,23 +598,36 @@ export async function obtenerTiposMantenimiento(req, res) {
     )
 
     if (!rows || rows.length === 0) {
+      logger.warn('No se encontró información del ENUM tipo_mantenimiento en INFORMATION_SCHEMA')
       // Si no se puede obtener de INFORMATION_SCHEMA, retornar valores por defecto
-      return res.json(['Preventivo', 'Correctivo', 'Predictivo'])
+      return res.json(['Preventivo', 'Correctivo', 'Actualización'])
     }
 
-    // Extraer valores del ENUM: ENUM('Preventivo','Correctivo','Predictivo')
+    // Extraer valores del ENUM: ENUM('Preventivo','Correctivo','Actualización')
     const enumString = rows[0].COLUMN_TYPE
+    if (!enumString || !enumString.toLowerCase().startsWith('enum')) {
+      logger.warn('El tipo de columna no es un ENUM:', enumString)
+      return res.json(['Preventivo', 'Correctivo', 'Actualización'])
+    }
+
     const valores = enumString
       .replace(/^enum\(/i, '')
       .replace(/\)$/i, '')
       .split(',')
       .map(val => val.trim().replace(/^'|'$/g, ''))
+      .filter(val => val.length > 0)
 
+    if (valores.length === 0) {
+      logger.warn('No se pudieron extraer valores del ENUM')
+      return res.json(['Preventivo', 'Correctivo', 'Actualización'])
+    }
+
+    logger.info('Tipos de mantenimiento cargados desde BD', { tipos: valores })
     return res.json(valores)
   } catch (err) {
     logger.error('Error al obtener tipos de mantenimiento', { error: err.message, stack: err.stack })
     // En caso de error, retornar valores por defecto
-    return res.json(['Preventivo', 'Correctivo', 'Predictivo'])
+    return res.json(['Preventivo', 'Correctivo', 'Actualización'])
   }
 }
 
@@ -633,18 +646,31 @@ export async function obtenerEstadosMantenimiento(req, res) {
     )
 
     if (!rows || rows.length === 0) {
+      logger.warn('No se encontró información del ENUM estado_mantenimiento en INFORMATION_SCHEMA')
       // Si no se puede obtener de INFORMATION_SCHEMA, retornar valores por defecto
       return res.json(['Programado', 'En Proceso', 'Completado', 'Cancelado'])
     }
 
     // Extraer valores del ENUM: ENUM('Programado','En Proceso','Completado','Cancelado')
     const enumString = rows[0].COLUMN_TYPE
+    if (!enumString || !enumString.toLowerCase().startsWith('enum')) {
+      logger.warn('El tipo de columna no es un ENUM:', enumString)
+      return res.json(['Programado', 'En Proceso', 'Completado', 'Cancelado'])
+    }
+
     const valores = enumString
       .replace(/^enum\(/i, '')
       .replace(/\)$/i, '')
       .split(',')
       .map(val => val.trim().replace(/^'|'$/g, ''))
+      .filter(val => val.length > 0)
 
+    if (valores.length === 0) {
+      logger.warn('No se pudieron extraer valores del ENUM')
+      return res.json(['Programado', 'En Proceso', 'Completado', 'Cancelado'])
+    }
+
+    logger.info('Estados de mantenimiento cargados desde BD', { estados: valores })
     return res.json(valores)
   } catch (err) {
     logger.error('Error al obtener estados de mantenimiento', { error: err.message, stack: err.stack })
