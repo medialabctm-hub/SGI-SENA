@@ -23,11 +23,13 @@ export default function Reportes() {
   
   // Estados para crear reporte
   const [form, setForm] = useState({
-    tipo_reporte: 'General',
+    tipo_reporte: '',
     titulo: '',
     descripcion: '',
     codigo_equipo: '',
   })
+  const [tiposReporte, setTiposReporte] = useState([])
+  const [cargandoOpciones, setCargandoOpciones] = useState(true)
   const [codigoInventario, setCodigoInventario] = useState('')
   const [equipoEncontrado, setEquipoEncontrado] = useState(null)
   const [buscandoEquipo, setBuscandoEquipo] = useState(false)
@@ -42,6 +44,45 @@ export default function Reportes() {
     } catch (error) {
       console.error('Error al obtener datos del usuario:', error)
     }
+  }, [])
+
+  // Cargar tipos de reporte desde la API
+  useEffect(() => {
+    async function cargarOpcionesReporte() {
+      try {
+        setCargandoOpciones(true)
+        const token = localStorage.getItem('token')
+        
+        // Cargar tipos de reporte
+        const resTipos = await fetch('/api/reportes/tipos', {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+        if (resTipos.ok) {
+          const tipos = await parseApiResponse(resTipos)
+          if (Array.isArray(tipos) && tipos.length > 0) {
+            setTiposReporte(tipos)
+            setForm(prev => ({
+              ...prev,
+              tipo_reporte: prev.tipo_reporte || tipos[0]
+            }))
+          } else {
+            setToast({ message: 'No se pudieron cargar los tipos de reporte', type: 'error' })
+          }
+        } else {
+          throw new Error('Error al cargar tipos de reporte')
+        }
+      } catch (err) {
+        console.error('Error al cargar opciones de reporte:', err)
+        setToast({ 
+          message: 'Error al cargar las opciones de reporte. Por favor, recarga la página.', 
+          type: 'error' 
+        })
+      } finally {
+        setCargandoOpciones(false)
+      }
+    }
+
+    cargarOpcionesReporte()
   }, [])
 
   useEffect(() => {
@@ -156,7 +197,7 @@ export default function Reportes() {
           type: 'success' 
         })
         setForm({
-          tipo_reporte: 'General',
+          tipo_reporte: tiposReporte[0] || '',
           titulo: '',
           descripcion: '',
           codigo_equipo: '',
@@ -424,7 +465,9 @@ export default function Reportes() {
                       name="tipo_reporte"
                       value={form.tipo_reporte}
                       onChange={(e) => handleChange('tipo_reporte', e.target.value)}
-                      options={['General', 'Equipos', 'Mantenimiento', 'Novedades', 'Uso', 'Otro']}
+                      options={tiposReporte}
+                      placeholder={cargandoOpciones ? "Cargando opciones..." : "Seleccionar tipo de reporte"}
+                      disabled={cargandoOpciones}
                       placeholder="Seleccionar tipo de reporte"
                       required
                     />

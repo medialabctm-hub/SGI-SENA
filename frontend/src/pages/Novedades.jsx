@@ -26,9 +26,12 @@ export default function Novedades() {
   // Estados para crear novedad
   const [form, setForm] = useState({
     codigo_inventario: '',
-    tipo_novedad: 'Mal Funcionamiento',
+    tipo_novedad: '',
     descripcion: '',
   })
+  const [tiposNovedad, setTiposNovedad] = useState([])
+  const [estadosNovedad, setEstadosNovedad] = useState([])
+  const [cargandoOpciones, setCargandoOpciones] = useState(true)
   const [codigoInventario, setCodigoInventario] = useState('')
   const [equipoEncontrado, setEquipoEncontrado] = useState(null)
   const [buscandoEquipo, setBuscandoEquipo] = useState(false)
@@ -62,6 +65,60 @@ export default function Novedades() {
     } catch (error) {
       console.error('Error al obtener datos del usuario:', error)
     }
+  }, [])
+
+  // Cargar tipos y estados de novedad desde la API
+  useEffect(() => {
+    async function cargarOpcionesNovedad() {
+      try {
+        setCargandoOpciones(true)
+        const token = localStorage.getItem('token')
+        
+        // Cargar tipos de novedad
+        const resTipos = await fetch('/api/novedades/tipos', {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+        if (resTipos.ok) {
+          const tipos = await parseApiResponse(resTipos)
+          if (Array.isArray(tipos) && tipos.length > 0) {
+            setTiposNovedad(tipos)
+            setForm(prev => ({
+              ...prev,
+              tipo_novedad: prev.tipo_novedad || tipos[0]
+            }))
+          } else {
+            setToast({ message: 'No se pudieron cargar los tipos de novedad', type: 'error' })
+          }
+        } else {
+          throw new Error('Error al cargar tipos de novedad')
+        }
+
+        // Cargar estados de novedad
+        const resEstados = await fetch('/api/novedades/estados', {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+        if (resEstados.ok) {
+          const estados = await parseApiResponse(resEstados)
+          if (Array.isArray(estados) && estados.length > 0) {
+            setEstadosNovedad(estados)
+          } else {
+            setToast({ message: 'No se pudieron cargar los estados de novedad', type: 'error' })
+          }
+        } else {
+          throw new Error('Error al cargar estados de novedad')
+        }
+      } catch (err) {
+        console.error('Error al cargar opciones de novedad:', err)
+        setToast({ 
+          message: 'Error al cargar las opciones de novedad. Por favor, recarga la página.', 
+          type: 'error' 
+        })
+      } finally {
+        setCargandoOpciones(false)
+      }
+    }
+
+    cargarOpcionesNovedad()
   }, [])
 
   useEffect(() => {
@@ -184,7 +241,7 @@ export default function Novedades() {
         })
         setForm({
           codigo_equipo: '',
-          tipo_novedad: 'Mal Funcionamiento',
+          tipo_novedad: tiposNovedad[0] || '',
           descripcion: '',
         })
         limpiarEquipo()
@@ -233,7 +290,7 @@ export default function Novedades() {
   }
 
   function abrirEditarEstado(novedad) {
-    setNuevoEstado(novedad.estado_resolucion || 'Pendiente')
+    setNuevoEstado(novedad.estado_resolucion || estadosNovedad[0] || '')
     setObservacionesResolucion(novedad.observaciones_resolucion || '')
     setEditandoEstado(true)
   }
@@ -798,9 +855,10 @@ export default function Novedades() {
                       name="tipo_novedad"
                       value={form.tipo_novedad}
                       onChange={(e) => handleChange('tipo_novedad', e.target.value)}
-                      options={['Mal Funcionamiento', 'Daño', 'Pérdida', 'Robo', 'Otro']}
-                      placeholder="Seleccionar tipo de novedad"
+                      options={tiposNovedad}
+                      placeholder={cargandoOpciones ? "Cargando opciones..." : "Seleccionar tipo de novedad"}
                       required
+                      disabled={cargandoOpciones}
                     />
                   </div>
                 </div>
@@ -1299,7 +1357,7 @@ export default function Novedades() {
                           name="nuevoEstado"
                           value={nuevoEstado}
                           onChange={(e) => setNuevoEstado(e.target.value)}
-                          options={['Pendiente', 'En Proceso', 'Resuelto', 'No Resuelto']}
+                          options={estadosNovedad}
                           placeholder="Seleccionar estado"
                           className="novedades-estado-select"
                         />
