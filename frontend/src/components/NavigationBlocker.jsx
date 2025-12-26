@@ -1,25 +1,14 @@
 import { useEffect } from 'react'
-import { unstable_useBlocker as useBlocker } from 'react-router-dom'
 import { useDuplicados } from '../contexts/DuplicadosContext'
 
 /**
- * Componente que bloquea la navegación cuando hay duplicados pendientes
- * Usamos el blocker de react-router y un guardado manual de history
+ * Componente que bloquea la navegación cuando hay duplicados pendientes.
+ * Intercepta pushState/replaceState y el botón atrás/adelante.
  */
 export default function NavigationBlocker() {
   const { tieneDuplicadosPendientes } = useDuplicados()
-  const blocker = useBlocker(tieneDuplicadosPendientes)
   const mensajeBloqueo = 'No puedes cambiar de página mientras haya registros con placas duplicadas pendientes de revisión. Por favor, aprueba o rechaza todos los registros antes de continuar.'
 
-  // Bloqueo a nivel de react-router (Links, navigate, etc.)
-  useEffect(() => {
-    if (blocker.state === 'blocked') {
-      alert(mensajeBloqueo)
-      blocker.reset() // Cancela la navegación bloqueada
-    }
-  }, [blocker, mensajeBloqueo])
-
-  // Bloqueo de back/forward y cualquier cambio manual de history
   useEffect(() => {
     if (!tieneDuplicadosPendientes) return
 
@@ -28,7 +17,6 @@ export default function NavigationBlocker() {
     const handlePopState = (event) => {
       if (!tieneDuplicadosPendientes) return
       event?.preventDefault?.()
-      // Volver a la ruta actual y avisar
       window.history.pushState(null, '', rutaActual)
       alert(mensajeBloqueo)
     }

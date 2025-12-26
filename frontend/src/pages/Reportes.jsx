@@ -468,7 +468,6 @@ export default function Reportes() {
                       options={tiposReporte}
                       placeholder={cargandoOpciones ? "Cargando opciones..." : "Seleccionar tipo de reporte"}
                       disabled={cargandoOpciones}
-                      placeholder="Seleccionar tipo de reporte"
                       required
                     />
                   </div>

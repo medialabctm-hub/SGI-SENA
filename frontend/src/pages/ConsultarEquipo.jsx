@@ -788,12 +788,11 @@ export default function ConsultarEquipo() {
                           ) : (
                             <>
                               <button 
-                                className="btn btn-view" 
+                                className="btn btn-view consultar-equipo-action-button" 
                                 type="button" 
                                 onClick={() => navigate(`/equipos/detalle/${eq.codigo_equipo}`)} 
                                 disabled={loading}
                                 title="Ver detalle completo del equipo"
-                                className="consultar-equipo-action-button"
                               >
                                 <FiEye size={14} className="consultar-equipo-action-icon" />
                                 Ver Detalle
