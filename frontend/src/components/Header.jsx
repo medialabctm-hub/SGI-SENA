@@ -5,6 +5,7 @@ import {
   FiUser,
   FiMenu,
 } from 'react-icons/fi';
+import { Link } from "react-router-dom";
 import { useNavigate } from 'react-router-dom';
 import logo from '/public/images/logoSena.png';
 import Toast from './Toast';
@@ -309,7 +310,9 @@ export default function Header() {
               <FiMenu />
             </button>
             <div className="app-logo">
-              <img src={logo} alt="logo" /><a href="https://sgi-sena.up.railway.app/dashboard"></a>
+              <Link to="/dashboard">
+                  <img src={logo} alt="logo" />
+                </Link>
             </div>
             <div className="app-title">
               <div className="name">Gestión de Inventario</div>
