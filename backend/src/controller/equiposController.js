@@ -659,7 +659,7 @@ export async function eliminarEquipo(req, res) {
  */
 export async function asignarEquipo(req, res) {
   try {
-    const { codigo_equipo, id_usuario, tipo_responsabilidad = 'Principal', observaciones, dias_asignados } = req.body
+    const { codigo_equipo, id_usuario, tipo_responsabilidad = 'Principal', observaciones } = req.body
     const asignadoPor = req.user?.id
     const userRole = req.user?.rol
 
@@ -755,23 +755,14 @@ export async function asignarEquipo(req, res) {
       })
     }
 
-    // Calcular fecha_desvinculacion si se especifican días asignados
-    let fechaDesvinculacion = null
-    if (dias_asignados && !isNaN(Number(dias_asignados)) && Number(dias_asignados) > 0) {
-      const dias = parseInt(dias_asignados, 10)
-      const fecha = new Date()
-      fecha.setDate(fecha.getDate() + dias)
-      // Formatear fecha para MySQL (YYYY-MM-DD HH:MM:SS)
-      fechaDesvinculacion = fecha.toISOString().slice(0, 19).replace('T', ' ')
-    }
-
     // Insertar la habilitación (NO es asignación de inventario, solo habilitación para uso)
     // La tabla Responsables_Equipo se usa para habilitaciones de uso, no para asignación de inventario
+    // Los días habilitados se calculan automáticamente desde fecha_asignacion hasta la fecha actual
     const [result] = await defaultDb.execute(
       `INSERT INTO Responsables_Equipo 
        (codigo_equipo, id_usuario, tipo_responsabilidad, observaciones, asignado_por, fecha_asignacion, fecha_desvinculacion) 
-       VALUES (?, ?, ?, ?, ?, NOW(), ?)`,
-      [codigo_equipo, id_usuario, tipo_responsabilidad, observaciones || null, asignadoPor, fechaDesvinculacion]
+       VALUES (?, ?, ?, ?, ?, NOW(), NULL)`,
+      [codigo_equipo, id_usuario, tipo_responsabilidad, observaciones || null, asignadoPor]
     )
 
     return res.status(201).json({ 
@@ -856,7 +847,7 @@ export async function listarAsignaciones(req, res) {
         u.cedula AS usuario_cedula,
         r.nombre_rol AS usuario_rol,
         u_asignado.nombre_usuario AS asignado_por_nombre,
-        DATEDIFF(COALESCE(re.fecha_desvinculacion, NOW()), re.fecha_asignacion) AS dias_asignado
+        DATEDIFF(NOW(), re.fecha_asignacion) AS dias_asignado
       FROM Responsables_Equipo re
       INNER JOIN Elementos e ON re.codigo_equipo = e.codigo_equipo
       INNER JOIN Usuarios u ON re.id_usuario = u.id_usuario

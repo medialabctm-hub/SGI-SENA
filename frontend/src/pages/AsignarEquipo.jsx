@@ -16,7 +16,6 @@ export default function AsignarEquipo() {
     id_usuario: '',
     tipo_responsabilidad: 'Principal',
     observaciones: '',
-    dias_asignados: '',
   })
   const [toast, setToast] = useState(null)
   const [loading, setLoading] = useState(false)
@@ -279,7 +278,6 @@ export default function AsignarEquipo() {
           id_usuario: '',
           tipo_responsabilidad: 'Principal',
           observaciones: '',
-          dias_asignados: '',
         })
         limpiarEquipo()
         limpiarUsuario()
@@ -521,25 +519,7 @@ export default function AsignarEquipo() {
                 placeholder="Seleccionar tipo"
               />
             </div>
-
-            <div className="form-group">
-              <label>
-                    Días de Asignación (Opcional)
-              </label>
-                  <input
-                    type="number"
-                    min="1"
-                    value={form.dias_asignados}
-                    onChange={(e) => handleChange('dias_asignados', e.target.value)}
-                    placeholder="Ej: 30, 60, 90..."
-                    className="asignar-equipo-input-full"
-                  />
-                  <p className="asignar-equipo-help-text">
-                    Duración esperada de la asignación en días
-                  </p>
-                </div>
-              </div>
-            </div>
+          </div>
 
             {/* Sección: Observaciones */}
             <div className="form-section">
