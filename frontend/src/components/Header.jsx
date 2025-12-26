@@ -308,10 +308,9 @@ export default function Header() {
             >
               <FiMenu />
             </button>
-            <a href="https://sgi-sena.up.railway.app/dashboard">
             <div className="app-logo">
-              <img src={logo} alt="logo" />
-            </div></a>
+              <img src={logo} alt="logo" /><a href="https://sgi-sena.up.railway.app/dashboard"></a>
+            </div>
             <div className="app-title">
               <div className="name">Gestión de Inventario</div>
               <div className="sub">SENA</div>
