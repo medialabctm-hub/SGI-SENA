@@ -69,6 +69,8 @@ export default function ImportarUsuarios({ onImportComplete }) {
     const plantilla = {
       'nombre_usuario': [],
       'cedula': [],
+      'tipo_documento': [],
+      'tipo_documento_otro': [],
       'telefono': [],
       'correo': [],
       'rol': [],

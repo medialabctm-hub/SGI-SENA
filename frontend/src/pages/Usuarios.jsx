@@ -24,6 +24,8 @@ export default function Usuarios() {
   const [form, setForm] = useState({
     nombre: '',
     cedula: '',
+    tipo_documento: 'CC',
+    tipo_documento_otro: '',
     correo: '',
     telefono: '',
     rol: 'Aprendiz',
@@ -125,6 +127,8 @@ export default function Usuarios() {
       setForm({
         nombre: user.nombre_usuario || '',
         cedula: user.cedula || '',
+        tipo_documento: user.tipo_documento || 'CC',
+        tipo_documento_otro: user.tipo_documento_otro || '',
         correo: user.correo || '',
         telefono: user.telefono || '',
         rol: user.nombre_rol || 'Aprendiz',
@@ -158,6 +162,8 @@ export default function Usuarios() {
         body: JSON.stringify({
           nombre: form.nombre,
           cedula: form.cedula,
+          tipo_documento: form.tipo_documento,
+          tipo_documento_otro: form.tipo_documento === 'Otro' ? form.tipo_documento_otro : null,
           correo: form.correo,
           telefono: form.telefono,
           rol: form.rol,
@@ -231,6 +237,8 @@ export default function Usuarios() {
       // Preparar datos para Excel
       const datosExcel = usuarios.map(user => ({
         'ID Usuario': user.id_usuario || '-',
+        'Tipo Documento': user.tipo_documento || 'CC',
+        'Tipo Documento (Otro)': user.tipo_documento_otro || '-',
         'Documento': user.cedula || '-',
         'Nombre Completo': user.nombre_usuario || '-',
         'Correo Electrónico': user.correo || '-',
@@ -445,6 +453,7 @@ export default function Usuarios() {
               </div>
               <div className="user-detail-content">
                 <div className="user-detail-grid">
+                  <div><strong>Tipo Documento:</strong> {viewUser.user.tipo_documento || 'CC'}{viewUser.user.tipo_documento === 'Otro' && viewUser.user.tipo_documento_otro ? ` (${viewUser.user.tipo_documento_otro})` : ''}</div>
                   <div><strong>Documento:</strong> {viewUser.user.cedula}</div>
                   <div><strong>Rol:</strong> {viewUser.user.nombre_rol}</div>
                   <div><strong>Correo:</strong> {viewUser.user.correo}</div>
@@ -488,6 +497,32 @@ export default function Usuarios() {
                       }
                     />
                   </div>
+                  <div className="form-row">
+                    <label>Tipo de Documento</label>
+                    <CustomSelect
+                      name="tipo_documento"
+                      value={form.tipo_documento}
+                      onChange={(e) =>
+                        setForm((prev) => ({ ...prev, tipo_documento: e.target.value, tipo_documento_otro: e.target.value !== 'Otro' ? '' : prev.tipo_documento_otro }))
+                      }
+                      options={['TI', 'CC', 'CE', 'PPT', 'Otro']}
+                      placeholder="Seleccionar tipo de documento"
+                    />
+                  </div>
+                  {form.tipo_documento === 'Otro' && (
+                    <div className="form-row">
+                      <label>Especificar Tipo de Documento</label>
+                      <input
+                        type="text"
+                        value={form.tipo_documento_otro}
+                        onChange={(e) =>
+                          setForm((prev) => ({ ...prev, tipo_documento_otro: e.target.value }))
+                        }
+                        placeholder="Especificar tipo de documento"
+                        maxLength={50}
+                      />
+                    </div>
+                  )}
                   <div className="form-row">
                     <label>Documento</label>
                     <input

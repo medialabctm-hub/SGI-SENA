@@ -1838,6 +1838,8 @@ export async function buscarCuentadantePorDocumento(req, res) {
         u.id_usuario,
         u.nombre_usuario,
         u.cedula,
+        u.tipo_documento,
+        u.tipo_documento_otro,
         u.correo,
         u.telefono,
         u.estado,
@@ -3076,7 +3078,8 @@ export async function registrarUsoEquipoExterno(req, res) {
         try {
           // Buscar usuario por documento
           const [[usuarioRow]] = await connection.execute(
-            `SELECT u.id_usuario, u.nombre_usuario, u.cedula, u.correo, u.telefono,
+            `SELECT u.id_usuario, u.nombre_usuario, u.cedula, u.tipo_documento, u.tipo_documento_otro,
+                    u.correo, u.telefono,
                     r.nombre_rol, r.id_rol
              FROM Usuarios u
              LEFT JOIN Roles r ON r.id_rol = u.id_rol

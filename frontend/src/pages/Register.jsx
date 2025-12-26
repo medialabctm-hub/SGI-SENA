@@ -12,6 +12,8 @@ import '../styles/auth.css';
 export default function Register() {
   const [name, setName] = useState('')
   const [cedula, setCedula] = useState('')
+  const [tipoDocumento, setTipoDocumento] = useState('CC')
+  const [tipoDocumentoOtro, setTipoDocumentoOtro] = useState('')
   const [email, setEmail] = useState('')
   const [telefono, setTelefono] = useState('')
   const [password, setPassword] = useState('')
@@ -68,6 +70,8 @@ export default function Register() {
         body: JSON.stringify({
           nombre: name,
           cedula,
+          tipo_documento: tipoDocumento,
+          tipo_documento_otro: tipoDocumento === 'Otro' ? tipoDocumentoOtro.trim() : null,
           correo: (email || '').trim().toLowerCase(),
           telefono,
           contrasena: password,
@@ -117,6 +121,30 @@ export default function Register() {
             />
           </label>
           {errores.cedula_usuario && <div className="error-msg">{errores.cedula_usuario}</div>}
+          <label className="input">
+            <span className="icon"></span>
+            <CustomSelect
+              name="tipo_documento"
+              value={tipoDocumento}
+              onChange={e => setTipoDocumento(e.target.value)}
+              options={['TI', 'CC', 'CE', 'PPT', 'Otro']}
+              placeholder="Tipo de documento"
+              className="auth-select-input"
+            />
+          </label>
+          {tipoDocumento === 'Otro' && (
+            <label className="input">
+              <span className="icon"><FiCreditCard /></span>
+              <input
+                type="text"
+                placeholder="Especificar tipo de documento"
+                value={tipoDocumentoOtro}
+                onChange={e => setTipoDocumentoOtro(e.target.value)}
+                maxLength={50}
+              />
+            </label>
+          )}
+          {errores.tipo_documento_otro && <div className="error-msg">{errores.tipo_documento_otro}</div>}
           <label className="input">
             <span className="icon"><FiMail /></span>
             <input
