@@ -8,12 +8,10 @@ export function DuplicadosProvider({ children }) {
   const [modalBloqueoAbierto, setModalBloqueoAbierto] = useState(false)
 
   const establecerDuplicadosPendientes = (hayDuplicados) => {
-    console.log('🔴 Estableciendo duplicados pendientes:', hayDuplicados)
     setTieneDuplicadosPendientes(hayDuplicados)
   }
 
   const limpiarDuplicados = () => {
-    console.log('✅ Limpiando duplicados pendientes')
     setTieneDuplicadosPendientes(false)
   }
 

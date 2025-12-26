@@ -35,7 +35,6 @@ export default function ImportarEquipos({ onImportComplete, onEstadoDuplicadosCh
 
   // Sincronizar estado de duplicados con el contexto
   useEffect(() => {
-    console.log('📦 ImportarEquipos - Actualizando contexto. mostrarDuplicados:', mostrarDuplicados)
     establecerDuplicadosPendientes(mostrarDuplicados)
   }, [mostrarDuplicados, establecerDuplicadosPendientes])
 

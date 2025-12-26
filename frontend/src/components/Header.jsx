@@ -67,7 +67,6 @@ export default function Header() {
   const nombreCompleto = user?.nombre_usuario || user?.nombre || 'Usuario';
 
   const handleLogout = () => {
-    console.log('🚪 Header - Intentando logout. tieneDuplicadosPendientes:', tieneDuplicadosPendientes)
     if (tieneDuplicadosPendientes) {
       setToast({
         message: 'No puedes cerrar sesión mientras haya registros con placas duplicadas pendientes de revisión. Por favor, aprueba o rechaza todos los registros antes de continuar.',

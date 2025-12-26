@@ -36,7 +36,7 @@
   font-size: 17px;
   font-weight: 600;
   color: #721c24;
-  animation: toast-error-shake 0.5s ease-out;
+  animation: toast-in 0.4s cubic-bezier(0.16, 1, 0.3, 1), toast-error-shake 0.5s ease-out 0.4s;
 }
 
 .toast-info {
@@ -70,7 +70,7 @@
 }
 
 .toast-closing {
-  animation: toast-out 0.3s ease-out forwards;
+  animation: toast-out 0.3s ease-out forwards !important;
 }
 
 @keyframes toast-out {

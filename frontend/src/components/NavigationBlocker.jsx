@@ -9,7 +9,6 @@ export default function NavigationBlocker() {
   const { tieneDuplicadosPendientes, mostrarModalBloqueo } = useDuplicados()
 
   useEffect(() => {
-    console.log('🚧 NavigationBlocker - tieneDuplicadosPendientes:', tieneDuplicadosPendientes)
     if (!tieneDuplicadosPendientes) return
 
     const rutaActual = window.location.pathname + window.location.search + window.location.hash
