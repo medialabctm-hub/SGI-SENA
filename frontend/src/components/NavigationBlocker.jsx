@@ -1,40 +1,65 @@
 import { useEffect } from 'react'
-import { useLocation } from 'react-router-dom'
+import { unstable_useBlocker as useBlocker } from 'react-router-dom'
 import { useDuplicados } from '../contexts/DuplicadosContext'
 
 /**
  * Componente que bloquea la navegación cuando hay duplicados pendientes
- * Intercepta el botón de retroceso del navegador
+ * Usamos el blocker de react-router y un guardado manual de history
  */
 export default function NavigationBlocker() {
   const { tieneDuplicadosPendientes } = useDuplicados()
-  const location = useLocation()
+  const blocker = useBlocker(tieneDuplicadosPendientes)
+  const mensajeBloqueo = 'No puedes cambiar de página mientras haya registros con placas duplicadas pendientes de revisión. Por favor, aprueba o rechaza todos los registros antes de continuar.'
 
+  // Bloqueo a nivel de react-router (Links, navigate, etc.)
   useEffect(() => {
-    if (!tieneDuplicadosPendientes) {
-      return
+    if (blocker.state === 'blocked') {
+      alert(mensajeBloqueo)
+      blocker.reset() // Cancela la navegación bloqueada
     }
+  }, [blocker, mensajeBloqueo])
 
-    // Guardar la ruta actual cuando hay duplicados
-    const rutaActual = location.pathname + location.search
+  // Bloqueo de back/forward y cualquier cambio manual de history
+  useEffect(() => {
+    if (!tieneDuplicadosPendientes) return
 
-    // Interceptar cambios de ruta con el botón de retroceso
+    const rutaActual = window.location.pathname + window.location.search + window.location.hash
+
     const handlePopState = (event) => {
-      if (tieneDuplicadosPendientes) {
-        // Prevenir la navegación
-        window.history.pushState(null, '', rutaActual)
-        alert('No puedes cambiar de página mientras haya registros con placas duplicadas pendientes de revisión. Por favor, aprueba o rechaza todos los registros antes de continuar.')
-      }
+      if (!tieneDuplicadosPendientes) return
+      event?.preventDefault?.()
+      // Volver a la ruta actual y avisar
+      window.history.pushState(null, '', rutaActual)
+      alert(mensajeBloqueo)
     }
 
-    // Agregar un estado al historial para poder interceptar el botón de retroceso
-    window.history.pushState(null, '', rutaActual)
+    const originalPushState = window.history.pushState
+    const originalReplaceState = window.history.replaceState
+
+    window.history.pushState = function (state, title, url) {
+      if (tieneDuplicadosPendientes && url && url !== rutaActual) {
+        alert(mensajeBloqueo)
+        return
+      }
+      return originalPushState.apply(this, arguments)
+    }
+
+    window.history.replaceState = function (state, title, url) {
+      if (tieneDuplicadosPendientes && url && url !== rutaActual) {
+        alert(mensajeBloqueo)
+        return
+      }
+      return originalReplaceState.apply(this, arguments)
+    }
+
     window.addEventListener('popstate', handlePopState)
 
     return () => {
       window.removeEventListener('popstate', handlePopState)
+      window.history.pushState = originalPushState
+      window.history.replaceState = originalReplaceState
     }
-  }, [tieneDuplicadosPendientes, location.pathname, location.search])
+  }, [tieneDuplicadosPendientes, mensajeBloqueo])
 
   return null
 }
