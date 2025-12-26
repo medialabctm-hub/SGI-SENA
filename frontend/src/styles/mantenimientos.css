@@ -51,72 +51,7 @@
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
-}
-
-.mantenimientos-action-button {
-  padding: 8px 14px;
-  font-size: 0.875rem;
-  display: flex;
   align-items: center;
-  gap: 6px;
-  border-radius: 8px;
-  font-weight: 500;
-  transition: all 0.2s ease;
-  border: none;
-  cursor: pointer;
-  white-space: nowrap;
-}
-
-/* Botón Ver - Azul */
-.mantenimientos-action-button.btn-view {
-  background: var(--info-50);
-  color: var(--info-700);
-  border: 1.5px solid var(--info-200);
-}
-
-.mantenimientos-action-button.btn-view:hover {
-  background: var(--info-100);
-  border-color: var(--info-300);
-  transform: translateY(-1px);
-  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.15);
-}
-
-/* Botón Estado - Verde */
-.mantenimientos-action-button.btn-status {
-  background: var(--success-50);
-  color: var(--success-700);
-  border: 1.5px solid var(--success-200);
-}
-
-.mantenimientos-action-button.btn-status:hover {
-  background: var(--success-100);
-  border-color: var(--success-300);
-  transform: translateY(-1px);
-  box-shadow: 0 2px 8px rgba(34, 197, 94, 0.15);
-}
-
-/* Botón Eliminar - Rojo */
-.mantenimientos-action-button.btn-delete {
-  background: var(--error-50);
-  color: var(--error-700);
-  border: 1.5px solid var(--error-200);
-}
-
-.mantenimientos-action-button.btn-delete:hover {
-  background: var(--error-100);
-  border-color: var(--error-300);
-  transform: translateY(-1px);
-  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.15);
-}
-
-.mantenimientos-action-button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-  transform: none;
-}
-
-.mantenimientos-action-icon {
-  flex-shrink: 0;
 }
 
 .mantenimientos-tipo-badge {

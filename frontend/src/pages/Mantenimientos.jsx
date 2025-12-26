@@ -323,32 +323,32 @@ export default function Mantenimientos() {
                       <td>
                         <div className="mantenimientos-actions">
                           <button
-                            className="mantenimientos-action-button btn-view"
+                            className="btn btn-view btn-sm"
                             onClick={() => setSelectedMantenimiento(mant)}
                           >
-                            <FiEye size={16} className="mantenimientos-action-icon" />
+                            <FiEye size={16} />
                             Ver
                           </button>
                           {(isAdmin || isInstructor) && (
                             <button
-                              className="mantenimientos-action-button btn-status"
+                              className="btn btn-edit btn-sm"
                               onClick={() => {
                                 setSelectedMantenimiento(mant)
                                 abrirEditarEstado(mant)
                               }}
                               disabled={loading}
                             >
-                              <FiEdit size={16} className="mantenimientos-action-icon" />
+                              <FiEdit size={16} />
                               Estado
                             </button>
                           )}
                           {isAdmin && (
                             <button
-                              className="mantenimientos-action-button btn-delete"
+                              className="btn btn-delete btn-sm"
                               onClick={() => confirmDelete(mant.id_mantenimiento)}
                               disabled={loading}
                             >
-                              <FiTrash2 size={16} className="mantenimientos-action-icon" />
+                              <FiTrash2 size={16} />
                               Eliminar
                             </button>
                           )}
