@@ -20,7 +20,7 @@ export default function ImportarEquipos({ onImportComplete, onEstadoDuplicadosCh
   const [user, setUser] = useState(null)
   const [idImportacion, setIdImportacion] = useState(null)
   const [mostrarDuplicados, setMostrarDuplicados] = useState(false)
-  const { establecerIdImportacion, limpiarDuplicados } = useDuplicados()
+  const { establecerDuplicadosPendientes, limpiarDuplicados } = useDuplicados()
 
   useEffect(() => {
     try {
@@ -33,14 +33,10 @@ export default function ImportarEquipos({ onImportComplete, onEstadoDuplicadosCh
     }
   }, [])
 
-  // Sincronizar idImportacion con el contexto
+  // Sincronizar estado de duplicados con el contexto
   useEffect(() => {
-    if (idImportacion) {
-      establecerIdImportacion(idImportacion)
-    } else {
-      limpiarDuplicados()
-    }
-  }, [idImportacion, establecerIdImportacion, limpiarDuplicados])
+    establecerDuplicadosPendientes(mostrarDuplicados)
+  }, [mostrarDuplicados, establecerDuplicadosPendientes])
 
   // Notificar al componente padre cuando haya o no duplicados pendientes
   useEffect(() => {
@@ -221,11 +217,9 @@ export default function ImportarEquipos({ onImportComplete, onEstadoDuplicadosCh
       if (data.tiene_duplicados && data.id_importacion) {
         setIdImportacion(data.id_importacion)
         setMostrarDuplicados(true)
-        establecerIdImportacion(data.id_importacion)
       } else {
         setMostrarDuplicados(false)
         setIdImportacion(null)
-        limpiarDuplicados()
       }
       
       if (onImportComplete) {
