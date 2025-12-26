@@ -22,6 +22,7 @@ export default function Mantenimientos() {
   const [nuevaFechaProximo, setNuevaFechaProximo] = useState('')
   const [deleteConfirm, setDeleteConfirm] = useState({ open: false, id: null })
   const [user, setUser] = useState(null)
+  const [estadosMantenimiento, setEstadosMantenimiento] = useState([])
 
   useEffect(() => {
     try {
@@ -41,7 +42,26 @@ export default function Mantenimientos() {
       return
     }
     fetchMantenimientos()
+    cargarEstadosMantenimiento()
   }, [user, navigate])
+
+  // Cargar estados de mantenimiento desde la API
+  async function cargarEstadosMantenimiento() {
+    try {
+      const token = localStorage.getItem('token')
+      const res = await fetch('/api/mantenimiento/estados', {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      if (res.ok) {
+        const estados = await parseApiResponse(res)
+        if (Array.isArray(estados) && estados.length > 0) {
+          setEstadosMantenimiento(estados)
+        }
+      }
+    } catch (err) {
+      console.error('Error al cargar estados de mantenimiento:', err)
+    }
+  }
 
   async function fetchMantenimientos() {
     setLoading(true)
@@ -115,7 +135,7 @@ export default function Mantenimientos() {
   const isInstructor = user?.nombre_rol === 'Instructor'
 
   function abrirEditarEstado(mantenimiento) {
-    setNuevoEstado(mantenimiento.estado_mantenimiento || 'Programado')
+    setNuevoEstado(mantenimiento.estado_mantenimiento || estadosMantenimiento[0] || '')
     setEditandoEstado(true)
   }
 
@@ -365,7 +385,7 @@ export default function Mantenimientos() {
                       name="nuevoEstado"
                       value={nuevoEstado}
                       onChange={(e) => setNuevoEstado(e.target.value)}
-                      options={['Programado', 'En Proceso', 'Completado', 'Cancelado']}
+                      options={estadosMantenimiento}
                       placeholder="Seleccionar estado"
                       className="mantenimientos-modal-select form-select"
                     />

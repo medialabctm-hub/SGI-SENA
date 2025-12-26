@@ -440,7 +440,7 @@ body::after {
   border: 1px solid var(--success-800);
   border-radius: 8px;
   padding: 0.625rem 1.25rem;
-  font-size: 0.95rem;
+  font-size: 0.95rem; 
   font-weight: 600;
   cursor: pointer;
   display: inline-flex;
