@@ -270,7 +270,7 @@ export async function listarMantenimientos(req, res) {
         e.modelo AS equipo_modelo,
         e.consecutivo,
         e.r_centro,
-        e.fecha_proximo_mantenimiento,
+        NULL AS fecha_proximo_mantenimiento,
         u.nombre_usuario AS realizado_por_nombre,
         t.nombre_usuario AS tecnico_nombre
       FROM Mantenimiento m
@@ -322,7 +322,7 @@ export async function obtenerMantenimientoPorId(req, res) {
         e.modelo AS equipo_modelo,
         e.consecutivo,
         e.r_centro,
-        e.fecha_proximo_mantenimiento,
+        NULL AS fecha_proximo_mantenimiento,
         u.nombre_usuario AS realizado_por_nombre,
         t.nombre_usuario AS tecnico_nombre
       FROM Mantenimiento m
