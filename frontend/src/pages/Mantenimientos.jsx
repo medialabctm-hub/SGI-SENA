@@ -1,17 +1,20 @@
 import React, { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import Header from '../components/Header'
 import Sidebar from '../components/Sidebar'
 import Toast from '../components/Toast'
 import ConfirmModal from '../components/ConfirmModal'
 import CustomSelect from '../components/CustomSelect'
-import { FiTool, FiEye, FiCheckCircle, FiClock, FiXCircle, FiAlertCircle, FiPlus, FiEdit, FiTrash2 } from 'react-icons/fi'
+import { FiTool, FiEye, FiCheckCircle, FiClock, FiXCircle, FiAlertCircle, FiPlus, FiEdit, FiTrash2, FiList, FiPackage, FiCalendar, FiUser, FiFileText, FiSearch, FiCheck, FiX, FiType } from 'react-icons/fi'
 import { parseApiResponse, buildErrorMessage } from '../utils/api'
 import '../styles/equipos.css'
 import '../styles/mantenimientos.css'
+import '../styles/crearMantenimiento.css'
 
 export default function Mantenimientos() {
   const navigate = useNavigate()
+  const location = useLocation()
+  const [activeTab, setActiveTab] = useState('historial') // 'historial' o 'crear'
   const [mantenimientos, setMantenimientos] = useState([])
   const [loading, setLoading] = useState(false)
   const [toast, setToast] = useState(null)
@@ -25,6 +28,27 @@ export default function Mantenimientos() {
   const [deleteConfirm, setDeleteConfirm] = useState({ open: false, id: null })
   const [user, setUser] = useState(null)
   const [estadosMantenimiento, setEstadosMantenimiento] = useState([])
+  
+  // Estados para crear mantenimiento
+  const [form, setForm] = useState({
+    codigo_equipo: '',
+    tipo_mantenimiento: '',
+    fecha_mantenimiento: '',
+    fecha_proximo: '',
+    descripcion_trabajo: '',
+    id_usuario_tecnico: '',
+    observaciones: '',
+    estado_mantenimiento: '',
+  })
+  const [codigoInventario, setCodigoInventario] = useState('')
+  const [equipoEncontrado, setEquipoEncontrado] = useState(null)
+  const [buscandoEquipo, setBuscandoEquipo] = useState(false)
+  const [cedulaTecnico, setCedulaTecnico] = useState('')
+  const [tecnicoEncontrado, setTecnicoEncontrado] = useState(null)
+  const [buscandoTecnico, setBuscandoTecnico] = useState(false)
+  const [tiposMantenimiento, setTiposMantenimiento] = useState([])
+  const [cargandoOpciones, setCargandoOpciones] = useState(true)
+  const [loadingCrear, setLoadingCrear] = useState(false)
 
   useEffect(() => {
     try {
@@ -43,9 +67,77 @@ export default function Mantenimientos() {
       navigate('/dashboard')
       return
     }
-    fetchMantenimientos()
-    cargarEstadosMantenimiento()
-  }, [user, navigate])
+    
+    // Verificar si hay un parámetro de URL para la pestaña
+    const urlParams = new URLSearchParams(window.location.search)
+    const tabParam = urlParams.get('tab')
+    const currentPath = window.location.pathname
+    
+    if (currentPath === '/mantenimientos/crear' || tabParam === 'crear') {
+      setActiveTab('crear')
+      // Redirigir a /mantenimientos?tab=crear si estamos en /mantenimientos/crear
+      if (currentPath === '/mantenimientos/crear') {
+        navigate('/mantenimientos?tab=crear', { replace: true })
+      }
+    } else {
+      setActiveTab('historial')
+    }
+  }, [user, navigate, location])
+
+  useEffect(() => {
+    if (activeTab === 'historial') {
+      fetchMantenimientos()
+      cargarEstadosMantenimiento()
+    } else if (activeTab === 'crear') {
+      cargarOpcionesMantenimiento()
+    }
+  }, [activeTab])
+  
+  // Cargar tipos y estados de mantenimiento desde la API
+  async function cargarOpcionesMantenimiento() {
+    try {
+      setCargandoOpciones(true)
+      const token = localStorage.getItem('token')
+      
+      // Cargar tipos de mantenimiento
+      const resTipos = await fetch('/api/mantenimiento/tipos', {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      if (resTipos.ok) {
+        const tipos = await parseApiResponse(resTipos)
+        if (Array.isArray(tipos) && tipos.length > 0) {
+          setTiposMantenimiento(tipos)
+          setForm(prev => ({
+            ...prev,
+            tipo_mantenimiento: prev.tipo_mantenimiento || tipos[0]
+          }))
+        }
+      }
+
+      // Cargar estados de mantenimiento
+      const resEstados = await fetch('/api/mantenimiento/estados', {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      if (resEstados.ok) {
+        const estados = await parseApiResponse(resEstados)
+        if (Array.isArray(estados) && estados.length > 0) {
+          setEstadosMantenimiento(estados)
+          setForm(prev => ({
+            ...prev,
+            estado_mantenimiento: prev.estado_mantenimiento || estados[0]
+          }))
+        }
+      }
+    } catch (err) {
+      console.error('Error al cargar opciones de mantenimiento:', err)
+      setToast({ 
+        message: 'Error al cargar las opciones de mantenimiento. Por favor, recarga la página.', 
+        type: 'error' 
+      })
+    } finally {
+      setCargandoOpciones(false)
+    }
+  }
 
   // Cargar estados de mantenimiento desde la API
   async function cargarEstadosMantenimiento() {
@@ -233,6 +325,176 @@ export default function Mantenimientos() {
     }
   }
 
+  // Funciones para crear mantenimiento
+  async function buscarEquipo() {
+    if (!codigoInventario.trim()) {
+      setToast({ message: 'Ingresa un código de inventario', type: 'error' })
+      return
+    }
+
+    try {
+      setBuscandoEquipo(true)
+      setEquipoEncontrado(null)
+      const token = localStorage.getItem('token')
+      const res = await fetch(`/api/equipos/${encodeURIComponent(codigoInventario.trim())}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      
+      if (res.ok) {
+        const data = await parseApiResponse(res)
+        setEquipoEncontrado(data)
+        setForm(prev => ({ ...prev, codigo_equipo: data.codigo_equipo }))
+        setToast({ message: 'Equipo encontrado correctamente', type: 'success' })
+      } else {
+        const errorData = await res.json().catch(() => ({}))
+        setToast({ 
+          message: errorData.error || 'Equipo no encontrado', 
+          type: 'error' 
+        })
+        setEquipoEncontrado(null)
+        setForm(prev => ({ ...prev, codigo_equipo: '' }))
+      }
+    } catch (err) {
+      setToast({ 
+        message: buildErrorMessage(err, 'Error al buscar el equipo'), 
+        type: 'error' 
+      })
+      setEquipoEncontrado(null)
+      setForm(prev => ({ ...prev, codigo_equipo: '' }))
+    } finally {
+      setBuscandoEquipo(false)
+    }
+  }
+
+  async function buscarTecnico() {
+    if (!cedulaTecnico.trim()) {
+      setToast({ message: 'Ingresa una Documento', type: 'error' })
+      return
+    }
+
+    try {
+      setBuscandoTecnico(true)
+      setTecnicoEncontrado(null)
+      const token = localStorage.getItem('token')
+      const res = await fetch(`/api/auth/user/cedula/${encodeURIComponent(cedulaTecnico.trim())}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      
+      if (res.ok) {
+        const data = await parseApiResponse(res)
+        setTecnicoEncontrado(data)
+        setForm(prev => ({ ...prev, id_usuario_tecnico: data.id_usuario }))
+        setToast({ message: 'Técnico encontrado correctamente', type: 'success' })
+      } else {
+        const errorData = await res.json().catch(() => ({}))
+        setToast({ 
+          message: errorData.error || 'Técnico no encontrado', 
+          type: 'error' 
+        })
+        setTecnicoEncontrado(null)
+        setForm(prev => ({ ...prev, id_usuario_tecnico: '' }))
+      }
+    } catch (err) {
+      setToast({ 
+        message: buildErrorMessage(err, 'Error al buscar el técnico'), 
+        type: 'error' 
+      })
+      setTecnicoEncontrado(null)
+      setForm(prev => ({ ...prev, id_usuario_tecnico: '' }))
+    } finally {
+      setBuscandoTecnico(false)
+    }
+  }
+
+  function limpiarEquipo() {
+    setCodigoInventario('')
+    setEquipoEncontrado(null)
+    setForm(prev => ({ ...prev, codigo_equipo: '' }))
+  }
+
+  function limpiarTecnico() {
+    setCedulaTecnico('')
+    setTecnicoEncontrado(null)
+    setForm(prev => ({ ...prev, id_usuario_tecnico: '' }))
+  }
+
+  function handleChange(field, value) {
+    setForm(prev => ({ ...prev, [field]: value }))
+  }
+
+  async function handleSubmitCrear(e) {
+    e.preventDefault()
+    
+    if (!form.codigo_equipo || !form.tipo_mantenimiento || !form.fecha_mantenimiento) {
+      setToast({ message: 'Equipo, tipo de mantenimiento y fecha son obligatorios', type: 'error' })
+      return
+    }
+
+    try {
+      setLoadingCrear(true)
+      const token = localStorage.getItem('token')
+      
+      const payload = {
+        ...form,
+        id_usuario_tecnico: form.id_usuario_tecnico || null,
+        fecha_proximo: form.fecha_proximo || null,
+        descripcion_trabajo: form.descripcion_trabajo.trim() || null,
+        observaciones: form.observaciones.trim() || null,
+      }
+
+      const res = await fetch('/api/mantenimiento', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify(payload)
+      })
+
+      const data = await res.json()
+
+      if (res.ok) {
+        setToast({ 
+          message: data.message || 'Mantenimiento registrado correctamente', 
+          type: 'success' 
+        })
+        setForm({
+          codigo_equipo: '',
+          tipo_mantenimiento: tiposMantenimiento[0] || '',
+          fecha_mantenimiento: '',
+          fecha_proximo: '',
+          descripcion_trabajo: '',
+          id_usuario_tecnico: '',
+          observaciones: '',
+          estado_mantenimiento: estadosMantenimiento[0] || '',
+        })
+        limpiarEquipo()
+        limpiarTecnico()
+        setActiveTab('historial')
+        fetchMantenimientos()
+      } else {
+        setToast({ 
+          message: data.error || 'Error al registrar el mantenimiento', 
+          type: 'error' 
+        })
+      }
+    } catch (err) {
+      setToast({ message: 'Error de conexión con el servidor', type: 'error' })
+    } finally {
+      setLoadingCrear(false)
+    }
+  }
+
+  const getCurrentDateTime = () => {
+    const now = new Date()
+    const year = now.getFullYear()
+    const month = String(now.getMonth() + 1).padStart(2, '0')
+    const day = String(now.getDate()).padStart(2, '0')
+    const hours = String(now.getHours()).padStart(2, '0')
+    const minutes = String(now.getMinutes()).padStart(2, '0')
+    return `${year}-${month}-${day}T${hours}:${minutes}`
+  }
+
   return (
     <div className="page simple-page">
       <Header />
@@ -259,23 +521,46 @@ export default function Mantenimientos() {
             <div className="mantenimientos-header-content">
               <h2 className="mantenimientos-title">Mantenimientos</h2>
               <p className="mantenimientos-subtitle">
-                Historial de mantenimientos realizados en los equipos
+                {activeTab === 'historial' 
+                  ? 'Historial de mantenimientos realizados en los equipos'
+                  : 'Registra mantenimientos preventivos, correctivos o actualizaciones realizadas en equipos'}
               </p>
             </div>
+          </div>
+
+          {/* Pestañas */}
+          <div className="mantenimientos-tabs">
+            <button
+              onClick={() => {
+                setActiveTab('historial')
+                fetchMantenimientos()
+              }}
+              className={`mantenimientos-tab ${activeTab === 'historial' ? 'active' : ''}`}
+            >
+              <FiList size={18} />
+              Ver Historial
+            </button>
             {(isAdmin || user?.nombre_rol === 'Cuentadante') && (
               <button
-                onClick={() => navigate('/mantenimientos/crear')}
-                className="btn-primary btn-modern mantenimientos-add-button"
+                onClick={() => {
+                  setActiveTab('crear')
+                  if (tiposMantenimiento.length === 0) {
+                    cargarOpcionesMantenimiento()
+                  }
+                }}
+                className={`mantenimientos-tab ${activeTab === 'crear' ? 'active' : ''}`}
               >
-                <FiPlus size={18} />
-                Nuevo Mantenimiento
+                <FiTool size={18} />
+                Registrar Mantenimiento
               </button>
             )}
           </div>
 
-          <div className="form-divider"></div>
+          <div className="form-divider form-divider-no-margin"></div>
 
-          {loading ? (
+          {activeTab === 'historial' ? (
+            <>
+              {loading ? (
             <div className="loading-state">
               <div className="loading-spinner"></div>
               <p>Cargando mantenimientos...</p>
@@ -359,6 +644,276 @@ export default function Mantenimientos() {
                 </tbody>
               </table>
             </div>
+          )}
+            </>
+          ) : (
+            <>
+              {cargandoOpciones ? (
+                <div className="loading-state">
+                  <p>Cargando opciones de mantenimiento...</p>
+                </div>
+              ) : (
+                <form onSubmit={handleSubmitCrear}>
+                  {/* Sección: Equipo */}
+                  <div className="form-section">
+                    <h3 className="form-section-title">
+                      <FiPackage size={18} className="crear-mantenimiento-section-icon" />
+                      Equipo a Mantener
+                    </h3>
+                    
+                    <div className="form-group">
+                      <label>
+                        Código de Inventario *
+                      </label>
+                      <div className="search-equipo-wrapper">
+                        <input
+                          type="text"
+                          value={codigoInventario}
+                          onChange={(e) => setCodigoInventario(e.target.value)}
+                          onKeyPress={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault()
+                              buscarEquipo()
+                            }
+                          }}
+                          placeholder="Ingresa el código de inventario del equipo"
+                          className="search-equipo-input"
+                        />
+                        <button
+                          type="button"
+                          onClick={buscarEquipo}
+                          disabled={buscandoEquipo || !codigoInventario.trim()}
+                          className="btn-search-equipo"
+                        >
+                          {buscandoEquipo ? (
+                            'Buscando...'
+                          ) : (
+                            <>
+                              <FiSearch size={16} />
+                              Buscar
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    </div>
+
+                    {equipoEncontrado && (
+                      <div className="equipo-found-card">
+                        <div className="equipo-found-header">
+                          <FiCheck size={20} color="#43a047" />
+                          <span>Equipo encontrado</span>
+                        </div>
+                        <div className="equipo-found-info">
+                          <div><strong>Código:</strong> {equipoEncontrado.codigo_inventario}</div>
+                          <div><strong>Equipo:</strong> {equipoEncontrado.tipo} {equipoEncontrado.modelo}</div>
+                          {equipoEncontrado.nombre_ambiente && (
+                            <div><strong>Ambiente:</strong> {equipoEncontrado.nombre_ambiente}</div>
+                          )}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={limpiarEquipo}
+                          className="btn-clear-equipo"
+                        >
+                          <FiX size={14} />
+                          Cambiar equipo
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Sección: Información del Mantenimiento */}
+                  <div className="form-section">
+                    <h3 className="form-section-title">
+                      <FiType size={18} className="crear-mantenimiento-section-icon" />
+                      Información del Mantenimiento
+                    </h3>
+
+                    <div className="form-grid">
+                      <div className="form-group">
+                        <label>
+                          <FiTool size={16} className="crear-mantenimiento-option-icon" />
+                          Tipo de Mantenimiento *
+                        </label>
+                        <CustomSelect
+                          name="tipo_mantenimiento"
+                          value={form.tipo_mantenimiento}
+                          onChange={(e) => handleChange('tipo_mantenimiento', e.target.value)}
+                          options={tiposMantenimiento}
+                          placeholder="Seleccionar tipo de mantenimiento"
+                          required
+                        />
+                      </div>
+
+                      <div className="form-group">
+                        <label>
+                          <FiCalendar size={16} className="crear-mantenimiento-option-icon" />
+                          Estado *
+                        </label>
+                        <CustomSelect
+                          name="estado_mantenimiento"
+                          value={form.estado_mantenimiento}
+                          onChange={(e) => handleChange('estado_mantenimiento', e.target.value)}
+                          options={estadosMantenimiento}
+                          placeholder="Seleccionar estado"
+                          required
+                        />
+                      </div>
+                    </div>
+
+                    <div className="form-grid">
+                      <div className="form-group">
+                        <label>
+                          <FiCalendar size={16} className="crear-mantenimiento-option-icon" />
+                          Fecha de Mantenimiento *
+                        </label>
+                        <input
+                          type="datetime-local"
+                          value={form.fecha_mantenimiento}
+                          onChange={(e) => handleChange('fecha_mantenimiento', e.target.value)}
+                          min={getCurrentDateTime()}
+                          required
+                        />
+                        <p className="crear-mantenimiento-help-text">
+                          Selecciona una fecha futura para programar el mantenimiento
+                        </p>
+                      </div>
+
+                      <div className="form-group">
+                        <label>
+                          <FiCalendar size={16} className="crear-mantenimiento-option-icon" />
+                          Próximo Mantenimiento (Opcional)
+                        </label>
+                        <input
+                          type="date"
+                          value={form.fecha_proximo}
+                          onChange={(e) => handleChange('fecha_proximo', e.target.value)}
+                          min={form.fecha_mantenimiento ? form.fecha_mantenimiento.split('T')[0] : ''}
+                        />
+                        <p className="crear-mantenimiento-help-text">
+                          Establece la fecha del próximo mantenimiento para que aparezca en las estadísticas del Dashboard
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Sección: Técnico (Opcional) */}
+                  <div className="form-section">
+                    <h3 className="form-section-title">
+                      <FiUser size={18} className="crear-mantenimiento-section-icon" />
+                      Técnico Responsable (Opcional)
+                    </h3>
+                    
+                    <div className="form-group">
+                      <label>
+                        Documento del Técnico
+                      </label>
+                      <div className="search-equipo-wrapper">
+                        <input
+                          type="text"
+                          value={cedulaTecnico}
+                          onChange={(e) => setCedulaTecnico(e.target.value)}
+                          onKeyPress={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault()
+                              buscarTecnico()
+                            }
+                          }}
+                          placeholder="Ingresa el Documento del técnico"
+                          className="search-equipo-input"
+                        />
+                        <button
+                          type="button"
+                          onClick={buscarTecnico}
+                          disabled={buscandoTecnico || !cedulaTecnico.trim()}
+                          className="btn-search-equipo"
+                        >
+                          {buscandoTecnico ? (
+                            'Buscando...'
+                          ) : (
+                            <>
+                              <FiSearch size={16} />
+                              Buscar
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    </div>
+
+                    {tecnicoEncontrado && (
+                      <div className="equipo-found-card">
+                        <div className="equipo-found-header">
+                          <FiCheck size={20} color="#43a047" />
+                          <span>Técnico encontrado</span>
+                        </div>
+                        <div className="equipo-found-info">
+                          <div><strong>Nombre:</strong> {tecnicoEncontrado.nombre_usuario}</div>
+                          <div><strong>Documento:</strong> {tecnicoEncontrado.cedula}</div>
+                          <div><strong>Rol:</strong> {tecnicoEncontrado.nombre_rol}</div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={limpiarTecnico}
+                          className="btn-clear-equipo"
+                        >
+                          <FiX size={14} />
+                          Cambiar técnico
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Sección: Detalles */}
+                  <div className="form-section">
+                    <h3 className="form-section-title">
+                      <FiFileText size={18} className="crear-mantenimiento-section-icon" />
+                      Detalles
+                    </h3>
+
+                    <div className="form-group">
+                      <label>
+                        Descripción del Trabajo Realizado
+                      </label>
+                      <textarea
+                        value={form.descripcion_trabajo}
+                        onChange={(e) => handleChange('descripcion_trabajo', e.target.value)}
+                        placeholder="Describe detalladamente el trabajo realizado..."
+                        rows={6}
+                      />
+                    </div>
+
+                    <div className="form-group">
+                      <label>
+                        Observaciones (Opcional)
+                      </label>
+                      <textarea
+                        value={form.observaciones}
+                        onChange={(e) => handleChange('observaciones', e.target.value)}
+                        placeholder="Observaciones adicionales..."
+                        rows={4}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="form-actions">
+                    <button 
+                      type="submit" 
+                      className="btn-primary btn-modern"
+                      disabled={loadingCrear}
+                    >
+                      {loadingCrear ? 'Registrando...' : 'Registrar Mantenimiento'}
+                    </button>
+                    <button 
+                      type="button" 
+                      className="btn-secondary btn-modern"
+                      onClick={() => setActiveTab('historial')}
+                    >
+                      Cancelar
+                    </button>
+                  </div>
+                </form>
+              )}
+            </>
           )}
           </div>
 

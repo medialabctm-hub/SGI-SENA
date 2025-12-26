@@ -27,6 +27,40 @@
   font-size: 15px;
 }
 
+/* Pestañas */
+.mantenimientos-tabs {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 1.5rem;
+  border-bottom: 2px solid var(--neutral-200);
+  padding-bottom: 0;
+}
+
+.mantenimientos-tab {
+  padding: 0.75rem 1.5rem;
+  border: none;
+  background: transparent;
+  color: var(--neutral-700);
+  font-weight: 400;
+  font-size: 1rem;
+  cursor: pointer;
+  border-bottom: 3px solid transparent;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.mantenimientos-tab.active {
+  color: var(--success-700);
+  font-weight: 600;
+  border-bottom-color: var(--success-700);
+}
+
+.mantenimientos-tab:hover {
+  color: var(--success-700);
+}
+
 .mantenimientos-add-button {
   display: flex;
   align-items: center;
