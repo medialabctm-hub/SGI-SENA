@@ -2,8 +2,8 @@ import express from 'express'
 import { authenticate } from '../middleware/authMiddleware.js'
 import { requireAnyPermission, requirePermission } from '../middleware/authorization.js'
 import { PERMISSIONS } from '../config/permissions.js'
-import { crearMantenimiento, listarMantenimientos, obtenerMantenimientoPorId, actualizarEstadoMantenimiento, actualizarFechaProximo, eliminarMantenimiento, obtenerTiposMantenimiento, obtenerEstadosMantenimiento } from '../controller/mantenimientoController.js'
-import { validate, actualizarEstadoMantenimientoSchema, actualizarFechaProximoSchema } from '../validators/mantenimientoValidator.js'
+import { crearMantenimiento, listarMantenimientos, obtenerMantenimientoPorId, actualizarEstadoMantenimiento, actualizarFechaProximo, actualizarFechaMantenimiento, eliminarMantenimiento, obtenerTiposMantenimiento, obtenerEstadosMantenimiento } from '../controller/mantenimientoController.js'
+import { validate, actualizarEstadoMantenimientoSchema, actualizarFechaProximoSchema, actualizarFechaMantenimientoSchema } from '../validators/mantenimientoValidator.js'
 
 const router = express.Router()
 
@@ -49,6 +49,15 @@ router.put('/:id/fecha-proximo',
     PERMISSIONS.MANTENIMIENTO.UPDATE
   ]),
   actualizarFechaProximo
+)
+
+// Actualizar fecha_mantenimiento de un mantenimiento
+router.put('/:id/fecha-mantenimiento', 
+  validate(actualizarFechaMantenimientoSchema),
+  requireAnyPermission([
+    PERMISSIONS.MANTENIMIENTO.UPDATE
+  ]),
+  actualizarFechaMantenimiento
 )
 
 // Actualizar estado de mantenimiento

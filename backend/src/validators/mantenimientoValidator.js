@@ -33,6 +33,10 @@ export const actualizarFechaProximoSchema = z.object({
   fecha_proximo: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Formato de fecha inválido (YYYY-MM-DD)'),
 });
 
+export const actualizarFechaMantenimientoSchema = z.object({
+  fecha_mantenimiento: z.string().regex(/^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2})?$/, 'Formato de fecha inválido (YYYY-MM-DD o YYYY-MM-DDTHH:mm)'),
+});
+
 /**
  * Middleware de validación genérico
  */

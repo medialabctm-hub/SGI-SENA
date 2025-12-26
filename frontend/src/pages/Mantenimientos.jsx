@@ -20,6 +20,8 @@ export default function Mantenimientos() {
   const [nuevoEstado, setNuevoEstado] = useState('')
   const [editandoFechaProximo, setEditandoFechaProximo] = useState(false)
   const [nuevaFechaProximo, setNuevaFechaProximo] = useState('')
+  const [editandoFechaMantenimiento, setEditandoFechaMantenimiento] = useState(false)
+  const [nuevaFechaMantenimiento, setNuevaFechaMantenimiento] = useState('')
   const [deleteConfirm, setDeleteConfirm] = useState({ open: false, id: null })
   const [user, setUser] = useState(null)
   const [estadosMantenimiento, setEstadosMantenimiento] = useState([])
@@ -133,6 +135,8 @@ export default function Mantenimientos() {
 
   const isAdmin = user?.nombre_rol === 'Administrador'
   const isInstructor = user?.nombre_rol === 'Instructor'
+  const isCuentadante = user?.nombre_rol === 'Cuentadante'
+  const canEditFechas = isAdmin || isCuentadante
 
   function abrirEditarEstado(mantenimiento) {
     setNuevoEstado(mantenimiento.estado_mantenimiento || estadosMantenimiento[0] || '')
@@ -411,7 +415,84 @@ export default function Mantenimientos() {
                 )}
               </div>
               <div className="mantenimientos-modal-field">
-                <strong className="mantenimientos-modal-field-label">Fecha de mantenimiento:</strong> {formatDate(selectedMantenimiento.fecha_mantenimiento)}
+                <strong className="mantenimientos-modal-field-label">Fecha de mantenimiento:</strong>
+                {editandoFechaMantenimiento ? (
+                  <div className="mantenimientos-modal-edit-grid">
+                    <input
+                      type="datetime-local"
+                      value={nuevaFechaMantenimiento}
+                      onChange={(e) => setNuevaFechaMantenimiento(e.target.value)}
+                      className="mantenimientos-modal-input form-input"
+                    />
+                    <div className="mantenimientos-modal-actions-row">
+                      <button
+                        onClick={async () => {
+                          try {
+                            setLoading(true)
+                            const token = localStorage.getItem('token')
+                            const res = await fetch(`/api/mantenimiento/${selectedMantenimiento.id_mantenimiento}/fecha-mantenimiento`, {
+                              method: 'PUT',
+                              headers: {
+                                'Content-Type': 'application/json',
+                                Authorization: `Bearer ${token}`
+                              },
+                              body: JSON.stringify({ fecha_mantenimiento: nuevaFechaMantenimiento })
+                            })
+                            const data = await parseApiResponse(res, 'Error al actualizar fecha')
+                            if (res.ok) {
+                              setToast({ message: data.message || 'Fecha actualizada correctamente', type: 'success' })
+                              setEditandoFechaMantenimiento(false)
+                              setNuevaFechaMantenimiento('')
+                              fetchMantenimientos()
+                              setSelectedMantenimiento({ ...selectedMantenimiento, fecha_mantenimiento: data.fecha_mantenimiento || nuevaFechaMantenimiento })
+                            }
+                          } catch (err) {
+                            setToast({ message: buildErrorMessage(err, 'Error al actualizar fecha de mantenimiento'), type: 'error' })
+                          } finally {
+                            setLoading(false)
+                          }
+                        }}
+                        className="btn-primary btn-modern mantenimientos-modal-action-button"
+                        disabled={loading || !nuevaFechaMantenimiento}
+                      >
+                        {loading ? 'Guardando...' : 'Guardar'}
+                      </button>
+                      <button
+                        onClick={() => {
+                          setEditandoFechaMantenimiento(false)
+                          setNuevaFechaMantenimiento('')
+                        }}
+                        className="btn-secondary btn-modern mantenimientos-modal-action-button"
+                        disabled={loading}
+                      >
+                        Cancelar
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="mantenimientos-modal-edit-row">
+                    <span>{formatDate(selectedMantenimiento.fecha_mantenimiento)}</span>
+                    {canEditFechas && (
+                      <button
+                        onClick={() => {
+                          setEditandoFechaMantenimiento(true)
+                          // Convertir la fecha a formato datetime-local (YYYY-MM-DDTHH:mm)
+                          const fecha = new Date(selectedMantenimiento.fecha_mantenimiento)
+                          const year = fecha.getFullYear()
+                          const month = String(fecha.getMonth() + 1).padStart(2, '0')
+                          const day = String(fecha.getDate()).padStart(2, '0')
+                          const hours = String(fecha.getHours()).padStart(2, '0')
+                          const minutes = String(fecha.getMinutes()).padStart(2, '0')
+                          setNuevaFechaMantenimiento(`${year}-${month}-${day}T${hours}:${minutes}`)
+                        }}
+                        className="btn-secondary btn-modern mantenimientos-modal-edit-button-small"
+                      >
+                        <FiEdit size={14} className="mantenimientos-action-icon" />
+                        Editar
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
               <div className="mantenimientos-modal-field">
                 <strong className="mantenimientos-modal-field-label">Próximo mantenimiento del equipo:</strong>
@@ -472,16 +553,18 @@ export default function Mantenimientos() {
                 ) : (
                   <div className="mantenimientos-modal-edit-row">
                     <span>{selectedMantenimiento.fecha_proximo_mantenimiento ? formatDate(selectedMantenimiento.fecha_proximo_mantenimiento) : 'No establecida'}</span>
-                    <button
-                      onClick={() => {
-                        setEditandoFechaProximo(true)
-                        setNuevaFechaProximo(selectedMantenimiento.fecha_proximo_mantenimiento || '')
-                      }}
-                      className="btn-secondary btn-modern mantenimientos-modal-edit-button-small"
-                    >
-                      <FiEdit size={14} className="mantenimientos-action-icon" />
-                      {selectedMantenimiento.fecha_proximo_mantenimiento ? 'Editar' : 'Establecer'}
-                    </button>
+                    {canEditFechas && (
+                      <button
+                        onClick={() => {
+                          setEditandoFechaProximo(true)
+                          setNuevaFechaProximo(selectedMantenimiento.fecha_proximo_mantenimiento || '')
+                        }}
+                        className="btn-secondary btn-modern mantenimientos-modal-edit-button-small"
+                      >
+                        <FiEdit size={14} className="mantenimientos-action-icon" />
+                        {selectedMantenimiento.fecha_proximo_mantenimiento ? 'Editar' : 'Establecer'}
+                      </button>
+                    )}
                   </div>
                 )}
               </div>
