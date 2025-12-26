@@ -35,10 +35,12 @@ import Perfil from './pages/Perfil';
 import ProtectedRoute from './components/ProtectedRoute';
 import RedirectIfAuth from './components/RedirectIfAuth';
 import ErrorBoundary from './components/ErrorBoundary';
+import NavigationBlocker from './components/NavigationBlocker';
 
 export default function App() {
   return (
     <ErrorBoundary>
+      <NavigationBlocker />
       <Routes>
       <Route
         path="/login"

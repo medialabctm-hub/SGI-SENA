@@ -12,12 +12,14 @@ import ConfirmModal from './ConfirmModal';
 import NotificationsModal from './NotificationsModal';
 import { buildErrorMessage, parseApiResponse } from '../utils/api';
 import { useSidebar } from '../contexts/SidebarContext';
+import { useDuplicados } from '../contexts/DuplicadosContext';
 import '../styles/header.css';
 import '../styles/toast.css';
 import '../styles/modal.css';
 import '../styles/notifications.css';
 
 export default function Header() {
+  const { tieneDuplicadosPendientes } = useDuplicados();
   const [user, setUser] = useState(
     JSON.parse(localStorage.getItem('user') || '{}')
   );
@@ -65,6 +67,13 @@ export default function Header() {
   const nombreCompleto = user?.nombre_usuario || user?.nombre || 'Usuario';
 
   const handleLogout = () => {
+    if (tieneDuplicadosPendientes) {
+      setToast({
+        message: 'No puedes cerrar sesión mientras haya registros con placas duplicadas pendientes de revisión. Por favor, aprueba o rechaza todos los registros antes de continuar.',
+        type: 'error'
+      });
+      return;
+    }
     setShowConfirm(true);
   };
 

@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
 import { SidebarProvider } from './contexts/SidebarContext'
 import { LanguageProvider } from './contexts/LanguageContext'
+import { DuplicadosProvider } from './contexts/DuplicadosContext'
 import App from './App'
 import './index.css'
 
@@ -11,7 +12,9 @@ createRoot(document.getElementById('root')).render(
     <BrowserRouter>
       <LanguageProvider>
         <SidebarProvider>
-          <App />
+          <DuplicadosProvider>
+            <App />
+          </DuplicadosProvider>
         </SidebarProvider>
       </LanguageProvider>
     </BrowserRouter>

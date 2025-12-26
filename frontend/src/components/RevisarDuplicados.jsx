@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react'
 import { FiCheck, FiX, FiAlertCircle, FiCheckCircle, FiClock, FiSave } from 'react-icons/fi'
 import { parseApiResponse, buildErrorMessage, handleError } from '../utils/api'
+import { useDuplicados } from '../contexts/DuplicadosContext'
 import '../styles/revisarDuplicados.css'
 
 export default function RevisarDuplicados({ idImportacion, onProcesarCompleto }) {
+  const { verificarDuplicadosPendientes, limpiarDuplicados } = useDuplicados()
   const [duplicados, setDuplicados] = useState([])
   const [loading, setLoading] = useState(false)
   const [procesando, setProcesando] = useState(false)
@@ -26,7 +28,13 @@ export default function RevisarDuplicados({ idImportacion, onProcesarCompleto })
         headers: { Authorization: `Bearer ${token}` }
       })
       const data = await parseApiResponse(res, 'Error al cargar duplicados')
-      setDuplicados(data.duplicados || [])
+      const duplicadosPendientes = (data.duplicados || []).filter(d => d.estado === 'Pendiente')
+      setDuplicados(duplicadosPendientes)
+      
+      // Si no hay duplicados pendientes, limpiar el contexto
+      if (duplicadosPendientes.length === 0) {
+        limpiarDuplicados()
+      }
     } catch (err) {
       handleError(err, (msg) => setError(msg), 'Error al cargar duplicados')
     } finally {
@@ -66,10 +74,17 @@ export default function RevisarDuplicados({ idImportacion, onProcesarCompleto })
         const nuevos = prev.filter(d => d.id_duplicado !== idDuplicado)
         // Si ya no quedan duplicados pendientes, notificar al componente padre
         if (nuevos.length === 0 && onProcesarCompleto) {
+          // Limpiar el contexto inmediatamente
+          limpiarDuplicados()
           // Pequeño delay para que el usuario vea el mensaje de éxito
           setTimeout(() => {
             onProcesarCompleto()
           }, 500)
+        } else {
+          // Verificar duplicados pendientes después de procesar
+          setTimeout(() => {
+            verificarDuplicadosPendientes()
+          }, 100)
         }
         return nuevos
       })
@@ -115,10 +130,17 @@ export default function RevisarDuplicados({ idImportacion, onProcesarCompleto })
         const nuevos = prev.filter(d => !idsProcesados.includes(d.id_duplicado))
         // Si ya no quedan duplicados pendientes, notificar al componente padre
         if (nuevos.length === 0 && onProcesarCompleto) {
+          // Limpiar el contexto inmediatamente
+          limpiarDuplicados()
           // Pequeño delay para que el usuario vea el mensaje de éxito
           setTimeout(() => {
             onProcesarCompleto()
           }, 500)
+        } else {
+          // Verificar duplicados pendientes después de procesar
+          setTimeout(() => {
+            verificarDuplicadosPendientes()
+          }, 100)
         }
         return nuevos
       })

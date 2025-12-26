@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react'
 import { useLocation } from 'react-router-dom'
-import { useNavigate } from 'react-router-dom'
 import {
   FiPlus,
   FiSearch,
@@ -24,11 +23,12 @@ import {
   FiClock
 } from 'react-icons/fi'
 import { useSidebar } from '../contexts/SidebarContext'
+import { useBlockedNavigate } from '../hooks/useBlockedNavigate'
 import '../styles/sidebar.css'
 
 export default function Sidebar({ user }) {
   const { isOpen, closeSidebar } = useSidebar()
-  const nav = useNavigate()
+  const nav = useBlockedNavigate()
   const location = useLocation()
   const userRole = user?.nombre_rol || ''
   const isAdmin = userRole === 'Administrador'
