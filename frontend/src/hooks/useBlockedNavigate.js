@@ -7,7 +7,7 @@ import { useLocation } from 'react-router-dom'
  */
 export function useBlockedNavigate() {
   const navigate = useReactRouterNavigate()
-  const { tieneDuplicadosPendientes } = useDuplicados()
+  const { tieneDuplicadosPendientes, mostrarModalBloqueo } = useDuplicados()
   const location = useLocation()
 
   const blockedNavigate = (to, options) => {
@@ -20,7 +20,7 @@ export function useBlockedNavigate() {
       
       // Si es navegación numérica (back/forward), bloquear
       if (typeof to === 'number') {
-        alert('No puedes cambiar de página mientras haya registros con placas duplicadas pendientes de revisión. Por favor, aprueba o rechaza todos los registros antes de continuar.')
+        mostrarModalBloqueo()
         return
       }
       
@@ -33,7 +33,7 @@ export function useBlockedNavigate() {
       const rutaActualNormalizada = rutaActual.split('?')[0]
       
       if (rutaDestinoNormalizada !== rutaActualNormalizada && !esRutaPermitida) {
-        alert('No puedes cambiar de página mientras haya registros con placas duplicadas pendientes de revisión. Por favor, aprueba o rechaza todos los registros antes de continuar.')
+        mostrarModalBloqueo()
         return
       }
     }

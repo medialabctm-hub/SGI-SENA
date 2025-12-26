@@ -6,8 +6,7 @@ import { useDuplicados } from '../contexts/DuplicadosContext'
  * Intercepta pushState/replaceState y el botón atrás/adelante.
  */
 export default function NavigationBlocker() {
-  const { tieneDuplicadosPendientes } = useDuplicados()
-  const mensajeBloqueo = 'No puedes cambiar de página mientras haya registros con placas duplicadas pendientes de revisión. Por favor, aprueba o rechaza todos los registros antes de continuar.'
+  const { tieneDuplicadosPendientes, mostrarModalBloqueo } = useDuplicados()
 
   useEffect(() => {
     console.log('🚧 NavigationBlocker - tieneDuplicadosPendientes:', tieneDuplicadosPendientes)
@@ -19,7 +18,7 @@ export default function NavigationBlocker() {
       if (!tieneDuplicadosPendientes) return
       event?.preventDefault?.()
       window.history.pushState(null, '', rutaActual)
-      alert(mensajeBloqueo)
+      mostrarModalBloqueo()
     }
 
     const originalPushState = window.history.pushState
@@ -27,7 +26,7 @@ export default function NavigationBlocker() {
 
     window.history.pushState = function (state, title, url) {
       if (tieneDuplicadosPendientes && url && url !== rutaActual) {
-        alert(mensajeBloqueo)
+        mostrarModalBloqueo()
         return
       }
       return originalPushState.apply(this, arguments)
@@ -35,7 +34,7 @@ export default function NavigationBlocker() {
 
     window.history.replaceState = function (state, title, url) {
       if (tieneDuplicadosPendientes && url && url !== rutaActual) {
-        alert(mensajeBloqueo)
+        mostrarModalBloqueo()
         return
       }
       return originalReplaceState.apply(this, arguments)
@@ -48,7 +47,7 @@ export default function NavigationBlocker() {
       window.history.pushState = originalPushState
       window.history.replaceState = originalReplaceState
     }
-  }, [tieneDuplicadosPendientes, mensajeBloqueo])
+  }, [tieneDuplicadosPendientes, mostrarModalBloqueo])
 
   return null
 }

@@ -1,9 +1,11 @@
 import { createContext, useContext, useState } from 'react'
+import BloqueoModal from '../components/BloqueoModal'
 
 const DuplicadosContext = createContext()
 
 export function DuplicadosProvider({ children }) {
   const [tieneDuplicadosPendientes, setTieneDuplicadosPendientes] = useState(false)
+  const [modalBloqueoAbierto, setModalBloqueoAbierto] = useState(false)
 
   const establecerDuplicadosPendientes = (hayDuplicados) => {
     console.log('🔴 Estableciendo duplicados pendientes:', hayDuplicados)
@@ -15,15 +17,25 @@ export function DuplicadosProvider({ children }) {
     setTieneDuplicadosPendientes(false)
   }
 
+  const mostrarModalBloqueo = () => {
+    setModalBloqueoAbierto(true)
+  }
+
+  const cerrarModalBloqueo = () => {
+    setModalBloqueoAbierto(false)
+  }
+
   return (
     <DuplicadosContext.Provider
       value={{
         tieneDuplicadosPendientes,
         establecerDuplicadosPendientes,
-        limpiarDuplicados
+        limpiarDuplicados,
+        mostrarModalBloqueo
       }}
     >
       {children}
+      <BloqueoModal isOpen={modalBloqueoAbierto} onClose={cerrarModalBloqueo} />
     </DuplicadosContext.Provider>
   )
 }
