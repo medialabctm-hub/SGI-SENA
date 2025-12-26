@@ -292,7 +292,7 @@ export default function Mantenimientos() {
                       <td>{mant.id_mantenimiento}</td>
                       <td>
                         <div>
-                          <strong>{mant.equipo_tipo} {mant.equipo_marca} {mant.equipo_modelo}</strong>
+                          <strong>{mant.equipo_tipo} {mant.equipo_modelo}</strong>
                           {mant.consecutivo && <div className="mantenimientos-consecutivo">Consecutivo: {mant.consecutivo}</div>}
                         </div>
                       </td>
@@ -368,7 +368,7 @@ export default function Mantenimientos() {
                 <strong className="mantenimientos-modal-field-label">ID:</strong> {selectedMantenimiento.id_mantenimiento}
               </div>
               <div className="mantenimientos-modal-field">
-                <strong className="mantenimientos-modal-field-label">Equipo:</strong> {selectedMantenimiento.equipo_tipo} {selectedMantenimiento.equipo_marca} {selectedMantenimiento.equipo_modelo}
+                <strong className="mantenimientos-modal-field-label">Equipo:</strong> {selectedMantenimiento.equipo_tipo} {selectedMantenimiento.equipo_modelo}
                 {selectedMantenimiento.consecutivo && <span> (Consecutivo: {selectedMantenimiento.consecutivo})</span>}
               </div>
               <div className="mantenimientos-modal-field">

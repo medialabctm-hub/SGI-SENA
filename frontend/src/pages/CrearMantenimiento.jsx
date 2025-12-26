@@ -358,7 +358,7 @@ export default function CrearMantenimiento() {
                   </div>
                   <div className="equipo-found-info">
                     <div><strong>Código:</strong> {equipoEncontrado.codigo_inventario}</div>
-                    <div><strong>Equipo:</strong> {equipoEncontrado.tipo} {equipoEncontrado.marca} {equipoEncontrado.modelo}</div>
+                    <div><strong>Equipo:</strong> {equipoEncontrado.tipo} {equipoEncontrado.modelo}</div>
                     {equipoEncontrado.nombre_ambiente && (
                       <div><strong>Ambiente:</strong> {equipoEncontrado.nombre_ambiente}</div>
                     )}
