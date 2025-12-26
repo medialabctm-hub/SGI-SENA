@@ -63,6 +63,27 @@ CREATE TABLE Usuarios (
 COMMENT = 'Usuarios del sistema con sus credenciales y datos personales';
 
 -- ============================================
+-- TABLA DE APRENDICES
+-- ============================================
+CREATE TABLE Aprendices (
+  id_aprendiz INT PRIMARY KEY AUTO_INCREMENT,
+  ficha VARCHAR(100) NULL,
+  nombre VARCHAR(200) NOT NULL,
+  documento VARCHAR(50) NOT NULL,
+  tipo_documento ENUM('TI', 'CC', 'CE', 'PPT', 'Otro') DEFAULT 'CC' COMMENT 'Tipo de documento de identidad',
+  tipo_documento_otro VARCHAR(50) NULL COMMENT 'Especificación cuando tipo_documento es "Otro"',
+  jornada ENUM('Mañana', 'Tarde', 'Noche') NULL,
+  creado_por INT NULL,
+  fecha_creacion DATETIME DEFAULT NOW(),
+  FOREIGN KEY (creado_por) REFERENCES Usuarios(id_usuario) ON DELETE SET NULL,
+  UNIQUE KEY uk_documento (documento),
+  INDEX idx_ficha (ficha),
+  INDEX idx_jornada (jornada),
+  INDEX idx_tipo_documento (tipo_documento)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+COMMENT = 'Registro de aprendices (no habilitados para iniciar sesión)';
+
+-- ============================================
 -- TABLA DE RELACIÓN ROL-PERMISO
 -- (Debe crearse después de Usuarios porque tiene FK a Usuarios)
 -- ============================================

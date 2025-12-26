@@ -16,17 +16,55 @@ export async function ensureAprendicesTable() {
           ficha VARCHAR(100) NULL,
           nombre VARCHAR(200) NOT NULL,
           documento VARCHAR(50) NOT NULL,
+          tipo_documento ENUM('TI', 'CC', 'CE', 'PPT', 'Otro') DEFAULT 'CC' COMMENT 'Tipo de documento de identidad',
+          tipo_documento_otro VARCHAR(50) NULL COMMENT 'Especificación cuando tipo_documento es "Otro"',
           jornada ENUM('Mañana','Tarde','Noche') NULL,
           creado_por INT NULL,
           fecha_creacion DATETIME DEFAULT NOW(),
           FOREIGN KEY (creado_por) REFERENCES Usuarios(id_usuario) ON DELETE SET NULL,
           UNIQUE KEY uk_documento (documento),
           INDEX idx_ficha (ficha),
-          INDEX idx_jornada (jornada)
+          INDEX idx_jornada (jornada),
+          INDEX idx_tipo_documento (tipo_documento)
         ) COMMENT = 'Registro de aprendices (no habilitados para iniciar sesión)'
         `
       )
       logger.info('Tabla Aprendices creada correctamente')
+    } else {
+      // Verificar si las columnas tipo_documento existen, si no, agregarlas
+      try {
+        const [[colExists]] = await defaultDb.execute(
+          `SELECT COUNT(*) AS cnt FROM INFORMATION_SCHEMA.COLUMNS
+           WHERE TABLE_SCHEMA = DATABASE()
+           AND TABLE_NAME = 'Aprendices'
+           AND COLUMN_NAME = 'tipo_documento'`
+        )
+        
+        if (colExists.cnt === 0) {
+          await defaultDb.execute(
+            `ALTER TABLE Aprendices
+             ADD COLUMN tipo_documento ENUM('TI', 'CC', 'CE', 'PPT', 'Otro') DEFAULT 'CC' 
+             COMMENT 'Tipo de documento de identidad'
+             AFTER documento`
+          )
+          await defaultDb.execute(
+            `ALTER TABLE Aprendices
+             ADD COLUMN tipo_documento_otro VARCHAR(50) NULL 
+             COMMENT 'Especificación cuando tipo_documento es "Otro"'
+             AFTER tipo_documento`
+          )
+          await defaultDb.execute(
+            `ALTER TABLE Aprendices
+             ADD INDEX idx_tipo_documento (tipo_documento)`
+          )
+          await defaultDb.execute(
+            `UPDATE Aprendices SET tipo_documento = 'CC' WHERE tipo_documento IS NULL`
+          )
+          logger.info('Columnas tipo_documento agregadas a tabla Aprendices existente')
+        }
+      } catch (migError) {
+        logger.warn('Error al verificar/agregar columnas tipo_documento en Aprendices', { error: migError.message })
+      }
     }
   } catch (error) {
     logger.error('Error al asegurar la tabla Aprendices', { error: error.message })
@@ -39,7 +77,7 @@ export async function listarAprendices(req, res) {
     await ensureAprendicesTable()
 
     const [rows] = await defaultDb.execute(
-      `SELECT id_aprendiz, ficha, nombre, documento, jornada, fecha_creacion
+      `SELECT id_aprendiz, ficha, nombre, documento, tipo_documento, tipo_documento_otro, jornada, fecha_creacion
        FROM Aprendices
        ORDER BY fecha_creacion DESC`
     )
@@ -62,7 +100,7 @@ const JORNADAS_VALIDAS = ['Mañana', 'Tarde', 'Noche']
 export async function actualizarAprendiz(req, res) {
   const { id } = req.params
   const idAprendiz = Number.parseInt(id, 10)
-  const { ficha = null, nombre, documento, jornada = null } = req.body || {}
+  const { ficha = null, nombre, documento, tipo_documento = 'CC', tipo_documento_otro = null, jornada = null } = req.body || {}
 
   if (!Number.isFinite(idAprendiz) || idAprendiz <= 0) {
     return res.status(400).json({ error: 'ID de aprendiz inválido' })
@@ -72,6 +110,24 @@ export async function actualizarAprendiz(req, res) {
   const documentoNormalizado = typeof documento === 'string' ? documento.trim() : ''
   const fichaNormalizada = typeof ficha === 'string' ? ficha.trim() : null
   const jornadaNormalizada = typeof jornada === 'string' && jornada.trim() ? jornada.trim() : null
+  const tipoDocumentoNormalizado = typeof tipo_documento === 'string' ? tipo_documento.trim() : 'CC'
+  const tipoDocumentoOtroNormalizado = tipo_documento === 'Otro' && tipo_documento_otro 
+    ? (typeof tipo_documento_otro === 'string' ? tipo_documento_otro.trim() : null)
+    : null
+
+  const TIPOS_DOCUMENTO_VALIDOS = ['TI', 'CC', 'CE', 'PPT', 'Otro']
+  if (!TIPOS_DOCUMENTO_VALIDOS.includes(tipoDocumentoNormalizado)) {
+    return res.status(400).json({
+      error: 'Tipo de documento inválido',
+      detalle: `Los tipos permitidos son: ${TIPOS_DOCUMENTO_VALIDOS.join(', ')}`,
+    })
+  }
+
+  if (tipoDocumentoNormalizado === 'Otro' && (!tipoDocumentoOtroNormalizado || tipoDocumentoOtroNormalizado.length === 0)) {
+    return res.status(400).json({
+      error: 'Debe especificar el tipo de documento cuando selecciona "Otro"',
+    })
+  }
 
   if (!nombreNormalizado || !documentoNormalizado) {
     return res.status(400).json({ error: 'Nombre y documento son obligatorios' })
@@ -107,13 +163,13 @@ export async function actualizarAprendiz(req, res) {
 
     await defaultDb.execute(
       `UPDATE Aprendices
-       SET ficha = ?, nombre = ?, documento = ?, jornada = ?
+       SET ficha = ?, nombre = ?, documento = ?, tipo_documento = ?, tipo_documento_otro = ?, jornada = ?
        WHERE id_aprendiz = ?`,
-      [fichaNormalizada || null, nombreNormalizado, documentoNormalizado, jornadaNormalizada, idAprendiz]
+      [fichaNormalizada || null, nombreNormalizado, documentoNormalizado, tipoDocumentoNormalizado, tipoDocumentoOtroNormalizado, jornadaNormalizada, idAprendiz]
     )
 
     const [[actualizado]] = await defaultDb.execute(
-      `SELECT id_aprendiz, ficha, nombre, documento, jornada, fecha_creacion
+      `SELECT id_aprendiz, ficha, nombre, documento, tipo_documento, tipo_documento_otro, jornada, fecha_creacion
        FROM Aprendices WHERE id_aprendiz = ?`,
       [idAprendiz]
     )
