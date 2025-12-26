@@ -1367,7 +1367,7 @@
 .form-icon-wrapper:not([class*="header-icon"]) svg,
 .form-icon-wrapper[style*="background: white"] svg,
 .form-icon-wrapper[style*="background: #fff"] svg {
-  color: var(--neutral-700) !important;
+  color: var(--neutral-50) !important;
 }
 
 .form-icon-wrapper-green {
