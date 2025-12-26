@@ -10,6 +10,7 @@ export default function NavigationBlocker() {
   const mensajeBloqueo = 'No puedes cambiar de página mientras haya registros con placas duplicadas pendientes de revisión. Por favor, aprueba o rechaza todos los registros antes de continuar.'
 
   useEffect(() => {
+    console.log('🚧 NavigationBlocker - tieneDuplicadosPendientes:', tieneDuplicadosPendientes)
     if (!tieneDuplicadosPendientes) return
 
     const rutaActual = window.location.pathname + window.location.search + window.location.hash

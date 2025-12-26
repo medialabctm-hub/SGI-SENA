@@ -11,6 +11,8 @@ export function useBlockedNavigate() {
   const location = useLocation()
 
   const blockedNavigate = (to, options) => {
+    console.log('🔍 useBlockedNavigate - tieneDuplicadosPendientes:', tieneDuplicadosPendientes, 'destino:', to)
+    
     // Si hay duplicados pendientes y se intenta navegar a otra ruta
     if (tieneDuplicadosPendientes) {
       const rutaDestino = typeof to === 'string' ? to : (typeof to === 'number' ? null : to?.pathname || location.pathname)
