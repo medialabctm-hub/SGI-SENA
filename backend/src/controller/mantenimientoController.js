@@ -18,8 +18,7 @@ async function actualizarEstadosAutomaticos() {
       `SELECT id_mantenimiento, codigo_equipo, fecha_mantenimiento 
        FROM Mantenimiento 
        WHERE estado_mantenimiento = 'Programado' 
-       -- Pequeña ventana de gracia de 1 minuto para evitar marcar "En Proceso" antes de tiempo
-       AND fecha_mantenimiento <= DATE_SUB(NOW(), INTERVAL 1 MINUTE)`
+       AND fecha_mantenimiento <= NOW()`
     )
 
     if (mantenimientosProgramados.length > 0) {
@@ -268,9 +267,11 @@ export async function listarMantenimientos(req, res) {
         m.observaciones,
         e.tipo AS equipo_tipo,
         e.placa AS equipo_placa,
+        e.marca AS equipo_marca,
         e.modelo AS equipo_modelo,
         e.consecutivo,
         e.r_centro,
+        e.fecha_proximo_mantenimiento,
         u.nombre_usuario AS realizado_por_nombre,
         t.nombre_usuario AS tecnico_nombre
       FROM Mantenimiento m
@@ -319,9 +320,11 @@ export async function obtenerMantenimientoPorId(req, res) {
         m.*,
         e.tipo AS equipo_tipo,
         e.placa AS equipo_placa,
+        e.marca AS equipo_marca,
         e.modelo AS equipo_modelo,
         e.consecutivo,
         e.r_centro,
+        e.fecha_proximo_mantenimiento,
         u.nombre_usuario AS realizado_por_nombre,
         t.nombre_usuario AS tecnico_nombre
       FROM Mantenimiento m

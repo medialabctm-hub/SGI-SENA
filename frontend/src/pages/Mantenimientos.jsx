@@ -305,32 +305,32 @@ export default function Mantenimientos() {
                       <td>
                         <div className="mantenimientos-actions">
                           <button
-                            className="btn mantenimientos-action-button"
+                            className="mantenimientos-action-button btn-view"
                             onClick={() => setSelectedMantenimiento(mant)}
                           >
-                            <FiEye size={14} className="mantenimientos-action-icon" />
+                            <FiEye size={16} className="mantenimientos-action-icon" />
                             Ver
                           </button>
                           {(isAdmin || isInstructor) && (
                             <button
-                              className="btn mantenimientos-action-button"
+                              className="mantenimientos-action-button btn-status"
                               onClick={() => {
                                 setSelectedMantenimiento(mant)
                                 abrirEditarEstado(mant)
                               }}
                               disabled={loading}
                             >
-                              <FiEdit size={14} className="mantenimientos-action-icon" />
+                              <FiEdit size={16} className="mantenimientos-action-icon" />
                               Estado
                             </button>
                           )}
                           {isAdmin && (
                             <button
-                              className="btn danger mantenimientos-action-button"
+                              className="mantenimientos-action-button btn-delete"
                               onClick={() => confirmDelete(mant.id_mantenimiento)}
                               disabled={loading}
                             >
-                              <FiTrash2 size={14} className="mantenimientos-action-icon" />
+                              <FiTrash2 size={16} className="mantenimientos-action-icon" />
                               Eliminar
                             </button>
                           )}
@@ -350,7 +350,10 @@ export default function Mantenimientos() {
         >
           <div className="mantenimientos-modal-content modal-content" onClick={(e) => e.stopPropagation()}>
             <div className="mantenimientos-modal-header">
-              <h3 className="mantenimientos-modal-title">Detalle de Mantenimiento</h3>
+              <h3 className="mantenimientos-modal-title">
+                <FiTool size={24} />
+                Detalle de Mantenimiento
+              </h3>
               <button
                 onClick={() => setSelectedMantenimiento(null)}
                 className="mantenimientos-modal-close modal-close"
@@ -359,7 +362,8 @@ export default function Mantenimientos() {
               </button>
             </div>
 
-            <div className="mantenimientos-modal-grid">
+            <div className="mantenimientos-modal-body">
+              <div className="mantenimientos-modal-grid">
               <div className="mantenimientos-modal-field">
                 <strong className="mantenimientos-modal-field-label">ID:</strong> {selectedMantenimiento.id_mantenimiento}
               </div>
@@ -476,14 +480,22 @@ export default function Mantenimientos() {
                       <button
                         onClick={() => {
                           setEditandoFechaMantenimiento(true)
-                          // Convertir la fecha a formato datetime-local (YYYY-MM-DDTHH:mm)
-                          const fecha = new Date(selectedMantenimiento.fecha_mantenimiento)
-                          const year = fecha.getFullYear()
-                          const month = String(fecha.getMonth() + 1).padStart(2, '0')
-                          const day = String(fecha.getDate()).padStart(2, '0')
-                          const hours = String(fecha.getHours()).padStart(2, '0')
-                          const minutes = String(fecha.getMinutes()).padStart(2, '0')
-                          setNuevaFechaMantenimiento(`${year}-${month}-${day}T${hours}:${minutes}`)
+                          // Convertir la fecha a formato datetime-local sin ajuste de zona horaria
+                          const fechaStr = selectedMantenimiento.fecha_mantenimiento
+                          // Si la fecha viene en formato ISO, extraer la parte de fecha y hora
+                          if (fechaStr.includes('T')) {
+                            setNuevaFechaMantenimiento(fechaStr.slice(0, 16))
+                          } else {
+                            // Si viene en formato MySQL (YYYY-MM-DD HH:mm:ss), convertir a datetime-local
+                            const parts = fechaStr.split(' ')
+                            if (parts.length === 2) {
+                              const [date, time] = parts
+                              const timeShort = time.slice(0, 5) // HH:mm
+                              setNuevaFechaMantenimiento(`${date}T${timeShort}`)
+                            } else {
+                              setNuevaFechaMantenimiento(fechaStr)
+                            }
+                          }
                         }}
                         className="btn-secondary btn-modern mantenimientos-modal-edit-button-small"
                       >
@@ -557,7 +569,19 @@ export default function Mantenimientos() {
                       <button
                         onClick={() => {
                           setEditandoFechaProximo(true)
-                          setNuevaFechaProximo(selectedMantenimiento.fecha_proximo_mantenimiento || '')
+                          // Convertir fecha_proximo_mantenimiento a formato date (YYYY-MM-DD)
+                          const fechaProximo = selectedMantenimiento.fecha_proximo_mantenimiento
+                          if (fechaProximo) {
+                            if (fechaProximo.includes('T')) {
+                              setNuevaFechaProximo(fechaProximo.slice(0, 10))
+                            } else if (fechaProximo.includes(' ')) {
+                              setNuevaFechaProximo(fechaProximo.split(' ')[0])
+                            } else {
+                              setNuevaFechaProximo(fechaProximo)
+                            }
+                          } else {
+                            setNuevaFechaProximo('')
+                          }
                         }}
                         className="btn-secondary btn-modern mantenimientos-modal-edit-button-small"
                       >
@@ -599,18 +623,20 @@ export default function Mantenimientos() {
                   </div>
                 </div>
               )}
-              {isAdmin && (
-                <div className="mantenimientos-modal-footer">
-                  <button
-                    onClick={() => confirmDelete(selectedMantenimiento.id_mantenimiento)}
-                    className="btn danger mantenimientos-modal-footer-button"
-                  >
-                    <FiTrash2 size={14} className="mantenimientos-action-icon" />
-                    Eliminar
-                  </button>
-                </div>
-              )}
+              </div>
             </div>
+
+            {isAdmin && (
+              <div className="mantenimientos-modal-footer">
+                <button
+                  onClick={() => confirmDelete(selectedMantenimiento.id_mantenimiento)}
+                  className="btn danger mantenimientos-modal-footer-button"
+                >
+                  <FiTrash2 size={16} className="mantenimientos-action-icon" />
+                  Eliminar Mantenimiento
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}
