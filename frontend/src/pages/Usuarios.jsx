@@ -380,6 +380,7 @@ export default function Usuarios() {
                     <thead>
                       <tr>
                         <th>Nombre</th>
+                        <th>Tipo Documento</th>
                         <th>Documento</th>
                         <th>Rol</th>
                         <th>Equipos</th>
@@ -390,6 +391,10 @@ export default function Usuarios() {
                       {displayedUsers.map((u) => (
                         <tr key={u.id_usuario}>
                           <td>{u.nombre_usuario}</td>
+                          <td>
+                            {u.tipo_documento || 'CC'}
+                            {u.tipo_documento === 'Otro' && u.tipo_documento_otro ? ` (${u.tipo_documento_otro})` : ''}
+                          </td>
                           <td>{u.cedula}</td>
                           <td>{u.nombre_rol}</td>
                           <td>
