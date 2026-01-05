@@ -59,7 +59,7 @@
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
   width: 100%;
   position: relative;
-  z-index: 100;
+  z-index: 1000;
 }
 
 .sidebar-toggle-btn {
@@ -129,7 +129,7 @@
   align-items: center;
   gap: 12px;
   position: relative;
-  z-index: 10000;
+  z-index: 1000;
 }
 
 .header-icon-btn {
@@ -170,7 +170,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  z-index: 10000;
+  z-index: 1000;
 }
 
 .notifications-counter {

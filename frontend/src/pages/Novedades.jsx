@@ -4,7 +4,7 @@ import Sidebar from '../components/Sidebar'
 import Toast from '../components/Toast'
 import ConfirmModal from '../components/ConfirmModal'
 import CustomSelect from '../components/CustomSelect'
-import { FiAlertCircle, FiEye, FiCheckCircle, FiXCircle, FiEdit, FiPackage, FiFileText, FiSearch, FiCheck, FiX, FiList, FiType, FiTrash2, FiDownload } from 'react-icons/fi'
+import { FiAlertCircle, FiEye, FiCheckCircle, FiXCircle, FiEdit, FiPackage, FiFileText, FiSearch, FiCheck, FiX, FiList, FiType, FiTrash2, FiDownload, FiHash, FiUser, FiCalendar, FiClock, FiInfo } from 'react-icons/fi'
 import { parseApiResponse, buildErrorMessage } from '../utils/api'
 import jsPDF from 'jspdf'
 import '../styles/equipos.css'
@@ -1248,105 +1248,197 @@ export default function Novedades() {
             <div className="novedades-modal-overlay" onClick={() => setSelectedNovedad(null)}>
               <div className="novedades-modal-content" onClick={(e) => e.stopPropagation()}>
                 <div className="novedades-modal-header">
-                  <h3 className="novedades-modal-title">Detalle de Novedad</h3>
+                  <div className="novedades-modal-title-wrapper">
+                    <FiAlertCircle size={24} className="novedades-modal-title-icon" />
+                    <h3 className="novedades-modal-title">Detalle de Novedad</h3>
+                  </div>
                   <button
                     onClick={() => setSelectedNovedad(null)}
                     className="novedades-modal-close"
+                    aria-label="Cerrar"
                   >
-                    ×
+                    <FiX size={20} />
                   </button>
                 </div>
 
-                <div className="novedades-modal-grid">
-                  <div>
-                    <strong>ID:</strong> {selectedNovedad.id_novedad}
-                  </div>
-                  <div>
-                    <strong>Equipo:</strong> {selectedNovedad.equipo_tipo} {selectedNovedad.equipo_marca} {selectedNovedad.equipo_modelo}
-                    {selectedNovedad.codigo_inventario && <span> (Placa: {selectedNovedad.codigo_inventario})</span>}
-                  </div>
-                  <div>
-                    <strong>Tipo de Novedad:</strong> {selectedNovedad.tipo_novedad}
-                  </div>
-                  <div>
-                    <strong>Descripción:</strong>
-                    <div className="novedades-descripcion-box">
-                      {selectedNovedad.descripcion}
+                <div className="novedades-modal-body">
+                  {/* Información Principal */}
+                  <div className="novedades-modal-section">
+                    <div className="novedades-modal-field">
+                      <div className="novedades-modal-field-label">
+                        <FiHash size={16} />
+                        <span>ID</span>
+                      </div>
+                      <div className="novedades-modal-field-value">
+                        #{selectedNovedad.id_novedad}
+                      </div>
                     </div>
-                  </div>
-                  <div>
-                    <strong>Reportado por:</strong> {selectedNovedad.reportado_por_nombre}
-                  </div>
-                  <div>
-                    <strong>Fecha de reporte:</strong> {formatDate(selectedNovedad.fecha_novedad)}
-                  </div>
-                  <div>
-                    <div className="novedades-estado-header">
-                      <strong>Estado:</strong>
-                      {!editandoEstado && (user?.nombre_rol === 'Administrador' || user?.nombre_rol === 'Instructor') && (
-                        <button
-                          onClick={() => abrirEditarEstado(selectedNovedad)}
-                          className="btn novedades-cambiar-estado-btn"
-                        >
-                          <FiEdit size={14} className="novedades-icon-inline-small" />
-                          Cambiar Estado
-                        </button>
-                      )}
-                    </div>
-                    {editandoEstado ? (
-                      <div className="novedades-editar-estado-grid">
-                        <CustomSelect
-                          name="nuevoEstado"
-                          value={nuevoEstado}
-                          onChange={(e) => setNuevoEstado(e.target.value)}
-                          options={['Pendiente', 'En Proceso', 'Resuelto', 'No Resuelto']}
-                          placeholder="Seleccionar estado"
-                          className="novedades-estado-select"
-                        />
-                        <textarea
-                          value={observacionesResolucion}
-                          onChange={(e) => setObservacionesResolucion(e.target.value)}
-                          placeholder="Observaciones de resolución (opcional)..."
-                          rows={3}
-                          className="novedades-observaciones-textarea"
-                        />
-                        <div className="novedades-editar-buttons">
-                          <button
-                            onClick={guardarEstado}
-                            className="btn-primary btn-modern novedades-editar-btn"
-                            disabled={loading}
-                          >
-                            {loading ? 'Guardando' : 'Guardar'}
-                          </button>
-                          <button
-                            onClick={cancelarEditarEstado}
-                            className="btn-secondary btn-modern novedades-editar-btn"
-                            disabled={loading}
-                          >
-                            Cancelar
-                          </button>
+
+                    <div className="novedades-modal-field">
+                      <div className="novedades-modal-field-label">
+                        <FiPackage size={16} />
+                        <span>Equipo</span>
+                      </div>
+                      <div className="novedades-modal-field-value">
+                        <div className="novedades-equipo-info">
+                          <strong>{selectedNovedad.equipo_tipo} {selectedNovedad.equipo_marca} {selectedNovedad.equipo_modelo}</strong>
+                          {selectedNovedad.codigo_inventario && (
+                            <span className="novedades-placa-badge">Placa: {selectedNovedad.codigo_inventario}</span>
+                          )}
                         </div>
                       </div>
-                    ) : (
-                      getEstadoBadge(selectedNovedad.estado_resolucion)
-                    )}
-                  </div>
-                  {selectedNovedad.fecha_resolucion && (
-                    <div>
-                      <strong>Fecha de resolución:</strong> {formatDate(selectedNovedad.fecha_resolucion)}
                     </div>
-                  )}
-                  {selectedNovedad.resuelto_por_nombre && (
-                    <div>
-                      <strong>Resuelto por:</strong> {selectedNovedad.resuelto_por_nombre}
-                    </div>
-                  )}
-                  {selectedNovedad.observaciones_resolucion && (
-                    <div>
-                      <strong>Observaciones de resolución:</strong>
-                      <div className="novedades-descripcion-box">
-                        {selectedNovedad.observaciones_resolucion}
+
+                    <div className="novedades-modal-field">
+                      <div className="novedades-modal-field-label">
+                        <FiType size={16} />
+                        <span>Tipo de Novedad</span>
                       </div>
+                      <div className="novedades-modal-field-value">
+                        <span className="novedades-tipo-badge">{selectedNovedad.tipo_novedad}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Descripción */}
+                  <div className="novedades-modal-section">
+                    <div className="novedades-modal-field novedades-modal-field-full">
+                      <div className="novedades-modal-field-label">
+                        <FiFileText size={16} />
+                        <span>Descripción</span>
+                      </div>
+                      <div className="novedades-descripcion-box">
+                        {selectedNovedad.descripcion}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Información de Reporte */}
+                  <div className="novedades-modal-section">
+                    <div className="novedades-modal-field">
+                      <div className="novedades-modal-field-label">
+                        <FiUser size={16} />
+                        <span>Reportado por</span>
+                      </div>
+                      <div className="novedades-modal-field-value">
+                        {selectedNovedad.reportado_por_nombre}
+                      </div>
+                    </div>
+
+                    <div className="novedades-modal-field">
+                      <div className="novedades-modal-field-label">
+                        <FiCalendar size={16} />
+                        <span>Fecha de reporte</span>
+                      </div>
+                      <div className="novedades-modal-field-value">
+                        {formatDate(selectedNovedad.fecha_novedad)}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Estado */}
+                  <div className="novedades-modal-section novedades-modal-section-estado">
+                    <div className="novedades-modal-field novedades-modal-field-full">
+                      <div className="novedades-estado-header">
+                        <div className="novedades-modal-field-label">
+                          <FiInfo size={16} />
+                          <span>Estado</span>
+                        </div>
+                        {!editandoEstado && (user?.nombre_rol === 'Administrador' || user?.nombre_rol === 'Instructor') && (
+                          <button
+                            onClick={() => abrirEditarEstado(selectedNovedad)}
+                            className="btn novedades-cambiar-estado-btn"
+                          >
+                            <FiEdit size={14} />
+                            Cambiar Estado
+                          </button>
+                        )}
+                      </div>
+                      {editandoEstado ? (
+                        <div className="novedades-editar-estado-grid">
+                          <CustomSelect
+                            name="nuevoEstado"
+                            value={nuevoEstado}
+                            onChange={(e) => setNuevoEstado(e.target.value)}
+                            options={['Pendiente', 'En Proceso', 'Resuelto', 'No Resuelto']}
+                            placeholder="Seleccionar estado"
+                            className="novedades-estado-select"
+                          />
+                          <textarea
+                            value={observacionesResolucion}
+                            onChange={(e) => setObservacionesResolucion(e.target.value)}
+                            placeholder="Observaciones de resolución (opcional)..."
+                            rows={3}
+                            className="novedades-observaciones-textarea"
+                          />
+                          <div className="novedades-editar-buttons">
+                            <button
+                              onClick={guardarEstado}
+                              className="btn-primary btn-modern novedades-editar-btn"
+                              disabled={loading}
+                            >
+                              {loading ? 'Guardando...' : 'Guardar'}
+                            </button>
+                            <button
+                              onClick={cancelarEditarEstado}
+                              className="btn-secondary btn-modern novedades-editar-btn"
+                              disabled={loading}
+                            >
+                              Cancelar
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="novedades-estado-display">
+                          {getEstadoBadge(selectedNovedad.estado_resolucion)}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Información de Resolución */}
+                  {(selectedNovedad.fecha_resolucion || selectedNovedad.resuelto_por_nombre || selectedNovedad.observaciones_resolucion) && (
+                    <div className="novedades-modal-section novedades-modal-section-resolucion">
+                      <h4 className="novedades-modal-section-title">
+                        <FiCheckCircle size={18} />
+                        Información de Resolución
+                      </h4>
+                      
+                      {selectedNovedad.fecha_resolucion && (
+                        <div className="novedades-modal-field">
+                          <div className="novedades-modal-field-label">
+                            <FiClock size={16} />
+                            <span>Fecha de resolución</span>
+                          </div>
+                          <div className="novedades-modal-field-value">
+                            {formatDate(selectedNovedad.fecha_resolucion)}
+                          </div>
+                        </div>
+                      )}
+
+                      {selectedNovedad.resuelto_por_nombre && (
+                        <div className="novedades-modal-field">
+                          <div className="novedades-modal-field-label">
+                            <FiUser size={16} />
+                            <span>Resuelto por</span>
+                          </div>
+                          <div className="novedades-modal-field-value">
+                            {selectedNovedad.resuelto_por_nombre}
+                          </div>
+                        </div>
+                      )}
+
+                      {selectedNovedad.observaciones_resolucion && (
+                        <div className="novedades-modal-field novedades-modal-field-full">
+                          <div className="novedades-modal-field-label">
+                            <FiFileText size={16} />
+                            <span>Observaciones de resolución</span>
+                          </div>
+                          <div className="novedades-descripcion-box novedades-observaciones-box">
+                            {selectedNovedad.observaciones_resolucion}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
