@@ -1340,8 +1340,10 @@ export default function Novedades() {
                       <div className="novedades-modal-field-value">
                         <div className="novedades-equipo-info">
                           <strong>{selectedNovedad.equipo_tipo} {selectedNovedad.equipo_marca} {selectedNovedad.equipo_modelo}</strong>
-                          {selectedNovedad.codigo_inventario && (
-                            <span className="novedades-placa-badge">Placa: {selectedNovedad.codigo_inventario}</span>
+                          {(selectedNovedad.codigo_inventario || selectedNovedad.equipo_placa) && (
+                            <span className="novedades-placa-badge">
+                              Placa: {selectedNovedad.codigo_inventario || selectedNovedad.equipo_placa}
+                            </span>
                           )}
                         </div>
                       </div>

@@ -8,6 +8,7 @@
   justify-content: center;
   position: relative;
   overflow: visible;
+  z-index: 100;
 }
 
 .app-header-wrapper::before {
@@ -59,7 +60,7 @@
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
   width: 100%;
   position: relative;
-  z-index: 1000;
+  z-index: 1;
 }
 
 .sidebar-toggle-btn {
@@ -129,7 +130,7 @@
   align-items: center;
   gap: 12px;
   position: relative;
-  z-index: 1000;
+  z-index: 1;
 }
 
 .header-icon-btn {
@@ -170,7 +171,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  z-index: 1000;
+  z-index: 1;
 }
 
 .notifications-counter {
