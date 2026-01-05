@@ -1,10 +1,6 @@
 import React from 'react';
 import '../styles/animatedBackground.css';
 
-/**
- * Componente reutilizable para el fondo animado con burbujas
- * Elimina duplicación de código entre Login.jsx y Register.jsx
- */
 export default function AnimatedBackground() {
   return (
     <div className="bubbles-container">

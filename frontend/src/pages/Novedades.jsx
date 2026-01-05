@@ -741,7 +741,7 @@ export default function Novedades() {
                             <td>{novedad.id_novedad}</td>
                             <td>
                               <div>
-                                <strong>{novedad.equipo_tipo} {novedad.equipo_marca} {novedad.equipo_modelo}</strong>
+                                <strong>{novedad.equipo_tipo} {novedad.equipo_modelo || ''}</strong>
                                 {novedad.codigo_inventario && <div className="novedades-serie-numero">Placa: {novedad.codigo_inventario}</div>}
                               </div>
                             </td>
@@ -1339,7 +1339,7 @@ export default function Novedades() {
                       </div>
                       <div className="novedades-modal-field-value">
                         <div className="novedades-equipo-info">
-                          <strong>{selectedNovedad.equipo_tipo} {selectedNovedad.equipo_marca} {selectedNovedad.equipo_modelo}</strong>
+                          <strong>{selectedNovedad.equipo_tipo} {selectedNovedad.equipo_modelo || ''}</strong>
                           {(selectedNovedad.codigo_inventario || selectedNovedad.equipo_placa) && (
                             <span className="novedades-placa-badge">
                               Placa: {selectedNovedad.codigo_inventario || selectedNovedad.equipo_placa}
