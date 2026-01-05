@@ -145,6 +145,17 @@ export default function Novedades() {
     }
   }, [activeTab])
 
+  // Bloquear header/sidebar y scroll cuando el modal de novedad está abierto
+  useEffect(() => {
+    const modalAbierto = !!selectedNovedad
+    if (modalAbierto) {
+      document.body.classList.add('modal-open')
+    } else {
+      document.body.classList.remove('modal-open')
+    }
+    return () => document.body.classList.remove('modal-open')
+  }, [selectedNovedad])
+
   async function fetchNovedades() {
     setLoading(true)
     try {

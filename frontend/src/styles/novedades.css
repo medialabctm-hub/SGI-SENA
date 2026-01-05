@@ -146,6 +146,19 @@
   animation: fadeIn 0.2s ease-out;
 }
 
+/* Ocultar header y sidebar cuando un modal de novedad está abierto */
+body.modal-open {
+  overflow: hidden;
+}
+
+body.modal-open .app-header-wrapper,
+body.modal-open .app-sidebar {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
 @keyframes fadeIn {
   from {
     opacity: 0;
