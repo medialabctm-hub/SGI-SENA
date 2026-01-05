@@ -16,7 +16,6 @@ export default function AsignarEquipo() {
     id_usuario: '',
     tipo_responsabilidad: 'Principal',
     observaciones: '',
-    dias_asignados: '',
   })
   const [toast, setToast] = useState(null)
   const [loading, setLoading] = useState(false)
@@ -279,7 +278,6 @@ export default function AsignarEquipo() {
           id_usuario: '',
           tipo_responsabilidad: 'Principal',
           observaciones: '',
-          dias_asignados: '',
         })
         limpiarEquipo()
         limpiarUsuario()
@@ -354,15 +352,15 @@ export default function AsignarEquipo() {
           <div className="form-divider asignar-equipo-divider-no-margin"></div>
 
           {activeTab === 'asignar' ? (
-          <form onSubmit={handleSubmit}>
-            {/* Sección: Búsqueda de Equipo */}
-            <div className="form-section">
-              <h3 className="form-section-title">
-                <FiPackage size={18} className="asignar-equipo-section-icon" />
-                Equipo a Asignar
-              </h3>
-              
-              <div className="form-group">
+            <form onSubmit={handleSubmit}>
+              {/* Sección: Búsqueda de Equipo */}
+              <div className="form-section">
+                <h3 className="form-section-title">
+                  <FiPackage size={18} className="asignar-equipo-section-icon" />
+                  Equipo a Asignar
+                </h3>
+                
+                <div className="form-group">
                 <label>
                   Código de Inventario *
                 </label>
@@ -395,11 +393,11 @@ export default function AsignarEquipo() {
                       </>
                     )}
                   </button>
+                  </div>
                 </div>
-              </div>
 
-              {equipoEncontrado && (
-                <div className="equipo-found-card">
+                {equipoEncontrado && (
+                  <div className="equipo-found-card">
                   <div className="equipo-found-header">
                     {equipoEncontrado.estado_mantenimiento_activo === 'En Proceso' ? (
                       <>
@@ -436,18 +434,18 @@ export default function AsignarEquipo() {
                   >
                     Cambiar equipo
                   </button>
-                </div>
-              )}
-            </div>
+                  </div>
+                )}
+              </div>
 
-            {/* Sección: Usuario y Responsabilidad */}
-            <div className="form-section">
-              <h3 className="form-section-title">
-                <FiUsers size={18} className="asignar-equipo-section-icon" />
-                Asignación
-              </h3>
+              {/* Sección: Usuario y Responsabilidad */}
+              <div className="form-section">
+                <h3 className="form-section-title">
+                  <FiUsers size={18} className="asignar-equipo-section-icon" />
+                  Asignación
+                </h3>
 
-              <div className="form-group">
+                <div className="form-group">
                 <label>
                   Documento del Usuario {isInstructor ? '(Aprendiz) ' : ''}*
                 </label>
@@ -479,12 +477,12 @@ export default function AsignarEquipo() {
                         Buscar
                       </>
                     )}
-                  </button>
+                    </button>
+                  </div>
                 </div>
-              </div>
 
-              {usuarioEncontrado && (
-                <div className="equipo-found-card">
+                {usuarioEncontrado && (
+                  <div className="equipo-found-card">
                   <div className="equipo-found-header">
                     <FiCheck size={20} color="#43a047" />
                     <span>Usuario encontrado</span>
@@ -504,77 +502,60 @@ export default function AsignarEquipo() {
                   >
                     Cambiar usuario
                   </button>
-            </div>
-              )}
+                </div>
+                )}
 
-              <div className="form-grid asignar-equipo-form-grid">
-            <div className="form-group">
-              <label>
-                <FiShield size={16} className="asignar-equipo-shield-icon" />
-                Tipo de Responsabilidad
-              </label>
-              <CustomSelect
-                name="tipo_responsabilidad"
-                value={form.tipo_responsabilidad}
-                onChange={(e) => handleChange('tipo_responsabilidad', e.target.value)}
-                options={['Principal', 'Secundario']}
-                placeholder="Seleccionar tipo"
-              />
-            </div>
-
-            <div className="form-group">
-              <label>
-                    Días de Asignación (Opcional)
-              </label>
-                  <input
-                    type="number"
-                    min="1"
-                    value={form.dias_asignados}
-                    onChange={(e) => handleChange('dias_asignados', e.target.value)}
-                    placeholder="Ej: 30, 60, 90..."
-                    className="asignar-equipo-input-full"
-                  />
-                  <p className="asignar-equipo-help-text">
-                    Duración esperada de la asignación en días
-                  </p>
+                <div className="form-grid asignar-equipo-form-grid">
+                  <div className="form-group">
+                    <label>
+                      <FiShield size={16} className="asignar-equipo-shield-icon" />
+                      Tipo de Responsabilidad
+                    </label>
+                    <CustomSelect
+                      name="tipo_responsabilidad"
+                      value={form.tipo_responsabilidad}
+                      onChange={(e) => handleChange('tipo_responsabilidad', e.target.value)}
+                      options={['Principal', 'Secundario']}
+                      placeholder="Seleccionar tipo"
+                    />
+                  </div>
                 </div>
               </div>
-            </div>
 
-            {/* Sección: Observaciones */}
-            <div className="form-section">
-              <h3 className="form-section-title">
-                <FiFileText size={18} className="asignar-equipo-section-icon" />
-                Observaciones (Opcional)
-              </h3>
-              
-              <div className="form-group">
-              <textarea
-                value={form.observaciones}
-                onChange={(e) => handleChange('observaciones', e.target.value)}
-                  placeholder="Notas adicionales sobre la asignación..."
-                rows={4}
-              />
+              {/* Sección: Observaciones */}
+              <div className="form-section">
+                <h3 className="form-section-title">
+                  <FiFileText size={18} className="asignar-equipo-section-icon" />
+                  Observaciones (Opcional)
+                </h3>
+                
+                <div className="form-group">
+                  <textarea
+                    value={form.observaciones}
+                    onChange={(e) => handleChange('observaciones', e.target.value)}
+                    placeholder="Notas adicionales sobre la asignación..."
+                    rows={4}
+                  />
+                </div>
               </div>
-            </div>
 
-            <div className="form-actions">
-              <button 
-                type="submit" 
-                className="btn-primary btn-modern"
-                disabled={loading}
-              >
-                {loading ? 'Habilitando...' : 'Habilitar Equipo'}
-              </button>
-              <button 
-                type="button" 
-                className="btn-secondary btn-modern"
-                onClick={() => window.history.back()}
-              >
-                Cancelar
-              </button>
-            </div>
-          </form>
+              <div className="form-actions">
+                <button 
+                  type="submit" 
+                  className="btn-primary btn-modern"
+                  disabled={loading}
+                >
+                  {loading ? 'Habilitando...' : 'Habilitar Equipo'}
+                </button>
+                <button 
+                  type="button" 
+                  className="btn-secondary btn-modern"
+                  onClick={() => window.history.back()}
+                >
+                  Cancelar
+                </button>
+              </div>
+            </form>
           ) : (
             <div className="asignar-equipo-content-wrapper">
               {loadingAsignaciones ? (

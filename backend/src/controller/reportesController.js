@@ -380,3 +380,48 @@ export async function eliminarReporte(req, res) {
   }
 }
 
+/**
+ * Obtener tipos de reporte disponibles desde la base de datos
+ * Consulta los valores ENUM de la columna tipo_reporte
+ */
+export async function obtenerTiposReporte(req, res) {
+  try {
+    const [rows] = await defaultDb.execute(
+      `SELECT COLUMN_TYPE 
+       FROM INFORMATION_SCHEMA.COLUMNS 
+       WHERE TABLE_SCHEMA = DATABASE() 
+       AND TABLE_NAME = 'Reportes' 
+       AND COLUMN_NAME = 'tipo_reporte'`
+    )
+
+    if (!rows || rows.length === 0) {
+      logger.warn('No se encontró información del ENUM tipo_reporte en INFORMATION_SCHEMA')
+      return res.json(['General', 'Equipos', 'Mantenimiento', 'Novedades', 'Uso', 'Otro'])
+    }
+
+    const enumString = rows[0].COLUMN_TYPE
+    if (!enumString || !enumString.toLowerCase().startsWith('enum')) {
+      logger.warn('El tipo de columna no es un ENUM:', enumString)
+      return res.json(['General', 'Equipos', 'Mantenimiento', 'Novedades', 'Uso', 'Otro'])
+    }
+
+    const valores = enumString
+      .replace(/^enum\(/i, '')
+      .replace(/\)$/i, '')
+      .split(',')
+      .map(val => val.trim().replace(/^'|'$/g, ''))
+      .filter(val => val.length > 0)
+
+    if (valores.length === 0) {
+      logger.warn('No se pudieron extraer valores del ENUM')
+      return res.json(['General', 'Equipos', 'Mantenimiento', 'Novedades', 'Uso', 'Otro'])
+    }
+
+    logger.info('Tipos de reporte cargados desde BD', { tipos: valores })
+    return res.json(valores)
+  } catch (err) {
+    logger.error('Error al obtener tipos de reporte', { error: err.message, stack: err.stack })
+    return res.json(['General', 'Equipos', 'Mantenimiento', 'Novedades', 'Uso', 'Otro'])
+  }
+}
+

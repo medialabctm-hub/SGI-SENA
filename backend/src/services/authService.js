@@ -72,7 +72,7 @@ export class AuthService {
    * @returns {Promise<Object>} Resultado del registro
    */
   async registerUser(userData) {
-    const { nombre, cedula, correo, telefono, contrasena, rol, codigo_invitacion } = userData;
+    const { nombre, cedula, tipo_documento, tipo_documento_otro, correo, telefono, contrasena, rol, codigo_invitacion } = userData;
 
     // Validar datos usando estrategias
     this.validateUserData({ correo, contrasena, cedula });
@@ -128,6 +128,8 @@ export class AuthService {
     const userToCreate = userBuilder
       .withNombre(nombre)
       .withCedula(cedula)
+      .withTipoDocumento(tipo_documento || 'CC')
+      .withTipoDocumentoOtro(tipo_documento === 'Otro' ? tipo_documento_otro : null)
       .withCorreo(correo)
       .withTelefono(telefono)
       .withContrasena(contrasena)

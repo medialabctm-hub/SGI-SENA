@@ -18,8 +18,7 @@ async function actualizarEstadosAutomaticos() {
       `SELECT id_mantenimiento, codigo_equipo, fecha_mantenimiento 
        FROM Mantenimiento 
        WHERE estado_mantenimiento = 'Programado' 
-       -- Pequeña ventana de gracia de 1 minuto para evitar marcar "En Proceso" antes de tiempo
-       AND fecha_mantenimiento <= DATE_SUB(NOW(), INTERVAL 1 MINUTE)`
+       AND fecha_mantenimiento <= NOW()`
     )
 
     if (mantenimientosProgramados.length > 0) {
@@ -271,6 +270,7 @@ export async function listarMantenimientos(req, res) {
         e.modelo AS equipo_modelo,
         e.consecutivo,
         e.r_centro,
+        NULL AS fecha_proximo_mantenimiento,
         u.nombre_usuario AS realizado_por_nombre,
         t.nombre_usuario AS tecnico_nombre
       FROM Mantenimiento m
@@ -322,6 +322,7 @@ export async function obtenerMantenimientoPorId(req, res) {
         e.modelo AS equipo_modelo,
         e.consecutivo,
         e.r_centro,
+        NULL AS fecha_proximo_mantenimiento,
         u.nombre_usuario AS realizado_por_nombre,
         t.nombre_usuario AS tecnico_nombre
       FROM Mantenimiento m
@@ -358,8 +359,7 @@ export async function obtenerMantenimientoPorId(req, res) {
 
 /**
  * Actualizar fecha_proximo_mantenimiento de un equipo
- * Admin e Instructor: pueden actualizar cualquier equipo
- * Aprendiz: solo puede actualizar equipos asignados
+ * Solo Admin y Cuentadante pueden actualizar
  */
 export async function actualizarFechaProximo(req, res) {
   try {
@@ -372,6 +372,11 @@ export async function actualizarFechaProximo(req, res) {
       return res.status(400).json({ error: 'La fecha del próximo mantenimiento es obligatoria' })
     }
 
+    // Solo Admin y Cuentadante pueden actualizar fechas
+    if (userRole !== 'Administrador' && userRole !== 'Cuentadante') {
+      return res.status(403).json({ error: 'Solo Administradores y Cuentadantes pueden modificar fechas de mantenimiento' })
+    }
+
     // Obtener el mantenimiento para obtener el codigo_equipo
     const [[mantenimiento]] = await defaultDb.execute(
       'SELECT codigo_equipo FROM Mantenimiento WHERE id_mantenimiento = ?',
@@ -380,19 +385,6 @@ export async function actualizarFechaProximo(req, res) {
 
     if (!mantenimiento) {
       return res.status(404).json({ error: 'Mantenimiento no encontrado' })
-    }
-
-    // Si es Instructor o Aprendiz, validar que el equipo le esté asignado
-    if (userRole === 'Instructor' || userRole === 'Aprendiz') {
-      const [[asignacion]] = await defaultDb.execute(
-        `SELECT id_responsable FROM Responsables_Equipo 
-         WHERE codigo_equipo = ? AND id_usuario = ? AND estado_responsabilidad = 'Activo'`,
-        [mantenimiento.codigo_equipo, userId]
-      )
-
-      if (!asignacion) {
-        return res.status(403).json({ error: 'No tienes permiso para actualizar este mantenimiento' })
-      }
     }
 
     // Actualizar fecha_proximo_mantenimiento en la tabla Elementos
@@ -422,6 +414,66 @@ export async function actualizarFechaProximo(req, res) {
   } catch (err) {
     logger.error('Error al actualizar fecha_proximo', { error: err.message, stack: err.stack })
     return res.status(500).json({ error: 'Error al actualizar la fecha del próximo mantenimiento', details: err.message })
+  }
+}
+
+/**
+ * Actualizar fecha_mantenimiento de un mantenimiento
+ * Solo Admin y Cuentadante pueden actualizar
+ */
+export async function actualizarFechaMantenimiento(req, res) {
+  try {
+    const { id } = req.params
+    const { fecha_mantenimiento } = req.body
+    const userId = req.user?.id
+    const userRole = req.user?.rol
+
+    if (!fecha_mantenimiento) {
+      return res.status(400).json({ error: 'La fecha de mantenimiento es obligatoria' })
+    }
+
+    // Solo Admin y Cuentadante pueden actualizar fechas
+    if (userRole !== 'Administrador' && userRole !== 'Cuentadante') {
+      return res.status(403).json({ error: 'Solo Administradores y Cuentadantes pueden modificar fechas de mantenimiento' })
+    }
+
+    // Obtener el mantenimiento
+    const [[mantenimiento]] = await defaultDb.execute(
+      'SELECT codigo_equipo, estado_mantenimiento FROM Mantenimiento WHERE id_mantenimiento = ?',
+      [id]
+    )
+
+    if (!mantenimiento) {
+      return res.status(404).json({ error: 'Mantenimiento no encontrado' })
+    }
+
+    // Formatear fecha_mantenimiento para MySQL (YYYY-MM-DD HH:MM:SS)
+    let fechaMantenimientoFormatted = fecha_mantenimiento
+    if (fecha_mantenimiento.includes('T')) {
+      // Formato datetime-local: YYYY-MM-DDTHH:mm
+      fechaMantenimientoFormatted = fecha_mantenimiento.replace('T', ' ')
+      // Agregar segundos si no están presentes
+      if (fechaMantenimientoFormatted.length === 16) {
+        fechaMantenimientoFormatted += ':00'
+      }
+    }
+
+    // Actualizar fecha_mantenimiento en la tabla Mantenimiento
+    await defaultDb.execute(
+      `UPDATE Mantenimiento 
+       SET fecha_mantenimiento = ?
+       WHERE id_mantenimiento = ?`,
+      [fechaMantenimientoFormatted, id]
+    )
+
+    return res.json({ 
+      ok: true,
+      message: 'Fecha de mantenimiento actualizada correctamente',
+      fecha_mantenimiento: fechaMantenimientoFormatted
+    })
+  } catch (err) {
+    logger.error('Error al actualizar fecha_mantenimiento', { error: err.message, stack: err.stack })
+    return res.status(500).json({ error: 'Error al actualizar la fecha de mantenimiento', details: err.message })
   }
 }
 
@@ -598,23 +650,36 @@ export async function obtenerTiposMantenimiento(req, res) {
     )
 
     if (!rows || rows.length === 0) {
+      logger.warn('No se encontró información del ENUM tipo_mantenimiento en INFORMATION_SCHEMA')
       // Si no se puede obtener de INFORMATION_SCHEMA, retornar valores por defecto
-      return res.json(['Preventivo', 'Correctivo', 'Predictivo'])
+      return res.json(['Preventivo', 'Correctivo', 'Actualización'])
     }
 
-    // Extraer valores del ENUM: ENUM('Preventivo','Correctivo','Predictivo')
+    // Extraer valores del ENUM: ENUM('Preventivo','Correctivo','Actualización')
     const enumString = rows[0].COLUMN_TYPE
+    if (!enumString || !enumString.toLowerCase().startsWith('enum')) {
+      logger.warn('El tipo de columna no es un ENUM:', enumString)
+      return res.json(['Preventivo', 'Correctivo', 'Actualización'])
+    }
+
     const valores = enumString
       .replace(/^enum\(/i, '')
       .replace(/\)$/i, '')
       .split(',')
       .map(val => val.trim().replace(/^'|'$/g, ''))
+      .filter(val => val.length > 0)
 
+    if (valores.length === 0) {
+      logger.warn('No se pudieron extraer valores del ENUM')
+      return res.json(['Preventivo', 'Correctivo', 'Actualización'])
+    }
+
+    logger.info('Tipos de mantenimiento cargados desde BD', { tipos: valores })
     return res.json(valores)
   } catch (err) {
     logger.error('Error al obtener tipos de mantenimiento', { error: err.message, stack: err.stack })
     // En caso de error, retornar valores por defecto
-    return res.json(['Preventivo', 'Correctivo', 'Predictivo'])
+    return res.json(['Preventivo', 'Correctivo', 'Actualización'])
   }
 }
 
@@ -633,18 +698,31 @@ export async function obtenerEstadosMantenimiento(req, res) {
     )
 
     if (!rows || rows.length === 0) {
+      logger.warn('No se encontró información del ENUM estado_mantenimiento en INFORMATION_SCHEMA')
       // Si no se puede obtener de INFORMATION_SCHEMA, retornar valores por defecto
       return res.json(['Programado', 'En Proceso', 'Completado', 'Cancelado'])
     }
 
     // Extraer valores del ENUM: ENUM('Programado','En Proceso','Completado','Cancelado')
     const enumString = rows[0].COLUMN_TYPE
+    if (!enumString || !enumString.toLowerCase().startsWith('enum')) {
+      logger.warn('El tipo de columna no es un ENUM:', enumString)
+      return res.json(['Programado', 'En Proceso', 'Completado', 'Cancelado'])
+    }
+
     const valores = enumString
       .replace(/^enum\(/i, '')
       .replace(/\)$/i, '')
       .split(',')
       .map(val => val.trim().replace(/^'|'$/g, ''))
+      .filter(val => val.length > 0)
 
+    if (valores.length === 0) {
+      logger.warn('No se pudieron extraer valores del ENUM')
+      return res.json(['Programado', 'En Proceso', 'Completado', 'Cancelado'])
+    }
+
+    logger.info('Estados de mantenimiento cargados desde BD', { estados: valores })
     return res.json(valores)
   } catch (err) {
     logger.error('Error al obtener estados de mantenimiento', { error: err.message, stack: err.stack })

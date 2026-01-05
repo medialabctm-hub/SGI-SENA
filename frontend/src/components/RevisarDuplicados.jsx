@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react'
 import { FiCheck, FiX, FiAlertCircle, FiCheckCircle, FiClock, FiSave } from 'react-icons/fi'
 import { parseApiResponse, buildErrorMessage, handleError } from '../utils/api'
+import { useDuplicados } from '../contexts/DuplicadosContext'
 import '../styles/revisarDuplicados.css'
 
 export default function RevisarDuplicados({ idImportacion, onProcesarCompleto }) {
+  const { limpiarDuplicados } = useDuplicados()
   const [duplicados, setDuplicados] = useState([])
   const [loading, setLoading] = useState(false)
   const [procesando, setProcesando] = useState(false)
@@ -26,7 +28,8 @@ export default function RevisarDuplicados({ idImportacion, onProcesarCompleto })
         headers: { Authorization: `Bearer ${token}` }
       })
       const data = await parseApiResponse(res, 'Error al cargar duplicados')
-      setDuplicados(data.duplicados || [])
+      const duplicadosPendientes = (data.duplicados || []).filter(d => d.estado === 'Pendiente')
+      setDuplicados(duplicadosPendientes)
     } catch (err) {
       handleError(err, (msg) => setError(msg), 'Error al cargar duplicados')
     } finally {

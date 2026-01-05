@@ -704,7 +704,6 @@ export default function DetalleEquipo() {
                   {imagenes.map((imagen, index) => (
                     <div
                       key={imagen.id_imagen_equipo}
-                      className="detalle-equipo-gallery-thumbnail"
                       className={`detalle-equipo-gallery-thumbnail ${imagen.es_principal ? 'principal' : ''}`}
                       onClick={() => openImageViewer(index)}
                     >

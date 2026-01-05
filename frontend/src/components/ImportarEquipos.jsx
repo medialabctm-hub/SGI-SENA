@@ -3,6 +3,7 @@ import { FiUpload, FiFile, FiDownload, FiUser, FiSave, FiAlertCircle, FiSearch, 
 import * as XLSX from 'xlsx'
 import { parseApiResponse, buildErrorMessage, handleError } from '../utils/api'
 import RevisarDuplicados from './RevisarDuplicados'
+import { useDuplicados } from '../contexts/DuplicadosContext'
 import '../styles/importarEquipos.css'
 
 export default function ImportarEquipos({ onImportComplete, onEstadoDuplicadosChange }) {
@@ -19,6 +20,7 @@ export default function ImportarEquipos({ onImportComplete, onEstadoDuplicadosCh
   const [user, setUser] = useState(null)
   const [idImportacion, setIdImportacion] = useState(null)
   const [mostrarDuplicados, setMostrarDuplicados] = useState(false)
+  const { establecerDuplicadosPendientes, limpiarDuplicados } = useDuplicados()
 
   useEffect(() => {
     try {
@@ -30,6 +32,11 @@ export default function ImportarEquipos({ onImportComplete, onEstadoDuplicadosCh
       console.error('Error al obtener datos del usuario:', error)
     }
   }, [])
+
+  // Sincronizar estado de duplicados con el contexto
+  useEffect(() => {
+    establecerDuplicadosPendientes(mostrarDuplicados)
+  }, [mostrarDuplicados, establecerDuplicadosPendientes])
 
   // Notificar al componente padre cuando haya o no duplicados pendientes
   useEffect(() => {
@@ -44,7 +51,7 @@ export default function ImportarEquipos({ onImportComplete, onEstadoDuplicadosCh
       if (mostrarDuplicados) {
         event.preventDefault()
         // Algunos navegadores requieren asignar un valor a returnValue
-        event.returnValue = ''
+        event.returnValue = 'Hay registros con placas duplicadas pendientes de revisión. ¿Estás seguro de que deseas salir?'
       }
     }
 
@@ -444,6 +451,8 @@ export default function ImportarEquipos({ onImportComplete, onEstadoDuplicadosCh
           onProcesarCompleto={() => {
             // Recargar duplicados o actualizar resultados
             setMostrarDuplicados(false)
+            setIdImportacion(null)
+            limpiarDuplicados()
             // Opcional: recargar la lista de equipos si hay callback
             if (onImportComplete) {
               onImportComplete(resultado)

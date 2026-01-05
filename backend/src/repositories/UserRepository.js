@@ -86,7 +86,8 @@ export class UserRepository extends BaseRepository {
    */
   async findById(userId) {
     return this.findOne(
-      `SELECT u.id_usuario, u.nombre_usuario, u.correo, u.telefono, u.cedula, 
+      `SELECT u.id_usuario, u.nombre_usuario, u.correo, u.telefono, u.cedula,
+              u.tipo_documento, u.tipo_documento_otro,
               u.id_rol, r.nombre_rol, u.requiere_cambio_contrasena, u.foto_perfil
        FROM Usuarios u
        LEFT JOIN Roles r ON r.id_rol = u.id_rol
@@ -104,7 +105,9 @@ export class UserRepository extends BaseRepository {
       `SELECT 
          u.id_usuario, 
          u.nombre_usuario, 
-         u.cedula, 
+         u.cedula,
+         u.tipo_documento,
+         u.tipo_documento_otro,
          u.correo, 
          u.telefono,
          r.nombre_rol,
@@ -135,6 +138,8 @@ export class UserRepository extends BaseRepository {
     const {
       nombre,
       cedula,
+      tipo_documento,
+      tipo_documento_otro,
       correo,
       telefono,
       contrasena,
@@ -144,9 +149,19 @@ export class UserRepository extends BaseRepository {
     try {
       const [result] = await this.db.execute(
         `INSERT INTO Usuarios 
-         (nombre_usuario, cedula, correo, telefono, contrasena, id_rol, estado) 
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
-        [nombre, cedula, correo.toLowerCase().trim(), telefono, contrasena, idRol, 'Activo']
+         (nombre_usuario, cedula, tipo_documento, tipo_documento_otro, correo, telefono, contrasena, id_rol, estado) 
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          nombre, 
+          cedula, 
+          tipo_documento || 'CC', 
+          tipo_documento === 'Otro' ? tipo_documento_otro : null,
+          correo.toLowerCase().trim(), 
+          telefono, 
+          contrasena, 
+          idRol, 
+          'Activo'
+        ]
       );
 
       return { insertId: result.insertId, affectedRows: result.affectedRows };
@@ -186,6 +201,22 @@ export class UserRepository extends BaseRepository {
     if (userData.cedula) {
       updates.push('cedula = ?');
       values.push(userData.cedula);
+    }
+    if (userData.tipo_documento !== undefined) {
+      updates.push('tipo_documento = ?');
+      values.push(userData.tipo_documento);
+      // Si cambia el tipo de documento, actualizar o limpiar tipo_documento_otro
+      if (userData.tipo_documento === 'Otro') {
+        updates.push('tipo_documento_otro = ?');
+        values.push(userData.tipo_documento_otro || null);
+      } else {
+        updates.push('tipo_documento_otro = ?');
+        values.push(null);
+      }
+    } else if (userData.tipo_documento_otro !== undefined) {
+      // Si solo se actualiza tipo_documento_otro
+      updates.push('tipo_documento_otro = ?');
+      values.push(userData.tipo_documento_otro || null);
     }
     if (userData.correo) {
       updates.push('correo = ?');

@@ -13,13 +13,13 @@ export default function CrearMantenimiento() {
   const navigate = useNavigate()
   const [form, setForm] = useState({
     codigo_equipo: '',
-    tipo_mantenimiento: 'Preventivo',
+    tipo_mantenimiento: '',
     fecha_mantenimiento: '',
     fecha_proximo: '',
     descripcion_trabajo: '',
     id_usuario_tecnico: '',
     observaciones: '',
-    estado_mantenimiento: 'Programado',
+    estado_mantenimiento: '',
   })
   const [toast, setToast] = useState(null)
   const [loading, setLoading] = useState(false)
@@ -30,8 +30,9 @@ export default function CrearMantenimiento() {
   const [tecnicoEncontrado, setTecnicoEncontrado] = useState(null)
   const [buscandoTecnico, setBuscandoTecnico] = useState(false)
   const [user, setUser] = useState(null)
-  const [tiposMantenimiento, setTiposMantenimiento] = useState(['Preventivo', 'Correctivo', 'Predictivo'])
-  const [estadosMantenimiento, setEstadosMantenimiento] = useState(['Programado', 'En Proceso', 'Completado', 'Cancelado'])
+  const [tiposMantenimiento, setTiposMantenimiento] = useState([])
+  const [estadosMantenimiento, setEstadosMantenimiento] = useState([])
+  const [cargandoOpciones, setCargandoOpciones] = useState(true)
 
   useEffect(() => {
     try {
@@ -53,6 +54,7 @@ export default function CrearMantenimiento() {
   useEffect(() => {
     async function cargarOpcionesMantenimiento() {
       try {
+        setCargandoOpciones(true)
         const token = localStorage.getItem('token')
         
         // Cargar tipos de mantenimiento
@@ -63,14 +65,16 @@ export default function CrearMantenimiento() {
           const tipos = await parseApiResponse(resTipos)
           if (Array.isArray(tipos) && tipos.length > 0) {
             setTiposMantenimiento(tipos)
-            // Si el tipo por defecto no está en la lista, usar el primero
-            setForm(prev => {
-              if (!tipos.includes(prev.tipo_mantenimiento)) {
-                return { ...prev, tipo_mantenimiento: tipos[0] || 'Preventivo' }
-              }
-              return prev
-            })
+            // Establecer el primer tipo como valor por defecto si no hay uno seleccionado
+            setForm(prev => ({
+              ...prev,
+              tipo_mantenimiento: prev.tipo_mantenimiento || tipos[0]
+            }))
+          } else {
+            setToast({ message: 'No se pudieron cargar los tipos de mantenimiento', type: 'error' })
           }
+        } else {
+          throw new Error('Error al cargar tipos de mantenimiento')
         }
 
         // Cargar estados de mantenimiento
@@ -81,18 +85,25 @@ export default function CrearMantenimiento() {
           const estados = await parseApiResponse(resEstados)
           if (Array.isArray(estados) && estados.length > 0) {
             setEstadosMantenimiento(estados)
-            // Si el estado por defecto no está en la lista, usar el primero
-            setForm(prev => {
-              if (!estados.includes(prev.estado_mantenimiento)) {
-                return { ...prev, estado_mantenimiento: estados[0] || 'Programado' }
-              }
-              return prev
-            })
+            // Establecer el primer estado como valor por defecto si no hay uno seleccionado
+            setForm(prev => ({
+              ...prev,
+              estado_mantenimiento: prev.estado_mantenimiento || estados[0]
+            }))
+          } else {
+            setToast({ message: 'No se pudieron cargar los estados de mantenimiento', type: 'error' })
           }
+        } else {
+          throw new Error('Error al cargar estados de mantenimiento')
         }
       } catch (err) {
         console.error('Error al cargar opciones de mantenimiento:', err)
-        // Mantener valores por defecto en caso de error
+        setToast({ 
+          message: 'Error al cargar las opciones de mantenimiento. Por favor, recarga la página.', 
+          type: 'error' 
+        })
+      } finally {
+        setCargandoOpciones(false)
       }
     }
 
@@ -234,13 +245,13 @@ export default function CrearMantenimiento() {
         })
         setForm({
           codigo_equipo: '',
-          tipo_mantenimiento: 'Preventivo',
+          tipo_mantenimiento: tiposMantenimiento[0] || '',
           fecha_mantenimiento: '',
           fecha_proximo: '',
           descripcion_trabajo: '',
           id_usuario_tecnico: '',
           observaciones: '',
-          estado_mantenimiento: 'Programado',
+          estado_mantenimiento: estadosMantenimiento[0] || '',
         })
         limpiarEquipo()
         limpiarTecnico()
@@ -290,6 +301,11 @@ export default function CrearMantenimiento() {
 
           <div className="form-divider"></div>
 
+          {cargandoOpciones ? (
+            <div className="loading-state">
+              <p>Cargando opciones de mantenimiento...</p>
+            </div>
+          ) : (
           <form onSubmit={handleSubmit}>
             {/* Sección: Equipo */}
             <div className="form-section">
@@ -342,7 +358,7 @@ export default function CrearMantenimiento() {
                   </div>
                   <div className="equipo-found-info">
                     <div><strong>Código:</strong> {equipoEncontrado.codigo_inventario}</div>
-                    <div><strong>Equipo:</strong> {equipoEncontrado.tipo} {equipoEncontrado.marca} {equipoEncontrado.modelo}</div>
+                    <div><strong>Equipo:</strong> {equipoEncontrado.tipo} {equipoEncontrado.modelo}</div>
                     {equipoEncontrado.nombre_ambiente && (
                       <div><strong>Ambiente:</strong> {equipoEncontrado.nombre_ambiente}</div>
                     )}
@@ -549,6 +565,7 @@ export default function CrearMantenimiento() {
               </button>
             </div>
           </form>
+          )}
         </div>
         </main>
       </div>

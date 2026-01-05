@@ -18,7 +18,7 @@ export default function Aprendices() {
   const [showImport, setShowImport] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
   const [selectedAprendiz, setSelectedAprendiz] = useState(null)
-  const [editForm, setEditForm] = useState({ nombre: '', documento: '', ficha: '', jornada: '' })
+  const [editForm, setEditForm] = useState({ nombre: '', documento: '', tipo_documento: 'CC', tipo_documento_otro: '', ficha: '', jornada: '' })
   const [savingEdit, setSavingEdit] = useState(false)
   const [deletingId, setDeletingId] = useState(null)
 
@@ -97,9 +97,10 @@ export default function Aprendices() {
       return
     }
 
-    const headers = ['Nombre', 'Documento', 'Ficha', 'Jornada', 'Registrado']
+    const headers = ['Nombre', 'Tipo Documento', 'Documento', 'Ficha', 'Jornada', 'Registrado']
     const rows = aprendices.map((item) => [
       item.nombre || '-',
+      (item.tipo_documento || 'CC') + (item.tipo_documento === 'Otro' && item.tipo_documento_otro ? ` (${item.tipo_documento_otro})` : ''),
       item.documento || '-',
       item.ficha || '-',
       item.jornada || '-',
@@ -119,6 +120,8 @@ export default function Aprendices() {
     setEditForm({
       nombre: aprendiz.nombre || '',
       documento: aprendiz.documento || '',
+      tipo_documento: aprendiz.tipo_documento || 'CC',
+      tipo_documento_otro: aprendiz.tipo_documento_otro || '',
       ficha: aprendiz.ficha || '',
       jornada: aprendiz.jornada || ''
     })
@@ -147,6 +150,8 @@ export default function Aprendices() {
         ficha: editForm.ficha?.trim() || null,
         nombre: editForm.nombre?.trim(),
         documento: editForm.documento?.trim(),
+        tipo_documento: editForm.tipo_documento || 'CC',
+        tipo_documento_otro: editForm.tipo_documento === 'Otro' ? (editForm.tipo_documento_otro?.trim() || null) : null,
         jornada: editForm.jornada || null
       }
       const res = await fetch(`/api/aprendices/${selectedAprendiz.id_aprendiz}`, {
@@ -264,6 +269,7 @@ export default function Aprendices() {
                     <thead>
                       <tr>
                         <th>Nombre</th>
+                        <th>Tipo Documento</th>
                         <th>Documento</th>
                         <th>Ficha</th>
                         <th>Jornada</th>
@@ -279,6 +285,10 @@ export default function Aprendices() {
                         return (
                           <tr key={aprendiz.id_aprendiz}>
                             <td><strong>{aprendiz.nombre}</strong></td>
+                            <td>
+                              {aprendiz.tipo_documento || 'CC'}
+                              {aprendiz.tipo_documento === 'Otro' && aprendiz.tipo_documento_otro ? ` (${aprendiz.tipo_documento_otro})` : ''}
+                            </td>
                             <td>{aprendiz.documento}</td>
                             <td>{aprendiz.ficha || '-'}</td>
                             <td>
@@ -369,6 +379,36 @@ export default function Aprendices() {
                   required
                 />
               </label>
+              <label>
+                Tipo de Documento
+                <CustomSelect
+                  name="tipo_documento"
+                  value={editForm.tipo_documento}
+                  onChange={(e) => {
+                    setEditForm((prev) => ({ 
+                      ...prev, 
+                      tipo_documento: e.target.value,
+                      tipo_documento_otro: e.target.value !== 'Otro' ? '' : prev.tipo_documento_otro
+                    }))
+                  }}
+                  options={['TI', 'CC', 'CE', 'PPT', 'Otro']}
+                  placeholder="Seleccionar tipo de documento"
+                />
+              </label>
+              {editForm.tipo_documento === 'Otro' && (
+                <label>
+                  Especificar Tipo de Documento
+                  <input
+                    type="text"
+                    name="tipo_documento_otro"
+                    value={editForm.tipo_documento_otro}
+                    onChange={handleEditChange}
+                    placeholder="Especificar tipo de documento"
+                    maxLength={50}
+                    required
+                  />
+                </label>
+              )}
               <label>
                 Documento
                 <input

@@ -39,6 +39,8 @@ CREATE TABLE Usuarios (
   id_usuario INT PRIMARY KEY AUTO_INCREMENT,
   nombre_usuario VARCHAR(100) NOT NULL,
   cedula VARCHAR(20) UNIQUE NOT NULL,
+  tipo_documento ENUM('TI', 'CC', 'CE', 'PPT', 'Otro') DEFAULT 'CC' COMMENT 'Tipo de documento de identidad',
+  tipo_documento_otro VARCHAR(50) NULL COMMENT 'Especificación cuando tipo_documento es "Otro"',
   telefono VARCHAR(20),
   correo VARCHAR(100) UNIQUE,
   contrasena VARCHAR(255) NOT NULL,
@@ -55,9 +57,31 @@ CREATE TABLE Usuarios (
   INDEX idx_correo (correo),
   INDEX idx_estado (estado),
   INDEX idx_rol (id_rol),
-  INDEX idx_estado_rol (estado, id_rol)
+  INDEX idx_estado_rol (estado, id_rol),
+  INDEX idx_tipo_documento (tipo_documento)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
 COMMENT = 'Usuarios del sistema con sus credenciales y datos personales';
+
+-- ============================================
+-- TABLA DE APRENDICES
+-- ============================================
+CREATE TABLE Aprendices (
+  id_aprendiz INT PRIMARY KEY AUTO_INCREMENT,
+  ficha VARCHAR(100) NULL,
+  nombre VARCHAR(200) NOT NULL,
+  documento VARCHAR(50) NOT NULL,
+  tipo_documento ENUM('TI', 'CC', 'CE', 'PPT', 'Otro') DEFAULT 'CC' COMMENT 'Tipo de documento de identidad',
+  tipo_documento_otro VARCHAR(50) NULL COMMENT 'Especificación cuando tipo_documento es "Otro"',
+  jornada ENUM('Mañana', 'Tarde', 'Noche') NULL,
+  creado_por INT NULL,
+  fecha_creacion DATETIME DEFAULT NOW(),
+  FOREIGN KEY (creado_por) REFERENCES Usuarios(id_usuario) ON DELETE SET NULL,
+  UNIQUE KEY uk_documento (documento),
+  INDEX idx_ficha (ficha),
+  INDEX idx_jornada (jornada),
+  INDEX idx_tipo_documento (tipo_documento)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+COMMENT = 'Registro de aprendices (no habilitados para iniciar sesión)';
 
 -- ============================================
 -- TABLA DE RELACIÓN ROL-PERMISO

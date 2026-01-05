@@ -962,3 +962,93 @@ export async function actualizarEstadoNovedad(req, res) {
   }
 }
 
+/**
+ * Obtener tipos de novedad disponibles desde la base de datos
+ * Consulta los valores ENUM de la columna tipo_novedad
+ */
+export async function obtenerTiposNovedad(req, res) {
+  try {
+    const [rows] = await defaultDb.execute(
+      `SELECT COLUMN_TYPE 
+       FROM INFORMATION_SCHEMA.COLUMNS 
+       WHERE TABLE_SCHEMA = DATABASE() 
+       AND TABLE_NAME = 'Novedades' 
+       AND COLUMN_NAME = 'tipo_novedad'`
+    )
+
+    if (!rows || rows.length === 0) {
+      logger.warn('No se encontró información del ENUM tipo_novedad en INFORMATION_SCHEMA')
+      return res.json(['Daño', 'Pérdida', 'Robo', 'Mal Funcionamiento', 'Daño Físico', 'Falta de Componente', 'Otro'])
+    }
+
+    const enumString = rows[0].COLUMN_TYPE
+    if (!enumString || !enumString.toLowerCase().startsWith('enum')) {
+      logger.warn('El tipo de columna no es un ENUM:', enumString)
+      return res.json(['Daño', 'Pérdida', 'Robo', 'Mal Funcionamiento', 'Daño Físico', 'Falta de Componente', 'Otro'])
+    }
+
+    const valores = enumString
+      .replace(/^enum\(/i, '')
+      .replace(/\)$/i, '')
+      .split(',')
+      .map(val => val.trim().replace(/^'|'$/g, ''))
+      .filter(val => val.length > 0)
+
+    if (valores.length === 0) {
+      logger.warn('No se pudieron extraer valores del ENUM')
+      return res.json(['Daño', 'Pérdida', 'Robo', 'Mal Funcionamiento', 'Daño Físico', 'Falta de Componente', 'Otro'])
+    }
+
+    logger.info('Tipos de novedad cargados desde BD', { tipos: valores })
+    return res.json(valores)
+  } catch (err) {
+    logger.error('Error al obtener tipos de novedad', { error: err.message, stack: err.stack })
+    return res.json(['Daño', 'Pérdida', 'Robo', 'Mal Funcionamiento', 'Daño Físico', 'Falta de Componente', 'Otro'])
+  }
+}
+
+/**
+ * Obtener estados de resolución disponibles desde la base de datos
+ * Consulta los valores ENUM de la columna estado_resolucion
+ */
+export async function obtenerEstadosNovedad(req, res) {
+  try {
+    const [rows] = await defaultDb.execute(
+      `SELECT COLUMN_TYPE 
+       FROM INFORMATION_SCHEMA.COLUMNS 
+       WHERE TABLE_SCHEMA = DATABASE() 
+       AND TABLE_NAME = 'Novedades' 
+       AND COLUMN_NAME = 'estado_resolucion'`
+    )
+
+    if (!rows || rows.length === 0) {
+      logger.warn('No se encontró información del ENUM estado_resolucion en INFORMATION_SCHEMA')
+      return res.json(['Pendiente', 'En Proceso', 'Resuelto', 'No Resuelto'])
+    }
+
+    const enumString = rows[0].COLUMN_TYPE
+    if (!enumString || !enumString.toLowerCase().startsWith('enum')) {
+      logger.warn('El tipo de columna no es un ENUM:', enumString)
+      return res.json(['Pendiente', 'En Proceso', 'Resuelto', 'No Resuelto'])
+    }
+
+    const valores = enumString
+      .replace(/^enum\(/i, '')
+      .replace(/\)$/i, '')
+      .split(',')
+      .map(val => val.trim().replace(/^'|'$/g, ''))
+      .filter(val => val.length > 0)
+
+    if (valores.length === 0) {
+      logger.warn('No se pudieron extraer valores del ENUM')
+      return res.json(['Pendiente', 'En Proceso', 'Resuelto', 'No Resuelto'])
+    }
+
+    logger.info('Estados de novedad cargados desde BD', { estados: valores })
+    return res.json(valores)
+  } catch (err) {
+    logger.error('Error al obtener estados de novedad', { error: err.message, stack: err.stack })
+    return res.json(['Pendiente', 'En Proceso', 'Resuelto', 'No Resuelto'])
+  }
+}
+

@@ -440,13 +440,13 @@ body::after {
   border: 1px solid var(--success-800);
   border-radius: 8px;
   padding: 0.625rem 1.25rem;
-  font-size: 0.95rem;
+  font-size: 0.95rem; 
   font-weight: 600;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 160px;
+  width: 240px;
   gap: 0.5rem;
   transition: background 0.2s, border-color 0.2s;
 }

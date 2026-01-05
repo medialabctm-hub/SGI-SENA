@@ -547,8 +547,6 @@ export default function AsignarAmbientes() {
                       estado: asig.estado_responsabilidad,
                       observaciones: asig.observaciones,
                       dias_semana: asig.dias_semana || [],
-                      hora_inicio: asig.hora_inicio,
-                      hora_fin: asig.hora_fin,
                       jornada: asig.jornada // Para compatibilidad con asignaciones antiguas
                     })
                   })

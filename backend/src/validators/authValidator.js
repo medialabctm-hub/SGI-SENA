@@ -7,6 +7,10 @@ import { z } from 'zod';
 export const registerSchema = z.object({
   nombre: z.string().min(2, 'El nombre debe tener al menos 2 caracteres').max(100),
   cedula: z.string().min(5, 'La cédula debe tener al menos 5 caracteres').max(20),
+  tipo_documento: z.enum(['TI', 'CC', 'CE', 'PPT', 'Otro'], {
+    errorMap: () => ({ message: 'Tipo de documento inválido. Debe ser: TI, CC, CE, PPT u Otro' }),
+  }).optional().default('CC'),
+  tipo_documento_otro: z.string().max(50).optional().nullable(),
   correo: z.string().email('Correo electrónico inválido').toLowerCase(),
   telefono: z.string().min(7, 'El teléfono debe tener al menos 7 caracteres').max(20),
   contrasena: z.string().min(6, 'La contraseña debe tener al menos 6 caracteres'),
@@ -23,6 +27,15 @@ export const registerSchema = z.object({
 }, {
   message: 'El código de invitación es requerido para registrarse como Instructor, Administrador o Cuentadante',
   path: ['codigo_invitacion'],
+}).refine((data) => {
+  // Si tipo_documento es "Otro", tipo_documento_otro es requerido
+  if (data.tipo_documento === 'Otro' && (!data.tipo_documento_otro || data.tipo_documento_otro.trim().length === 0)) {
+    return false;
+  }
+  return true;
+}, {
+  message: 'Debe especificar el tipo de documento cuando selecciona "Otro"',
+  path: ['tipo_documento_otro'],
 });
 
 export const loginSchema = z.object({
@@ -33,9 +46,20 @@ export const loginSchema = z.object({
 export const updateUserSchema = z.object({
   nombre: z.string().min(2).max(100).optional(),
   cedula: z.string().min(5).max(20).optional(),
+  tipo_documento: z.enum(['TI', 'CC', 'CE', 'PPT', 'Otro']).optional(),
+  tipo_documento_otro: z.string().max(50).optional().nullable(),
   correo: z.string().email().toLowerCase().optional(),
   telefono: z.string().min(7).max(20).optional(),
   rol: z.enum(['Administrador', 'Instructor', 'Aprendiz']).optional(),
+}).refine((data) => {
+  // Si tipo_documento es "Otro", tipo_documento_otro es requerido
+  if (data.tipo_documento === 'Otro' && (!data.tipo_documento_otro || data.tipo_documento_otro.trim().length === 0)) {
+    return false;
+  }
+  return true;
+}, {
+  message: 'Debe especificar el tipo de documento cuando selecciona "Otro"',
+  path: ['tipo_documento_otro'],
 });
 
 /**

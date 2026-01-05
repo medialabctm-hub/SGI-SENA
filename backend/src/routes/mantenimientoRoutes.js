@@ -2,8 +2,8 @@ import express from 'express'
 import { authenticate } from '../middleware/authMiddleware.js'
 import { requireAnyPermission, requirePermission } from '../middleware/authorization.js'
 import { PERMISSIONS } from '../config/permissions.js'
-import { crearMantenimiento, listarMantenimientos, obtenerMantenimientoPorId, actualizarEstadoMantenimiento, actualizarFechaProximo, eliminarMantenimiento, obtenerTiposMantenimiento, obtenerEstadosMantenimiento } from '../controller/mantenimientoController.js'
-import { validate, actualizarEstadoMantenimientoSchema, actualizarFechaProximoSchema } from '../validators/mantenimientoValidator.js'
+import { crearMantenimiento, listarMantenimientos, obtenerMantenimientoPorId, actualizarEstadoMantenimiento, actualizarFechaProximo, actualizarFechaMantenimiento, eliminarMantenimiento, obtenerTiposMantenimiento, obtenerEstadosMantenimiento } from '../controller/mantenimientoController.js'
+import { validate, actualizarEstadoMantenimientoSchema, actualizarFechaProximoSchema, actualizarFechaMantenimientoSchema } from '../validators/mantenimientoValidator.js'
 
 const router = express.Router()
 
@@ -27,6 +27,12 @@ router.get('/',
   listarMantenimientos
 )
 
+// Obtener tipos de mantenimiento disponibles (DEBE ir antes de /:id)
+router.get('/tipos', obtenerTiposMantenimiento)
+
+// Obtener estados de mantenimiento disponibles (DEBE ir antes de /:id)
+router.get('/estados', obtenerEstadosMantenimiento)
+
 // Obtener detalle de mantenimiento
 router.get('/:id', 
   requireAnyPermission([
@@ -45,6 +51,15 @@ router.put('/:id/fecha-proximo',
   actualizarFechaProximo
 )
 
+// Actualizar fecha_mantenimiento de un mantenimiento
+router.put('/:id/fecha-mantenimiento', 
+  validate(actualizarFechaMantenimientoSchema),
+  requireAnyPermission([
+    PERMISSIONS.MANTENIMIENTO.UPDATE
+  ]),
+  actualizarFechaMantenimiento
+)
+
 // Actualizar estado de mantenimiento
 router.put('/:id/estado', 
   validate(actualizarEstadoMantenimientoSchema),
@@ -59,12 +74,6 @@ router.delete('/:id',
   requirePermission(PERMISSIONS.MANTENIMIENTO.DELETE),
   eliminarMantenimiento
 )
-
-// Obtener tipos de mantenimiento disponibles
-router.get('/tipos', obtenerTiposMantenimiento)
-
-// Obtener estados de mantenimiento disponibles
-router.get('/estados', obtenerEstadosMantenimiento)
 
 export default router
 

@@ -17,7 +17,6 @@ import MisEquipos from './pages/MisEquipos';
 import Novedades from './pages/Novedades';
 import Reportes from './pages/Reportes';
 import Mantenimientos from './pages/Mantenimientos';
-import CrearMantenimiento from './pages/CrearMantenimiento';
 import PaginaNoEncontrada from './pages/PaginaNoEncontrada.jsx';
 import Asignaciones from './pages/Asignaciones';
 import Ambientes from './pages/Ambientes';
@@ -35,10 +34,12 @@ import Perfil from './pages/Perfil';
 import ProtectedRoute from './components/ProtectedRoute';
 import RedirectIfAuth from './components/RedirectIfAuth';
 import ErrorBoundary from './components/ErrorBoundary';
+import NavigationBlocker from './components/NavigationBlocker';
 
 export default function App() {
   return (
     <ErrorBoundary>
+      <NavigationBlocker />
       <Routes>
       <Route
         path="/login"
@@ -205,7 +206,7 @@ export default function App() {
         path="/mantenimientos/crear"
         element={
           <ProtectedRoute>
-            <CrearMantenimiento />
+            <Mantenimientos />
           </ProtectedRoute>
         }
       />

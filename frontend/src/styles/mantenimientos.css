@@ -7,7 +7,7 @@
 }
 
 .mantenimientos-header-icon {
-  background: var(--purple-700);
+  background: var(--success-700);
 }
 
 .mantenimientos-header-content {
@@ -25,6 +25,40 @@
   color: var(--neutral-600);
   margin-top: 8px;
   font-size: 15px;
+}
+
+/* Pestañas */
+.mantenimientos-tabs {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 1.5rem;
+  border-bottom: 2px solid var(--neutral-200);
+  padding-bottom: 0;
+}
+
+.mantenimientos-tab {
+  padding: 0.75rem 1.5rem;
+  border: none;
+  background: transparent;
+  color: var(--neutral-700);
+  font-weight: 400;
+  font-size: 1rem;
+  cursor: pointer;
+  border-bottom: 3px solid transparent;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.mantenimientos-tab.active {
+  color: var(--success-700);
+  font-weight: 600;
+  border-bottom-color: var(--success-700);
+}
+
+.mantenimientos-tab:hover {
+  color: var(--success-700);
 }
 
 .mantenimientos-add-button {
@@ -51,18 +85,7 @@
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
-}
-
-.mantenimientos-action-button {
-  padding: 6px 12px;
-  font-size: 0.9rem;
-  display: flex;
   align-items: center;
-  gap: 4px;
-}
-
-.mantenimientos-action-icon {
-  margin-right: 4px;
 }
 
 .mantenimientos-tipo-badge {
@@ -89,53 +112,88 @@
 
 .mantenimientos-modal-content {
   background: white;
-  border-radius: 12px;
-  padding: 2rem;
-  max-width: 700px;
+  border-radius: 16px;
+  padding: 0;
+  max-width: 800px;
   width: 100%;
   max-height: 90vh;
-  overflow: auto;
+  overflow: hidden;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  display: flex;
+  flex-direction: column;
 }
 
 .mantenimientos-modal-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 1.5rem;
+  padding: 1.5rem 2rem;
+  background: linear-gradient(135deg, var(--success-600) 0%, var(--success-700) 100%);
+  border-bottom: 2px solid var(--success-800);
 }
 
 .mantenimientos-modal-title {
   margin: 0;
   font-size: 24px;
-  color: var(--neutral-900);
+  font-weight: 700;
+  color: white;
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
 .mantenimientos-modal-close {
-  background: none;
+  background: rgba(255, 255, 255, 0.2);
   border: none;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
   font-size: 24px;
   cursor: pointer;
-  color: var(--neutral-600);
-  transition: color 0.2s;
+  color: white;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .mantenimientos-modal-close:hover {
-  color: var(--neutral-900);
+  background: rgba(255, 255, 255, 0.3);
+  transform: rotate(90deg);
+}
+
+.mantenimientos-modal-body {
+  padding: 2rem;
+  overflow-y: auto;
+  flex: 1;
 }
 
 .mantenimientos-modal-grid {
   display: grid;
-  gap: 1rem;
+  gap: 1.5rem;
 }
 
 .mantenimientos-modal-field {
-  margin-bottom: 0.5rem;
+  background: var(--neutral-50);
+  padding: 1rem;
+  border-radius: 10px;
+  border-left: 4px solid var(--success-500);
 }
 
 .mantenimientos-modal-field-label {
   font-weight: 600;
-  color: var(--neutral-800);
+  color: var(--success-700);
+  display: block;
+  margin-bottom: 6px;
+  font-size: 0.875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.mantenimientos-modal-field-value {
+  color: var(--neutral-900);
+  font-size: 1rem;
+  font-weight: 500;
 }
 
 .mantenimientos-modal-field-header {
@@ -152,19 +210,44 @@
 }
 
 .mantenimientos-modal-select {
-  padding: 8px;
-  border-radius: 6px;
-  border: 1.5px solid var(--success-200);
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 2px solid var(--success-200);
   font-size: 0.95rem;
   width: 100%;
+  transition: all 0.2s;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.mantenimientos-modal-select:focus {
+  outline: none;
+  border-color: var(--success-500);
+  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.1);
+}
+
+.mantenimientos-modal-select:hover {
+  border-color: var(--success-300);
 }
 
 .mantenimientos-modal-input {
-  padding: 8px;
-  border-radius: 6px;
-  border: 1.5px solid var(--success-200);
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 2px solid var(--success-200);
   font-size: 0.95rem;
   width: 100%;
+  transition: all 0.2s;
+  font-family: inherit;
+}
+
+.mantenimientos-modal-input:focus {
+  outline: none;
+  border-color: var(--success-500);
+  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.1);
+}
+
+.mantenimientos-modal-input:hover {
+  border-color: var(--success-300);
 }
 
 .mantenimientos-modal-actions-row {
@@ -187,23 +270,45 @@
 .mantenimientos-modal-edit-row {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-top: 4px;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.mantenimientos-modal-edit-row > span {
+  flex: 1;
+  font-size: 1rem;
+  color: var(--neutral-900);
+  font-weight: 500;
 }
 
 .mantenimientos-modal-edit-button-small {
-  padding: 4px 8px;
-  font-size: 0.85rem;
+  padding: 6px 12px;
+  font-size: 0.875rem;
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
+  border-radius: 8px;
+  font-weight: 500;
+  transition: all 0.2s;
+  background: var(--success-50);
+  color: var(--success-700);
+  border: 1.5px solid var(--success-200);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.mantenimientos-modal-edit-button-small:hover {
+  background: var(--success-100);
+  border-color: var(--success-300);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(34, 197, 94, 0.15);
 }
 
 .mantenimientos-modal-footer {
   display: flex;
-  gap: 8px;
-  margin-top: 1rem;
-  padding-top: 1rem;
+  gap: 12px;
+  padding: 1.5rem 2rem;
+  background: var(--neutral-50);
   border-top: 1px solid var(--neutral-200);
 }
 
@@ -212,7 +317,16 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 4px;
+  gap: 8px;
+  padding: 12px 20px;
+  font-weight: 600;
+  border-radius: 10px;
+  transition: all 0.2s;
+}
+
+.mantenimientos-modal-footer-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
 /* Badges de estado */
@@ -246,10 +360,31 @@
   background: var(--error-50);
 }
 
+/* Estilos adicionales para el modal mejorado */
+.mantenimientos-modal-field .mantenimientos-modal-field-header {
+  background: transparent;
+  padding: 0;
+  border: none;
+}
+
+.mantenimientos-modal-field .mantenimientos-modal-edit-grid {
+  margin-top: 12px;
+}
+
+.mantenimientos-modal-field .mantenimientos-estado-badge,
+.mantenimientos-modal-field .mantenimientos-tipo-badge {
+  margin-top: 8px;
+  display: inline-flex;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
   .mantenimientos-title {
     font-size: 22px;
+  }
+
+  .mantenimientos-modal-title {
+    font-size: 20px;
   }
 
   .mantenimientos-actions {
@@ -259,6 +394,32 @@
   .mantenimientos-action-button {
     width: 100%;
     justify-content: center;
+  }
+
+  .mantenimientos-modal-content {
+    max-width: 95%;
+    margin: 10px;
+  }
+
+  .mantenimientos-modal-header {
+    padding: 1rem 1.5rem;
+  }
+
+  .mantenimientos-modal-body {
+    padding: 1.5rem;
+  }
+
+  .mantenimientos-modal-footer {
+    padding: 1rem 1.5rem;
+  }
+
+  .mantenimientos-modal-edit-row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .mantenimientos-modal-edit-button-small {
+    align-self: flex-start;
   }
 }
 

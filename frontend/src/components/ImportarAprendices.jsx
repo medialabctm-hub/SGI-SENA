@@ -75,10 +75,10 @@ export default function ImportarAprendices({ onImportComplete }) {
   }
 
   const descargarPlantilla = () => {
-    const headers = ['Ficha', 'Nombre', 'Documento', 'Jornada']
+    const headers = ['Ficha', 'Nombre', 'Documento', 'Tipo Documento', 'Tipo Documento Otro', 'Jornada']
     const data = [
       headers,
-      ['2478901', 'Juan Pérez', '1090123456', 'Mañana']
+      ['2478901', 'Juan Pérez', '1090123456', 'CC', '', 'Mañana']
     ]
 
     const wb = XLSX.utils.book_new()

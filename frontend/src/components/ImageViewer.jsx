@@ -138,7 +138,6 @@ export default function ImageViewer({ images = [], currentIndex = 0, onClose, on
           <img
             src={currentImage.url}
             alt={currentImage.titulo || currentImage.descripcion || 'Imagen'}
-            className={`image-viewer-image ${zoomed ? 'zoomed' : ''}`}
             onClick={handleImageClick} 
             onLoad={() => setImageLoaded(true)}
             onError={(e) => {
@@ -146,7 +145,7 @@ export default function ImageViewer({ images = [], currentIndex = 0, onClose, on
               e.target.style.display = 'none';
               setImageLoaded(true);
             }}
-            className={imageLoaded ? 'image-viewer-img-visible' : 'image-viewer-img-hidden'}
+            className={`image-viewer-image ${zoomed ? 'zoomed' : ''} ${imageLoaded ? 'image-viewer-img-visible' : 'image-viewer-img-hidden'}`}
           />
         </div>
 

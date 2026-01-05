@@ -800,6 +800,8 @@ export async function importarUsuarios(req, res) {
         // Mapear columnas del Excel
         const nombreUsuario = String(row['nombre_usuario'] || row['Nombre'] || row['NOMBRE_USUARIO'] || '').trim();
         const cedula = String(row['cedula'] || row['Cédula'] || row['CEDULA'] || '').trim();
+        const tipoDocumento = String(row['tipo_documento'] || row['Tipo Documento'] || row['TIPO_DOCUMENTO'] || 'CC').trim();
+        const tipoDocumentoOtro = row['tipo_documento_otro'] || row['Tipo Documento Otro'] || row['TIPO_DOCUMENTO_OTRO'] || null;
         const telefono = row['telefono'] || row['Teléfono'] || row['TELEFONO'] || null;
         const correo = row['correo'] || row['Correo'] || row['CORREO'] || row['email'] || row['Email'] || null;
         const rol = String(row['rol'] || row['Rol'] || row['ROL'] || 'Aprendiz').trim();
@@ -885,14 +887,21 @@ export async function importarUsuarios(req, res) {
         // Determinar si requiere cambio de contraseña (si fue generada automáticamente)
         const requiereCambio = !contrasena || !contrasena.trim();
 
+        // Validar tipo de documento
+        const tiposValidos = ['TI', 'CC', 'CE', 'PPT', 'Otro'];
+        const tipoDocValido = tiposValidos.includes(tipoDocumento) ? tipoDocumento : 'CC';
+        const tipoDocOtroValido = tipoDocValido === 'Otro' ? (tipoDocumentoOtro || null) : null;
+
         // Insertar usuario
         const query = `INSERT INTO Usuarios
-          (nombre_usuario, cedula, telefono, correo, contrasena, id_rol, estado, requiere_cambio_contrasena, creado_por)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+          (nombre_usuario, cedula, tipo_documento, tipo_documento_otro, telefono, correo, contrasena, id_rol, estado, requiere_cambio_contrasena, creado_por)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
 
         await defaultDb.execute(query, [
           nombreUsuario,
           cedula,
+          tipoDocValido,
+          tipoDocOtroValido,
           telefono || null,
           correo || null,
           contrasenaHash,
@@ -1001,10 +1010,26 @@ export async function importarAprendices(req, res) {
         const ficha = String(row['Ficha'] || row['ficha'] || row['FICHA'] || '').trim() || null;
         const nombre = String(row['Nombre'] || row['nombre'] || row['NOMBRE'] || '').trim();
         const documento = String(row['Documento'] || row['documento'] || row['CEDULA'] || row['Documento Identidad'] || '').trim();
+        let tipoDocumento = String(row['Tipo Documento'] || row['tipo_documento'] || row['TIPO_DOCUMENTO'] || row['Tipo de Documento'] || 'CC').trim();
+        const tipoDocumentoOtro = String(row['Tipo Documento Otro'] || row['tipo_documento_otro'] || row['TIPO_DOCUMENTO_OTRO'] || '').trim() || null;
         let jornada = String(row['Jornada'] || row['jornada'] || '').trim() || null;
 
         if (!nombre || !documento) {
           resultados.errores.push({ fila: numeroFila, documento: documento || 'N/A', error: 'Nombre y documento son obligatorios' });
+          resultados.fallidos++;
+          continue;
+        }
+
+        // Normalizar tipo de documento
+        const TIPOS_DOCUMENTO_VALIDOS = ['TI', 'CC', 'CE', 'PPT', 'Otro'];
+        tipoDocumento = tipoDocumento.toUpperCase();
+        if (!TIPOS_DOCUMENTO_VALIDOS.includes(tipoDocumento)) {
+          tipoDocumento = 'CC'; // Valor por defecto
+        }
+
+        // Validar que si es "Otro", tenga especificación
+        if (tipoDocumento === 'Otro' && (!tipoDocumentoOtro || tipoDocumentoOtro.trim().length === 0)) {
+          resultados.errores.push({ fila: numeroFila, documento, error: 'Debe especificar el tipo de documento cuando selecciona "Otro"' });
           resultados.fallidos++;
           continue;
         }
@@ -1031,8 +1056,8 @@ export async function importarAprendices(req, res) {
 
         // Insertar registro de aprendiz (sin crear cuenta de usuario)
         await defaultDb.execute(
-          'INSERT INTO Aprendices (ficha, nombre, documento, jornada, creado_por) VALUES (?, ?, ?, ?, ?)',
-          [ficha, nombre, documento, jornada, userId]
+          'INSERT INTO Aprendices (ficha, nombre, documento, tipo_documento, tipo_documento_otro, jornada, creado_por) VALUES (?, ?, ?, ?, ?, ?, ?)',
+          [ficha, nombre, documento, tipoDocumento, tipoDocumento === 'Otro' ? tipoDocumentoOtro : null, jornada, userId]
         );
 
         resultados.exitosos++;

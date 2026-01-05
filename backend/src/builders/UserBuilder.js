@@ -39,6 +39,32 @@ export class UserBuilder {
   }
 
   /**
+   * Establece el tipo de documento del usuario
+   * @param {string} tipoDocumento - Tipo de documento (TI, CC, CE, PPT, Otro)
+   * @returns {UserBuilder} Instancia del builder para method chaining
+   */
+  withTipoDocumento(tipoDocumento) {
+    const tiposValidos = ['TI', 'CC', 'CE', 'PPT', 'Otro'];
+    if (tipoDocumento && !tiposValidos.includes(tipoDocumento)) {
+      throw new Error(`Tipo de documento inválido. Debe ser uno de: ${tiposValidos.join(', ')}`);
+    }
+    this.user.tipo_documento = tipoDocumento || 'CC';
+    return this;
+  }
+
+  /**
+   * Establece la especificación del tipo de documento cuando es "Otro"
+   * @param {string} tipoDocumentoOtro - Especificación del tipo de documento
+   * @returns {UserBuilder} Instancia del builder para method chaining
+   */
+  withTipoDocumentoOtro(tipoDocumentoOtro) {
+    if (tipoDocumentoOtro) {
+      this.user.tipo_documento_otro = tipoDocumentoOtro.trim();
+    }
+    return this;
+  }
+
+  /**
    * Establece el correo del usuario
    * @param {string} correo - Correo del usuario
    * @returns {UserBuilder} Instancia del builder para method chaining
