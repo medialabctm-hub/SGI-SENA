@@ -3,7 +3,7 @@ import { registrarEquipo, obtenerEquipoPorCodigo, listarEquipos, actualizarEquip
 import { authenticate } from '../middleware/authMiddleware.js';
 import { requirePermission, requireAnyPermission } from '../middleware/authorization.js';
 import { PERMISSIONS } from '../config/permissions.js';
-import { writeLimiter, readLimiter, strictLimiter, webhookLimiter } from '../middleware/rateLimiter.js';
+import { writeLimiter, readLimiter, strictLimiter, webhookLimiter, searchLimiter } from '../middleware/rateLimiter.js';
 import { validate, registrarEquipoSchema, actualizarEquipoSchema, asignarEquipoSchema, verificarInventarioSchema, crearCategoriaSchema, actualizarCategoriaSchema, registrarUsoEquipoSchema, actualizarUsoEquipoSchema, registrarUsoEquipoExternoSchema, actualizarAsignacionEquipoSchema } from '../validators/equiposValidator.js';
 import { uploadEquipoImagePublico, handleUploadError } from '../middleware/uploadMiddleware.js';
 import { parseFormData } from '../middleware/parseFormData.js';
@@ -76,11 +76,12 @@ router.delete('/categorias/:id_categoria',
   eliminarCategoria
 );
 
-// Listar equipos
+// Listar equipos con filtros avanzados
 // Admin e Instructor: ven todos los equipos
 // Aprendiz: solo ve sus equipos asignados (controlador filtra)
 router.get('/', 
   authenticate,
+  searchLimiter, // Rate limiting específico para búsquedas
   requireAnyPermission([
     PERMISSIONS.EQUIPOS.VIEW,
     PERMISSIONS.EQUIPOS.VIEW_OWN

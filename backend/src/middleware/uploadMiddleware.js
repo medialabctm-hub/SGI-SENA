@@ -33,14 +33,25 @@ const storage = multer.diskStorage({
   },
 });
 
-// Filtro de archivos: solo imágenes
+import { validateImageFile } from './fileValidation.js';
+
+// Filtro de archivos: solo imágenes (usando validación mejorada)
 const fileFilter = (req, file, cb) => {
-  const allowedMimes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
-  
-  if (allowedMimes.includes(file.mimetype)) {
+  const validation = validateImageFile(file);
+  if (validation.valid) {
     cb(null, true);
   } else {
-    cb(new Error('Tipo de archivo no permitido. Solo se permiten imágenes (JPEG, PNG, GIF, WEBP)'), false);
+    cb(new Error(validation.error), false);
+  }
+};
+
+// Filtro de archivos para endpoint público: solo imágenes (usando validación mejorada)
+const fileFilterPublico = (req, file, cb) => {
+  const validation = validateImageFile(file);
+  if (validation.valid) {
+    cb(null, true);
+  } else {
+    cb(new Error(validation.error), false);
   }
 };
 
@@ -49,7 +60,7 @@ export const uploadEquipoImage = multer({
   storage,
   fileFilter,
   limits: {
-    fileSize: 5 * 1024 * 1024, // 5MB máximo
+    fileSize: 10 * 1024 * 1024, // 10MB máximo (mejorado desde 5MB)
   },
 });
 
@@ -57,7 +68,7 @@ export const uploadEquipoImage = multer({
 export const handleUploadError = (err, req, res, next) => {
   if (err instanceof multer.MulterError) {
     if (err.code === 'LIMIT_FILE_SIZE') {
-      return res.status(400).json({ error: 'El archivo es demasiado grande. Tamaño máximo: 5MB' });
+      return res.status(400).json({ error: 'El archivo es demasiado grande. Tamaño máximo: 10MB' });
     }
     if (err.code === 'LIMIT_FILE_COUNT') {
       return res.status(400).json({ error: 'Demasiados archivos. Máximo permitido: 10' });
@@ -114,9 +125,9 @@ const storagePublico = multer.diskStorage({
 // Configuración de Multer para endpoint público
 export const uploadEquipoImagePublico = multer({
   storage: storagePublico,
-  fileFilter,
+  fileFilter: fileFilterPublico,
   limits: {
-    fileSize: 5 * 1024 * 1024, // 5MB máximo
+    fileSize: 10 * 1024 * 1024, // 10MB máximo (mejorado desde 5MB)
     files: 10, // Máximo 10 imágenes
   },
 });

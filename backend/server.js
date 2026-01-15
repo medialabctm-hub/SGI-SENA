@@ -54,8 +54,24 @@ app.set('trust proxy', 1);
 // MIDDLEWARES DE SEGURIDAD
 // ============================================
 
-// Helmet - Configuración de headers de seguridad
-app.use(helmet());
+// Helmet - Configuración de headers de seguridad mejorada
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      scriptSrc: ["'self'"],
+      imgSrc: ["'self'", "data:", "https:"],
+      connectSrc: ["'self'"],
+      fontSrc: ["'self'", "data:"],
+      objectSrc: ["'none'"],
+      mediaSrc: ["'self'"],
+      frameSrc: ["'none'"],
+    },
+  },
+  crossOriginEmbedderPolicy: false, // Permitir recursos externos si es necesario
+  crossOriginResourcePolicy: { policy: "cross-origin" }, // Permitir recursos desde otros orígenes
+}));
 
 // CORS - Configuración de origen cruzado
 // Configuración base: permite múltiples orígenes si están separados por comas

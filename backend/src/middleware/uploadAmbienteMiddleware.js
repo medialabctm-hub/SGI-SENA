@@ -33,14 +33,15 @@ const storage = multer.diskStorage({
   },
 });
 
-// Filtro de archivos: solo imágenes
+import { validateImageFile } from './fileValidation.js';
+
+// Filtro de archivos: solo imágenes (usando validación mejorada)
 const fileFilter = (req, file, cb) => {
-  const allowedMimes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
-  
-  if (allowedMimes.includes(file.mimetype)) {
+  const validation = validateImageFile(file);
+  if (validation.valid) {
     cb(null, true);
   } else {
-    cb(new Error('Tipo de archivo no permitido. Solo se permiten imágenes (JPEG, PNG, GIF, WEBP)'), false);
+    cb(new Error(validation.error), false);
   }
 };
 

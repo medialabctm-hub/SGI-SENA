@@ -20,8 +20,58 @@ export async function listarEquipos(req, res) {
     const userId = req.user?.id;
     const userRole = req.user?.rol;
 
-    const equipos = await equipoService.listarEquipos({}, userId, userRole);
-    return res.json(equipos);
+    // Extraer filtros de query params
+    const filters = {
+      search: req.query.search || null,
+      estado_fisico: req.query.estado_fisico ? (Array.isArray(req.query.estado_fisico) ? req.query.estado_fisico : [req.query.estado_fisico]) : null,
+      estado_operativo: req.query.estado_operativo ? (Array.isArray(req.query.estado_operativo) ? req.query.estado_operativo : [req.query.estado_operativo]) : null,
+      categoria: req.query.categoria || null,
+      tipo: req.query.tipo || null,
+      fecha_desde: req.query.fecha_desde || null,
+      fecha_hasta: req.query.fecha_hasta || null,
+      valor_min: req.query.valor_min || null,
+      valor_max: req.query.valor_max || null,
+      ambiente: req.query.ambiente ? (Array.isArray(req.query.ambiente) ? req.query.ambiente : [req.query.ambiente]) : null
+    };
+
+    // Convertir ambientes a IDs si es necesario
+    if (filters.ambiente && filters.ambiente.length > 0) {
+      const ambienteIds = [];
+      for (const amb of filters.ambiente) {
+        const ambId = parseInt(amb, 10);
+        if (!isNaN(ambId)) {
+          ambienteIds.push(ambId);
+        } else {
+          // Buscar por código o nombre
+          const [[ambRow]] = await defaultDb.execute(
+            'SELECT id_ambiente FROM Ambientes WHERE codigo_ambiente = ? OR nombre_ambiente = ? LIMIT 1',
+            [amb, amb]
+          );
+          if (ambRow?.id_ambiente) {
+            ambienteIds.push(ambRow.id_ambiente);
+          }
+        }
+      }
+      if (ambienteIds.length > 0) {
+        filters.ambientesIds = ambienteIds;
+      }
+      delete filters.ambiente;
+    }
+
+    // Paginación
+    const pagination = {
+      page: parseInt(req.query.page) || 1,
+      limit: parseInt(req.query.limit) || 50
+    };
+
+    // Ordenamiento
+    const sorting = {
+      field: req.query.sort || 'codigo_equipo',
+      order: req.query.order || 'asc'
+    };
+
+    const result = await equipoService.listarEquipos(filters, pagination, sorting, userId, userRole);
+    return res.json(result);
   } catch (err) {
     logger.error('Error al listar equipos', { error: err.message });
     return res.status(500).json({ error: 'Error al listar equipos', detalle: err.message });

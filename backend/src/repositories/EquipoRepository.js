@@ -38,11 +38,28 @@ export class EquipoRepository extends BaseRepository {
   }
 
   /**
-   * Lista equipos con filtros opcionales
-   * @param {Object} filters - Filtros de búsqueda
-   * @returns {Promise<Array>} Lista de equipos
+   * Lista equipos con filtros avanzados opcionales
+   * @param {Object} filters - Filtros de búsqueda avanzados
+   * @param {Object} pagination - Paginación (page, limit)
+   * @param {Object} sorting - Ordenamiento (field, order)
+   * @returns {Promise<Object>} Objeto con equipos, total y paginación
    */
-  async findAll(filters = {}) {
+  async findAll(filters = {}, pagination = {}, sorting = {}) {
+    const page = Math.max(1, parseInt(pagination.page) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(pagination.limit) || 50));
+    const offset = (page - 1) * limit;
+    
+    const sortField = sorting.field || 'codigo_equipo';
+    const sortOrder = sorting.order === 'desc' ? 'DESC' : 'ASC';
+    
+    // Campos permitidos para ordenamiento
+    const allowedSortFields = [
+      'codigo_equipo', 'placa', 'tipo', 'modelo', 'consecutivo',
+      'fecha_adquisicion', 'valor_ingreso', 'estado_fisico',
+      'nombre_ambiente', 'codigo_ambiente'
+    ];
+    const safeSortField = allowedSortFields.includes(sortField) ? sortField : 'codigo_equipo';
+
     let query = `
       SELECT e.codigo_equipo, e.placa AS codigo_inventario, e.tipo, e.modelo, e.consecutivo, e.descripcion,
              e.fecha_adquisicion, e.valor_ingreso AS costo, e.estado_fisico,
@@ -50,32 +67,122 @@ export class EquipoRepository extends BaseRepository {
              a.id_ambiente, a.nombre_ambiente, a.codigo_ambiente,
              COALESCE(ee.estado_operativo, 'Disponible') AS estado_operativo,
              ee.detalles AS detalles_estado,
-             ee.fecha_actualizacion AS fecha_actualizacion_estado
+             ee.fecha_actualizacion AS fecha_actualizacion_estado,
+             c.nombre_categoria
       FROM Elementos e
       LEFT JOIN Ambientes a ON a.id_ambiente = e.id_ambiente
       LEFT JOIN Estado_Equipo ee ON e.codigo_equipo = ee.codigo_equipo
+      LEFT JOIN Categorias_Equipo c ON c.id_categoria = e.id_categoria
     `;
 
     const params = [];
     const conditions = [];
 
+    // Filtro por cuentadante
     if (filters.cuentadanteId) {
       conditions.push('e.id_cuentadante = ?');
       params.push(filters.cuentadanteId);
     }
 
+    // Filtro por ambientes
     if (filters.ambientesIds && filters.ambientesIds.length > 0) {
       conditions.push(`e.id_ambiente IN (${filters.ambientesIds.map(() => '?').join(',')})`);
       params.push(...filters.ambientesIds);
     }
 
+    // Filtro por búsqueda de texto (placa, modelo, consecutivo, descripción)
+    if (filters.search && filters.search.trim()) {
+      const searchTerm = `%${filters.search.trim()}%`;
+      conditions.push(`(
+        e.placa LIKE ? OR 
+        e.modelo LIKE ? OR 
+        e.consecutivo LIKE ? OR 
+        e.descripcion LIKE ? OR
+        e.tipo LIKE ?
+      )`);
+      params.push(searchTerm, searchTerm, searchTerm, searchTerm, searchTerm);
+    }
+
+    // Filtro por estado físico
+    if (filters.estado_fisico && Array.isArray(filters.estado_fisico) && filters.estado_fisico.length > 0) {
+      conditions.push(`e.estado_fisico IN (${filters.estado_fisico.map(() => '?').join(',')})`);
+      params.push(...filters.estado_fisico);
+    }
+
+    // Filtro por estado operativo
+    if (filters.estado_operativo && Array.isArray(filters.estado_operativo) && filters.estado_operativo.length > 0) {
+      conditions.push(`COALESCE(ee.estado_operativo, 'Disponible') IN (${filters.estado_operativo.map(() => '?').join(',')})`);
+      params.push(...filters.estado_operativo);
+    }
+
+    // Filtro por categoría
+    if (filters.categoria) {
+      conditions.push('c.nombre_categoria = ?');
+      params.push(filters.categoria);
+    }
+
+    // Filtro por rango de fechas de adquisición
+    if (filters.fecha_desde) {
+      conditions.push('e.fecha_adquisicion >= ?');
+      params.push(filters.fecha_desde);
+    }
+    if (filters.fecha_hasta) {
+      conditions.push('e.fecha_adquisicion <= ?');
+      params.push(filters.fecha_hasta);
+    }
+
+    // Filtro por rango de valor
+    if (filters.valor_min !== undefined && filters.valor_min !== null) {
+      conditions.push('COALESCE(e.valor_ingreso, 0) >= ?');
+      params.push(parseFloat(filters.valor_min));
+    }
+    if (filters.valor_max !== undefined && filters.valor_max !== null) {
+      conditions.push('COALESCE(e.valor_ingreso, 0) <= ?');
+      params.push(parseFloat(filters.valor_max));
+    }
+
+    // Filtro por tipo
+    if (filters.tipo) {
+      conditions.push('e.tipo = ?');
+      params.push(filters.tipo);
+    }
+
+    // Construir WHERE clause
     if (conditions.length > 0) {
       query += ` WHERE ${conditions.join(' AND ')}`;
     }
 
-    query += ' ORDER BY e.codigo_equipo ASC';
+    // Contar total de registros
+    const countQuery = query.replace(
+      /SELECT[\s\S]*?FROM/,
+      'SELECT COUNT(DISTINCT e.codigo_equipo) AS total FROM'
+    );
+    const [[{ total }]] = await this.db.execute(countQuery, params);
+    const totalRecords = Number(total) || 0;
 
-    return this.execute(query, params);
+    // Ordenamiento
+    const orderByField = safeSortField === 'nombre_ambiente' || safeSortField === 'codigo_ambiente'
+      ? `a.${safeSortField}`
+      : `e.${safeSortField}`;
+    query += ` ORDER BY ${orderByField} ${sortOrder}`;
+
+    // Paginación
+    query += ` LIMIT ? OFFSET ?`;
+    params.push(limit, offset);
+
+    const equipos = await this.execute(query, params);
+
+    return {
+      equipos,
+      pagination: {
+        page,
+        limit,
+        total: totalRecords,
+        totalPages: Math.ceil(totalRecords / limit),
+        hasNext: page < Math.ceil(totalRecords / limit),
+        hasPrev: page > 1
+      }
+    };
   }
 
   /**

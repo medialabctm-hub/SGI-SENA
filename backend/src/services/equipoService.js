@@ -42,25 +42,38 @@ export class EquipoService {
   }
 
   /**
-   * Lista equipos con filtros según el rol del usuario
-   * @param {Object} filters - Filtros de búsqueda
+   * Lista equipos con filtros avanzados según el rol del usuario
+   * @param {Object} filters - Filtros de búsqueda avanzados
+   * @param {Object} pagination - Paginación (page, limit)
+   * @param {Object} sorting - Ordenamiento (field, order)
    * @param {number} userId - ID del usuario
    * @param {string} userRole - Rol del usuario
-   * @returns {Promise<Array>} Lista de equipos
+   * @returns {Promise<Object>} Objeto con equipos, paginación y total
    */
-  async listarEquipos(filters = {}, userId = null, userRole = null) {
+  async listarEquipos(filters = {}, pagination = {}, sorting = {}, userId = null, userRole = null) {
+    // Aplicar filtros según rol
     if (userRole === 'Cuentadante') {
       filters.cuentadanteId = userId;
     } else if (userRole === 'Instructor') {
       // Los instructores solo ven equipos de sus ambientes asignados
       const ambientesIds = await this.obtenerAmbientesInstructor(userId);
       if (ambientesIds.length === 0) {
-        return [];
+        return {
+          equipos: [],
+          pagination: {
+            page: pagination.page || 1,
+            limit: pagination.limit || 50,
+            total: 0,
+            totalPages: 0,
+            hasNext: false,
+            hasPrev: false
+          }
+        };
       }
       filters.ambientesIds = ambientesIds;
     }
 
-    return this.equipoRepository.findAll(filters);
+    return this.equipoRepository.findAll(filters, pagination, sorting);
   }
 
   /**

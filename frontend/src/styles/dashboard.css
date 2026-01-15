@@ -517,3 +517,91 @@
   }
 }
 
+/* Estadísticas Adicionales */
+.stats-section {
+  margin-top: 2rem;
+  padding: 1.5rem;
+  background: white;
+  border-radius: 14px;
+  box-shadow: var(--card-shadow);
+}
+
+.stats-section-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: var(--neutral-800);
+  margin: 0 0 1rem 0;
+}
+
+.stats-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.stats-list-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem;
+  background: #f9fafb;
+  border-radius: 8px;
+  border-left: 3px solid var(--success-800);
+}
+
+.stats-list-label {
+  font-size: 0.875rem;
+  color: var(--neutral-700);
+  font-weight: 500;
+}
+
+.stats-list-value {
+  font-size: 0.875rem;
+  color: var(--success-800);
+  font-weight: 700;
+}
+
+/* Alertas */
+.stats-alerts {
+  margin-top: 2rem;
+  padding: 1.5rem;
+  background: white;
+  border-radius: 14px;
+  box-shadow: var(--card-shadow);
+}
+
+.alerts-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.alert-item {
+  padding: 1rem;
+  border-radius: 8px;
+  border-left: 4px solid;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.alert-warning {
+  background: #fef3c7;
+  border-color: var(--warning-600);
+  color: #92400e;
+}
+
+.alert-danger {
+  background: #fee2e2;
+  border-color: var(--error-700);
+  color: #991b1b;
+}
+
+.alert-info {
+  background: #dbeafe;
+  border-color: #3b82f6;
+  color: #1e40af;
+}
+
