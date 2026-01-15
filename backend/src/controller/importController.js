@@ -77,11 +77,71 @@ export async function importarEquipos(req, res) {
     const workbook = XLSX.read(req.file.buffer, { type: 'buffer' });
     const sheetName = workbook.SheetNames[0];
     const worksheet = workbook.Sheets[sheetName];
-    const data = XLSX.utils.sheet_to_json(worksheet);
+    const dataRaw = XLSX.utils.sheet_to_json(worksheet);
 
-    if (!data || data.length === 0) {
+    if (!dataRaw || dataRaw.length === 0) {
       return res.status(400).json({ error: 'El archivo Excel está vacío' });
     }
+
+    // Normalizar nombres de columnas para que coincidan con los nombres de BD
+    // Esto permite que el Excel tenga "Placa", "R Centro", "Fecha Adquisición", etc.
+    const normalizeColumnName = (name) => {
+      if (!name) return '';
+      // Convertir a minúsculas
+      let normalized = String(name).toLowerCase().trim();
+      // Eliminar tildes y caracteres especiales
+      normalized = normalized
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '') // Eliminar diacríticos
+        .replace(/[^a-z0-9_]/g, '_') // Reemplazar caracteres especiales con guión bajo
+        .replace(/_+/g, '_') // Reemplazar múltiples guiones bajos con uno solo
+        .replace(/^_|_$/g, ''); // Eliminar guiones bajos al inicio y final
+      return normalized;
+    };
+
+    // Mapeo de nombres comunes del Excel (normalizados) a nombres de BD
+    const columnMapping = {
+      'r_centro': 'r_centro',
+      'rcentro': 'r_centro',
+      'centro': 'r_centro',
+      'codigo_centro': 'r_centro',
+      'fecha_adquisicion': 'fecha_adquisicion',
+      'fechaadquisicion': 'fecha_adquisicion',
+      'valor_ingreso': 'valor_ingreso',
+      'valoringreso': 'valor_ingreso',
+      'valor': 'valor_ingreso',
+      'costo': 'valor_ingreso',
+      'descripcion_actual': 'descripcion',
+      'descripcion': 'descripcion',
+      'placa': 'placa',
+      'codigo_inventario': 'placa',
+      'tipo': 'tipo',
+      'categoria': 'categoria',
+      'modelo': 'modelo',
+      'consecutivo': 'consecutivo',
+      'numero_serie': 'consecutivo',
+      'numeroserie': 'consecutivo',
+      'atributos': 'atributos',
+      'especificaciones': 'atributos',
+      'specs': 'atributos',
+      'specs_completas': 'atributos',
+      'ambiente': 'ambiente',
+      'codigo_ambiente': 'ambiente',
+      'codigoambiente': 'ambiente'
+    };
+
+    const data = dataRaw.map(row => {
+      const normalizedRow = {};
+      for (const key in row) {
+        if (row.hasOwnProperty(key)) {
+          const normalizedKey = normalizeColumnName(key);
+          // Usar el mapeo si existe, sino usar el nombre normalizado directamente
+          const finalKey = columnMapping[normalizedKey] || normalizedKey;
+          normalizedRow[finalKey] = row[key];
+        }
+      }
+      return normalizedRow;
+    });
 
     const resultados = {
       total: data.length,
@@ -364,7 +424,7 @@ export async function importarEquipos(req, res) {
       } catch (error) {
         resultados.errores.push({
           fila: numeroFila,
-          codigo: row['Placa'] || row['placa'] || 'N/A',
+          codigo: placa || 'N/A',
           error: error.message || 'Error desconocido'
         });
         resultados.fallidos++;
