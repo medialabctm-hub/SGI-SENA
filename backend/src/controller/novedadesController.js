@@ -649,12 +649,6 @@ export async function crearNovedad(req, res) {
                         <span class="info-value-highlight">${valorFormateado}</span>
                       </div>
                       ` : ''}
-                      ${equipo.vida_util_meses ? `
-                      <div class="info-group">
-                        <span class="info-label">Vida Útil</span>
-                        <span class="info-value">${equipo.vida_util_meses} meses</span>
-                      </div>
-                      ` : ''}
                     </div>
                     ${equipo.descripcion ? `
                     <div style="margin-top: 20px;">
@@ -729,7 +723,6 @@ export async function crearNovedad(req, res) {
               `\nDATOS FINANCIEROS:\n` +
               ((equipo.valor_ingreso || equipo.costo) ? `  Valor de Ingreso: ${valorFormateado}\n` : '') +
               (equipo.fecha_adquisicion ? `  Adquisición: ${fechaAdq}\n` : '') +
-              (equipo.vida_util_meses ? `  Vida Útil: ${equipo.vida_util_meses} meses\n` : '') +
               `\nUBICACIÓN Y ESTADO:\n` +
               (equipo.nombre_ambiente ? `  Ambiente: ${equipo.codigo_ambiente || ''} - ${equipo.nombre_ambiente}\n` : '') +
               (equipo.r_centro ? `  Centro: ${equipo.r_centro}\n` : '') +

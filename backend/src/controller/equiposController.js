@@ -1,6 +1,7 @@
 import defaultDb, { pool } from '../config/dbconfig.js';
 import { notifyNuevoEquipo } from '../services/notificationService.js';
 import { logger } from '../utils/logger.js';
+import { ServiceFactory } from '../factories/ServiceFactory.js';
 import { 
   obtenerEquipoPorCodigo as obtenerEquipoPorCodigoUtil, 
   obtenerUsuarioPorCedula,
@@ -15,54 +16,12 @@ import { dirname } from 'path';
 
 export async function listarEquipos(req, res) {
   try {
+    const equipoService = ServiceFactory.create('equipoService');
     const userId = req.user?.id;
     const userRole = req.user?.rol;
 
-    let query = `
-      SELECT e.codigo_equipo, e.placa AS codigo_inventario, e.tipo, e.modelo, e.consecutivo, e.descripcion,
-             e.fecha_adquisicion, e.valor_ingreso AS costo, e.vida_util_meses, e.estado_fisico,
-             e.specs_completas, e.id_cuentadante, e.cuentadante_principal,
-             a.id_ambiente, a.nombre_ambiente, a.codigo_ambiente,
-             COALESCE(ee.estado_operativo, 'Disponible') AS estado_operativo,
-             ee.detalles AS detalles_estado,
-             ee.fecha_actualizacion AS fecha_actualizacion_estado
-      FROM Elementos e
-      LEFT JOIN Ambientes a ON a.id_ambiente = e.id_ambiente
-      LEFT JOIN Estado_Equipo ee ON e.codigo_equipo = ee.codigo_equipo
-    `;
-
-    const params = [];
-
-    if (userRole === 'Cuentadante') {
-      query += ` WHERE e.id_cuentadante = ?`;
-      params.push(userId);
-    } else if (userRole === 'Instructor') {
-      // Los instructores solo ven equipos de sus ambientes asignados
-      query += ` WHERE e.id_ambiente IN (
-        SELECT DISTINCT ra.id_ambiente
-        FROM Responsabilidades_Ambiente ra
-        LEFT JOIN Clases c ON ra.id_clase = c.id_clase
-        WHERE ra.id_usuario = ?
-          AND ra.estado_responsabilidad = 'Activa'
-          AND ra.fecha_inicio <= NOW()
-          AND (ra.fecha_fin IS NULL OR ra.fecha_fin >= NOW())
-          AND (
-            -- Asignaciones permanentes (con días/horarios o jornada)
-            (ra.id_clase IS NULL)
-            OR
-            -- Asignaciones temporales (clases) que estén programadas o en curso
-            (ra.id_clase IS NOT NULL 
-             AND c.estado_clase IN ('Programada', 'En Curso')
-             AND c.fecha_clase >= CURDATE())
-          )
-      )`;
-      params.push(userId);
-    }
-
-    query += ` ORDER BY e.codigo_equipo ASC`;
-
-    const [rows] = await defaultDb.execute(query, params);
-    return res.json(rows);
+    const equipos = await equipoService.listarEquipos({}, userId, userRole);
+    return res.json(equipos);
   } catch (err) {
     logger.error('Error al listar equipos', { error: err.message });
     return res.status(500).json({ error: 'Error al listar equipos', detalle: err.message });
@@ -71,207 +30,39 @@ export async function listarEquipos(req, res) {
 
 export async function registrarEquipo(req, res) {
   try {
-    const {
-      codigo_inventario,
-      placa,
-      r_centro,
-      centro,
-      consecutivo,
-      tipo,
-      marca,
-      modelo,
-      numero_serie,
-      descripcion,
-      fecha_adquisicion,
-      costo,
-      valor_ingreso,
-      vida_util_meses,
-      estado_fisico,
-      specs_completas,
-      id_ambiente,
-      ambiente,
-      comentarios
-    } = req.body;
-
-    const placaValue = (placa || codigo_inventario || '').toString().trim();
-    // r_centro es NOT NULL en la BD, usar '00000' como valor por defecto si no se proporciona
-    const rCentroValue = (centro || r_centro || '00000').toString().trim() || '00000';
-    const consecutivoValue = (consecutivo || numero_serie || '').toString().trim();
-    const valorIngreso = valor_ingreso || costo || null;
-
-    if (!placaValue) {
-      return res.status(400).json({ error: 'La placa (código de inventario) es obligatoria' });
-    }
-    if (!tipo || !modelo || !estado_fisico || !fecha_adquisicion) {
-      return res.status(400).json({ error: 'Faltan campos obligatorios: tipo, modelo, estado_fisico o fecha_adquisicion' });
-    }
-
-    const [[placaExistente]] = await defaultDb.execute(
-      'SELECT codigo_equipo FROM Elementos WHERE placa = ? LIMIT 1',
-      [placaValue]
-    );
-    if (placaExistente) {
-      return res.status(409).json({ error: 'La placa ya está registrada' });
-    }
-
-    let [[categoria]] = await defaultDb.execute(
-      'SELECT id_categoria, es_componente FROM Categorias_Equipo WHERE nombre_categoria = ? LIMIT 1',
-      [tipo]
-    );
-    
-    if (!categoria?.id_categoria) {
-      try {
-        const [result] = await defaultDb.execute(
-          'INSERT INTO Categorias_Equipo (nombre_categoria, descripcion, es_componente) VALUES (?, ?, ?)',
-          [tipo, `Categoría: ${tipo}`, false]
-        );
-        categoria = {
-          id_categoria: result.insertId,
-          es_componente: false
-        };
-        logger.info(`Categoría "${tipo}" creada automáticamente con ID: ${result.insertId}`);
-      } catch (err) {
-        // Si falla la inserción (por ejemplo, por duplicado), intentar obtenerla de nuevo
-        if (err.code === 'ER_DUP_ENTRY') {
-          [[categoria]] = await defaultDb.execute(
-            'SELECT id_categoria, es_componente FROM Categorias_Equipo WHERE nombre_categoria = ? LIMIT 1',
-            [tipo]
-          );
-        } else {
-          logger.error('Error al crear categoría automáticamente', { error: err.message, tipo });
-          return res.status(500).json({ error: 'Error al procesar la categoría', detalle: err.message });
-        }
-      }
-    }
-
-    // Verificar si la columna id_tipo existe en Elementos (compatibilidad con esquemas antiguos)
-    const [[col]] = await defaultDb.execute(
-      "SELECT COUNT(*) AS cnt FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'Elementos' AND COLUMN_NAME = 'id_tipo'"
-    );
-    const usaIdTipo = col?.cnt > 0;
-    let idTipo = null;
-    if (usaIdTipo) {
-      const nombreTipo = categoria.es_componente ? 'Componente Individual' : 'Equipo Completo';
-      const [[rowTipo]] = await defaultDb.execute(
-        'SELECT id_tipo FROM Tipos_Equipo WHERE nombre_tipo = ? LIMIT 1',
-        [nombreTipo]
-      );
-      if (!rowTipo?.id_tipo) {
-        return res.status(400).json({ error: 'Tipo de equipo no configurado', detalle: `No existe registro en Tipos_Equipo para ${nombreTipo}` });
-      }
-      idTipo = rowTipo.id_tipo;
-    }
-
-    // Resolver id_ambiente: aceptar id_ambiente directamente o mapear por codigo/nombre
-    let ambienteId = id_ambiente || null;
-    let ambienteInfo = null;
-    if (!ambienteId && ambiente) {
-      const [[amb]] = await defaultDb.execute(
-        'SELECT id_ambiente, nombre_ambiente, codigo_ambiente FROM Ambientes WHERE id_ambiente = ? OR codigo_ambiente = ? OR nombre_ambiente = ? LIMIT 1',
-        [ambiente, ambiente, ambiente]
-      );
-      ambienteId = amb?.id_ambiente || null;
-      ambienteInfo = amb || null;
-    }
-    if (!ambienteId) {
-      return res.status(400).json({ error: 'Ambiente inválido', detalle: 'Se requiere id_ambiente válido' });
-    }
-    if (!ambienteInfo) {
-      const [[ambRow]] = await defaultDb.execute(
-        'SELECT id_ambiente, nombre_ambiente, codigo_ambiente FROM Ambientes WHERE id_ambiente = ? LIMIT 1',
-        [ambienteId]
-      );
-      ambienteInfo = ambRow || null;
-    }
-    if (!ambienteInfo) {
-      return res.status(400).json({ error: 'Ambiente inválido', detalle: 'El ambiente indicado no existe' });
-    }
-
-    // Si es Cuentadante, asignar automáticamente el equipo a su inventario
-    const userRole = req.user?.rol;
+    const equipoService = ServiceFactory.create('equipoService');
     const userId = req.user?.id;
-    const idCuentadante = userRole === 'Cuentadante' ? userId : null;
+    const userRole = req.user?.rol;
 
-    // Verificar si la columna id_cuentadante existe, si no crearla
-    const [[colCuentadante]] = await defaultDb.execute(
-      "SELECT COUNT(*) AS cnt FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'Elementos' AND COLUMN_NAME = 'id_cuentadante'"
+    // Preparar datos del equipo
+    const equipoData = {
+      ...req.body,
+      centro: req.body.centro || req.body.r_centro || '00000'
+    };
+
+    // Registrar equipo usando el servicio
+    const equipoCreado = await equipoService.registrarEquipo(equipoData, userId, userRole);
+
+    // Obtener información del ambiente para la notificación
+    const ambienteId = equipoCreado.ambiente_id || equipoData.id_ambiente || equipoData.ambiente;
+    const [[ambRow]] = await defaultDb.execute(
+      'SELECT id_ambiente, nombre_ambiente, codigo_ambiente FROM Ambientes WHERE id_ambiente = ? LIMIT 1',
+      [ambienteId]
     );
-    if (colCuentadante.cnt === 0) {
-      await defaultDb.execute(
-        `ALTER TABLE Elementos 
-         ADD COLUMN id_cuentadante INT NULL,
-         ADD INDEX idx_cuentadante (id_cuentadante),
-         ADD FOREIGN KEY (id_cuentadante) REFERENCES Usuarios(id_usuario) ON DELETE SET NULL`
-      );
-      logger.info('Columna id_cuentadante creada en la tabla Elementos');
-    }
+    const ambienteInfo = ambRow || null;
 
-    // Combinar descripcion y comentarios si ambos existen
-    const descripcionFinal = comentarios 
-      ? (descripcion ? `${descripcion}\n\nComentarios: ${comentarios}` : `Comentarios: ${comentarios}`)
-      : (descripcion || null);
-
-    // Insertar en la tabla Elementos (con o sin id_tipo)
-    let query;
-    let params;
-    if (usaIdTipo) {
-      query = `INSERT INTO Elementos
-        (id_categoria, id_tipo, id_ambiente, id_cuentadante, tipo, modelo, descripcion, fecha_adquisicion, valor_ingreso, vida_util_meses, estado_fisico, specs_completas, r_centro, consecutivo, placa, registrado_por)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
-      params = [
-        categoria.id_categoria,
-        idTipo,
-        ambienteId,
-        idCuentadante,
-        tipo,
-        modelo,
-        descripcionFinal,
-        fecha_adquisicion,
-        valorIngreso ? parseFloat(valorIngreso) : null,
-        vida_util_meses || null,
-        estado_fisico,
-        specs_completas || null,
-        rCentroValue,
-        consecutivoValue || null,
-        placaValue,
-        req.user?.id || null
-      ];
-    } else {
-      query = `INSERT INTO Elementos
-        (id_categoria, id_ambiente, id_cuentadante, tipo, modelo, descripcion, fecha_adquisicion, valor_ingreso, vida_util_meses, estado_fisico, specs_completas, r_centro, consecutivo, placa, registrado_por)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
-      params = [
-        categoria.id_categoria,
-        ambienteId,
-        idCuentadante,
-        tipo,
-        modelo,
-        descripcionFinal,
-        fecha_adquisicion,
-        valorIngreso ? parseFloat(valorIngreso) : null,
-        vida_util_meses || null,
-        estado_fisico,
-        specs_completas || null,
-        rCentroValue,
-        consecutivoValue || null,
-        placaValue,
-        req.user?.id || null
-      ];
-    }
-    const [result] = await defaultDb.execute(query, params);
-
+    // Enviar notificación (orquestación HTTP)
     try {
       const notifyResult = await notifyNuevoEquipo({
-        equipoId: result.insertId,
-        tipoEquipo: tipo,
-        marca,
-        modelo,
+        equipoId: equipoCreado.codigo_equipo,
+        tipoEquipo: equipoData.tipo,
+        modelo: equipoData.modelo,
         ambiente: ambienteInfo?.nombre_ambiente || ambienteInfo?.codigo_ambiente || null,
-        creadoPor: req.user?.id ?? null,
+        creadoPor: userId ?? null,
         metadataExtra: {
-          placa: placaValue,
-          r_centro: rCentroValue,
-          ambiente_id: ambienteInfo?.id_ambiente ?? ambienteId,
+          placa: equipoCreado.placa,
+          r_centro: equipoData.centro || '00000',
+          ambiente_id: ambienteInfo?.id_ambiente || null,
           ambiente_codigo: ambienteInfo?.codigo_ambiente || null,
         },
       });
@@ -282,7 +73,7 @@ export async function registrarEquipo(req, res) {
       logger.error('Error al generar notificación de nuevo equipo', { error: notifyErr?.message || notifyErr });
     }
 
-    res.status(201).json({ ok: true, id: result.insertId });
+    return res.status(201).json({ ok: true, id: equipoCreado.codigo_equipo });
   } catch (err) {
     logger.error('Error al registrar equipo', { 
       error: err.message, 
@@ -291,15 +82,24 @@ export async function registrarEquipo(req, res) {
       body: req.body 
     });
     
-    if (err.code === 'ER_DUP_ENTRY') {
-      res.status(409).json({ error: 'El número de serie ya existe' });
-    } else if (err.code === 'ER_BAD_NULL_ERROR') {
-      res.status(400).json({ error: 'Error de validación: campo obligatorio faltante', detalle: err.message });
-    } else if (err.code === 'ER_NO_REFERENCED_ROW_2') {
-      res.status(400).json({ error: 'Error de referencia: el ambiente o categoría no existe', detalle: err.message });
-    } else {
-      res.status(500).json({ error: 'Error al registrar equipo', detalle: err.message });
+    // Manejar errores del servicio
+    if (err.name === 'ValidationError' || err.name === 'ConflictError') {
+      return res.status(err.statusCode || 400).json({ error: err.message });
     }
+    
+    if (err.code === 'ER_DUP_ENTRY') {
+      return res.status(409).json({ error: 'El número de serie ya existe' });
+    }
+    
+    if (err.code === 'ER_BAD_NULL_ERROR') {
+      return res.status(400).json({ error: 'Error de validación: campo obligatorio faltante', detalle: err.message });
+    }
+    
+    if (err.code === 'ER_NO_REFERENCED_ROW_2') {
+      return res.status(400).json({ error: 'Error de referencia: el ambiente o categoría no existe', detalle: err.message });
+    }
+    
+    return res.status(500).json({ error: 'Error al registrar equipo', detalle: err.message });
   }
 }
 
@@ -314,7 +114,7 @@ export async function obtenerEquipoPorCodigo(req, res) {
 
     const queryBase = `
       SELECT e.codigo_equipo, e.placa AS codigo_inventario, e.tipo, e.modelo, e.consecutivo, e.descripcion,
-             e.fecha_adquisicion, e.valor_ingreso AS costo, e.vida_util_meses, e.estado_fisico,
+             e.fecha_adquisicion, e.valor_ingreso AS costo, e.estado_fisico,
              e.specs_completas, e.id_cuentadante,
              a.id_ambiente, a.nombre_ambiente, a.codigo_ambiente,
              COALESCE(ee.estado_operativo, 'Disponible') AS estado_operativo,
@@ -581,7 +381,7 @@ export async function actualizarEquipo(req, res) {
 
     const allowed = [
       'tipo', 'modelo', 'descripcion', 'fecha_adquisicion',
-      'costo', 'valor_ingreso', 'vida_util_meses', 'estado_fisico', 'specs_completas',
+      'costo', 'valor_ingreso', 'estado_fisico', 'specs_completas',
       'consecutivo', 'placa', 'r_centro'
     ];
 
@@ -1254,7 +1054,6 @@ export async function obtenerEquiposAmbientesInstructor(req, res) {
         e.placa AS codigo_inventario,
         e.tipo,
         e.modelo,
-        NULL AS marca,
         e.consecutivo,
         e.estado_fisico,
         e.descripcion,
@@ -1860,7 +1659,6 @@ export async function buscarCuentadantePorDocumento(req, res) {
         e.descripcion,
         e.fecha_adquisicion,
         e.valor_ingreso AS costo,
-        e.vida_util_meses,
         e.estado_fisico,
         e.specs_completas,
         e.cuentadante_principal,

@@ -11,9 +11,8 @@ export const registrarEquipoSchema = z.object({
   centro: z.string().optional().nullable(), // Alias de r_centro
   consecutivo: z.string().optional().nullable(),
   tipo: z.string().min(1, 'El tipo es requerido').max(100),
-  marca: z.string().max(100).optional().nullable(),
+  categoria: z.string().min(1, 'La categoría es requerida').max(100).optional().nullable(),
   modelo: z.string().max(100).optional().nullable(),
-  numero_serie: z.string().max(100).optional().nullable(),
   descripcion: z.string().optional().nullable(),
   fecha_adquisicion: z.string().optional().nullable(),
   costo: z.union([
@@ -34,19 +33,11 @@ export const registrarEquipoSchema = z.object({
     }),
     z.null()
   ]).optional().nullable(),
-  vida_util_meses: z.union([
-    z.number().int().min(1),
-    z.string().transform((val) => {
-      if (!val || val === '') return null;
-      const num = parseInt(val, 10);
-      return isNaN(num) ? null : num;
-    }),
-    z.null()
-  ]).optional().nullable(),
   estado_fisico: z.enum(['Nuevo', 'Bueno', 'Regular', 'Malo', 'Dañado'], {
     errorMap: () => ({ message: 'Estado físico inválido' }),
   }),
   specs_completas: z.string().optional().nullable(),
+  atributos: z.string().optional().nullable(),
   id_ambiente: z.union([
     z.number().int().positive(),
     z.string().transform((val) => {
@@ -58,6 +49,15 @@ export const registrarEquipoSchema = z.object({
   ]).optional().nullable(),
   ambiente: z.string().optional().nullable(),
   comentarios: z.string().max(1000).optional().nullable(),
+  id_cuentadante: z.union([
+    z.number().int().positive(),
+    z.string().transform((val) => {
+      if (!val || val === '') return null;
+      const num = parseInt(val, 10);
+      return isNaN(num) || num <= 0 ? null : num;
+    }),
+    z.null()
+  ]).optional().nullable(),
 });
 
 export const actualizarEquipoSchema = z.object({
@@ -66,9 +66,7 @@ export const actualizarEquipoSchema = z.object({
   centro: z.string().optional().nullable(), // Alias de r_centro
   consecutivo: z.string().optional().nullable(),
   tipo: z.string().max(100).optional().nullable(),
-  marca: z.string().max(100).optional().nullable(),
   modelo: z.string().max(100).optional().nullable(),
-  numero_serie: z.string().max(100).optional().nullable(),
   descripcion: z.string().optional().nullable(),
   fecha_adquisicion: z.string().optional().nullable(),
   costo: z.union([
@@ -85,15 +83,6 @@ export const actualizarEquipoSchema = z.object({
     z.string().transform((val) => {
       if (!val || val === '') return null;
       const num = parseFloat(val);
-      return isNaN(num) ? null : num;
-    }),
-    z.null()
-  ]).optional().nullable(),
-  vida_util_meses: z.union([
-    z.number().int().min(1),
-    z.string().transform((val) => {
-      if (!val || val === '') return null;
-      const num = parseInt(val, 10);
       return isNaN(num) ? null : num;
     }),
     z.null()

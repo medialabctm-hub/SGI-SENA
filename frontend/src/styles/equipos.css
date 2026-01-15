@@ -10,15 +10,21 @@
   box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.01);
   padding: 2rem 2.5rem 1.5rem 2.5rem;
   margin-top: 2rem;
-  max-width: 700px;
+  max-width: 1200px;
   margin-left: auto;
   margin-right: auto;
 }
 
 .form-equipos .form-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1.5rem 2rem;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 1.5rem 1.5rem;
+}
+
+@media (max-width: 1200px) {
+  .form-equipos .form-grid {
+    grid-template-columns: 1fr 1fr;
+  }
 }
 
 @media (max-width: 800px) {
@@ -534,7 +540,7 @@
   box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.01);
   padding: 2rem 2.5rem 1.5rem 2.5rem;
   margin-top: 2rem;
-  max-width: 700px;
+  max-width: 1200px;
   margin-left: auto;
   margin-right: auto;
 }
@@ -552,8 +558,14 @@
 
 .form-equipos .form-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1.5rem 2rem;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 1.5rem 1.5rem;
+}
+
+@media (max-width: 1200px) {
+  .form-equipos .form-grid {
+    grid-template-columns: 1fr 1fr;
+  }
 }
 
 @media (max-width: 800px) {
@@ -1849,4 +1861,35 @@
     opacity: 1;
     transform: translateY(0);
   }
+}
+
+/* Estilos para estados de input */
+.form-equipos .form-input-success {
+  border-color: #22c55e !important;
+  background-color: #f0fdf4;
+}
+
+.form-equipos .form-input-error {
+  border-color: #ef4444 !important;
+  background-color: #fef2f2;
+}
+
+.form-equipos .form-input-disabled {
+  background-color: var(--neutral-100);
+  color: var(--neutral-600);
+  cursor: not-allowed;
+}
+
+/* Mejoras para el campo de cuentadante */
+.form-equipos .form-row[style*="grid-column"] {
+  margin-bottom: 1.5rem;
+}
+
+/* Spinner de carga pequeño */
+.loading-spinner {
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  display: inline-block;
 }

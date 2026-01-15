@@ -66,7 +66,7 @@ async function inicializarTablaDuplicados() {
  * - atributos: Especificaciones técnicas del equipo
  * - ambiente: Código o ID del ambiente (si no se especifica, se usa "Neutral" por defecto)
  * 
- * NOTA: Los campos estado_fisico y vida_util_meses se manejan en el aplicativo, no en el Excel
+ * NOTA: El campo estado_fisico se maneja en el aplicativo, no en el Excel
  */
 export async function importarEquipos(req, res) {
   try {
@@ -120,8 +120,6 @@ export async function importarEquipos(req, res) {
       'categoria': 'categoria',
       'modelo': 'modelo',
       'consecutivo': 'consecutivo',
-      'numero_serie': 'consecutivo',
-      'numeroserie': 'consecutivo',
       'atributos': 'atributos',
       'especificaciones': 'atributos',
       'specs': 'atributos',
@@ -302,9 +300,8 @@ export async function importarEquipos(req, res) {
           continue;
         }
 
-        // Estado físico y vida útil se manejan en el aplicativo, usar valores por defecto
+        // Estado físico se maneja en el aplicativo, usar valor por defecto
         const estado_fisico = 'Bueno'; // Valor por defecto, se actualiza en el aplicativo
-        const vida_util_meses = null; // Se actualiza en el aplicativo
 
         // Convertir fecha_adquisicion
         let fecha_adquisicion_final = null;
@@ -434,9 +431,9 @@ export async function importarEquipos(req, res) {
         // Insertar equipo usando nombres exactos de campos
         const query = `INSERT INTO Elementos
           (id_categoria, id_ambiente, id_cuentadante, tipo, modelo, descripcion, 
-           fecha_adquisicion, valor_ingreso, vida_util_meses, estado_fisico, registrado_por,
+           fecha_adquisicion, valor_ingreso, estado_fisico, registrado_por,
            r_centro, consecutivo, placa, atributos)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
 
         await defaultDb.execute(query, [
           categoriaId,
@@ -447,7 +444,6 @@ export async function importarEquipos(req, res) {
           descripcion || null,
           fecha_adquisicion_final || null,
           valor_ingreso ? parseFloat(valor_ingreso) : null,
-          vida_util_meses,
           estado_fisico,
           userId,
           r_centro,
@@ -614,9 +610,9 @@ export async function procesarDuplicado(req, res) {
 
       const query = `INSERT INTO Elementos
         (id_categoria, id_ambiente, id_cuentadante, tipo, modelo, descripcion, 
-         fecha_adquisicion, valor_ingreso, vida_util_meses, estado_fisico, registrado_por,
+         fecha_adquisicion, valor_ingreso, estado_fisico, registrado_por,
          r_centro, consecutivo, placa, atributos)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
       
       await defaultDb.execute(query, [
         datosExcel.categoria_id,
@@ -627,7 +623,6 @@ export async function procesarDuplicado(req, res) {
         datosExcel.descripcion || null,
         datosExcel.fecha_adquisicion || null,
         datosExcel.valor_ingreso ? parseFloat(datosExcel.valor_ingreso) : null,
-        null, // vida_util_meses se maneja en el aplicativo
         'Bueno', // estado_fisico se maneja en el aplicativo (valor por defecto)
         userId,
         datosExcel.r_centro || null,
@@ -749,9 +744,9 @@ export async function procesarDuplicadosMasivo(req, res) {
           // Insertar el equipo
           const query = `INSERT INTO Elementos
             (id_categoria, id_ambiente, id_cuentadante, tipo, modelo, descripcion, 
-             fecha_adquisicion, valor_ingreso, vida_util_meses, estado_fisico, registrado_por,
+             fecha_adquisicion, valor_ingreso, estado_fisico, registrado_por,
              r_centro, consecutivo, placa, atributos)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
 
           await defaultDb.execute(query, [
             datosExcel.categoria_id,
@@ -762,7 +757,6 @@ export async function procesarDuplicadosMasivo(req, res) {
             datosExcel.descripcion || null,
             datosExcel.fecha_adquisicion || null,
             datosExcel.valor_ingreso ? parseFloat(datosExcel.valor_ingreso) : null,
-            null, // vida_util_meses se maneja en el aplicativo
             'Bueno', // estado_fisico se maneja en el aplicativo (valor por defecto)
             userId,
             datosExcel.r_centro || null,

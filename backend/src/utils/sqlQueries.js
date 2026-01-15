@@ -89,7 +89,7 @@ export async function obtenerEquipoPorCodigo(db, codigo) {
   const queryBase = `
     SELECT e.codigo_equipo, e.r_centro, e.consecutivo, e.tipo, e.placa, e.modelo, 
            e.descripcion, e.fecha_adquisicion, e.costo, e.valor_ingreso,
-           e.vida_util_meses, e.estado_fisico,
+           e.estado_fisico,
            e.specs_completas, e.atributos,
            e.id_cuentadante,
            a.id_ambiente, a.nombre_ambiente, a.codigo_ambiente

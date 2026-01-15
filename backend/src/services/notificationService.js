@@ -201,27 +201,37 @@ export async function createForRole({ rolNombre, titulo, cuerpo = '', tipo = 'in
   if (!rolNombre || !titulo) {
     return { inserted: 0, insertId: null }
   }
-  const roleUserIds = await fetchActiveUserIdsByRole(rolNombre)
+  let roleUserIds = await fetchActiveUserIdsByRole(rolNombre)
+  
+  // Excluir al usuario que creó la notificación (no debe recibir notificación de sus propias acciones)
+  if (creadoPor && roleUserIds.includes(creadoPor)) {
+    roleUserIds = roleUserIds.filter(id => id !== creadoPor)
+  }
+  
   return createForUsers({ userIds: roleUserIds, titulo, cuerpo, tipo, metadata, creadoPor })
 }
 
 export async function createBroadcast({ titulo, cuerpo = '', tipo = 'info', metadata = null, creadoPor = null }) {
-  const userIds = await fetchAllActiveUserIds()
+  let userIds = await fetchAllActiveUserIds()
+  
+  // Excluir al usuario que creó la notificación (no debe recibir notificación de sus propias acciones)
+  if (creadoPor && userIds.includes(creadoPor)) {
+    userIds = userIds.filter(id => id !== creadoPor)
+  }
+  
   return createForUsers({ userIds, titulo, cuerpo, tipo, metadata, creadoPor })
 }
 
-export async function notifyNuevoEquipo({ equipoId, tipoEquipo, marca, modelo, ambiente, creadoPor, metadataExtra = {} }) {
+export async function notifyNuevoEquipo({ equipoId, tipoEquipo, modelo, ambiente, creadoPor, metadataExtra = {} }) {
   if (!equipoId || !tipoEquipo) {
     return { inserted: 0 }
   }
 
-  const subtipo = [marca, modelo].filter(Boolean).join(' ')
-  const descripcion = subtipo ? `${tipoEquipo} ${subtipo}` : tipoEquipo
+  const descripcion = modelo ? `${tipoEquipo} ${modelo}` : tipoEquipo
 
   const metadata = {
     codigo_equipo: equipoId,
     tipo: tipoEquipo,
-    marca,
     modelo,
     ambiente,
     ruta: `/equipos/detalle/${equipoId}`,
