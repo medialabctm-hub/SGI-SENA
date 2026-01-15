@@ -33,7 +33,7 @@
   box-shadow: 2px 0 8px rgba(0, 0, 0, 0.04);
   transition: transform 0.3s ease, width 0.3s ease;
   position: relative;
-  z-index: 100;
+  z-index: 10;
   flex-shrink: 0;
   height: calc(100vh - 140px);
   max-height: calc(100vh - 140px);

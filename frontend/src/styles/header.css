@@ -8,7 +8,7 @@
   justify-content: center;
   position: relative;
   overflow: visible;
-  z-index: 100;
+  z-index: 10;
 }
 
 .app-header-wrapper::before {

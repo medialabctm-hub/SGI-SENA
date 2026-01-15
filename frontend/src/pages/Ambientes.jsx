@@ -42,7 +42,6 @@ export default function Ambientes() {
   const [filtros, setFiltros] = useState({
     estado: '',
     tipo: '',
-    edificio: '',
   });
   const [imagenes, setImagenes] = useState([]);
   const [uploadingImages, setUploadingImages] = useState(false);
@@ -66,7 +65,6 @@ export default function Ambientes() {
       const params = new URLSearchParams();
       if (filtros.estado) params.append('estado_ambiente', filtros.estado);
       if (filtros.tipo) params.append('tipo_ambiente', filtros.tipo);
-      if (filtros.edificio) params.append('edificio', filtros.edificio);
 
       const url = `/api/ambientes${params.toString() ? `?${params.toString()}` : ''}`;
       const res = await fetch(url, { headers: getAuthHeaders() });
@@ -424,12 +422,6 @@ export default function Ambientes() {
                   onChange={(e) => setFiltros({ ...filtros, tipo: e.target.value })}
                   options={['', ...TIPOS_AMBIENTE]}
                   placeholder="Todos los tipos"
-                />
-                <input
-                  className="filter-control"
-                  placeholder="Edificio (opcional)"
-                  value={filtros.edificio}
-                  onChange={(e) => setFiltros({ ...filtros, edificio: e.target.value })}
                 />
               </div>
             </div>

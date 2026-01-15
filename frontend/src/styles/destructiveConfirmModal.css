@@ -9,7 +9,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 99999;
+  z-index: 999999;
   backdrop-filter: blur(4px);
 }
 
@@ -24,7 +24,7 @@
   animation: destructive-confirm-modal-in 0.3s ease-out;
   border: 1px solid var(--neutral-300);
   position: relative;
-  z-index: 100000;
+  z-index: 1000000;
 }
 
 @keyframes destructive-confirm-modal-in {

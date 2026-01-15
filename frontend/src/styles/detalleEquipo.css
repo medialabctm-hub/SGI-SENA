@@ -1073,7 +1073,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 99999;
+  z-index: 999999;
   animation: fadeIn 0.2s ease-in;
   padding: 0;
   width: 100vw;
@@ -1127,7 +1127,7 @@ body.lightbox-open .app-sidebar {
   justify-content: center;
   cursor: pointer;
   transition: all 0.2s;
-  z-index: 100000;
+  z-index: 1000000;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
@@ -1152,7 +1152,7 @@ body.lightbox-open .app-sidebar {
   justify-content: center;
   cursor: pointer;
   transition: all 0.2s;
-  z-index: 100000;
+  z-index: 1000000;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 

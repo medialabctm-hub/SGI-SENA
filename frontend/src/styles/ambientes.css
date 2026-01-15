@@ -132,11 +132,29 @@
 .ambientes-page .form-grid .form-row { margin-bottom:8px; }
 
 /* Asegurar que los filtros ocupen espacio razonable */
-.ambientes-page .users-content .filter-control { min-width: 160px; }
+.ambientes-page .users-content .filter-control { min-width: 140px; max-width: 180px; }
+
+/* Estilos para la fila de filtros */
+.ambientes-filters-row {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.ambientes-filters-row .filter-control {
+  flex: 0 1 auto;
+  min-width: 140px;
+  max-width: 180px;
+}
 
 @media (max-width: 720px) {
   .ambientes-page .filter-control { min-width: 120px; }
   .ambientes-page .form-control { width: 100%; }
+  .ambientes-filters-row .filter-control {
+    min-width: 120px;
+    max-width: 160px;
+  }
 }
 
 /* ============================================
