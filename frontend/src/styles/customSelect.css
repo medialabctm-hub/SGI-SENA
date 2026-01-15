@@ -37,14 +37,10 @@
 .custom-select:focus-visible {
   outline: none;
   border-color: var(--success-900);
-  box-shadow: 0 0 0 3px rgba(1, 175, 0, 0.15);
-  border-width: 2px;
 }
 
 .custom-select-open {
   border-color: var(--success-900);
-  box-shadow: 0 0 0 3px rgba(1, 175, 0, 0.15);
-  border-width: 2px;
 }
 
 .custom-select-error {
@@ -55,7 +51,6 @@
 .custom-select-error:focus-visible,
 .custom-select-error.custom-select-open {
   border-color: var(--error-600);
-  box-shadow: 0 0 0 3px rgba(220, 53, 69, 0.15);
 }
 
 .custom-select-disabled {
