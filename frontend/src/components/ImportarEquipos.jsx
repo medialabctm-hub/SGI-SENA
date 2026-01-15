@@ -4,6 +4,7 @@ import * as XLSX from 'xlsx'
 import { parseApiResponse, buildErrorMessage, handleError } from '../utils/api'
 import RevisarDuplicados from './RevisarDuplicados'
 import { useDuplicados } from '../contexts/DuplicadosContext'
+import InfoModal from './InfoModal'
 import '../styles/importarEquipos.css'
 
 export default function ImportarEquipos({ onImportComplete, onEstadoDuplicadosChange }) {
@@ -21,6 +22,7 @@ export default function ImportarEquipos({ onImportComplete, onEstadoDuplicadosCh
   const [idImportacion, setIdImportacion] = useState(null)
   const [mostrarDuplicados, setMostrarDuplicados] = useState(false)
   const { establecerDuplicadosPendientes, limpiarDuplicados } = useDuplicados()
+  const [infoModal, setInfoModal] = useState({ open: false, message: '', title: '' })
 
   useEffect(() => {
     try {
@@ -159,7 +161,11 @@ export default function ImportarEquipos({ onImportComplete, onEstadoDuplicadosCh
       setCuentadantePrincipal(data.cuentadante_cedula || cuentadantePrincipal.trim())
       setError(null)
       // Mostrar mensaje de éxito
-      alert(`Cuentadante principal "${data.cuentadante_principal}" actualizado correctamente para ${data.equipos_actualizados} equipo(s)`)
+      setInfoModal({
+        open: true,
+        message: `Cuentadante principal "${data.cuentadante_principal}" actualizado correctamente para ${data.equipos_actualizados} equipo(s)`,
+        title: 'Éxito'
+      })
     } catch (err) {
       handleError(err, (msg) => setError(msg), 'Error al guardar el cuentadante principal')
     } finally {
@@ -233,28 +239,40 @@ export default function ImportarEquipos({ onImportComplete, onEstadoDuplicadosCh
   }
 
   const descargarPlantilla = () => {
-    // Crear plantilla Excel básica con los nuevos campos
-    const plantilla = {
-      'Modelo': [],
-      'Consecutivo': [],
-      'Descripcion': [],
-      'Descripción Actual': [],
-      'Tipo': [],
-      'Placa': [],
-      'Atributos': [],
-      'Fecha Adquisición': [],
-      'Valor Ingreso': [],
-      'Ambiente': [],
-      'Estado Físico': [],
-      'Comentarios': []
-    }
+    // Crear plantilla Excel con nombres exactos (iguales a BD)
+    // Los nombres de las columnas deben ser EXACTAMENTE iguales a los campos de la BD
+    const headers = [
+      'placa',           // OBLIGATORIO
+      'tipo',            // OBLIGATORIO (campo libre, no es categoría)
+      'categoria',       // OBLIGATORIO (nombre o ID de categoría)
+      'modelo',          // OBLIGATORIO
+      'consecutivo',     // OBLIGATORIO
+      'descripcion',     // Opcional
+      'fecha_adquisicion', // Opcional (formato: YYYY-MM-DD)
+      'valor_ingreso',   // Opcional
+      'r_centro',        // Opcional
+      'atributos',       // Opcional
+      'ambiente'         // Opcional (si no se especifica, se usa "Neutral" por defecto)
+    ]
+
+    // Datos de ejemplo
+    const ejemplo = [
+      '92041025706',     // placa
+      '4',               // tipo (campo libre)
+      'ACCES POINT',     // categoria (nombre de categoría)
+      'TL-WA801N',       // modelo
+      '232938',          // consecutivo
+      'ACCES POINT',     // descripcion
+      '2021-12-22',      // fecha_adquisicion
+      '126050',          // valor_ingreso
+      '920510',          // r_centro
+      'MARCA:TP-LINK',   // atributos
+      'Neutral'          // ambiente (o dejar vacío para usar Neutral por defecto)
+    ]
 
     // Crear workbook y worksheet
     const wb = XLSX.utils.book_new()
-    
-    // Convertir objeto a array de arrays para Excel
-    const headers = Object.keys(plantilla)
-    const data = [headers] // Primera fila: encabezados
+    const data = [headers, ejemplo] // Primera fila: encabezados, segunda fila: ejemplo
     
     // Crear worksheet
     const ws = XLSX.utils.aoa_to_sheet(data)
@@ -460,6 +478,15 @@ export default function ImportarEquipos({ onImportComplete, onEstadoDuplicadosCh
           }}
         />
       )}
+
+      {/* Modal de información */}
+      <InfoModal
+        open={infoModal.open}
+        message={infoModal.message}
+        title={infoModal.title}
+        type="success"
+        onClose={() => setInfoModal({ open: false, message: '', title: '' })}
+      />
     </div>
   )
 }

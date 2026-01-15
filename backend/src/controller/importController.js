@@ -49,24 +49,24 @@ async function inicializarTablaDuplicados() {
  * Importar equipos desde archivo Excel
  * 
  * FORMATO DE EXCEL ESPERADO:
- * Las columnas pueden tener estos nombres (se aceptan variaciones en mayúsculas/minúsculas):
+ * Los nombres de las columnas deben ser EXACTAMENTE iguales a los campos de la BD:
  * 
  * OBLIGATORIAS:
- * - Placa (o placa, PLACA): Código de inventario único del equipo
+ * - placa: Código de inventario único del equipo
  * 
- * OPCIONALES:
- * - Centro (o R Centro, r_centro): Código del centro
- * - Tipo (o tipo, TIPO): Tipo de equipo
- * - Modelo (o modelo, MODELO): Modelo del equipo
- * - Consecutivo (o consecutivo, numero_serie, Número Serie): Número de serie o consecutivo
- * - Descripción (o descripcion, Descripción): Descripción del equipo
- * - Fecha Adquisición (o fecha_adquisicion, Fecha Adquisicion): Fecha de adquisición (formato: YYYY-MM-DD)
- * - Valor Ingreso (o valor_ingreso, costo, Costo): Valor de adquisición del equipo
- * - Vida Útil (meses) (o vida_util_meses): Vida útil en meses
- * - Estado Físico (o estado_fisico, Estado Fisico): Estado físico (Nuevo, Bueno, Regular, Malo, Dañado)
- * - Ambiente (o ambiente, codigo_ambiente, Código Ambiente): Código del ambiente donde se encuentra
- * - Especificaciones (o specs_completas, Atributos, atributos): Especificaciones técnicas del equipo
- * - Comentarios (o comentarios, COMENTARIOS): Comentarios adicionales
+ * OPCIONALES (nombres exactos):
+ * - tipo: Tipo de equipo (campo libre, no es categoría)
+ * - categoria: Nombre o ID de la categoría (debe existir en Categorias_Equipo)
+ * - modelo: Modelo del equipo
+ * - consecutivo: Número de serie o consecutivo
+ * - descripcion: Descripción del equipo
+ * - fecha_adquisicion: Fecha de adquisición (formato: YYYY-MM-DD)
+ * - valor_ingreso: Valor de adquisición del equipo
+ * - r_centro: Código del centro
+ * - atributos: Especificaciones técnicas del equipo
+ * - ambiente: Código o ID del ambiente (si no se especifica, se usa "Neutral" por defecto)
+ * 
+ * NOTA: Los campos estado_fisico y vida_util_meses se manejan en el aplicativo, no en el Excel
  */
 export async function importarEquipos(req, res) {
   try {
@@ -106,43 +106,32 @@ export async function importarEquipos(req, res) {
       const numeroFila = i + 2; // +2 porque la fila 1 es el encabezado y empezamos desde 0
 
       try {
-        // Mapear columnas del Excel a campos de la BD (nuevos campos y compatibilidad con antiguos)
-        const placa = String(row['Placa'] || row['placa'] || row['PLACA'] || '').trim();
-        const codigoInventario = String(row['Centro'] || row['R Centro'] || row['r_centro'] || row['codigo_inventario'] || row['Código Inventario'] || row['CODIGO_INVENTARIO'] || '').trim();
-        const tipo = String(row['Tipo'] || row['tipo'] || row['TIPO'] || '').trim();
-        const modelo = String(row['Modelo'] || row['modelo'] || row['MODELO'] || '').trim();
-        const numeroSerie = String(row['Consecutivo'] || row['consecutivo'] || row['numero_serie'] || row['Número Serie'] || row['NUMERO_SERIE'] || '').trim();
-        const descripcion = row['Descripcion'] || row['descripcion'] || row['Descripción'] || row['DESCRIPCION'] || null;
-        const fechaAdquisicion = row['Fecha Adquisición'] || row['fecha_adquisicion'] || row['Fecha Adquisicion'] || row['FECHA_ADQUISICION'] || null;
+        // Mapear columnas del Excel usando nombres EXACTOS (iguales a BD)
+        const placa = String(row['placa'] || '').trim();
+        const tipo = String(row['tipo'] || '').trim();
+        const categoria = String(row['categoria'] || '').trim();
+        const modelo = String(row['modelo'] || '').trim();
+        const consecutivo = String(row['consecutivo'] || '').trim();
+        const descripcion = row['descripcion'] || null;
+        const fecha_adquisicion = row['fecha_adquisicion'] || null;
         
-        // Ajuste para leer Valor Ingreso correctamente, manejando posibles formatos de moneda
-        let costo = row['Valor Ingreso'] || row['valor_ingreso'] || row['costo'] || row['Costo'] || row['COSTO'] || null;
-        if (costo && typeof costo === 'string') {
+        // Procesar valor_ingreso (manejar formatos de moneda)
+        let valor_ingreso = row['valor_ingreso'] || null;
+        if (valor_ingreso && typeof valor_ingreso === 'string') {
           // Eliminar símbolos de moneda, puntos de miles y espacios
-          // Asumiendo formato: $ 126.050,00 o 126.050
-          // Si usa coma para decimales y punto para miles
-          costo = costo.replace(/[^\d.,-]/g, ''); 
-          if (costo.includes('.') && costo.includes(',')) {
-             // Formato complejo (ej: 1.234,56), eliminar puntos y reemplazar coma por punto
-             costo = costo.replace(/\./g, '').replace(',', '.');
-          } else if (costo.includes(',')) {
-             // Solo coma (ej: 1234,56), reemplazar por punto
-             costo = costo.replace(',', '.');
+          valor_ingreso = valor_ingreso.replace(/[^\d.,-]/g, ''); 
+          if (valor_ingreso.includes('.') && valor_ingreso.includes(',')) {
+             // Formato: 1.234,56 → eliminar puntos y reemplazar coma por punto
+             valor_ingreso = valor_ingreso.replace(/\./g, '').replace(',', '.');
+          } else if (valor_ingreso.includes(',')) {
+             // Formato: 1234,56 → reemplazar coma por punto
+             valor_ingreso = valor_ingreso.replace(',', '.');
           }
-          // Si solo tiene puntos y son separadores de miles (ej: 126.050), eliminarlos
-          // Riesgo: 126.050 podría ser 126 con 050 decimales en formato US. 
-          // Asumiremos formato local (punto = mil) si el valor parece alto o entero
         }
 
-        const vidaUtilMeses = row['vida_util_meses'] || row['Vida Útil (meses)'] || row['VIDA_UTIL_MESES'] || null;
-        const estadoFisico = String(row['Estado Físico'] || row['estado_fisico'] || row['Estado Fisico'] || row['ESTADO_FISICO'] || 'Bueno').trim();
-        const ambiente = String(row['Ambiente'] || row['ambiente'] || row['AMBIENTE'] || row['codigo_ambiente'] || row['Código Ambiente'] || '').trim();
-        const specsCompletas = row['Atributos'] || row['atributos'] || row['specs_completas'] || row['Especificaciones'] || row['SPECS_COMPLETAS'] || null;
-        // Campos nuevos
-        const rCentro = String(row['Centro'] || row['R Centro'] || row['r_centro'] || codigoInventario || '').trim() || null;
-        const atributos = row['Atributos'] || row['atributos'] || specsCompletas || null;
-        const valorIngreso = costo; // Usar el costo procesado
-        const comentarios = row['Comentarios'] || row['comentarios'] || row['COMENTARIOS'] || null;
+        const r_centro = String(row['r_centro'] || '').trim() || null;
+        const atributos = row['atributos'] || null;
+        const ambiente = String(row['ambiente'] || '').trim();
 
         // Validaciones básicas
         // AHORA: Validamos 'placa' en lugar de 'codigoInventario'
@@ -156,7 +145,8 @@ export async function importarEquipos(req, res) {
           continue;
         }
 
-        if (!tipo || !modelo || !numeroSerie) {
+        // Validaciones básicas
+        if (!tipo || !modelo || !consecutivo) {
           resultados.errores.push({
             fila: numeroFila,
             codigo: placa,
@@ -166,90 +156,80 @@ export async function importarEquipos(req, res) {
           continue;
         }
 
-        // Validar consecutivo único (si se proporciona)
-        // NOTA: Se permite consecutivo duplicado bajo solicitud del usuario ("el consecutivo esta dando problemas")
-        /*
-        if (numeroSerie) {
-          const [[serieExistente]] = await defaultDb.execute(
-            'SELECT codigo_equipo FROM Elementos WHERE consecutivo = ? LIMIT 1',
-            [numeroSerie]
+        // Resolver categoría usando columna "categoria" del Excel
+        let categoriaId = null;
+        if (categoria) {
+          // Buscar por nombre o por ID (si el dato es numérico)
+          const [[cat]] = await defaultDb.execute(
+            'SELECT id_categoria, nombre_categoria FROM Categorias_Equipo WHERE nombre_categoria = ? OR id_categoria = ? LIMIT 1',
+            [categoria, categoria]
           );
-          if (serieExistente) {
+          
+          if (!cat?.id_categoria) {
             resultados.errores.push({
               fila: numeroFila,
-              codigo: placa || numeroSerie,
-              error: 'El consecutivo ya está registrado'
+              codigo: placa,
+              error: `Categoría "${categoria}" no encontrada. Debe existir en Categorias_Equipo (por nombre o ID)`
             });
             resultados.fallidos++;
             continue;
           }
-        }
-        */
-
-        // Resolver categoría
-        // Buscar por nombre o por ID (si el dato es numérico)
-        let categoriaInfo = null;
-        
-        // Intentar buscar
-        const [[cat]] = await defaultDb.execute(
-          'SELECT id_categoria FROM Categorias_Equipo WHERE nombre_categoria = ? OR id_categoria = ? LIMIT 1',
-          [tipo, tipo]
-        );
-        
-        if (!cat?.id_categoria) {
+          categoriaId = cat.id_categoria;
+        } else {
           resultados.errores.push({
             fila: numeroFila,
             codigo: placa,
-            error: `Categoría "${tipo}" no encontrada. Debe existir en Categorias_Equipo (por nombre o ID)`
+            error: 'El campo "categoria" es obligatorio'
           });
           resultados.fallidos++;
           continue;
         }
-        const categoriaId = cat.id_categoria;
 
-        // Resolver ambiente
+        // Resolver ambiente usando columna "ambiente" del Excel
+        // Si no se especifica, usar "Neutral" por defecto
         let ambienteId = null;
-        if (ambiente) {
-          const [[amb]] = await defaultDb.execute(
-            'SELECT id_ambiente FROM Ambientes WHERE id_ambiente = ? OR codigo_ambiente = ? OR nombre_ambiente = ? LIMIT 1',
-            [ambiente, ambiente, ambiente]
-          );
-          ambienteId = amb?.id_ambiente || null;
-        }
+        const ambienteABuscar = ambiente || 'Neutral';
+        
+        const [[amb]] = await defaultDb.execute(
+          'SELECT id_ambiente FROM Ambientes WHERE id_ambiente = ? OR codigo_ambiente = ? OR nombre_ambiente = ? LIMIT 1',
+          [ambienteABuscar, ambienteABuscar, ambienteABuscar]
+        );
+        ambienteId = amb?.id_ambiente || null;
+        
         if (!ambienteId) {
           resultados.errores.push({
             fila: numeroFila,
             codigo: placa,
-            error: `Ambiente "${ambiente}" no encontrado`
+            error: `Ambiente "${ambienteABuscar}" no encontrado. Verifique que existe en la base de datos.`
           });
           resultados.fallidos++;
           continue;
         }
 
-        // Validar estado físico
-        const estadosValidos = ['Nuevo', 'Bueno', 'Regular', 'Malo', 'Dañado'];
-        const estadoFisicoValido = estadosValidos.includes(estadoFisico) ? estadoFisico : 'Bueno';
+        // Estado físico y vida útil se manejan en el aplicativo, usar valores por defecto
+        const estado_fisico = 'Bueno'; // Valor por defecto, se actualiza en el aplicativo
+        const vida_util_meses = null; // Se actualiza en el aplicativo
 
-        // Convertir fecha
-        let fechaAdq = null;
-        if (fechaAdquisicion) {
-          if (typeof fechaAdquisicion === 'number') {
+        // Convertir fecha_adquisicion
+        let fecha_adquisicion_final = null;
+        if (fecha_adquisicion) {
+          if (typeof fecha_adquisicion === 'number') {
             // Excel almacena fechas como números (días desde 1900-01-01)
             const excelEpoch = new Date(1899, 11, 30); // 30 de diciembre de 1899
-            const date = new Date(excelEpoch.getTime() + fechaAdquisicion * 24 * 60 * 60 * 1000);
-            fechaAdq = date.toISOString().split('T')[0];
+            const date = new Date(excelEpoch.getTime() + fecha_adquisicion * 24 * 60 * 60 * 1000);
+            fecha_adquisicion_final = date.toISOString().split('T')[0];
           } else {
             // Si es string, intentar parsearlo
-            const dateStr = String(fechaAdquisicion);
+            const dateStr = String(fecha_adquisicion);
             if (dateStr.includes('T')) {
-              fechaAdq = dateStr.split('T')[0];
+              fecha_adquisicion_final = dateStr.split('T')[0];
             } else if (dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
-              fechaAdq = dateStr;
+              fecha_adquisicion_final = dateStr;
             } else {
               // Intentar parsear otros formatos
               const parsed = new Date(dateStr);
               if (!isNaN(parsed.getTime())) {
-                fechaAdq = parsed.toISOString().split('T')[0];
+                fecha_adquisicion_final = parsed.toISOString().split('T')[0];
               }
             }
           }
@@ -275,31 +255,29 @@ export async function importarEquipos(req, res) {
           if (equiposExistentes.length > 0) {
             const equipoExistente = equiposExistentes[0];
             
-            // Preparar datos del Excel para comparación
+            // Preparar datos del Excel para comparación (usando nombres exactos)
             const datosExcel = {
               placa,
               tipo,
+              categoria: categoria,
               modelo,
-              consecutivo: numeroSerie || null,
+              consecutivo: consecutivo || null,
               descripcion: descripcion || null,
-              fecha_adquisicion: fechaAdq || null,
-              valor_ingreso: valorIngreso ? parseFloat(valorIngreso) : (costo ? parseFloat(costo) : null),
-              vida_util_meses: vidaUtilMeses ? parseInt(vidaUtilMeses) : null,
-              estado_fisico: estadoFisicoValido,
-              specs_completas: specsCompletas || null,
-              r_centro: rCentro || null,
+              fecha_adquisicion: fecha_adquisicion_final || null,
+              valor_ingreso: valor_ingreso ? parseFloat(valor_ingreso) : null,
+              r_centro: r_centro || null,
               atributos: atributos || null,
-              categoria: tipo,
-              ambiente: ambiente,
+              ambiente: ambiente || 'Neutral',
               categoria_id: categoriaId,
               ambiente_id: ambienteId
             };
             
-            // Preparar datos de BD para comparación
+            // Preparar datos de BD para comparación (usando nombres exactos)
             const datosBD = {
               codigo_equipo: equipoExistente.codigo_equipo,
               placa: equipoExistente.placa,
               tipo: equipoExistente.tipo,
+              categoria: equipoExistente.nombre_categoria || null,
               modelo: equipoExistente.modelo,
               consecutivo: equipoExistente.consecutivo || null,
               descripcion: equipoExistente.descripcion || null,
@@ -307,18 +285,11 @@ export async function importarEquipos(req, res) {
                 new Date(equipoExistente.fecha_adquisicion).toISOString().split('T')[0] : null,
               valor_ingreso: equipoExistente.valor_ingreso ? parseFloat(equipoExistente.valor_ingreso) : 
                            (equipoExistente.costo ? parseFloat(equipoExistente.costo) : null),
-              vida_util_meses: equipoExistente.vida_util_meses || null,
-              estado_fisico: equipoExistente.estado_fisico,
-              specs_completas: equipoExistente.specs_completas || null,
               r_centro: equipoExistente.r_centro || null,
               atributos: equipoExistente.atributos || null,
-              categoria: equipoExistente.nombre_categoria || null,
               ambiente: equipoExistente.nombre_ambiente || equipoExistente.codigo_ambiente || null,
               categoria_id: equipoExistente.id_categoria,
-              ambiente_id: equipoExistente.id_ambiente,
-              cuentadante: equipoExistente.cuentadante_nombre || null,
-              fecha_registro: equipoExistente.fecha_registro ? 
-                new Date(equipoExistente.fecha_registro).toISOString() : null
+              ambiente_id: equipoExistente.id_ambiente
             };
             
             // Guardar como duplicado pendiente
@@ -362,38 +333,31 @@ export async function importarEquipos(req, res) {
            WHERE u.id_usuario = ?`,
           [userId]
         );
-        const idCuentadante = userRole?.nombre_rol === 'Cuentadante' ? userId : null;
+        const id_cuentadante = userRole?.nombre_rol === 'Cuentadante' ? userId : null;
 
-        // Combinar descripcion y comentarios si ambos existen
-        const descripcionFinal = comentarios 
-          ? (descripcion ? `${descripcion}\n\nComentarios: ${comentarios}` : `Comentarios: ${comentarios}`)
-          : (descripcion || null);
-
-        // Insertar equipo con nuevos campos
+        // Insertar equipo usando nombres exactos de campos
         const query = `INSERT INTO Elementos
           (id_categoria, id_ambiente, id_cuentadante, tipo, modelo, descripcion, 
-           fecha_adquisicion, costo, vida_util_meses, estado_fisico, specs_completas, registrado_por,
-           r_centro, consecutivo, placa, atributos, valor_ingreso)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+           fecha_adquisicion, valor_ingreso, vida_util_meses, estado_fisico, registrado_por,
+           r_centro, consecutivo, placa, atributos)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
 
         await defaultDb.execute(query, [
           categoriaId,
           ambienteId,
-          idCuentadante,
+          id_cuentadante,
           tipo,
           modelo,
-          descripcionFinal,
-          fechaAdq || null,
-          costo ? parseFloat(costo) : null,
-          vidaUtilMeses ? parseInt(vidaUtilMeses) : null,
-          estadoFisicoValido,
-          specsCompletas || null,
+          descripcion || null,
+          fecha_adquisicion_final || null,
+          valor_ingreso ? parseFloat(valor_ingreso) : null,
+          vida_util_meses,
+          estado_fisico,
           userId,
-          rCentro,
-          numeroSerie || null,
+          r_centro,
+          consecutivo || null,
           placa || null,
-          atributos || null,
-          valorIngreso ? parseFloat(valorIngreso) : (costo ? parseFloat(costo) : null)
+          atributos || null
         ]);
 
         resultados.exitosos++;
@@ -554,12 +518,9 @@ export async function procesarDuplicado(req, res) {
 
       const query = `INSERT INTO Elementos
         (id_categoria, id_ambiente, id_cuentadante, tipo, modelo, descripcion, 
-         fecha_adquisicion, costo, vida_util_meses, estado_fisico, specs_completas, registrado_por,
-         r_centro, consecutivo, placa, atributos, valor_ingreso)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
-
-      // Calcular costo (usar valor_ingreso si existe, sino null)
-      const costoValue = datosExcel.valor_ingreso ? parseFloat(datosExcel.valor_ingreso) : null;
+         fecha_adquisicion, valor_ingreso, vida_util_meses, estado_fisico, registrado_por,
+         r_centro, consecutivo, placa, atributos)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
       
       await defaultDb.execute(query, [
         datosExcel.categoria_id,
@@ -569,16 +530,14 @@ export async function procesarDuplicado(req, res) {
         datosExcel.modelo,
         datosExcel.descripcion || null,
         datosExcel.fecha_adquisicion || null,
-        costoValue, // costo
-        datosExcel.vida_util_meses || null,
-        datosExcel.estado_fisico,
-        datosExcel.specs_completas || null,
+        datosExcel.valor_ingreso ? parseFloat(datosExcel.valor_ingreso) : null,
+        null, // vida_util_meses se maneja en el aplicativo
+        'Bueno', // estado_fisico se maneja en el aplicativo (valor por defecto)
         userId,
         datosExcel.r_centro || null,
         datosExcel.consecutivo || null,
         datosExcel.placa || null,
-        datosExcel.atributos || null,
-        datosExcel.valor_ingreso ? parseFloat(datosExcel.valor_ingreso) : null // valor_ingreso
+        datosExcel.atributos || null
       ]);
 
       // Actualizar estado del duplicado
@@ -694,12 +653,9 @@ export async function procesarDuplicadosMasivo(req, res) {
           // Insertar el equipo
           const query = `INSERT INTO Elementos
             (id_categoria, id_ambiente, id_cuentadante, tipo, modelo, descripcion, 
-             fecha_adquisicion, costo, vida_util_meses, estado_fisico, specs_completas, registrado_por,
-             r_centro, consecutivo, placa, atributos, valor_ingreso)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
-
-          // Calcular costo (usar valor_ingreso si existe, sino null)
-          const costoValue = datosExcel.valor_ingreso ? parseFloat(datosExcel.valor_ingreso) : null;
+             fecha_adquisicion, valor_ingreso, vida_util_meses, estado_fisico, registrado_por,
+             r_centro, consecutivo, placa, atributos)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
 
           await defaultDb.execute(query, [
             datosExcel.categoria_id,
@@ -709,16 +665,14 @@ export async function procesarDuplicadosMasivo(req, res) {
             datosExcel.modelo,
             datosExcel.descripcion || null,
             datosExcel.fecha_adquisicion || null,
-            costoValue, // costo
-            datosExcel.vida_util_meses || null,
-            datosExcel.estado_fisico,
-            datosExcel.specs_completas || null,
+            datosExcel.valor_ingreso ? parseFloat(datosExcel.valor_ingreso) : null,
+            null, // vida_util_meses se maneja en el aplicativo
+            'Bueno', // estado_fisico se maneja en el aplicativo (valor por defecto)
             userId,
             datosExcel.r_centro || null,
             datosExcel.consecutivo || null,
             datosExcel.placa || null,
-            datosExcel.atributos || null,
-            datosExcel.valor_ingreso ? parseFloat(datosExcel.valor_ingreso) : null // valor_ingreso
+            datosExcel.atributos || null
           ]);
 
           await defaultDb.execute(

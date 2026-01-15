@@ -150,7 +150,7 @@ CREATE TABLE Ambientes (
   id_ambiente INT PRIMARY KEY AUTO_INCREMENT,
   codigo_ambiente VARCHAR(20) UNIQUE NOT NULL,
   nombre_ambiente VARCHAR(100) NOT NULL,
-  tipo_ambiente ENUM('Laboratorio', 'Aula', 'Taller', 'Oficina', 'Bodega') NOT NULL,
+  tipo_ambiente ENUM('Laboratorio', 'Aula', 'Taller', 'Oficina', 'Bodega', 'Neutral') NOT NULL,
   capacidad_personas INT,
   piso VARCHAR(10),
   edificio VARCHAR(50),
@@ -1152,7 +1152,7 @@ INSERT INTO Ambientes (codigo_ambiente, nombre_ambiente, tipo_ambiente) VALUES
 ('301','Ambiente 301','Aula'), ('302','Ambiente 302','Aula'), ('401','Ambiente 401','Aula'),
 ('402','Ambiente 402','Aula'), ('403','Ambiente 403','Aula'), ('501','Ambiente 501','Aula'),
 ('502','Ambiente 502','Aula'), ('503','Ambiente 503','Aula'), ('504','Ambiente 504','Aula'),
-('505','Ambiente 505','Aula'), ('506','Ambiente 506','Aula');
+('505','Ambiente 505','Aula'), ('506','Ambiente 506','Aula'), ('Neutral','Neutral','Neutral');
 
 INSERT INTO Criterios_Asignacion (nombre_criterio, prioridad, descripcion, parametros) VALUES
 ('Estado Físico', 1, 'Prioriza equipos en mejor estado físico', '{"orden": ["Nuevo", "Bueno", "Regular"]}'),

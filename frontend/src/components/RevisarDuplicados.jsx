@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { FiCheck, FiX, FiAlertCircle, FiCheckCircle, FiClock, FiSave } from 'react-icons/fi'
 import { parseApiResponse, buildErrorMessage, handleError } from '../utils/api'
 import { useDuplicados } from '../contexts/DuplicadosContext'
+import InfoModal from './InfoModal'
 import '../styles/revisarDuplicados.css'
 
 export default function RevisarDuplicados({ idImportacion, onProcesarCompleto }) {
@@ -12,6 +13,7 @@ export default function RevisarDuplicados({ idImportacion, onProcesarCompleto })
   const [error, setError] = useState(null)
   const [decisiones, setDecisiones] = useState({}) // { id_duplicado: 'aprobar' | 'rechazar' }
   const [procesandoId, setProcesandoId] = useState(null)
+  const [infoModal, setInfoModal] = useState({ open: false, message: '', title: '' })
 
   useEffect(() => {
     if (idImportacion) {
@@ -127,7 +129,11 @@ export default function RevisarDuplicados({ idImportacion, onProcesarCompleto })
       })
       setDecisiones({})
       
-      alert(`Procesados: ${data.resultados.aprobados} aprobados, ${data.resultados.rechazados} rechazados`)
+      setInfoModal({
+        open: true,
+        message: `Procesados: ${data.resultados.aprobados} aprobados, ${data.resultados.rechazados} rechazados`,
+        title: 'Procesamiento completado'
+      })
     } catch (err) {
       handleError(err, (msg) => setError(msg), 'Error al procesar duplicados')
     } finally {
@@ -350,6 +356,15 @@ export default function RevisarDuplicados({ idImportacion, onProcesarCompleto })
           </button>
         </div>
       )}
+
+      {/* Modal de información */}
+      <InfoModal
+        open={infoModal.open}
+        message={infoModal.message}
+        title={infoModal.title}
+        type="success"
+        onClose={() => setInfoModal({ open: false, message: '', title: '' })}
+      />
     </div>
   )
 }
