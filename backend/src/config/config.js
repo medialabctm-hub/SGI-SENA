@@ -38,11 +38,39 @@ if (!process.env.JWT_AUDIENCE) {
   process.env.JWT_AUDIENCE = 'gse-users';
 }
   
+// Variables de base de datos: acepta tanto formato estándar como Railway
+const getDbConfig = () => {
+  return {
+    host: process.env.DB_HOST || process.env.MYSQLHOST || process.env.MYSQL_HOST,
+    user: process.env.DB_USER || process.env.MYSQLUSER || process.env.MYSQL_USER,
+    password: process.env.DB_PASSWORD || process.env.MYSQLPASSWORD || process.env.MYSQL_PASSWORD,
+    database: process.env.DB_NAME || process.env.MYSQLDATABASE || process.env.MYSQL_DATABASE,
+    port: process.env.DB_PORT || process.env.MYSQLPORT || process.env.MYSQL_PORT || 3306,
+  };
+};
+
+const dbConfig = getDbConfig();
+
+// Verificar configuración de BD primero (puede venir de DB_* o MYSQL*)
+// Verificar que los valores no estén vacíos ni sean solo espacios
+const dbConfigValid = {
+  host: !!dbConfig.host && typeof dbConfig.host === 'string' && dbConfig.host.trim() !== '',
+  user: !!dbConfig.user && typeof dbConfig.user === 'string' && dbConfig.user.trim() !== '',
+  password: !!dbConfig.password && typeof dbConfig.password === 'string' && dbConfig.password.trim() !== '',
+  database: !!dbConfig.database && typeof dbConfig.database === 'string' && dbConfig.database.trim() !== '',
+  port: !!dbConfig.port && (typeof dbConfig.port === 'string' || typeof dbConfig.port === 'number'),
+};
+
+// Si falta alguna variable de BD, agregar a errores
+const dbErrors = [];
+if (!dbConfigValid.host) dbErrors.push('DB_HOST o MYSQLHOST');
+if (!dbConfigValid.user) dbErrors.push('DB_USER o MYSQLUSER');
+if (!dbConfigValid.password) dbErrors.push('DB_PASSWORD o MYSQLPASSWORD');
+if (!dbConfigValid.database) dbErrors.push('DB_NAME o MYSQLDATABASE');
+if (!dbConfigValid.port) dbErrors.push('DB_PORT o MYSQLPORT');
+
+// Variables requeridas (excluyendo BD que se valida por separado)
 const requiredEnvVars = [
-  "DB_PASSWORD",
-  "DB_HOST",
-  "DB_USER",
-  "DB_NAME",
   "BREVO_API_KEY",
   "BREVO_SENDER_EMAIL",
   "JWT_SECRET",
@@ -51,13 +79,31 @@ const requiredEnvVars = [
   "FRONTEND_URL",
 ];
 
-// Verificar variables de entorno con logging detallado
+// Log de configuración de BD con más detalles para debugging
+console.log(`[CONFIG] Configuración de Base de Datos:`);
+console.log(`[CONFIG]   Host: ${dbConfig.host ? '✓ ' + dbConfig.host.substring(0, 20) + '...' : '✗ Faltante'}`);
+console.log(`[CONFIG]   User: ${dbConfig.user ? '✓ ' + dbConfig.user : '✗ Faltante'}`);
+console.log(`[CONFIG]   Password: ${dbConfig.password ? '✓ (' + dbConfig.password.length + ' caracteres)' : '✗ Faltante'}`);
+console.log(`[CONFIG]   Database: ${dbConfig.database ? '✓ ' + dbConfig.database : '✗ Faltante'}`);
+console.log(`[CONFIG]   Port: ${dbConfig.port ? '✓ ' + dbConfig.port : '✗ Faltante'}`);
+
+// Debug: mostrar valores de variables de entorno relacionadas
+const dbEnvVars = ['DB_NAME', 'MYSQLDATABASE', 'MYSQL_DATABASE'];
+const foundDbVars = dbEnvVars.filter(v => process.env[v]);
+if (foundDbVars.length > 0) {
+  console.log(`[CONFIG]   Debug - Variables DB_NAME encontradas en process.env: ${foundDbVars.join(', ')}`);
+  foundDbVars.forEach(v => {
+    const val = process.env[v];
+    console.log(`[CONFIG]     ${v} = "${val}" (tipo: ${typeof val}, longitud: ${val?.length || 0})`);
+  });
+}
+
+// Verificar variables de entorno requeridas (excluyendo BD)
 const missingEnvVars = requiredEnvVars.filter((envVar) => {
-  // Leer directamente de process.env (más confiable en Railway)
   const value = process.env[envVar];
   const exists = !!value && typeof value === 'string' && value.trim() !== '';
   
-  // Log para debugging en Railway
+  // Log para debugging
   if (!exists) {
     console.warn(`[CONFIG] Variable de entorno faltante o vacía: ${envVar}`);
     // Mostrar todas las variables relacionadas para debugging
@@ -77,11 +123,14 @@ const missingEnvVars = requiredEnvVars.filter((envVar) => {
   return !exists;
 });
 
-  if (missingEnvVars.length > 0) {
+  // Combinar errores de BD con errores de otras variables
+  const allErrors = [...dbErrors, ...missingEnvVars];
+  
+  if (allErrors.length > 0) {
     const brevoVars = Object.keys(process.env).filter(k => k.toUpperCase().includes('BREVO'));
     const emailVars = Object.keys(process.env).filter(k => k.toUpperCase().includes('EMAIL'));
     
-    let errorMsg = `❌ ERROR: Faltan las siguientes variables de entorno requeridas: ${missingEnvVars.join(", ")}\n\n`;
+    let errorMsg = `❌ ERROR: Faltan las siguientes variables de entorno requeridas: ${allErrors.join(", ")}\n\n`;
     
     if (missingEnvVars.includes('BREVO_API_KEY')) {
       const hasSmtpKey = !!process.env.BREVO_SMTP_KEY;
@@ -135,12 +184,13 @@ export const config = {
   },
 
   // Configuración de la base de datos
+  // Soporta tanto variables estándar (DB_*) como variables de Railway (MYSQL*)
   db: {
-    host: process.env.DB_HOST,
-    user: process.env.DB_USER,
-    password: process.env.DB_PASSWORD,
-    database: process.env.DB_NAME,
-    port: process.env.DB_PORT || 3306,
+    host: process.env.DB_HOST || process.env.MYSQLHOST || process.env.MYSQL_HOST,
+    user: process.env.DB_USER || process.env.MYSQLUSER || process.env.MYSQL_USER,
+    password: process.env.DB_PASSWORD || process.env.MYSQLPASSWORD || process.env.MYSQL_PASSWORD,
+    database: process.env.DB_NAME || process.env.MYSQLDATABASE || process.env.MYSQL_DATABASE,
+    port: process.env.DB_PORT || process.env.MYSQLPORT || process.env.MYSQL_PORT || 3306,
   },
 
   // Configuración de JWT

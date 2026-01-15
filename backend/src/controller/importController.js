@@ -111,8 +111,9 @@ export async function importarEquipos(req, res) {
       'valoringreso': 'valor_ingreso',
       'valor': 'valor_ingreso',
       'costo': 'valor_ingreso',
-      'descripcion_actual': 'descripcion',
       'descripcion': 'descripcion',
+      // NO mapear descripcion_actual a descripcion, es un campo diferente
+      'descripcion_actual': 'descripcion_actual',
       'placa': 'placa',
       'codigo_inventario': 'placa',
       'tipo': 'tipo',
@@ -132,14 +133,33 @@ export async function importarEquipos(req, res) {
 
     const data = dataRaw.map(row => {
       const normalizedRow = {};
+      // Procesar columnas, priorizando "descripcion" sobre "descripcion_actual"
+      const processedKeys = new Set();
+      
+      // Primera pasada: procesar "descripcion" primero
       for (const key in row) {
         if (row.hasOwnProperty(key)) {
           const normalizedKey = normalizeColumnName(key);
-          // Usar el mapeo si existe, sino usar el nombre normalizado directamente
-          const finalKey = columnMapping[normalizedKey] || normalizedKey;
-          normalizedRow[finalKey] = row[key];
+          if (normalizedKey === 'descripcion') {
+            const finalKey = columnMapping[normalizedKey] || normalizedKey;
+            normalizedRow[finalKey] = row[key];
+            processedKeys.add(key);
+          }
         }
       }
+      
+      // Segunda pasada: procesar el resto de columnas
+      for (const key in row) {
+        if (row.hasOwnProperty(key) && !processedKeys.has(key)) {
+          const normalizedKey = normalizeColumnName(key);
+          const finalKey = columnMapping[normalizedKey] || normalizedKey;
+          // Solo asignar si la clave final no existe (evitar sobrescribir "descripcion")
+          if (!normalizedRow[finalKey]) {
+            normalizedRow[finalKey] = row[key];
+          }
+        }
+      }
+      
       return normalizedRow;
     });
 
@@ -217,29 +237,45 @@ export async function importarEquipos(req, res) {
         }
 
         // Resolver categoría usando columna "categoria" del Excel
+        // Si no está presente, intentar usar "descripcion" como fallback
         let categoriaId = null;
-        if (categoria) {
+        let categoriaNombre = categoria;
+        
+        // Si no hay categoria, intentar usar descripcion
+        // PERO ignorar si descripcion parece ser "Descripción Actual" (texto muy largo o contiene "TIPO ELEMENTO")
+        if (!categoriaNombre && descripcion) {
+          const descripcionStr = String(descripcion).trim();
+          // Si la descripción es muy larga (>50 caracteres) o contiene "TIPO ELEMENTO", 
+          // probablemente es "Descripción Actual" y no debe usarse para buscar categoría
+          if (descripcionStr.length <= 50 && !descripcionStr.includes('TIPO ELEMENTO')) {
+            categoriaNombre = descripcionStr;
+          }
+        }
+        
+        if (categoriaNombre) {
           // Buscar por nombre o por ID (si el dato es numérico)
           const [[cat]] = await defaultDb.execute(
             'SELECT id_categoria, nombre_categoria FROM Categorias_Equipo WHERE nombre_categoria = ? OR id_categoria = ? LIMIT 1',
-            [categoria, categoria]
+            [categoriaNombre, categoriaNombre]
           );
           
           if (!cat?.id_categoria) {
             resultados.errores.push({
               fila: numeroFila,
               codigo: placa,
-              error: `Categoría "${categoria}" no encontrada. Debe existir en Categorias_Equipo (por nombre o ID)`
+              error: `Categoría "${categoriaNombre}" no encontrada. Debe existir en Categorias_Equipo (por nombre o ID). Intenta usar la columna "categoria" o asegúrate de que "descripcion" coincida con un nombre de categoría.`
             });
             resultados.fallidos++;
             continue;
           }
           categoriaId = cat.id_categoria;
+          // Actualizar categoriaNombre con el nombre real de la BD para la comparación
+          categoriaNombre = cat.nombre_categoria;
         } else {
           resultados.errores.push({
             fila: numeroFila,
             codigo: placa,
-            error: 'El campo "categoria" es obligatorio'
+            error: 'El campo "categoria" es obligatorio. Agrega una columna "categoria" al Excel o asegúrate de que "descripcion" coincida con un nombre de categoría válido.'
           });
           resultados.fallidos++;
           continue;
@@ -319,7 +355,7 @@ export async function importarEquipos(req, res) {
             const datosExcel = {
               placa,
               tipo,
-              categoria: categoria,
+              categoria: categoriaNombre,
               modelo,
               consecutivo: consecutivo || null,
               descripcion: descripcion || null,

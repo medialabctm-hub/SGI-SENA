@@ -93,11 +93,16 @@ const corsOptions = {
     if (allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
-      // En desarrollo, permitir cualquier origen para facilitar pruebas
-      if (process.env.NODE_ENV === 'development') {
+      // Permitir localhost SOLO en desarrollo
+      const isLocalhost = origin.startsWith('http://localhost:') || origin.startsWith('http://127.0.0.1:');
+      if (isLocalhost && process.env.NODE_ENV === 'development') {
+        // En desarrollo, permitir localhost para desarrollo local conectándose a Railway DB
+        callback(null, true);
+      } else if (process.env.NODE_ENV === 'development') {
+        // En desarrollo, permitir cualquier origen para facilitar pruebas
         callback(null, true);
       } else {
-        // En producción, rechazar orígenes no permitidos
+        // En producción, rechazar orígenes no permitidos (incluyendo localhost)
         callback(new Error('No permitido por CORS'));
       }
     }
