@@ -551,8 +551,8 @@ export async function asignarAmbienteInstructor(req, res) {
         const fechaAsignacion = asignacion.fecha_asignacion.toISOString().split('T')[0];
         const [result] = await connection.execute(
           `INSERT INTO Responsabilidades_Ambiente
-           (id_ambiente, id_usuario, tipo_responsabilidad, fecha_inicio, hora_inicio, hora_fin, estado_responsabilidad, observaciones, creado_por, dia_semana, asignacion_automatica)
-           VALUES (?, ?, 'Principal', ?, ?, ?, 'Activa', ?, ?, ?, TRUE)`,
+           (id_ambiente, id_usuario, tipo_responsabilidad, fecha_inicio, hora_inicio, hora_fin, estado_responsabilidad, observaciones, creado_por, asignacion_automatica)
+           VALUES (?, ?, 'Principal', ?, ?, ?, 'Activa', ?, ?, TRUE)`,
           [
             id_ambiente,
             id_instructor,
@@ -560,8 +560,7 @@ export async function asignarAmbienteInstructor(req, res) {
             hora_inicio,
             hora_fin,
             observaciones || null,
-            asignadoPor,
-            asignacion.dia_semana
+            asignadoPor
           ]
         );
 

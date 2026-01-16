@@ -300,8 +300,8 @@ export class AuthService {
    * Lista todos los usuarios activos
    * @returns {Promise<Array>} Lista de usuarios
    */
-  async listUsers() {
-    return this.userRepository.findAll();
+  async listUsers(rol = null) {
+    return this.userRepository.findAll(rol);
   }
 
   /**

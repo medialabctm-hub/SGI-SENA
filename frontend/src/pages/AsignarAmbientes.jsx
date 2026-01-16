@@ -110,14 +110,11 @@ export default function AsignarAmbientes() {
   async function fetchInstructores() {
     try {
       const token = localStorage.getItem('token')
-      const res = await fetch('/api/auth/users', {
+      const res = await fetch('/api/auth/users?rol=Instructor', {
         headers: { Authorization: `Bearer ${token}` }
       })
       const data = await parseApiResponse(res, 'No se pudo obtener los instructores')
-      const instructoresData = Array.isArray(data)
-        ? data.filter(u => u.nombre_rol === 'Instructor' && u.estado === 'Activo')
-        : []
-      setInstructores(instructoresData)
+      setInstructores(Array.isArray(data) ? data : [])
     } catch (err) {
       console.error('Error al obtener instructores:', err)
       setInstructores([])

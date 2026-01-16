@@ -98,11 +98,11 @@ export class UserRepository extends BaseRepository {
 
   /**
    * Lista todos los usuarios activos con información completa
+   * @param {string} rol - Filtro opcional por rol (nombre_rol)
    * @returns {Promise<Array>} Lista de usuarios
    */
-  async findAll() {
-    return this.execute(
-      `SELECT 
+  async findAll(rol = null) {
+    let query = `SELECT 
          u.id_usuario, 
          u.nombre_usuario, 
          u.cedula,
@@ -124,9 +124,14 @@ export class UserRepository extends BaseRepository {
        FROM Usuarios u
        LEFT JOIN Roles r ON r.id_rol = u.id_rol
        LEFT JOIN Usuarios creador ON creador.id_usuario = u.creado_por
-       WHERE u.estado = 'Activo'
-       ORDER BY u.nombre_usuario`
-    );
+       WHERE u.estado = 'Activo'`;
+    
+    if (rol) {
+      query += ` AND r.nombre_rol = ?`;
+      return this.execute(query + ` ORDER BY u.nombre_usuario`, [rol]);
+    }
+    
+    return this.execute(query + ` ORDER BY u.nombre_usuario`);
   }
 
   /**

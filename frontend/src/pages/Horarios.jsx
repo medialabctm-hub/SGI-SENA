@@ -145,13 +145,14 @@ export default function Horarios() {
   async function fetchInstructores() {
     try {
       const token = localStorage.getItem('token')
-      const res = await fetch('/api/usuarios?rol=Instructor', {
+      const res = await fetch('/api/auth/users?rol=Instructor', {
         headers: { Authorization: `Bearer ${token}` }
       })
       const data = await parseApiResponse(res)
       setInstructores(data || [])
     } catch (err) {
       console.error('Error al obtener instructores:', err)
+      setInstructores([])
     }
   }
 

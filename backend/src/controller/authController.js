@@ -85,11 +85,13 @@ export const me = async (req, res, next) => {
 
 /**
  * Listar usuarios activos
+ * Query params: rol (opcional) - Filtrar por nombre de rol
  */
 export const listUsers = async (req, res, next) => {
   try {
     const authService = ServiceFactory.create('authService');
-    const users = await authService.listUsers();
+    const rol = req.query.rol || null;
+    const users = await authService.listUsers(rol);
     return res.json(users);
   } catch (error) {
     logger.error('Error en listUsers', { error: error.message });
