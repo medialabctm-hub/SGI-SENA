@@ -1060,10 +1060,16 @@ export async function obtenerEquiposAmbientesInstructor(req, res) {
           -- Asignaciones permanentes (con días/horarios o jornada)
           (ra.id_clase IS NULL)
           OR
-          -- Asignaciones temporales (clases) que estén programadas o en curso
+          -- Asignaciones temporales (clases)
           (ra.id_clase IS NOT NULL 
            AND c.estado_clase IN ('Programada', 'En Curso')
-           AND c.fecha_clase >= CURDATE())
+           AND (
+             -- Si está "En Curso", mostrar sin importar la fecha (clase activa)
+             c.estado_clase = 'En Curso'
+             OR
+             -- Si está "Programada", solo mostrar si la fecha es hoy o futura
+             (c.estado_clase = 'Programada' AND c.fecha_clase >= CURDATE())
+           ))
         )
       ORDER BY a.nombre_ambiente`,
       [userId]
@@ -1214,10 +1220,16 @@ export async function registrarVerificacionInventario(req, res) {
            -- Asignaciones permanentes (con días/horarios o jornada)
            (ra.id_clase IS NULL)
            OR
-           -- Asignaciones temporales (clases) que estén programadas o en curso
+           -- Asignaciones temporales (clases)
            (ra.id_clase IS NOT NULL 
             AND c.estado_clase IN ('Programada', 'En Curso')
-            AND c.fecha_clase >= CURDATE())
+            AND (
+              -- Si está "En Curso", mostrar sin importar la fecha (clase activa)
+              c.estado_clase = 'En Curso'
+              OR
+              -- Si está "Programada", solo mostrar si la fecha es hoy o futura
+              (c.estado_clase = 'Programada' AND c.fecha_clase >= CURDATE())
+            ))
          )
        ORDER BY ra.fecha_inicio DESC
        LIMIT 1`,
