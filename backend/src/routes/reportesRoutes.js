@@ -2,7 +2,7 @@ import express from 'express'
 import { authenticate } from '../middleware/authMiddleware.js'
 import { requireAnyPermission } from '../middleware/authorization.js'
 import { PERMISSIONS } from '../config/permissions.js'
-import { crearReporte, listarReportes, obtenerReportePorId, actualizarReporte, eliminarReporte, obtenerTiposReporte } from '../controller/reportesController.js'
+import { crearReporte, listarReportes, obtenerReportePorId, actualizarReporte, eliminarReporte, obtenerTiposReporte, generarReportePDF } from '../controller/reportesController.js'
 import { writeLimiter, strictLimiter } from '../middleware/rateLimiter.js'
 import { validate, crearReporteSchema, actualizarReporteSchema } from '../validators/reportesValidator.js'
 
@@ -33,6 +33,15 @@ router.get('/',
 
 // Obtener tipos de reporte disponibles (DEBE ir antes de /:id)
 router.get('/tipos', obtenerTiposReporte)
+
+// Generar reporte en PDF (DEBE ir antes de /:id)
+// Solo Administradores y Cuentadantes pueden generar PDFs
+router.get('/pdf', 
+  requireAnyPermission([
+    PERMISSIONS.REPORTES.VIEW
+  ]),
+  generarReportePDF
+)
 
 // Obtener detalle de reporte
 router.get('/:id', 

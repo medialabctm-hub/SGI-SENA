@@ -2,6 +2,30 @@ import defaultDb from '../config/dbconfig.js';
 import { logger } from '../utils/logger.js';
 
 /**
+ * Obtener fecha/hora local en formato MySQL (YYYY-MM-DD HH:MM:SS)
+ * IMPORTANTE: NO usa UTC, usa la hora local del servidor
+ */
+function getLocalDateTimeString(date = new Date()) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  const seconds = String(date.getSeconds()).padStart(2, '0');
+  return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+}
+
+/**
+ * Obtener fecha local en formato MySQL (YYYY-MM-DD)
+ */
+function getLocalDateString(date = new Date()) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+/**
  * Servicio de tareas programadas para sincronización automática
  * Ejecuta la sincronización de responsabilidades cada minuto
  */
@@ -53,21 +77,21 @@ class SchedulerService {
   async executeSync() {
     try {
       const ahora = new Date();
-      const fechaActual = ahora.toISOString().split('T')[0];
-      const horaActual = ahora.toTimeString().slice(0, 5);
+      const fechaActual = getLocalDateString(ahora);
+      const horaActual = ahora.toTimeString().slice(0, 8); // HH:MM:SS
       
       // Log para debugging - verificar hora actual del servidor
       logger.debug('Sincronización automática ejecutándose', {
         fecha_actual: fechaActual,
         hora_actual: horaActual,
-        timestamp: ahora.toISOString()
+        timestamp_local: getLocalDateTimeString(ahora),
+        timestamp_utc: ahora.toISOString()
       });
 
-      // Buscar clases que deberían estar activas pero no tienen responsabilidades asignadas
-      // Buscar clases programadas que ya deberían haber comenzado (no solo del día actual)
-      // Usar TIMESTAMP para comparar correctamente fecha y hora
-      // También incluir clases que ya pasaron su hora de inicio pero aún no han terminado
-      const [clasesSinResponsabilidades] = await defaultDb.execute(
+      // Buscar clases programadas que NO tienen responsabilidades asignadas
+      // IMPORTANTE: NO filtrar por tiempo en SQL - hacerlo en JavaScript con hora local
+      // La BD solo guarda datos, JavaScript decide el tiempo actual
+      const [clasesProgramadas] = await defaultDb.execute(
         `SELECT 
           c.id_clase,
           c.id_ambiente,
@@ -78,8 +102,6 @@ class SchedulerService {
           c.estado_clase
          FROM Clases c
          WHERE c.estado_clase = 'Programada'
-           AND TIMESTAMP(c.fecha_clase, c.hora_inicio) <= NOW()
-           AND TIMESTAMP(c.fecha_clase, c.hora_fin) > NOW()
            AND NOT EXISTS (
              SELECT 1 FROM Responsabilidades_Ambiente ra
              WHERE ra.id_clase = c.id_clase
@@ -88,19 +110,45 @@ class SchedulerService {
            )`,
         []
       );
+
+      // Filtrar en JavaScript usando hora local
+      // Usar las variables ya declaradas arriba (ahora, fechaActual, horaActual)
+      const clasesSinResponsabilidades = clasesProgramadas.filter(clase => {
+        // Convertir fecha_clase a string
+        const fechaClaseStr = clase.fecha_clase instanceof Date
+          ? getLocalDateString(clase.fecha_clase)
+          : String(clase.fecha_clase).split('T')[0];
+        
+        // Solo procesar clases del día actual
+        if (fechaClaseStr !== fechaActual) {
+          return false;
+        }
+        
+        // Normalizar hora_inicio y hora_fin a formato HH:MM:SS
+        let horaInicio = String(clase.hora_inicio);
+        if (horaInicio.split(':').length === 2) {
+          horaInicio = `${horaInicio}:00`;
+        }
+        let horaFin = String(clase.hora_fin);
+        if (horaFin.split(':').length === 2) {
+          horaFin = `${horaFin}:00`;
+        }
+        
+        // Comparar usando hora local de JavaScript
+        const debeIniciar = horaActual >= horaInicio;
+        const aunNoTermina = horaActual < horaFin;
+        
+        return debeIniciar && aunNoTermina;
+      });
       
-      // Log para debugging - también verificar clases programadas cercanas
+      // Log para debugging - verificar clases programadas cercanas
       const [clasesProgramadasCercanas] = await defaultDb.execute(
         `SELECT 
           c.id_clase,
           c.fecha_clase,
           c.hora_inicio,
           c.hora_fin,
-          c.estado_clase,
-          TIMESTAMP(c.fecha_clase, c.hora_inicio) as timestamp_inicio,
-          NOW() as ahora,
-          TIMESTAMP(c.fecha_clase, c.hora_inicio) <= NOW() as debe_iniciar,
-          TIMESTAMP(c.fecha_clase, c.hora_fin) > NOW() as aun_no_termina
+          c.estado_clase
          FROM Clases c
          WHERE c.estado_clase = 'Programada'
            AND c.fecha_clase >= DATE_SUB(CURDATE(), INTERVAL 1 DAY)
@@ -111,31 +159,79 @@ class SchedulerService {
       );
       
       if (clasesProgramadasCercanas.length > 0) {
+        const ahoraLog = new Date();
+        const fechaLog = getLocalDateString(ahoraLog);
+        const horaLog = ahoraLog.toTimeString().slice(0, 8);
+        
         logger.debug('Clases programadas cercanas encontradas', {
           total: clasesProgramadasCercanas.length,
-          clases: clasesProgramadasCercanas.map(c => ({
-            id: c.id_clase,
-            fecha: c.fecha_clase,
-            hora_inicio: c.hora_inicio,
-            hora_fin: c.hora_fin,
-            timestamp_inicio: c.timestamp_inicio,
-            ahora: c.ahora,
-            debe_iniciar: c.debe_iniciar,
-            aun_no_termina: c.aun_no_termina
-          }))
+          ahora_utc: ahoraLog.toISOString(),
+          ahora_local_js: getLocalDateTimeString(ahoraLog),
+          fecha_actual: fechaLog,
+          hora_actual: horaLog,
+          clases: clasesProgramadasCercanas.map(c => {
+            const fechaClaseStr = c.fecha_clase instanceof Date
+              ? getLocalDateString(c.fecha_clase)
+              : String(c.fecha_clase).split('T')[0];
+            let horaInicio = String(c.hora_inicio);
+            if (horaInicio.split(':').length === 2) horaInicio = `${horaInicio}:00`;
+            let horaFin = String(c.hora_fin);
+            if (horaFin.split(':').length === 2) horaFin = `${horaFin}:00`;
+            
+            const esHoy = fechaClaseStr === fechaLog;
+            const debeIniciar = esHoy && horaLog >= horaInicio;
+            const aunNoTermina = esHoy && horaLog < horaFin;
+            
+            return {
+              id: c.id_clase,
+              fecha: fechaClaseStr,
+              hora_inicio: horaInicio,
+              hora_fin: horaFin,
+              es_hoy: esHoy,
+              debe_iniciar: debeIniciar,
+              aun_no_termina: aunNoTermina
+            };
+          })
         });
       }
       
       // Log para debugging
       if (clasesSinResponsabilidades.length > 0) {
+        const ahoraLog = new Date();
         logger.info(`Sincronización automática: ${clasesSinResponsabilidades.length} clase(s) encontrada(s) para iniciar`, {
-          clases: clasesSinResponsabilidades.map(c => ({
-            id: c.id_clase,
-            fecha: c.fecha_clase,
-            hora_inicio: c.hora_inicio,
-            hora_fin: c.hora_fin
-          }))
+          ahora_utc: ahoraLog.toISOString(),
+          ahora_local_js: getLocalDateTimeString(ahoraLog),
+          fecha_actual: fechaActual,
+          hora_actual: horaActual,
+          clases: clasesSinResponsabilidades.map(c => {
+            const fechaClaseStr = c.fecha_clase instanceof Date
+              ? getLocalDateString(c.fecha_clase)
+              : String(c.fecha_clase).split('T')[0];
+            let horaInicio = String(c.hora_inicio);
+            if (horaInicio.split(':').length === 2) horaInicio = `${horaInicio}:00`;
+            let horaFin = String(c.hora_fin);
+            if (horaFin.split(':').length === 2) horaFin = `${horaFin}:00`;
+            
+            return {
+              id: c.id_clase,
+              fecha: fechaClaseStr,
+              hora_inicio: horaInicio,
+              hora_fin: horaFin,
+              debe_iniciar: horaActual >= horaInicio,
+              aun_no_termina: horaActual < horaFin
+            };
+          })
         });
+      } else {
+        // Log periódico para verificar que el scheduler está funcionando
+        if (ahora.getMinutes() % 5 === 0) {
+          logger.debug('Sincronización automática: No hay clases para iniciar', {
+            ahora_utc: ahora.toISOString(),
+            ahora_local: getLocalDateTimeString(ahora),
+            fecha_actual: fechaActual,
+            hora_actual: horaActual
+          });
+        }
       }
 
       let asignadas = 0;
@@ -223,21 +319,97 @@ class SchedulerService {
       }
 
       // Finalizar responsabilidades de clases que ya terminaron
-      // Buscar clases en curso que ya pasaron su hora de fin (no solo del día actual)
-      const [clasesFinalizadas] = await defaultDb.execute(
-        `SELECT DISTINCT c.id_clase
+      // IMPORTANTE: NO filtrar por tiempo en SQL - hacerlo en JavaScript con hora local
+      const [clasesEnCurso] = await defaultDb.execute(
+        `SELECT DISTINCT 
+          c.id_clase, 
+          c.fecha_clase, 
+          c.hora_inicio,
+          c.hora_fin, 
+          c.fecha_inicio_real
          FROM Clases c
          INNER JOIN Responsabilidades_Ambiente ra ON c.id_clase = ra.id_clase
-         WHERE TIMESTAMP(c.fecha_clase, c.hora_fin) < NOW()
-           AND c.estado_clase = 'En Curso'
+         WHERE c.estado_clase = 'En Curso'
            AND ra.estado_responsabilidad = 'Activa'`,
         []
       );
 
+      // Filtrar en JavaScript usando hora local
+      const clasesFinalizadas = clasesEnCurso.filter(clase => {
+        const fechaClaseStr = clase.fecha_clase instanceof Date
+          ? getLocalDateString(clase.fecha_clase)
+          : String(clase.fecha_clase).split('T')[0];
+        
+        // Normalizar hora_fin
+        let horaFin = String(clase.hora_fin);
+        if (horaFin.split(':').length === 2) {
+          horaFin = `${horaFin}:00`;
+        }
+        
+        // Construir datetime de fin de clase
+        const datetimeFinClase = `${fechaClaseStr} ${horaFin}`;
+        const datetimeFinClaseObj = new Date(datetimeFinClase.replace(' ', 'T'));
+        
+        // Verificar que la hora de fin ya pasó (con margen de 1 minuto)
+        const ahoraObj = new Date();
+        const unMinutoAtras = new Date(ahoraObj.getTime() - 60000);
+        
+        if (datetimeFinClaseObj > unMinutoAtras) {
+          return false; // Aún no ha terminado
+        }
+        
+        // Verificar que la clase fue iniciada hace al menos 1 minuto
+        if (clase.fecha_inicio_real) {
+          const fechaInicioReal = new Date(clase.fecha_inicio_real);
+          const minutosDesdeInicio = Math.floor((ahoraObj - fechaInicioReal) / 60000);
+          if (minutosDesdeInicio < 1) {
+            return false; // Iniciada hace menos de 1 minuto
+          }
+        }
+        
+        return true;
+      });
+
       let finalizadas = 0;
       for (const clase of clasesFinalizadas) {
         try {
-          const fechaFin = ahora.toISOString().slice(0, 19).replace('T', ' ');
+          // Calcular minutos desde inicio usando JavaScript
+          let minutosDesdeInicio = 0;
+          if (clase.fecha_inicio_real) {
+            const fechaInicioReal = new Date(clase.fecha_inicio_real);
+            const ahoraObj = new Date();
+            minutosDesdeInicio = Math.floor((ahoraObj - fechaInicioReal) / 60000);
+          } else {
+            // Si no hay fecha_inicio_real, usar hora_inicio programada
+            const fechaClaseStr = clase.fecha_clase instanceof Date
+              ? getLocalDateString(clase.fecha_clase)
+              : String(clase.fecha_clase).split('T')[0];
+            let horaInicio = String(clase.hora_inicio);
+            if (horaInicio.split(':').length === 2) {
+              horaInicio = `${horaInicio}:00`;
+            }
+            const datetimeInicio = `${fechaClaseStr} ${horaInicio}`;
+            const fechaInicioObj = new Date(datetimeInicio.replace(' ', 'T'));
+            const ahoraObj = new Date();
+            minutosDesdeInicio = Math.floor((ahoraObj - fechaInicioObj) / 60000);
+          }
+          
+          if (minutosDesdeInicio < 1) {
+            logger.debug(`Clase ${clase.id_clase} iniciada hace menos de 1 minuto, no se finaliza automáticamente`, {
+              minutos_desde_inicio: minutosDesdeInicio,
+              hora_fin: clase.hora_fin
+            });
+            continue;
+          }
+
+          // IMPORTANTE: Usar hora local, NO UTC
+          const fechaFin = getLocalDateTimeString(new Date());
+          
+          logger.info(`Finalizando clase ${clase.id_clase} automáticamente - Hora fin: ${clase.hora_fin}, Minutos desde inicio: ${minutosDesdeInicio}`, {
+            fecha_fin_local: fechaFin,
+            minutos_desde_inicio: minutosDesdeInicio
+          });
+          
           await defaultDb.execute(
             `UPDATE Responsabilidades_Ambiente
              SET estado_responsabilidad = 'Finalizada',

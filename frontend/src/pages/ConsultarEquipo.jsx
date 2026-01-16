@@ -89,6 +89,46 @@ export default function ConsultarEquipo() {
     cargarAmbientes()
   }, [])
 
+  // Cargar todos los equipos automáticamente al montar el componente
+  useEffect(() => {
+    // Solo cargar si el usuario está disponible
+    if (!user) return
+    
+    let isMounted = true
+    
+    async function cargarEquiposInicial() {
+      setLoading(true)
+      try {
+        const token = localStorage.getItem('token')
+        const res = await fetch('/api/equipos', {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+        const data = await parseApiResponse(res, 'No se pudo listar los equipos')
+        // El backend ahora retorna { equipos: [...], pagination: {...} }
+        // Si data tiene la propiedad equipos, usarla; si no, asumir que es un array directo
+        const equiposList = data?.equipos || (Array.isArray(data) ? data : [])
+        if (isMounted) {
+          setEquipos(equiposList)
+        }
+      } catch (err) {
+        if (isMounted) {
+          setEquipos([])
+          // No mostrar error en la carga inicial, solo si el usuario hace una acción
+        }
+      } finally {
+        if (isMounted) {
+          setLoading(false)
+        }
+      }
+    }
+    
+    cargarEquiposInicial()
+    
+    return () => {
+      isMounted = false
+    }
+  }, [user]) // Solo ejecutar cuando el usuario se carga
+
   async function handleBuscar(e) {
     e.preventDefault()
     setToast(null)
@@ -123,7 +163,10 @@ export default function ConsultarEquipo() {
         headers: { Authorization: `Bearer ${token}` }
       })
       const data = await parseApiResponse(res, 'No se pudo listar los equipos')
-      setEquipos(Array.isArray(data) ? data : [])
+      // El backend ahora retorna { equipos: [...], pagination: {...} }
+      // Si data tiene la propiedad equipos, usarla; si no, asumir que es un array directo
+      const equiposList = data?.equipos || (Array.isArray(data) ? data : [])
+      setEquipos(equiposList)
     } catch (err) {
       setEquipos([])
       setToast({ message: buildErrorMessage(err, 'No se pudo listar los equipos'), type: 'error' })
@@ -376,7 +419,8 @@ export default function ConsultarEquipo() {
           headers: { Authorization: `Bearer ${token}` }
         })
         const data = await parseApiResponse(res, 'No se pudo obtener los equipos para la exportación')
-        equiposParaExportar = Array.isArray(data) ? data : []
+        // El backend retorna { equipos: [...], pagination: {...} }
+        equiposParaExportar = data?.equipos || (Array.isArray(data) ? data : [])
       } catch (err) {
         setToast({ message: buildErrorMessage(err, 'No se pudo obtener los equipos para la exportación'), type: 'error' })
         setLoading(false)

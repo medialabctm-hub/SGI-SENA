@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { FiCamera, FiX, FiStar, FiImage, FiPackage, FiCheckCircle, FiAlertCircle, FiTrendingDown, FiDollarSign, FiMapPin, FiUsers, FiInfo, FiEdit2 } from 'react-icons/fi';
+import { FiCamera, FiX, FiStar, FiImage, FiPackage, FiCheckCircle, FiAlertCircle, FiTrendingDown, FiDollarSign, FiMapPin, FiUsers, FiInfo, FiEdit2, FiClock, FiCalendar, FiUser } from 'react-icons/fi';
 import Header from '../components/Header';
 import Sidebar from '../components/Sidebar';
 import Toast from '../components/Toast';
@@ -46,6 +46,10 @@ export default function Ambientes() {
   const [imagenes, setImagenes] = useState([]);
   const [uploadingImages, setUploadingImages] = useState(false);
   const fileInputRef = useRef(null);
+  const [instructores, setInstructores] = useState([]);
+  const [loadingInstructores, setLoadingInstructores] = useState(false);
+  const [showCambiarCuentadante, setShowCambiarCuentadante] = useState(false);
+  const [instructorSeleccionado, setInstructorSeleccionado] = useState(null);
 
   useEffect(() => {
     try {
@@ -240,8 +244,77 @@ export default function Ambientes() {
       } else {
         await fetchImagenes(id);
       }
+      // Cargar instructores del ambiente
+      await fetchInstructoresAmbiente(id);
     } catch (err) {
       handleError(err, setToast, 'No se pudo obtener el ambiente');
+    }
+  };
+
+  const fetchInstructoresAmbiente = async (idAmbiente) => {
+    try {
+      setLoadingInstructores(true);
+      const res = await fetch(`/api/ambientes/${idAmbiente}/instructores`, { headers: getAuthHeaders() });
+      const data = await parseApiResponse(res, 'No se pudieron cargar los instructores');
+      setInstructores(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error('Error al cargar instructores:', err);
+      setInstructores([]);
+    } finally {
+      setLoadingInstructores(false);
+    }
+  };
+
+  const handleCambiarCuentadanteSecundario = async (idInstructor) => {
+    if (!viewAmbiente?.id_ambiente) {
+      setToast({ message: 'No hay un ambiente seleccionado', type: 'error' });
+      return;
+    }
+
+    // Validar permisos en frontend (solo cuentadante principal o Administrador)
+    if (!isAdmin && currentUser?.nombre_rol !== 'Cuentadante') {
+      setToast({ 
+        message: 'No tienes permiso para realizar esta acción. Solo el cuentadante principal o un Administrador pueden cambiar cuentadantes secundarios.', 
+        type: 'error' 
+      });
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setToast(null);
+      const res = await fetch('/api/ambientes/cambiar-cuentadante-secundario', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...getAuthHeaders()
+        },
+        body: JSON.stringify({
+          id_ambiente: viewAmbiente.id_ambiente,
+          id_instructor: idInstructor
+        })
+      });
+
+      // Manejar código 403 específicamente
+      if (res.status === 403) {
+        const errorData = await res.json().catch(() => ({}))
+        throw new Error(errorData.detalle || errorData.error || 'No tienes permiso para realizar esta acción. Solo el cuentadante principal o un Administrador pueden cambiar cuentadantes secundarios.')
+      }
+
+      const data = await parseApiResponse(res, 'Error al cambiar cuentadante secundario');
+      setToast({ 
+        message: data.message || 'Cuentadante secundario actualizado correctamente', 
+        type: 'success' 
+      });
+      setShowCambiarCuentadante(false);
+      setInstructorSeleccionado(null);
+      // Recargar datos del ambiente e instructores
+      await handleView(viewAmbiente.id_ambiente);
+      await fetchInstructoresAmbiente(viewAmbiente.id_ambiente);
+    } catch (err) {
+      handleError(err, setToast, 'Error al cambiar cuentadante secundario');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -671,25 +744,109 @@ export default function Ambientes() {
                 </div>
               </div>
 
-              {viewAmbiente.responsables_actuales && viewAmbiente.responsables_actuales.length > 0 && (
+              {/* Sección de Instructores usando el nuevo endpoint */}
+              {viewAmbiente && (
                 <div className="ambiente-responsables">
-                  <h4 className="ambiente-section-title">Responsables Actuales</h4>
-                  <div className="responsables-list">
-                    {viewAmbiente.responsables_actuales.map((resp) => (
-                      <div key={resp.id_responsabilidad_ambiente} className="responsable-item">
-                        <div className="responsable-info">
-                          <strong>{resp.nombre_usuario}</strong>
-                          <span className="responsable-rol">{resp.nombre_rol}</span>
-                        </div>
-                        <div className="responsable-details">
-                          <span className="responsable-tipo">{resp.tipo_responsabilidad}</span>
-                          {resp.nombre_clase && (
-                            <span className="responsable-clase">Clase: {resp.nombre_clase}</span>
-                          )}
-                        </div>
-                      </div>
-                    ))}
+                  <div className="ambiente-section-header">
+                    <div>
+                      <h4 className="ambiente-section-title">
+                        <FiUsers size={20} />
+                        Instructores y Responsables Asignados
+                      </h4>
+                      <p className="ambiente-section-subtitle">
+                        Lista de instructores y cuentadantes secundarios asignados a este ambiente
+                      </p>
+                    </div>
+                    {isAdmin && instructores.length > 0 && (
+                      <button
+                        className="btn btn-verde btn-sm"
+                        onClick={() => setShowCambiarCuentadante(true)}
+                        title="Cambiar cuentadante secundario"
+                      >
+                        <FiEdit2 size={14} />
+                        Gestionar Cuentadantes
+                      </button>
+                    )}
                   </div>
+                  
+                  {loadingInstructores ? (
+                    <div className="loading-state">
+                      <p>Cargando instructores...</p>
+                    </div>
+                  ) : instructores.length > 0 ? (
+                    <div className="responsables-list">
+                      {instructores.map((instructor) => {
+                        const idInstructor = instructor.id_usuario || instructor.id_instructor
+                        const nombreInstructor = instructor.nombre_usuario || instructor.nombre_instructor
+                        const esCuentadante = instructor.es_cuentadante_secundario === true || instructor.rol === 'SECUNDARIO'
+                        const puedeCambiar = isAdmin || currentUser?.nombre_rol === 'Cuentadante'
+                        
+                        return (
+                          <div key={idInstructor} className="responsable-item">
+                            <div className="responsable-info">
+                              <div className="responsable-header">
+                                <strong>{nombreInstructor}</strong>
+                                {esCuentadante ? (
+                                  <span className="responsable-badge responsable-badge-secundario">
+                                    Cuentadante Secundario
+                                  </span>
+                                ) : (
+                                  <span className="responsable-badge responsable-badge-principal">
+                                    Instructor
+                                  </span>
+                                )}
+                              </div>
+                              <div className="responsable-meta">
+                                <span className="responsable-rol">
+                                  <FiUser size={14} />
+                                  {instructor.nombre_rol || 'Instructor'}
+                                </span>
+                                {instructor.cedula && (
+                                  <span className="responsable-fecha">
+                                    Cédula: {instructor.cedula}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                            <div className="responsable-details">
+                              {instructor.total_ambientes > 0 && (
+                                <span className="responsable-clase">
+                                  <FiMapPin size={14} />
+                                  {instructor.total_ambientes} ambiente(s) asignado(s)
+                                </span>
+                              )}
+                              {puedeCambiar && !esCuentadante && (
+                                <button
+                                  className="btn btn-sm btn-verde"
+                                  onClick={() => handleCambiarCuentadanteSecundario(idInstructor)}
+                                  disabled={loading}
+                                  title="Cambiar a cuentadante secundario"
+                                >
+                                  <FiEdit2 size={12} />
+                                  Hacer Cuentadante
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  ) : (
+                    <div className="ambiente-no-images">
+                      <FiUsers size={48} />
+                      <p>No hay instructores asignados a este ambiente</p>
+                    </div>
+                  )}
+                  
+                  {isAdmin && (
+                    <div className="ambiente-responsables-note">
+                      <FiInfo size={16} />
+                      <span>
+                        Los instructores con ambientes asignados pueden ser designados como cuentadantes secundarios. 
+                        Solo el cuentadante principal o un Administrador puede realizar este cambio.
+                      </span>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -960,6 +1117,83 @@ export default function Ambientes() {
             onConfirm={handleDelete}
             onCancel={() => setConfirm({ open: false, id: null })}
           />
+
+          {/* Modal para cambiar cuentadante secundario */}
+          {showCambiarCuentadante && viewAmbiente && (
+            <div className="modal-overlay" onClick={() => setShowCambiarCuentadante(false)}>
+              <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+                <div className="modal-header">
+                  <h3>Gestionar Cuentadantes Secundarios</h3>
+                  <button
+                    className="modal-close"
+                    onClick={() => {
+                      setShowCambiarCuentadante(false);
+                      setInstructorSeleccionado(null);
+                    }}
+                  >
+                    <FiX size={20} />
+                  </button>
+                </div>
+                <div className="modal-body">
+                  <p className="modal-description">
+                    Selecciona un instructor para designarlo como cuentadante secundario de este ambiente.
+                    Solo los instructores con ambientes asignados pueden ser cuentadantes secundarios.
+                  </p>
+                  {loadingInstructores ? (
+                    <div className="loading-state">
+                      <p>Cargando instructores...</p>
+                    </div>
+                  ) : instructores.length > 0 ? (
+                    <div className="instructores-select-list">
+                      {instructores.map((instructor) => (
+                        <div
+                          key={instructor.id_usuario || instructor.id_instructor}
+                          className={`instructor-select-item ${instructorSeleccionado === (instructor.id_usuario || instructor.id_instructor) ? 'selected' : ''} ${instructor.es_cuentadante_secundario ? 'is-cuentadante' : ''}`}
+                          onClick={() => setInstructorSeleccionado(instructor.id_usuario || instructor.id_instructor)}
+                        >
+                          <div className="instructor-select-info">
+                            <strong>{instructor.nombre_usuario || instructor.nombre_instructor}</strong>
+                            {instructor.es_cuentadante_secundario && (
+                              <span className="badge badge-success">Cuentadante Secundario</span>
+                            )}
+                            {instructor.total_ambientes > 0 && (
+                              <span className="instructor-ambientes-count">
+                                {instructor.total_ambientes} ambiente(s)
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="empty-state">
+                      <p>No hay instructores disponibles para este ambiente</p>
+                    </div>
+                  )}
+                </div>
+                <div className="modal-footer">
+                  <button
+                    className="btn-secondary"
+                    onClick={() => {
+                      setShowCambiarCuentadante(false);
+                      setInstructorSeleccionado(null);
+                    }}
+                  >
+                    Cancelar
+                  </button>
+                  {instructorSeleccionado && (
+                    <button
+                      className="btn-primary"
+                      onClick={() => handleCambiarCuentadanteSecundario(instructorSeleccionado)}
+                      disabled={loading}
+                    >
+                      {loading ? 'Procesando...' : 'Designar como Cuentadante Secundario'}
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
         </main>
       </div>
     </div>

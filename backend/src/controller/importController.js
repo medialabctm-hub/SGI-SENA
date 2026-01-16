@@ -71,16 +71,75 @@ async function inicializarTablaDuplicados() {
 export async function importarEquipos(req, res) {
   try {
     if (!req.file) {
-      return res.status(400).json({ error: 'No se proporcionó ningún archivo' });
+      return res.status(400).json({ 
+        success: false,
+        error: 'No se proporcionó ningún archivo',
+        detalle: 'Debe seleccionar un archivo Excel para importar'
+      });
     }
 
-    const workbook = XLSX.read(req.file.buffer, { type: 'buffer' });
+    // Validaciones previas del archivo
+    if (!req.file.buffer || req.file.buffer.length === 0) {
+      return res.status(400).json({ 
+        success: false,
+        error: 'Archivo inválido', 
+        detalle: 'El archivo está vacío o no se pudo leer correctamente' 
+      });
+    }
+
+    let workbook;
+    try {
+      workbook = XLSX.read(req.file.buffer, { type: 'buffer' });
+    } catch (error) {
+      logger.error('Error al leer archivo Excel', { error: error.message });
+      return res.status(400).json({ 
+        success: false,
+        error: 'Formato de archivo inválido', 
+        detalle: 'El archivo no es un Excel válido. Asegúrese de que el archivo tenga extensión .xlsx o .xls' 
+      });
+    }
+
+    if (!workbook.SheetNames || workbook.SheetNames.length === 0) {
+      return res.status(400).json({ 
+        success: false,
+        error: 'Archivo Excel sin hojas', 
+        detalle: 'El archivo Excel no contiene hojas de cálculo' 
+      });
+    }
+
     const sheetName = workbook.SheetNames[0];
     const worksheet = workbook.Sheets[sheetName];
+    
+    if (!worksheet) {
+      return res.status(400).json({ 
+        success: false,
+        error: 'Hoja de cálculo inválida', 
+        detalle: 'No se pudo leer la primera hoja del archivo Excel' 
+      });
+    }
+
     const dataRaw = XLSX.utils.sheet_to_json(worksheet);
 
     if (!dataRaw || dataRaw.length === 0) {
-      return res.status(400).json({ error: 'El archivo Excel está vacío' });
+      return res.status(400).json({ 
+        success: false,
+        error: 'El archivo Excel está vacío',
+        detalle: 'No se encontraron datos en la hoja de cálculo. Asegúrese de que el archivo contenga filas de datos además del encabezado.' 
+      });
+    }
+    
+    // Verificar que al menos hay una clave en alguna fila (puede ser que la primera fila esté vacía)
+    // Esto valida que el archivo tiene estructura de columnas
+    const tieneAlgunaColumna = dataRaw.some(fila => 
+      fila && Object.keys(fila).length > 0
+    );
+    
+    if (!tieneAlgunaColumna) {
+      return res.status(400).json({ 
+        success: false,
+        error: 'Formato de datos inválido',
+        detalle: 'No se pudieron identificar columnas en el archivo Excel. Verifique que el archivo tenga encabezados en la primera fila con nombres de columnas válidos.' 
+      });
     }
 
     // Normalizar nombres de columnas para que coincidan con los nombres de BD
@@ -166,11 +225,70 @@ export async function importarEquipos(req, res) {
       exitosos: 0,
       fallidos: 0,
       errores: [],
-      duplicados: 0
+      duplicados: 0,
+      equipos_importados_ids: [] // IDs de equipos importados en esta sesión
     };
 
     const userId = req.user?.id || null;
     const userRole = req.user?.rol || null;
+    
+    // Obtener id_cuentadante del body si se proporciona (OBLIGATORIO para Administradores)
+    // Nota: Con multer, los campos del FormData están en req.body
+    const id_cuentadante_importacion = req.body?.id_cuentadante 
+      ? parseInt(req.body.id_cuentadante, 10) 
+      : null;
+    
+    // VALIDACIÓN OBLIGATORIA: Verificar que siempre haya un cuentadante asignado
+    let cuentadanteFinal = null;
+    
+    if (id_cuentadante_importacion) {
+      // Validar que el cuentadante proporcionado existe y es Cuentadante
+      const [[cuentadanteValido]] = await defaultDb.execute(
+        `SELECT u.id_usuario, r.nombre_rol, u.nombre_usuario
+         FROM Usuarios u
+         INNER JOIN Roles r ON u.id_rol = r.id_rol
+         WHERE u.id_usuario = ? AND u.estado = 'Activo' AND r.nombre_rol = 'Cuentadante'`,
+        [id_cuentadante_importacion]
+      );
+      
+      if (cuentadanteValido) {
+        cuentadanteFinal = id_cuentadante_importacion;
+      } else {
+        return res.status(400).json({
+          success: false,
+          error: 'Cuentadante inválido',
+          detalle: `El ID de cuentadante proporcionado (${id_cuentadante_importacion}) no existe, no está activo o no tiene el rol de Cuentadante. Debe seleccionar un cuentadante válido antes de importar.`
+        });
+      }
+    } else {
+      // Si no se proporcionó cuentadante, verificar si el usuario que importa es Cuentadante
+      const [[userRoleInfo]] = await defaultDb.execute(
+        `SELECT r.nombre_rol FROM Usuarios u
+         INNER JOIN Roles r ON u.id_rol = r.id_rol
+         WHERE u.id_usuario = ?`,
+        [userId]
+      );
+      
+      if (userRoleInfo?.nombre_rol === 'Cuentadante') {
+        cuentadanteFinal = userId;
+      } else {
+        // Si es Administrador u otro rol, el cuentadante es OBLIGATORIO
+        return res.status(400).json({
+          success: false,
+          error: 'Cuentadante obligatorio',
+          detalle: 'Para importar equipos, debe seleccionar un cuentadante responsable. El campo "id_cuentadante" es obligatorio en el formulario de importación.'
+        });
+      }
+    }
+    
+    // Si llegamos aquí, tenemos un cuentadante válido
+    if (!cuentadanteFinal) {
+      return res.status(400).json({
+        success: false,
+        error: 'Error al determinar cuentadante',
+        detalle: 'No se pudo determinar el cuentadante para la importación. Por favor, intente nuevamente.'
+      });
+    }
     
     // Generar ID único para esta importación
     const idImportacion = `import_${Date.now()}_${userId}`;
@@ -419,14 +537,9 @@ export async function importarEquipos(req, res) {
           );
         }
 
-        // Si el usuario que importa es Cuentadante, asignar automáticamente el equipo a su inventario
-        const [[userRole]] = await defaultDb.execute(
-          `SELECT r.nombre_rol FROM Usuarios u
-           INNER JOIN Roles r ON u.id_rol = r.id_rol
-           WHERE u.id_usuario = ?`,
-          [userId]
-        );
-        const id_cuentadante = userRole?.nombre_rol === 'Cuentadante' ? userId : null;
+        // Usar el cuentadante ya validado al inicio de la importación
+        // Esto garantiza que todos los equipos importados tengan un cuentadante asignado
+        const id_cuentadante = cuentadanteFinal;
 
         // Insertar equipo usando nombres exactos de campos
         const query = `INSERT INTO Elementos
@@ -435,7 +548,7 @@ export async function importarEquipos(req, res) {
            r_centro, consecutivo, placa, atributos)
           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
 
-        await defaultDb.execute(query, [
+        const [insertResult] = await defaultDb.execute(query, [
           categoriaId,
           ambienteId,
           id_cuentadante,
@@ -452,6 +565,11 @@ export async function importarEquipos(req, res) {
           atributos || null
         ]);
 
+        // Guardar el ID del equipo importado para poder asignar cuentadante después si es necesario
+        if (insertResult.insertId) {
+          resultados.equipos_importados_ids.push(insertResult.insertId);
+        }
+
         resultados.exitosos++;
       } catch (error) {
         resultados.errores.push({
@@ -463,20 +581,45 @@ export async function importarEquipos(req, res) {
       }
     }
 
-    let mensaje = `Importación completada: ${resultados.exitosos} exitosos, ${resultados.fallidos} fallidos`;
+    // Respuesta mejorada para el frontend
+    const success = resultados.exitosos > 0 && resultados.fallidos === 0;
+    const partialSuccess = resultados.exitosos > 0 && resultados.fallidos > 0;
+    
+    let mensaje = '';
+    if (success) {
+      mensaje = `Importación completada exitosamente: ${resultados.exitosos} registro(s) importado(s)`;
+    } else if (partialSuccess) {
+      mensaje = `Importación parcial: ${resultados.exitosos} exitoso(s), ${resultados.fallidos} fallido(s)`;
+    } else {
+      mensaje = `Importación fallida: ${resultados.fallidos} registro(s) con errores`;
+    }
+    
     if (resultados.duplicados > 0) {
       mensaje += `. ${resultados.duplicados} registro(s) con placas duplicadas pendientes de revisión`;
     }
 
-    return res.json({
+    return res.status(success ? 200 : partialSuccess ? 207 : 400).json({
+      success: success || partialSuccess,
       message: mensaje,
       resultados,
       id_importacion: idImportacion,
-      tiene_duplicados: resultados.duplicados > 0
+      tiene_duplicados: resultados.duplicados > 0,
+      // Campos adicionales para facilitar el manejo en frontend
+      total_procesados: resultados.total,
+      porcentaje_exito: resultados.total > 0 
+        ? Math.round((resultados.exitosos / resultados.total) * 100) 
+        : 0,
+      // IDs de equipos importados para asignar cuentadante después
+      equipos_importados_ids: resultados.equipos_importados_ids || []
     });
   } catch (error) {
     logger.error('Error en importarEquipos', { error: error.message, stack: error.stack });
-    return res.status(500).json({ error: 'Error al procesar el archivo Excel', detalle: error.message });
+    return res.status(500).json({ 
+      success: false,
+      error: 'Error al procesar el archivo Excel', 
+      detalle: error.message,
+      message: 'No se pudo completar la importación. Verifique el formato del archivo e intente nuevamente.'
+    });
   }
 }
 
@@ -599,14 +742,45 @@ export async function procesarDuplicado(req, res) {
       : duplicado.datos_excel;
 
     if (accion === 'aprobar') {
-      // Insertar el equipo duplicado en la base de datos
+      // Validar que siempre haya un cuentadante asignado
       const [[userRoleInfo]] = await defaultDb.execute(
         `SELECT r.nombre_rol FROM Usuarios u
          INNER JOIN Roles r ON u.id_rol = r.id_rol
          WHERE u.id_usuario = ?`,
         [userId]
       );
-      const idCuentadante = userRoleInfo?.nombre_rol === 'Cuentadante' ? userId : null;
+      
+      let idCuentadante = null;
+      if (userRoleInfo?.nombre_rol === 'Cuentadante') {
+        idCuentadante = userId;
+      } else {
+        // Si no es Cuentadante, debe proporcionar un cuentadante en el body
+        const { id_cuentadante } = req.body;
+        if (!id_cuentadante) {
+          return res.status(400).json({
+            error: 'Cuentadante obligatorio',
+            detalle: 'Para aprobar duplicados, debe proporcionar un id_cuentadante válido en el body de la petición.'
+          });
+        }
+        
+        // Validar que el cuentadante existe y es válido
+        const [[cuentadanteValido]] = await defaultDb.execute(
+          `SELECT u.id_usuario, r.nombre_rol
+           FROM Usuarios u
+           INNER JOIN Roles r ON u.id_rol = r.id_rol
+           WHERE u.id_usuario = ? AND u.estado = 'Activo' AND r.nombre_rol = 'Cuentadante'`,
+          [id_cuentadante]
+        );
+        
+        if (!cuentadanteValido) {
+          return res.status(400).json({
+            error: 'Cuentadante inválido',
+            detalle: `El ID de cuentadante proporcionado (${id_cuentadante}) no existe, no está activo o no tiene el rol de Cuentadante.`
+          });
+        }
+        
+        idCuentadante = id_cuentadante;
+      }
 
       const query = `INSERT INTO Elementos
         (id_categoria, id_ambiente, id_cuentadante, tipo, modelo, descripcion, 
@@ -706,7 +880,39 @@ export async function procesarDuplicadosMasivo(req, res) {
        WHERE u.id_usuario = ?`,
       [userId]
     );
-    const idCuentadante = userRoleInfo?.nombre_rol === 'Cuentadante' ? userId : null;
+    
+    // Validar que siempre haya un cuentadante asignado
+    let idCuentadante = null;
+    if (userRoleInfo?.nombre_rol === 'Cuentadante') {
+      idCuentadante = userId;
+    } else {
+      // Si no es Cuentadante, debe proporcionar un cuentadante en el body
+      const { id_cuentadante } = req.body;
+      if (!id_cuentadante) {
+        return res.status(400).json({
+          error: 'Cuentadante obligatorio',
+          detalle: 'Para procesar duplicados masivamente, debe proporcionar un id_cuentadante válido en el body de la petición.'
+        });
+      }
+      
+      // Validar que el cuentadante existe y es válido
+      const [[cuentadanteValido]] = await defaultDb.execute(
+        `SELECT u.id_usuario, r.nombre_rol
+         FROM Usuarios u
+         INNER JOIN Roles r ON u.id_rol = r.id_rol
+         WHERE u.id_usuario = ? AND u.estado = 'Activo' AND r.nombre_rol = 'Cuentadante'`,
+        [id_cuentadante]
+      );
+      
+      if (!cuentadanteValido) {
+        return res.status(400).json({
+          error: 'Cuentadante inválido',
+          detalle: `El ID de cuentadante proporcionado (${id_cuentadante}) no existe, no está activo o no tiene el rol de Cuentadante.`
+        });
+      }
+      
+      idCuentadante = id_cuentadante;
+    }
 
     for (const decision of decisiones) {
       const { id_duplicado, accion } = decision;

@@ -20,6 +20,7 @@ export default function ImportarEquipos({ onImportComplete, onEstadoDuplicadosCh
   const [savingCuentadante, setSavingCuentadante] = useState(false)
   const [user, setUser] = useState(null)
   const [idImportacion, setIdImportacion] = useState(null)
+  const [equiposImportadosIds, setEquiposImportadosIds] = useState([]) // IDs de equipos importados en esta sesión
   const [mostrarDuplicados, setMostrarDuplicados] = useState(false)
   const { establecerDuplicadosPendientes, limpiarDuplicados } = useDuplicados()
   const [infoModal, setInfoModal] = useState({ open: false, message: '', title: '' })
@@ -144,17 +145,28 @@ export default function ImportarEquipos({ onImportComplete, onEstadoDuplicadosCh
       }
     }
 
+    // Validar que hay equipos importados para asignar el cuentadante
+    if (!equiposImportadosIds || equiposImportadosIds.length === 0) {
+      setError('No hay equipos importados en esta sesión. Debe importar equipos primero antes de asignar el cuentadante.')
+      return
+    }
+
     try {
       setSavingCuentadante(true)
       setError(null)
       const token = localStorage.getItem('token')
+      
+      // Enviar los IDs de equipos importados para asignar cuentadante solo a esos
       const res = await fetch('/api/equipos/cuentadante-principal', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`
         },
-        body: JSON.stringify({ cedula: cuentadantePrincipal.trim() })
+        body: JSON.stringify({ 
+          cedula: cuentadantePrincipal.trim(),
+          equipos_ids: equiposImportadosIds // Solo actualizar equipos importados en esta sesión
+        })
       })
       const data = await parseApiResponse(res, 'Error al actualizar cuentadante principal')
       setCuentadanteActual(data.cuentadante_principal || '')
@@ -163,9 +175,11 @@ export default function ImportarEquipos({ onImportComplete, onEstadoDuplicadosCh
       // Mostrar mensaje de éxito
       setInfoModal({
         open: true,
-        message: `Cuentadante principal "${data.cuentadante_principal}" actualizado correctamente para ${data.equipos_actualizados} equipo(s)`,
+        message: `Cuentadante principal "${data.cuentadante_principal}" asignado correctamente a ${data.equipos_actualizados} equipo(s) importado(s) en esta sesión`,
         title: 'Éxito'
       })
+      // Limpiar IDs después de asignar (opcional, para evitar reasignaciones accidentales)
+      // setEquiposImportadosIds([])
     } catch (err) {
       handleError(err, (msg) => setError(msg), 'Error al guardar el cuentadante principal')
     } finally {
@@ -184,11 +198,13 @@ export default function ImportarEquipos({ onImportComplete, onEstadoDuplicadosCh
       if (!validTypes.includes(file.type)) {
         setError('Por favor selecciona un archivo Excel (.xlsx o .xls)')
         setArchivo(null)
+        setEquiposImportadosIds([]) // Limpiar IDs al cambiar archivo
         return
       }
       setArchivo(file)
       setError(null)
       setResultado(null)
+      setEquiposImportadosIds([]) // Limpiar IDs al cambiar archivo
     }
   }
 
@@ -199,6 +215,14 @@ export default function ImportarEquipos({ onImportComplete, onEstadoDuplicadosCh
       return
     }
 
+    // Validar que si es Administrador, debe haber buscado y encontrado un cuentadante
+    if (user?.nombre_rol === 'Administrador') {
+      if (!cuentadanteEncontrado || !cuentadanteEncontrado.id_usuario) {
+        setError('Debe buscar y seleccionar un cuentadante antes de importar los equipos. Use el botón "Buscar" en la sección "Cuentadante Principal del Inventario".')
+        return
+      }
+    }
+
     setLoading(true)
     setError(null)
     setResultado(null)
@@ -206,6 +230,11 @@ export default function ImportarEquipos({ onImportComplete, onEstadoDuplicadosCh
     try {
       const formData = new FormData()
       formData.append('archivo', archivo)
+      
+      // Incluir id_cuentadante si existe (obligatorio para Administradores, opcional para Cuentadantes)
+      if (cuentadanteEncontrado?.id_usuario) {
+        formData.append('id_cuentadante', cuentadanteEncontrado.id_usuario.toString())
+      }
 
       const token = localStorage.getItem('token')
       const res = await fetch('/api/import/equipos', {
@@ -216,8 +245,31 @@ export default function ImportarEquipos({ onImportComplete, onEstadoDuplicadosCh
         body: formData
       })
 
-      const data = await parseApiResponse(res, 'Error al importar equipos')
-      setResultado(data.resultados)
+      // Manejar códigos HTTP: 200 (éxito), 207 (parcial), 400 (error)
+      let data
+      if (res.status === 207) {
+        // Multi-Status: algunos registros exitosos, algunos fallidos
+        data = await res.json().catch(() => ({}))
+      } else if (res.ok) {
+        // 200: éxito completo
+        data = await parseApiResponse(res, 'Error al importar equipos')
+      } else {
+        // 400 u otro error
+        throw await parseApiResponse(res, 'Error al importar equipos').catch(() => {
+          throw new Error('Error al procesar la respuesta del servidor')
+        })
+      }
+      
+      // Adaptarse a la nueva estructura del backend: success, message, porcentaje_exito, resultados
+      const resultados = data.resultados || data
+      setResultado(resultados)
+      
+      // Guardar IDs de equipos importados para asignar cuentadante después
+      if (data.equipos_importados_ids && Array.isArray(data.equipos_importados_ids)) {
+        setEquiposImportadosIds(data.equipos_importados_ids)
+      } else {
+        setEquiposImportadosIds([])
+      }
       
       // Si hay duplicados, guardar el ID de importación y mostrar sección de revisión
       if (data.tiene_duplicados && data.id_importacion) {
@@ -226,10 +278,24 @@ export default function ImportarEquipos({ onImportComplete, onEstadoDuplicadosCh
       } else {
         setMostrarDuplicados(false)
         setIdImportacion(null)
+        // Mostrar modal de éxito si la importación fue exitosa (success: true o status 200/207) y no hay duplicados
+        const esExitoso = data.success === true || res.status === 200 || res.status === 207
+        if (esExitoso && resultados && resultados.exitosos > 0 && (!resultados.duplicados || resultados.duplicados === 0)) {
+          const mensaje = data.message || `Se importaron correctamente ${resultados.exitosos} equipo(s)`
+          const porcentaje = data.porcentaje_exito ? ` (${data.porcentaje_exito}% de éxito)` : ''
+          const mensajeCompleto = resultados.fallidos > 0 
+            ? `${mensaje}${porcentaje}. Se encontraron ${resultados.fallidos} error(es) que se muestran a continuación.`
+            : `${mensaje}${porcentaje}.`
+          setInfoModal({
+            open: true,
+            title: 'Importación Exitosa',
+            message: mensajeCompleto
+          })
+        }
       }
       
       if (onImportComplete) {
-        onImportComplete(data.resultados)
+        onImportComplete(resultados)
       }
     } catch (err) {
       setError(buildErrorMessage(err, 'Error al importar el archivo'))
@@ -360,8 +426,9 @@ export default function ImportarEquipos({ onImportComplete, onEstadoDuplicadosCh
             Cuentadante Principal del Inventario
           </h4>
           <p className="importar-equipos-cuentadante-description">
-            El cuentadante principal es la persona responsable permanente de todo el inventario. 
-            Debe ingresarse después de importar los equipos. Ingrese el <strong>Documento</strong> del cuentadante.
+            El cuentadante principal es la persona responsable permanente del inventario. 
+            <strong> Debe buscar y seleccionar el cuentadante ANTES de importar los equipos.</strong> 
+            Ingrese el <strong>Documento</strong> del cuentadante y haga clic en "Buscar".
           </p>
           <div className="importar-equipos-cuentadante-form">
             <div className="importar-equipos-cuentadante-search-row">
@@ -408,10 +475,11 @@ export default function ImportarEquipos({ onImportComplete, onEstadoDuplicadosCh
               className="importar-equipos-cuentadante-save-button"
               onClick={handleSaveCuentadante}
               disabled={!cuentadanteEncontrado || savingCuentadante || loadingCuentadante}
+              title="Asignar cuentadante a equipos importados previamente (solo si no se asignó durante la importación)"
             >
               {savingCuentadante && <div className="loading-spinner importar-equipos-loading-spinner-tiny"></div>}
               <FiSave size={16} />
-              {savingCuentadante ? 'Guardando...' : 'Guardar Cuentadante'}
+              {savingCuentadante ? 'Guardando...' : 'Asignar a Equipos Importados'}
             </button>
           </div>
           {cuentadanteActual && (
@@ -428,17 +496,19 @@ export default function ImportarEquipos({ onImportComplete, onEstadoDuplicadosCh
           
           <div className="importar-equipos-resultado-stats">
             <div className="importar-equipos-resultado-stat importar-equipos-resultado-stat-total">
-              <div className="importar-equipos-resultado-stat-total-number">{resultado.total}</div>
+              <div className="importar-equipos-resultado-stat-total-number">{resultado.total || 0}</div>
               <div className="importar-equipos-resultado-stat-total-label">Total</div>
             </div>
             <div className="importar-equipos-resultado-stat exitosos">
-              <div className="importar-equipos-resultado-stat-number">{resultado.exitosos}</div>
+              <div className="importar-equipos-resultado-stat-number">{resultado.exitosos || 0}</div>
               <div className="importar-equipos-resultado-stat-label">Exitosos</div>
             </div>
-            <div className="importar-equipos-resultado-stat fallidos importar-equipos-resultado-stat-fallidos">
-              <div className="importar-equipos-resultado-stat-fallidos-number">{resultado.fallidos}</div>
-              <div className="importar-equipos-resultado-stat-fallidos-label">Fallidos</div>
-            </div>
+            {(resultado.fallidos > 0 || resultado.fallidos === 0) && (
+              <div className="importar-equipos-resultado-stat fallidos importar-equipos-resultado-stat-fallidos">
+                <div className="importar-equipos-resultado-stat-fallidos-number">{resultado.fallidos || 0}</div>
+                <div className="importar-equipos-resultado-stat-fallidos-label">Fallidos</div>
+              </div>
+            )}
             {resultado.duplicados > 0 && (
               <div className="importar-equipos-resultado-stat duplicados importar-equipos-resultado-stat-duplicados">
                 <div className="importar-equipos-resultado-stat-duplicados-number">{resultado.duplicados}</div>

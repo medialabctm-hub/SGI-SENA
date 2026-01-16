@@ -1,5 +1,6 @@
 import defaultDb from '../config/dbconfig.js';
 import { logger } from '../utils/logger.js';
+import { obtenerFechasPorRangoYDias } from './horariosController.js';
 
 /**
  * Crear una nueva clase/programación
@@ -13,6 +14,9 @@ export async function crearClase(req, res) {
       codigo_ficha,
       descripcion,
       fecha_clase,
+      fecha_inicio,
+      fecha_fin,
+      dias_semana,
       hora_inicio,
       hora_fin,
       observaciones,
@@ -58,26 +62,7 @@ export async function crearClase(req, res) {
       return res.status(404).json({ error: 'Instructor no encontrado o no tiene rol de Instructor' });
     }
 
-    // Validar y normalizar formato de fecha (asegurar YYYY-MM-DD sin conversión de zona horaria)
-    let fechaNormalizada = fecha_clase;
-    if (typeof fecha_clase === 'string') {
-      // Extraer solo la parte de fecha si viene con hora
-      fechaNormalizada = fecha_clase.split('T')[0].split(' ')[0];
-    }
-    
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(fechaNormalizada)) {
-      logger.error('Formato de fecha inválido recibido', { fecha_clase, fechaNormalizada });
-      return res.status(400).json({ error: 'Formato de fecha inválido. Use YYYY-MM-DD' });
-    }
-    
-    // Log para debugging
-    logger.info('Creando clase con fecha', { 
-      fecha_recibida: fecha_clase, 
-      fecha_normalizada: fechaNormalizada,
-      hora_inicio,
-      hora_fin
-    });
-    
+    // Validar formato de hora
     if (!/^\d{2}:\d{2}(:\d{2})?$/.test(hora_inicio) || !/^\d{2}:\d{2}(:\d{2})?$/.test(hora_fin)) {
       return res.status(400).json({ error: 'Formato de hora inválido. Use HH:MM o HH:MM:SS' });
     }
@@ -87,51 +72,169 @@ export async function crearClase(req, res) {
       return res.status(400).json({ error: 'La hora de fin debe ser mayor que la hora de inicio' });
     }
 
-    // Validar conflictos de horario en el mismo ambiente
-    // No puede haber dos clases en el mismo ambiente al mismo tiempo
-    const [clasesConflictivas] = await defaultDb.execute(
-      `SELECT 
-        c.id_clase, 
-        c.nombre_clase, 
-        c.hora_inicio, 
-        c.hora_fin,
-        u.nombre_usuario AS instructor_nombre,
-        c.codigo_ficha
-       FROM Clases c
-       INNER JOIN Usuarios u ON c.id_instructor = u.id_usuario
-       WHERE c.id_ambiente = ?
-         AND c.fecha_clase = ?
-         AND c.estado_clase IN ('Programada', 'En Curso')
-         AND (
-           (c.hora_inicio < ? AND c.hora_fin > ?) OR
-           (c.hora_inicio < ? AND c.hora_fin > ?) OR
-           (c.hora_inicio >= ? AND c.hora_fin <= ?)
-         )`,
-      [id_ambiente, fecha_clase, hora_inicio, hora_inicio, hora_fin, hora_fin, hora_inicio, hora_fin]
-    );
-
-    if (clasesConflictivas.length > 0) {
-      return res.status(409).json({ 
-        error: 'Conflicto de horario',
-        detalle: 'Ya existe una clase programada en este ambiente durante el horario especificado. No se pueden asignar dos instructores al mismo ambiente al mismo tiempo.',
-        clases_conflictivas: clasesConflictivas
+    // Determinar si se crea clase única o múltiples clases con días de semana
+    const tieneDiasSemana = Array.isArray(dias_semana) && dias_semana.length > 0;
+    const tieneRango = fecha_inicio && fecha_fin;
+    
+    // Si hay días de semana, fecha_inicio y fecha_fin son obligatorias
+    if (tieneDiasSemana && (!fecha_inicio || !fecha_fin)) {
+      return res.status(400).json({ 
+        error: 'Faltan campos obligatorios',
+        detalle: 'Para usar días de semana, debe proporcionar fecha_inicio y fecha_fin'
+      });
+    }
+    
+    // Si hay días de semana, validar rango
+    if (tieneDiasSemana && tieneRango) {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha_inicio) || !/^\d{4}-\d{2}-\d{2}$/.test(fecha_fin)) {
+        return res.status(400).json({ error: 'Formato de fecha inválido. Use YYYY-MM-DD' });
+      }
+      
+      if (fecha_inicio > fecha_fin) {
+        return res.status(400).json({ error: 'La fecha de inicio debe ser menor o igual a la fecha de fin' });
+      }
+    }
+    
+    // Si NO hay días de semana, fecha_clase es obligatoria
+    if (!tieneDiasSemana && !fecha_clase) {
+      return res.status(400).json({ 
+        error: 'Falta campo obligatorio',
+        detalle: 'Debe proporcionar fecha_clase (clase única) o fecha_inicio + fecha_fin + dias_semana (clases recurrentes)'
       });
     }
 
-    // Insertar la clase con estado explícito
-    // Usar fechaNormalizada para evitar problemas de zona horaria en MySQL
-    const [result] = await defaultDb.execute(
-      `INSERT INTO Clases 
-       (id_ambiente, id_instructor, nombre_clase, codigo_ficha, descripcion, fecha_clase, hora_inicio, hora_fin, observaciones, estado_clase, creado_por)
-       VALUES (?, ?, ?, ?, ?, DATE(?), ?, ?, ?, 'Programada', ?)`,
-      [id_ambiente, instructorId, nombre_clase || null, codigo_ficha || null, descripcion || null, fechaNormalizada, hora_inicio, hora_fin, observaciones || null, creadoPor]
-    );
+    // Determinar fechas a procesar
+    let fechasAProcesar = [];
+    
+    if (tieneDiasSemana && tieneRango) {
+      // Generar fechas dentro del rango para los días especificados
+      fechasAProcesar = obtenerFechasPorRangoYDias(fecha_inicio, fecha_fin, dias_semana);
+      
+      if (fechasAProcesar.length === 0) {
+        return res.status(400).json({ 
+          error: 'No se encontraron fechas válidas',
+          detalle: `No hay fechas dentro del rango ${fecha_inicio} a ${fecha_fin} que coincidan con los días especificados`
+        });
+      }
+    } else {
+      // Clase única con fecha_clase
+      let fechaNormalizada = fecha_clase;
+      if (typeof fecha_clase === 'string') {
+        fechaNormalizada = fecha_clase.split('T')[0].split(' ')[0];
+      }
+      
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(fechaNormalizada)) {
+        return res.status(400).json({ error: 'Formato de fecha inválido. Use YYYY-MM-DD' });
+      }
+      
+      fechasAProcesar = [new Date(fechaNormalizada + 'T00:00:00')];
+    }
 
-    const idClase = result.insertId;
+    // Normalizar horas
+    const horaInicioNormalizada = hora_inicio.includes(':') && hora_inicio.split(':').length === 2
+      ? `${hora_inicio}:00`
+      : hora_inicio;
+    const horaFinNormalizada = hora_fin.includes(':') && hora_fin.split(':').length === 2
+      ? `${hora_fin}:00`
+      : hora_fin;
 
-    // Insertar participantes si se proporcionaron
-    if (Array.isArray(participantes) && participantes.length > 0) {
-      // Validar que todos los participantes sean aprendices
+    // Procesar cada fecha
+    const clasesCreadas = [];
+    const erroresFechas = [];
+    
+    for (const fechaObj of fechasAProcesar) {
+      const fechaNormalizada = fechaObj.toISOString().split('T')[0];
+      
+      try {
+        // Validar conflictos de horario para esta fecha
+        const [clasesConflictivas] = await defaultDb.execute(
+          `SELECT 
+            c.id_clase, 
+            c.nombre_clase, 
+            c.hora_inicio, 
+            c.hora_fin,
+            u.nombre_usuario AS instructor_nombre,
+            c.codigo_ficha
+           FROM Clases c
+           INNER JOIN Usuarios u ON c.id_instructor = u.id_usuario
+           WHERE c.id_ambiente = ?
+             AND c.fecha_clase = ?
+             AND c.estado_clase IN ('Programada', 'En Curso')
+             AND (
+               (c.hora_inicio < ? AND c.hora_fin > ?) OR
+               (c.hora_inicio < ? AND c.hora_fin > ?) OR
+               (c.hora_inicio >= ? AND c.hora_fin <= ?)
+             )`,
+          [id_ambiente, fechaNormalizada, horaInicioNormalizada, horaInicioNormalizada, horaFinNormalizada, horaFinNormalizada, horaInicioNormalizada, horaFinNormalizada]
+        );
+
+        if (clasesConflictivas.length > 0) {
+          erroresFechas.push({
+            fecha: fechaNormalizada,
+            error: 'Conflicto de horario existente',
+            clases_conflictivas: clasesConflictivas
+          });
+          continue;
+        }
+
+        // Insertar la clase
+        const [result] = await defaultDb.execute(
+          `INSERT INTO Clases 
+           (id_ambiente, id_instructor, nombre_clase, codigo_ficha, descripcion, fecha_clase, hora_inicio, hora_fin, observaciones, estado_clase, creado_por)
+           VALUES (?, ?, ?, ?, ?, DATE(?), ?, ?, ?, 'Programada', ?)`,
+          [id_ambiente, instructorId, nombre_clase || null, codigo_ficha || null, descripcion || null, fechaNormalizada, horaInicioNormalizada, horaFinNormalizada, observaciones || null, creadoPor]
+        );
+
+        const idClase = result.insertId;
+
+        // Insertar participantes si se proporcionaron (solo para la primera clase si hay múltiples)
+        if (Array.isArray(participantes) && participantes.length > 0 && clasesCreadas.length === 0) {
+          // Validar que todos los participantes sean aprendices
+          const placeholders = participantes.map(() => '?').join(',');
+          const [aprendices] = await defaultDb.execute(
+            `SELECT u.id_usuario 
+             FROM Usuarios u
+             INNER JOIN Roles r ON u.id_rol = r.id_rol
+             WHERE u.id_usuario IN (${placeholders}) 
+             AND u.estado = 'Activo' 
+             AND r.nombre_rol = 'Aprendiz'`,
+            participantes
+          );
+
+          const idsAprendicesValidos = aprendices.map(a => a.id_usuario);
+          const idsInvalidos = participantes.filter(id => !idsAprendicesValidos.includes(id));
+
+          if (idsInvalidos.length > 0) {
+            logger.warn('Algunos participantes no son aprendices válidos', { idsInvalidos });
+          }
+
+          // Insertar participantes válidos para todas las clases creadas
+          if (idsAprendicesValidos.length > 0) {
+            // Se insertarán después de crear todas las clases
+            for (const claseCreada of clasesCreadas) {
+              const values = idsAprendicesValidos.map(id => `(${claseCreada.id_clase}, ${id})`).join(',');
+              await defaultDb.execute(
+                `INSERT INTO Participantes_Clase (id_clase, id_aprendiz) VALUES ${values}`
+              );
+            }
+          }
+        }
+
+        clasesCreadas.push({
+          id_clase: idClase,
+          fecha_clase: fechaNormalizada
+        });
+      } catch (err) {
+        logger.error('Error al crear clase para fecha', { fecha: fechaNormalizada, error: err.message });
+        erroresFechas.push({
+          fecha: fechaNormalizada,
+          error: err.message
+        });
+      }
+    }
+
+    // Insertar participantes para todas las clases creadas
+    if (Array.isArray(participantes) && participantes.length > 0 && clasesCreadas.length > 0) {
       const placeholders = participantes.map(() => '?').join(',');
       const [aprendices] = await defaultDb.execute(
         `SELECT u.id_usuario 
@@ -144,40 +247,70 @@ export async function crearClase(req, res) {
       );
 
       const idsAprendicesValidos = aprendices.map(a => a.id_usuario);
-      const idsInvalidos = participantes.filter(id => !idsAprendicesValidos.includes(id));
-
-      if (idsInvalidos.length > 0) {
-        // Continuar con los válidos, pero registrar el warning
-        logger.warn('Algunos participantes no son aprendices válidos', { idsInvalidos });
-      }
-
-      // Insertar participantes válidos
+      
       if (idsAprendicesValidos.length > 0) {
-        const values = idsAprendicesValidos.map(id => `(${idClase}, ${id})`).join(',');
-        await defaultDb.execute(
-          `INSERT INTO Participantes_Clase (id_clase, id_aprendiz) VALUES ${values}`
-        );
+        for (const claseCreada of clasesCreadas) {
+          for (const idAprendiz of idsAprendicesValidos) {
+            await defaultDb.execute(
+              'INSERT INTO Participantes_Clase (id_clase, id_aprendiz) VALUES (?, ?)',
+              [claseCreada.id_clase, idAprendiz]
+            );
+          }
+        }
       }
     }
 
-    return res.status(201).json({
-      ok: true,
-      id_clase: idClase,
-      message: 'Clase creada correctamente',
-      clase: {
-        id_clase: idClase,
-        id_ambiente,
-        ambiente: ambiente.nombre_ambiente,
-        id_instructor: instructorId,
-        instructor: instructor.nombre_usuario,
-        nombre_clase,
-        codigo_ficha: codigo_ficha || null,
-        fecha_clase,
-        hora_inicio,
-        hora_fin,
-        estado_clase: 'Programada'
-      }
-    });
+    // Determinar respuesta según resultado
+    if (clasesCreadas.length === 0) {
+      return res.status(400).json({
+        ok: false,
+        error: 'No se pudo crear ninguna clase',
+        errores: erroresFechas
+      });
+    }
+
+    if (erroresFechas.length > 0) {
+      // Éxito parcial - HTTP 207
+      return res.status(207).json({
+        ok: true,
+        creadas: clasesCreadas.length,
+        message: `Se crearon ${clasesCreadas.length} clases, ${erroresFechas.length} fallaron`,
+        clases: clasesCreadas,
+        errores: erroresFechas
+      });
+    }
+
+    // Éxito total
+    if (clasesCreadas.length === 1) {
+      return res.status(201).json({
+        ok: true,
+        id_clase: clasesCreadas[0].id_clase,
+        message: 'Clase creada correctamente',
+        clase: {
+          id_clase: clasesCreadas[0].id_clase,
+          id_ambiente,
+          ambiente: ambiente.nombre_ambiente,
+          id_instructor: instructorId,
+          instructor: instructor.nombre_usuario,
+          nombre_clase,
+          codigo_ficha: codigo_ficha || null,
+          fecha_clase: clasesCreadas[0].fecha_clase,
+          hora_inicio,
+          hora_fin,
+          estado_clase: 'Programada'
+        }
+      });
+    } else {
+      return res.status(201).json({
+        ok: true,
+        creadas: clasesCreadas.length,
+        message: `Se crearon ${clasesCreadas.length} clases correctamente dentro del rango`,
+        clases: clasesCreadas.map(c => ({
+          id_clase: c.id_clase,
+          fecha_clase: c.fecha_clase
+        }))
+      });
+    }
   } catch (err) {
     logger.error('Error al crear clase', { error: err.message, stack: err.stack });
     return res.status(500).json({ error: 'Error al crear la clase', detalle: err.message });
@@ -836,13 +969,28 @@ export async function consultarResponsablesTiempoReal(req, res) {
 export async function sincronizarResponsabilidadesHorarios(req, res) {
   try {
     const ahora = new Date();
-    const fechaActual = ahora.toISOString().split('T')[0];
+    const getLocalDateString = (date = new Date()) => {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
+    const getLocalDateTimeString = (date = new Date()) => {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      const hours = String(date.getHours()).padStart(2, '0');
+      const minutes = String(date.getMinutes()).padStart(2, '0');
+      const seconds = String(date.getSeconds()).padStart(2, '0');
+      return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+    };
+    const fechaActual = getLocalDateString(ahora);
+    const horaActual = ahora.toTimeString().slice(0, 8); // HH:MM:SS
 
-    // Buscar clases que deberían estar activas pero no tienen responsabilidades asignadas
-    // Buscar clases del día actual y también clases pasadas que no se iniciaron
-    // Usar TIMESTAMP para comparar correctamente fecha y hora
-    // Cambiar >= por > para hora_fin para evitar iniciar clases que ya terminaron
-    const [clasesSinResponsabilidades] = await defaultDb.execute(
+    // Buscar clases programadas que NO tienen responsabilidades asignadas
+    // IMPORTANTE: NO filtrar por tiempo en SQL - hacerlo en JavaScript con hora local
+    // La BD solo guarda datos, JavaScript decide el tiempo actual
+    const [clasesProgramadas] = await defaultDb.execute(
       `SELECT 
         c.id_clase,
         c.id_ambiente,
@@ -853,8 +1001,6 @@ export async function sincronizarResponsabilidadesHorarios(req, res) {
         c.estado_clase
        FROM Clases c
        WHERE c.estado_clase = 'Programada'
-         AND TIMESTAMP(c.fecha_clase, c.hora_inicio) <= NOW()
-         AND TIMESTAMP(c.fecha_clase, c.hora_fin) > NOW()
          AND NOT EXISTS (
            SELECT 1 FROM Responsabilidades_Ambiente ra
            WHERE ra.id_clase = c.id_clase
@@ -863,6 +1009,35 @@ export async function sincronizarResponsabilidadesHorarios(req, res) {
          )`,
       []
     );
+
+    // Filtrar en JavaScript usando hora local
+    const clasesSinResponsabilidades = clasesProgramadas.filter(clase => {
+      // Convertir fecha_clase a string
+      const fechaClaseStr = clase.fecha_clase instanceof Date
+        ? getLocalDateString(clase.fecha_clase)
+        : String(clase.fecha_clase).split('T')[0];
+      
+      // Solo procesar clases del día actual
+      if (fechaClaseStr !== fechaActual) {
+        return false;
+      }
+      
+      // Normalizar hora_inicio y hora_fin a formato HH:MM:SS
+      let horaInicio = String(clase.hora_inicio);
+      if (horaInicio.split(':').length === 2) {
+        horaInicio = `${horaInicio}:00`;
+      }
+      let horaFin = String(clase.hora_fin);
+      if (horaFin.split(':').length === 2) {
+        horaFin = `${horaFin}:00`;
+      }
+      
+      // Comparar usando hora local de JavaScript
+      const debeIniciar = horaActual >= horaInicio;
+      const aunNoTermina = horaActual < horaFin;
+      
+      return debeIniciar && aunNoTermina;
+    });
 
     let asignadas = 0;
     const errores = [];
@@ -952,23 +1127,98 @@ export async function sincronizarResponsabilidadesHorarios(req, res) {
     }
 
     // Finalizar responsabilidades de clases que ya terminaron
-    // Buscar clases de cualquier fecha que hayan terminado (no solo del día actual)
-    const [clasesFinalizadas] = await defaultDb.execute(
-      `SELECT DISTINCT c.id_clase
+    // IMPORTANTE: NO filtrar por tiempo en SQL - hacerlo en JavaScript con hora local
+    const [clasesEnCurso] = await defaultDb.execute(
+      `SELECT DISTINCT 
+        c.id_clase, 
+        c.fecha_clase, 
+        c.hora_inicio,
+        c.hora_fin, 
+        c.fecha_inicio_real
        FROM Clases c
        INNER JOIN Responsabilidades_Ambiente ra ON c.id_clase = ra.id_clase
-       WHERE TIMESTAMP(c.fecha_clase, c.hora_fin) < NOW()
-         AND c.estado_clase = 'En Curso'
+       WHERE c.estado_clase = 'En Curso'
          AND ra.estado_responsabilidad = 'Activa'`,
       []
     );
+
+    // Filtrar en JavaScript usando hora local
+    const clasesFinalizadas = clasesEnCurso.filter(clase => {
+      const fechaClaseStr = clase.fecha_clase instanceof Date
+        ? getLocalDateString(clase.fecha_clase)
+        : String(clase.fecha_clase).split('T')[0];
+      
+      // Normalizar hora_fin
+      let horaFin = String(clase.hora_fin);
+      if (horaFin.split(':').length === 2) {
+        horaFin = `${horaFin}:00`;
+      }
+      
+      // Construir datetime de fin de clase
+      const datetimeFinClase = `${fechaClaseStr} ${horaFin}`;
+      const datetimeFinClaseObj = new Date(datetimeFinClase.replace(' ', 'T'));
+      
+      // Verificar que la hora de fin ya pasó (con margen de 1 minuto)
+      const ahoraObj = new Date();
+      const unMinutoAtras = new Date(ahoraObj.getTime() - 60000);
+      
+      if (datetimeFinClaseObj > unMinutoAtras) {
+        return false; // Aún no ha terminado
+      }
+      
+      // Verificar que la clase fue iniciada hace al menos 1 minuto
+      if (clase.fecha_inicio_real) {
+        const fechaInicioReal = new Date(clase.fecha_inicio_real);
+        const minutosDesdeInicio = Math.floor((ahoraObj - fechaInicioReal) / 60000);
+        if (minutosDesdeInicio < 1) {
+          return false; // Iniciada hace menos de 1 minuto
+        }
+      }
+      
+      return true;
+    });
 
     let finalizadas = 0;
     // eslint-disable-next-line no-await-in-loop
     for (const clase of clasesFinalizadas) {
       try {
-        const ahora = new Date();
-        const fechaFin = ahora.toISOString().slice(0, 19).replace('T', ' ');
+        // Calcular minutos desde inicio usando JavaScript
+        let minutosDesdeInicio = 0;
+        if (clase.fecha_inicio_real) {
+          const fechaInicioReal = new Date(clase.fecha_inicio_real);
+          const ahoraObj = new Date();
+          minutosDesdeInicio = Math.floor((ahoraObj - fechaInicioReal) / 60000);
+        } else {
+          // Si no hay fecha_inicio_real, usar hora_inicio programada
+          const fechaClaseStr = clase.fecha_clase instanceof Date
+            ? getLocalDateString(clase.fecha_clase)
+            : String(clase.fecha_clase).split('T')[0];
+          let horaInicio = String(clase.hora_inicio);
+          if (horaInicio.split(':').length === 2) {
+            horaInicio = `${horaInicio}:00`;
+          }
+          const datetimeInicio = `${fechaClaseStr} ${horaInicio}`;
+          const fechaInicioObj = new Date(datetimeInicio.replace(' ', 'T'));
+          const ahoraObj = new Date();
+          minutosDesdeInicio = Math.floor((ahoraObj - fechaInicioObj) / 60000);
+        }
+        
+        if (minutosDesdeInicio < 1) {
+          logger.debug(`Clase ${clase.id_clase} iniciada hace menos de 1 minuto, no se finaliza automáticamente`, {
+            minutos_desde_inicio: minutosDesdeInicio,
+            hora_fin: clase.hora_fin
+          });
+          continue;
+        }
+
+        // IMPORTANTE: Usar hora local, NO UTC
+        const fechaFin = getLocalDateTimeString(new Date());
+        
+        logger.info(`Finalizando clase ${clase.id_clase} automáticamente - Hora fin: ${clase.hora_fin}, Minutos desde inicio: ${minutosDesdeInicio}`, {
+          fecha_fin_local: fechaFin,
+          minutos_desde_inicio: minutosDesdeInicio
+        });
+        
         await defaultDb.execute(
           `UPDATE Responsabilidades_Ambiente
            SET estado_responsabilidad = 'Finalizada',
@@ -1001,6 +1251,119 @@ export async function sincronizarResponsabilidadesHorarios(req, res) {
     return res.status(500).json({
       error: 'Error al sincronizar responsabilidades',
       detalle: err.message
+    });
+  }
+}
+
+/**
+ * Normalizar nombre de clase para evitar duplicados
+ * - Convertir a mayúsculas
+ * - Eliminar espacios extras
+ * - Trim
+ */
+function normalizarNombreClase(nombre) {
+  if (!nombre || typeof nombre !== 'string') {
+    return '';
+  }
+  return nombre.trim().replace(/\s+/g, ' ').toUpperCase();
+}
+
+/**
+ * Obtener nombres únicos de clases de formación para autocompletado
+ * Retorna lista de nombres únicos ordenados alfabéticamente
+ */
+export async function obtenerNombresClases(req, res) {
+  try {
+    const { busqueda } = req.query; // Opcional: filtrar por búsqueda
+    
+    let query = `
+      SELECT DISTINCT nombre_clase
+      FROM Clases
+      WHERE nombre_clase IS NOT NULL 
+        AND nombre_clase != ''
+    `;
+    
+    const params = [];
+    
+    if (busqueda && busqueda.trim()) {
+      query += ' AND nombre_clase LIKE ?';
+      params.push(`%${busqueda.trim()}%`);
+    }
+    
+    query += ' ORDER BY nombre_clase ASC';
+    
+    const [rows] = await defaultDb.execute(query, params);
+    
+    const nombres = rows.map(row => row.nombre_clase).filter(n => n);
+    
+    return res.json({
+      ok: true,
+      nombres,
+      total: nombres.length
+    });
+  } catch (err) {
+    logger.error('Error al obtener nombres de clases', { error: err.message, stack: err.stack });
+    return res.status(500).json({ 
+      error: 'Error al obtener nombres de clases', 
+      detalle: err.message 
+    });
+  }
+}
+
+/**
+ * Crear un nuevo nombre de clase desde el frontend
+ * Valida duplicados mediante normalización
+ */
+export async function crearNombreClase(req, res) {
+  try {
+    const { nombre_clase } = req.body;
+    
+    if (!nombre_clase || typeof nombre_clase !== 'string' || !nombre_clase.trim()) {
+      return res.status(400).json({
+        error: 'Campo obligatorio',
+        detalle: 'El nombre de la clase es obligatorio'
+      });
+    }
+    
+    const nombreNormalizado = normalizarNombreClase(nombre_clase);
+    
+    if (nombreNormalizado.length === 0) {
+      return res.status(400).json({
+        error: 'Nombre inválido',
+        detalle: 'El nombre de la clase no puede estar vacío'
+      });
+    }
+    
+    // Verificar si ya existe un nombre similar (normalizado)
+    const [existentes] = await defaultDb.execute(
+      `SELECT DISTINCT nombre_clase 
+       FROM Clases 
+       WHERE UPPER(TRIM(REPLACE(REPLACE(nombre_clase, '  ', ' '), CHAR(9), ' '))) = ? 
+       LIMIT 1`,
+      [nombreNormalizado]
+    );
+    
+    if (existentes.length > 0) {
+      return res.status(409).json({
+        error: 'Nombre duplicado',
+        detalle: `Ya existe una clase con el nombre "${existentes[0].nombre_clase}". Los nombres se normalizan para evitar duplicados.`,
+        nombre_existente: existentes[0].nombre_clase
+      });
+    }
+    
+    // El nombre se creará automáticamente cuando se cree la primera clase con ese nombre
+    // Por ahora, solo validamos y retornamos éxito
+    return res.status(200).json({
+      ok: true,
+      message: 'Nombre de clase validado correctamente',
+      nombre_clase: nombre_clase.trim(),
+      nombre_normalizado: nombreNormalizado
+    });
+  } catch (err) {
+    logger.error('Error al crear nombre de clase', { error: err.message, stack: err.stack });
+    return res.status(500).json({ 
+      error: 'Error al validar nombre de clase', 
+      detalle: err.message 
     });
   }
 }

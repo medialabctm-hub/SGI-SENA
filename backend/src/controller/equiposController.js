@@ -1567,29 +1567,49 @@ export async function actualizarCuentadantePrincipal(req, res) {
       logger.info('Columna id_cuentadante creada en la tabla Elementos')
     }
 
-    // Actualizar el cuentadante principal en todos los equipos
-    // IMPORTANTE: Actualizar tanto cuentadante_principal (nombre) como id_cuentadante (FK)
-    // Actualizar equipos que no tienen cuentadante o que tienen un cuentadante diferente
-    const [result] = await defaultDb.execute(
-      `UPDATE Elementos 
-       SET cuentadante_principal = ?, 
-           id_cuentadante = ?
-       WHERE cuentadante_principal IS NULL 
-          OR cuentadante_principal != ? 
-          OR id_cuentadante IS NULL 
-          OR id_cuentadante != ?`,
-      [nombreCuentadante, usuario.id_usuario, nombreCuentadante, usuario.id_usuario]
-    )
-    // (para equipos importados antes de que se implementara id_cuentadante)
-    const [resultSync] = await defaultDb.execute(
-      `UPDATE Elementos 
-       SET id_cuentadante = ?
-       WHERE cuentadante_principal = ? 
-          AND (id_cuentadante IS NULL OR id_cuentadante != ?)`,
-      [usuario.id_usuario, nombreCuentadante, usuario.id_usuario]
-    )
-
-    const totalActualizados = result.affectedRows + resultSync.affectedRows
+    // Obtener IDs de equipos a actualizar del body (opcional)
+    // Si se proporciona equipos_ids, solo actualizar esos equipos
+    // Si se proporciona id_importacion, actualizar equipos de esa importación
+    // Si no se proporciona ninguno, NO actualizar nada (evitar actualizar equipos existentes)
+    const { equipos_ids, id_importacion } = req.body;
+    
+    let totalActualizados = 0;
+    
+    if (equipos_ids && Array.isArray(equipos_ids) && equipos_ids.length > 0) {
+      // Actualizar solo los equipos especificados
+      const placeholders = equipos_ids.map(() => '?').join(',');
+      const [result] = await defaultDb.execute(
+        `UPDATE Elementos 
+         SET cuentadante_principal = ?, 
+             id_cuentadante = ?
+         WHERE codigo_equipo IN (${placeholders})`,
+        [nombreCuentadante, usuario.id_usuario, ...equipos_ids]
+      );
+      totalActualizados = result.affectedRows;
+    } else if (id_importacion) {
+      // Actualizar equipos de una importación específica
+      // Buscar equipos importados en esa sesión (usando registrado_por y fecha_creacion aproximada)
+      // Nota: Esto requiere que guardemos el id_importacion en la tabla Elementos o en una tabla de relación
+      // Por ahora, actualizar equipos sin cuentadante que fueron registrados recientemente por el mismo usuario
+      const [result] = await defaultDb.execute(
+        `UPDATE Elementos 
+         SET cuentadante_principal = ?, 
+             id_cuentadante = ?
+         WHERE (id_cuentadante IS NULL OR id_cuentadante != ?)
+           AND registrado_por = ?
+           AND fecha_creacion >= DATE_SUB(NOW(), INTERVAL 1 HOUR)`,
+        [nombreCuentadante, usuario.id_usuario, usuario.id_usuario, userId]
+      );
+      totalActualizados = result.affectedRows;
+    } else {
+      // NO actualizar equipos existentes por defecto
+      // Solo actualizar si explícitamente se solicita con equipos_ids o id_importacion
+      logger.warn('Actualización de cuentadante principal sin especificar equipos. No se actualizará ningún equipo.');
+      return res.status(400).json({
+        error: 'Debe especificar los equipos a actualizar',
+        detalle: 'Proporcione "equipos_ids" (array de IDs de equipos) en el body para actualizar equipos específicos. Por seguridad, no se actualizan todos los equipos automáticamente. Los IDs de equipos se obtienen de la respuesta de importación.'
+      });
+    }
 
     return res.json({
       ok: true,

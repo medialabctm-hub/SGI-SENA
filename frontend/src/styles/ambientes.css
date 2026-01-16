@@ -838,3 +838,329 @@
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(28, 185, 129, 0.3); 
 }
+
+/* Mejoras para responsables */
+.responsable-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+
+.responsable-badge {
+  font-size: 11px;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.responsable-badge-principal {
+  background: var(--success-100);
+  color: var(--success-800);
+}
+
+.responsable-badge-secundario {
+  background: var(--info-100);
+  color: var(--info-800);
+}
+
+.responsable-meta {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.responsable-rol {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.responsable-fecha {
+  font-size: 12px;
+  color: #9ca3af;
+}
+
+.responsable-clase,
+.responsable-horario {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ambiente-section-subtitle {
+  font-size: 0.9rem;
+  color: var(--neutral-600);
+  margin-top: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.ambiente-responsables-note {
+  margin-top: 1rem;
+  padding: 12px 16px;
+  background: var(--info-50);
+  border: 1px solid var(--info-200);
+  border-radius: 8px;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 0.85rem;
+  color: var(--info-900);
+  line-height: 1.5;
+}
+
+.ambiente-responsables-note svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: var(--info-600);
+}
+
+.ambiente-section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 1rem;
+  gap: 1rem;
+}
+
+.ambiente-section-header > div:first-child {
+  flex: 1;
+}
+
+.btn-sm {
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+}
+
+.btn-verde {
+  background: var(--success-800);
+  color: white;
+  border: none;
+}
+
+.btn-verde:hover:not(:disabled) {
+  background: var(--success-900);
+}
+
+.loading-state {
+  padding: 2rem;
+  text-align: center;
+  color: var(--neutral-600);
+}
+
+/* Modal para cambiar cuentadante secundario */
+.ambientes-page .modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 999999;
+  padding: 20px;
+}
+
+.ambientes-page .modal-content {
+  background: white;
+  border-radius: 12px;
+  max-width: 600px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+}
+
+.ambientes-page .modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 24px;
+  border-bottom: 2px solid var(--neutral-200);
+}
+
+.ambientes-page .modal-header h3 {
+  margin: 0;
+  font-size: 20px;
+  color: var(--neutral-900);
+}
+
+.ambientes-page .modal-close {
+  background: transparent;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  color: var(--neutral-600);
+  padding: 4px;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  transition: all 0.2s;
+}
+
+.ambientes-page .modal-close:hover {
+  background: var(--neutral-100);
+  color: var(--neutral-900);
+}
+
+.ambientes-page .modal-body {
+  padding: 24px;
+}
+
+.ambientes-page .modal-description {
+  color: var(--neutral-600);
+  margin-bottom: 1.5rem;
+  line-height: 1.6;
+  font-size: 0.95rem;
+}
+
+.ambientes-page .instructores-select-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.ambientes-page .instructor-select-item {
+  padding: 14px 16px;
+  border: 2px solid var(--neutral-200);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  background: white;
+}
+
+.ambientes-page .instructor-select-item:hover {
+  border-color: var(--success-300);
+  background: var(--success-50);
+}
+
+.ambientes-page .instructor-select-item.selected {
+  border-color: var(--success-800);
+  background: var(--success-100);
+}
+
+.ambientes-page .instructor-select-item.is-cuentadante {
+  border-color: var(--info-300);
+  background: var(--info-50);
+}
+
+.ambientes-page .instructor-select-info {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ambientes-page .instructor-select-info strong {
+  font-size: 15px;
+  color: var(--neutral-900);
+}
+
+.ambientes-page .instructor-ambientes-count {
+  font-size: 12px;
+  color: var(--neutral-600);
+}
+
+.ambientes-page .modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 20px 24px;
+  border-top: 2px solid var(--neutral-200);
+}
+
+.ambientes-page .empty-state {
+  padding: 3rem;
+  text-align: center;
+  color: var(--neutral-500);
+}
+
+/* Responsive para modal de cuentadantes */
+@media (max-width: 768px) {
+  .ambientes-page .modal-content {
+    max-width: 95%;
+    padding: 20px;
+  }
+
+  .ambientes-page .modal-header {
+    padding: 16px 20px;
+  }
+
+  .ambientes-page .modal-body {
+    padding: 20px;
+  }
+
+  .ambientes-page .modal-footer {
+    padding: 16px 20px;
+    flex-direction: column;
+  }
+
+  .ambientes-page .modal-footer button {
+    width: 100%;
+  }
+
+  .ambientes-page .instructores-select-list {
+    max-height: 300px;
+  }
+
+  .ambiente-section-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .ambiente-section-header .btn {
+    width: 100%;
+    margin-top: 0.5rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .ambientes-page .modal-content {
+    max-width: 100%;
+    padding: 16px;
+    border-radius: 8px;
+  }
+
+  .ambientes-page .modal-header h3 {
+    font-size: 18px;
+  }
+
+  .ambientes-page .modal-description {
+    font-size: 0.85rem;
+  }
+
+  .ambientes-page .instructor-select-item {
+    padding: 12px;
+  }
+
+  .responsables-list {
+    gap: 8px;
+  }
+
+  .responsable-item {
+    padding: 12px;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .responsable-details {
+    align-items: flex-start;
+    margin-top: 8px;
+    width: 100%;
+  }
+
+  .responsable-meta {
+    flex-direction: column;
+    gap: 4px;
+  }
+}

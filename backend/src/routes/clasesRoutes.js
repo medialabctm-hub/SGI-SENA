@@ -10,7 +10,9 @@ import {
   actualizarClase,
   cancelarClase,
   consultarResponsablesTiempoReal,
-  sincronizarResponsabilidadesHorarios
+  sincronizarResponsabilidadesHorarios,
+  obtenerNombresClases,
+  crearNombreClase
 } from '../controller/clasesController.js';
 import { authenticate } from '../middleware/authMiddleware.js';
 import { requirePermission } from '../middleware/authorization.js';
@@ -104,6 +106,21 @@ router.post(
   '/clases/sincronizar-responsabilidades',
   requirePermission(PERMISSIONS.CLASES.UPDATE),
   sincronizarResponsabilidadesHorarios
+);
+
+// Autocompletado: Obtener nombres únicos de clases de formación
+router.get(
+  '/clases/nombres',
+  requirePermission(PERMISSIONS.CLASES.VIEW),
+  obtenerNombresClases
+);
+
+// Autocompletado: Crear/validar nuevo nombre de clase
+router.post(
+  '/clases/nombres',
+  writeLimiter,
+  requirePermission(PERMISSIONS.CLASES.CREATE),
+  crearNombreClase
 );
 
 export default router;

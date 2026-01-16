@@ -46,7 +46,7 @@ export default function OlvidarContrasena() {
       await parseApiResponse(res, 'No se pudo procesar la solicitud');
       setEnviado(true);
       setToast({
-        message: 'Si el usuario existe, se enviará un correo con las instrucciones para restablecer tu contraseña',
+        message: 'Si la cuenta está registrada, recibirás un correo con las instrucciones para restablecer tu contraseña.',
         type: 'success'
       });
     } catch (err) {

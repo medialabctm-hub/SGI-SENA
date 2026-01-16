@@ -528,7 +528,54 @@
   }
 
   .importar-equipos-resultado-stats {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
+  }
+
+  .importar-equipos-resultado-stat {
+    padding: 0.75rem;
+  }
+
+  .importar-equipos-resultado-stat-total-number,
+  .importar-equipos-resultado-stat-number,
+  .importar-equipos-resultado-stat-fallidos-number,
+  .importar-equipos-resultado-stat-duplicados-number {
+    font-size: 1.5rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .importar-equipos-container {
+    padding: 0.75rem;
+  }
+
+  .importar-equipos-title {
+    font-size: 1.25rem;
+  }
+
+  .importar-equipos-subtitle {
+    font-size: 0.85rem;
+  }
+
+  .importar-equipos-resultado-stats {
     grid-template-columns: 1fr;
+    gap: 0.5rem;
+  }
+
+  .importar-equipos-resultado-stat {
+    padding: 0.75rem;
+  }
+
+  .importar-equipos-cuentadante-section-warning {
+    padding: 1rem;
+  }
+
+  .importar-equipos-cuentadante-title {
+    font-size: 1rem;
+  }
+
+  .importar-equipos-file-container {
+    padding: 1rem;
   }
 }
 

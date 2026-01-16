@@ -5,18 +5,25 @@ import { z } from 'zod';
  */
 
 const tiposReporteValidos = [
+  'General',
+  'Equipos',
   'Mantenimiento',
   'Novedad',
   'Consulta',
   'Solicitud',
+  'Novedades',
+  'Uso',
   'Otro'
 ];
 
 export const crearReporteSchema = z.object({
+  // codigo_equipo es opcional (puede ser reporte general o específico de equipo)
   codigo_equipo: z.union([
-    z.string().min(1, 'El código del equipo es requerido'),
-    z.number().int().positive('El código del equipo debe ser un número positivo'),
-  ]),
+    z.string().min(1),
+    z.number().int().positive(),
+    z.null(),
+    z.undefined()
+  ]).optional().nullable(),
   tipo_reporte: z.enum(tiposReporteValidos, {
     errorMap: () => ({ 
       message: `Tipo de reporte inválido. Tipos válidos: ${tiposReporteValidos.join(', ')}` 

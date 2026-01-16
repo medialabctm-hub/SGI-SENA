@@ -745,3 +745,231 @@ export async function listarAsignacionesAmbientes(req, res) {
   }
 }
 
+/**
+ * Obtener instructores asignados a un ambiente específico
+ * Incluye información sobre si son cuentadantes secundarios
+ */
+export async function obtenerInstructoresAmbiente(req, res) {
+  try {
+    const { id } = req.params;
+    const { fecha_consulta } = req.query;
+
+    // Validar que el ambiente existe
+    const [[ambiente]] = await defaultDb.execute(
+      'SELECT id_ambiente, nombre_ambiente, codigo_ambiente FROM Ambientes WHERE id_ambiente = ?',
+      [id]
+    );
+
+    if (!ambiente) {
+      return res.status(404).json({ error: 'Ambiente no encontrado' });
+    }
+
+    // Obtener instructores asignados al ambiente
+    let query = `
+      SELECT DISTINCT
+        u.id_usuario,
+        u.nombre_usuario,
+        u.cedula,
+        u.correo,
+        r.nombre_rol,
+        ra.tipo_responsabilidad,
+        ra.fecha_inicio,
+        ra.fecha_fin,
+        ra.estado_responsabilidad,
+        COUNT(DISTINCT ra2.id_ambiente) AS total_ambientes_asignados
+      FROM Responsabilidades_Ambiente ra
+      INNER JOIN Usuarios u ON ra.id_usuario = u.id_usuario
+      INNER JOIN Roles r ON u.id_rol = r.id_rol
+      LEFT JOIN Responsabilidades_Ambiente ra2 ON ra2.id_usuario = u.id_usuario 
+        AND ra2.estado_responsabilidad = 'Activa'
+        AND (ra2.fecha_fin IS NULL OR ra2.fecha_fin >= NOW())
+      WHERE ra.id_ambiente = ?
+        AND r.nombre_rol = 'Instructor'
+        AND ra.estado_responsabilidad = 'Activa'
+    `;
+    const params = [id];
+
+    if (fecha_consulta) {
+      const fechaConsulta = new Date(fecha_consulta).toISOString().slice(0, 19).replace('T', ' ');
+      query += ' AND ra.fecha_inicio <= ? AND (ra.fecha_fin IS NULL OR ra.fecha_fin >= ?)';
+      params.push(fechaConsulta, fechaConsulta);
+    } else {
+      query += ' AND (ra.fecha_fin IS NULL OR ra.fecha_fin >= NOW())';
+    }
+
+    query += ' GROUP BY u.id_usuario, u.nombre_usuario, u.cedula, u.correo, r.nombre_rol, ra.tipo_responsabilidad, ra.fecha_inicio, ra.fecha_fin, ra.estado_responsabilidad';
+
+    const [instructores] = await defaultDb.execute(query, params);
+
+    // Estandarizar respuesta: id_instructor, nombre, rol (PRINCIPAL/SECUNDARIO)
+    const instructoresConInfo = instructores.map(instructor => {
+      const esSecundario = instructor.total_ambientes_asignados >= 1;
+      return {
+        id_instructor: instructor.id_usuario, // Campo estandarizado para frontend
+        id_usuario: instructor.id_usuario, // Mantener para compatibilidad
+        nombre: instructor.nombre_usuario, // Campo estandarizado
+        nombre_usuario: instructor.nombre_usuario, // Mantener para compatibilidad
+        nombre_instructor: instructor.nombre_usuario, // Mantener para compatibilidad con frontend
+        cedula: instructor.cedula,
+        correo: instructor.correo,
+        rol: esSecundario ? 'SECUNDARIO' : 'PRINCIPAL', // Campo estandarizado PRINCIPAL/SECUNDARIO
+        tipo_responsabilidad: instructor.tipo_responsabilidad,
+        es_cuentadante_secundario: esSecundario, // Mantener para compatibilidad
+        total_ambientes: instructor.total_ambientes_asignados,
+        fecha_inicio: instructor.fecha_inicio,
+        fecha_fin: instructor.fecha_fin,
+        estado_responsabilidad: instructor.estado_responsabilidad
+      };
+    });
+
+    // Retornar array directamente para compatibilidad con frontend
+    // El frontend espera: Array.isArray(data) ? data : []
+    // Mantener campos estandarizados: id_instructor, nombre, rol (PRINCIPAL/SECUNDARIO)
+    return res.json(instructoresConInfo);
+  } catch (err) {
+    logger.error('Error al obtener instructores del ambiente', { error: err.message, stack: err.stack });
+    return res.status(500).json({
+      error: 'Error al obtener instructores del ambiente',
+      detalle: err.message
+    });
+  }
+}
+
+/**
+ * Cambiar instructor a cuentadante secundario de un ambiente
+ * Solo el cuentadante principal del inventario del ambiente puede hacer este cambio
+ */
+export async function cambiarInstructorACuentadanteSecundario(req, res) {
+  try {
+    const { id_ambiente, id_instructor } = req.body;
+    const userId = req.user?.id;
+    const userRole = req.user?.rol;
+
+    // Validar campos obligatorios
+    if (!id_ambiente || !id_instructor) {
+      return res.status(400).json({
+        error: 'Faltan campos obligatorios',
+        detalle: 'Se requieren: id_ambiente, id_instructor'
+      });
+    }
+
+    // Validar que el ambiente existe
+    const [[ambiente]] = await defaultDb.execute(
+      'SELECT id_ambiente, nombre_ambiente, codigo_ambiente FROM Ambientes WHERE id_ambiente = ?',
+      [id_ambiente]
+    );
+
+    if (!ambiente) {
+      return res.status(404).json({ error: 'Ambiente no encontrado' });
+    }
+
+    // Validar que el instructor existe y es instructor
+    const [[instructor]] = await defaultDb.execute(
+      `SELECT u.id_usuario, u.nombre_usuario, r.nombre_rol
+       FROM Usuarios u
+       INNER JOIN Roles r ON u.id_rol = r.id_rol
+       WHERE u.id_usuario = ? AND u.estado = 'Activo' AND r.nombre_rol = 'Instructor'`,
+      [id_instructor]
+    );
+
+    if (!instructor) {
+      return res.status(404).json({
+        error: 'Instructor no encontrado',
+        detalle: 'El usuario debe ser un Instructor activo'
+      });
+    }
+
+    // Validar permisos: Solo el cuentadante principal del inventario del ambiente puede hacer cambios
+    // Un cuentadante principal es aquel que tiene equipos asignados en el ambiente
+    const [[esCuentadantePrincipal]] = await defaultDb.execute(
+      `SELECT COUNT(*) AS total
+       FROM Elementos e
+       WHERE e.id_ambiente = ?
+         AND e.id_cuentadante = ?
+         AND e.id_cuentadante IS NOT NULL`,
+      [id_ambiente, userId]
+    );
+
+    // También permitir a Administradores
+    if (userRole !== 'Administrador' && (!esCuentadantePrincipal || esCuentadantePrincipal.total === 0)) {
+      return res.status(403).json({
+        error: 'No autorizado',
+        detalle: 'Solo el cuentadante principal del inventario del ambiente o un Administrador puede cambiar instructores a cuentadantes secundarios'
+      });
+    }
+
+    // Verificar que el instructor tiene responsabilidades activas en el ambiente
+    const [responsabilidades] = await defaultDb.execute(
+      `SELECT id_responsabilidad_ambiente, tipo_responsabilidad
+       FROM Responsabilidades_Ambiente
+       WHERE id_ambiente = ?
+         AND id_usuario = ?
+         AND estado_responsabilidad = 'Activa'
+         AND (fecha_fin IS NULL OR fecha_fin >= NOW())`,
+      [id_ambiente, id_instructor]
+    );
+
+    if (responsabilidades.length === 0) {
+      return res.status(404).json({
+        error: 'Instructor no asignado',
+        detalle: 'El instructor no tiene responsabilidades activas en este ambiente'
+      });
+    }
+
+    // Verificar si ya es cuentadante secundario (tiene uno o más ambientes asignados)
+    const [ambientesAsignados] = await defaultDb.execute(
+      `SELECT COUNT(DISTINCT id_ambiente) AS total
+       FROM Responsabilidades_Ambiente
+       WHERE id_usuario = ?
+         AND estado_responsabilidad = 'Activa'
+         AND (fecha_fin IS NULL OR fecha_fin >= NOW())`,
+      [id_instructor]
+    );
+
+    const yaEsSecundario = ambientesAsignados[0]?.total >= 1;
+
+    if (yaEsSecundario) {
+      return res.status(200).json({
+        ok: true,
+        message: 'El instructor ya es cuentadante secundario',
+        instructor: {
+          id_instructor: instructor.id_usuario, // Campo estandarizado
+          id_usuario: instructor.id_usuario, // Mantener para compatibilidad
+          nombre: instructor.nombre_usuario, // Campo estandarizado
+          nombre_usuario: instructor.nombre_usuario, // Mantener para compatibilidad
+          rol: 'SECUNDARIO', // Campo estandarizado
+          total_ambientes: ambientesAsignados[0].total,
+          es_cuentadante_secundario: true // Mantener para compatibilidad
+        }
+      });
+    }
+
+    // El instructor se convierte automáticamente en cuentadante secundario cuando tiene ambientes asignados
+    // No necesitamos hacer cambios en la BD, solo confirmar el estado
+    return res.json({
+      ok: true,
+      message: `El instructor "${instructor.nombre_usuario}" es ahora cuentadante secundario del ambiente "${ambiente.nombre_ambiente}"`,
+      instructor: {
+        id_instructor: instructor.id_usuario, // Campo estandarizado
+        id_usuario: instructor.id_usuario, // Mantener para compatibilidad
+        nombre: instructor.nombre_usuario, // Campo estandarizado
+        nombre_usuario: instructor.nombre_usuario, // Mantener para compatibilidad
+        rol: 'SECUNDARIO', // Campo estandarizado
+        total_ambientes: ambientesAsignados[0]?.total || 1,
+        es_cuentadante_secundario: true // Mantener para compatibilidad
+      },
+      ambiente: {
+        id_ambiente: ambiente.id_ambiente,
+        nombre_ambiente: ambiente.nombre_ambiente,
+        codigo_ambiente: ambiente.codigo_ambiente
+      }
+    });
+  } catch (err) {
+    logger.error('Error al cambiar instructor a cuentadante secundario', { error: err.message, stack: err.stack });
+    return res.status(500).json({
+      error: 'Error al cambiar instructor a cuentadante secundario',
+      detalle: err.message
+    });
+  }
+}
+

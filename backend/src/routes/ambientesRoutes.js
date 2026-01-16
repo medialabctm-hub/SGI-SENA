@@ -8,7 +8,9 @@ import {
   listarAmbientesActivos,
   asignarAmbienteInstructor,
   desasignarAmbienteInstructor,
-  listarAsignacionesAmbientes
+  listarAsignacionesAmbientes,
+  obtenerInstructoresAmbiente,
+  cambiarInstructorACuentadanteSecundario
 } from '../controller/ambientesController.js';
 import { authenticate } from '../middleware/authMiddleware.js';
 import { requirePermission } from '../middleware/authorization.js';
@@ -39,6 +41,20 @@ router.get(
   '/ambientes/asignaciones',
   requirePermission(PERMISSIONS.AMBIENTES.VIEW),
   listarAsignacionesAmbientes
+);
+
+// Obtener instructores asignados a un ambiente específico
+router.get(
+  '/ambientes/:id/instructores',
+  requirePermission(PERMISSIONS.AMBIENTES.VIEW),
+  obtenerInstructoresAmbiente
+);
+
+// Cambiar instructor a cuentadante secundario
+router.post(
+  '/ambientes/cambiar-cuentadante-secundario',
+  requirePermission(PERMISSIONS.AMBIENTES.UPDATE),
+  cambiarInstructorACuentadanteSecundario
 );
 
 // Asignar ambiente a instructor (permanente)

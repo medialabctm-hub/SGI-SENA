@@ -298,3 +298,588 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator:hover {
   filter: invert(27%) sepia(51%) saturate(2878%) hue-rotate(106deg) brightness(20%) contrast(100%);
 }
 
+/* ============================================
+   ESTILOS PARA DÍAS DE LA SEMANA
+   ============================================ */
+
+.horarios-dias-row {
+  grid-column: 1 / -1; /* Ocupa toda la fila */
+}
+
+.horarios-form-help-text {
+  display: block;
+  font-size: 0.85rem;
+  color: var(--neutral-600);
+  font-weight: 400;
+  margin-top: 4px;
+}
+
+.horarios-dias-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+.horarios-dia-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 2px solid var(--success-800);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background: white;
+  font-size: 0.9rem;
+}
+
+.horarios-dia-checkbox:hover {
+  background: var(--success-50);
+  border-color: var(--success-900);
+}
+
+.horarios-dia-checkbox input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--success-800);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.horarios-dia-checkbox.selected {
+  background: var(--success-100);
+  border-color: var(--success-900);
+  font-weight: 600;
+}
+
+.horarios-dia-checkbox span {
+  user-select: none;
+}
+
+.horarios-dia-checkbox.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background: var(--neutral-100);
+  border-color: var(--neutral-300);
+}
+
+.horarios-dia-checkbox.disabled:hover {
+  background: var(--neutral-100);
+  border-color: var(--neutral-300);
+}
+
+.horarios-dia-checkbox.disabled input[type="checkbox"] {
+  cursor: not-allowed;
+}
+
+.horarios-dias-info {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 1rem;
+  padding: 12px 14px;
+  background: var(--info-50);
+  border: 1px solid var(--info-200);
+  border-radius: 8px;
+  color: var(--info-900);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.horarios-dias-info svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: var(--info-700);
+}
+
+.horarios-dias-info strong {
+  font-weight: 700;
+  color: var(--info-900);
+}
+
+/* Rango de fechas */
+.horarios-rango-fechas {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.horarios-fecha-inicio,
+.horarios-fecha-fin {
+  flex: 1;
+  min-width: 150px;
+}
+
+.horarios-rango-separador {
+  color: var(--neutral-600);
+  font-size: 0.9rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+/* ============================================
+   ESTILOS PARA MODAL DE IMPORTACIÓN
+   ============================================ */
+
+.horarios-import-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 999999;
+  padding: 20px;
+}
+
+.horarios-import-modal-content {
+  background: white;
+  border-radius: 12px;
+  max-width: 600px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+}
+
+.horarios-import-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 24px;
+  border-bottom: 2px solid var(--neutral-200);
+}
+
+.horarios-import-title {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--neutral-900);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.horarios-import-close {
+  background: transparent;
+  border: none;
+  font-size: 20px;
+  cursor: pointer;
+  color: var(--neutral-600);
+  padding: 4px;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  transition: all 0.2s;
+}
+
+.horarios-import-close:hover {
+  background: var(--neutral-100);
+  color: var(--neutral-900);
+}
+
+.horarios-import-body {
+  padding: 24px;
+}
+
+.horarios-import-text {
+  color: var(--neutral-600);
+  margin-bottom: 1.5rem;
+  line-height: 1.6;
+  font-size: 0.95rem;
+}
+
+.horarios-import-file-section {
+  margin-bottom: 1.5rem;
+}
+
+.horarios-import-file-label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+  color: var(--neutral-800);
+  font-size: 0.95rem;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.horarios-import-input {
+  width: 100%;
+  padding: 10px 14px;
+  border-radius: 8px;
+  border: 2px solid var(--success-800);
+  font-size: 0.95rem;
+  font-family: inherit;
+  background: white;
+  color: var(--neutral-900);
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.horarios-import-input:focus {
+  outline: none;
+  border-color: var(--success-900);
+  box-shadow: 0 0 0 4px rgba(1, 175, 0, 0.1);
+}
+
+.horarios-import-input:disabled {
+  background: var(--neutral-50);
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.horarios-import-file-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 0.75rem;
+  padding: 10px 14px;
+  background: var(--success-50);
+  border-radius: 8px;
+  color: var(--success-800);
+  font-size: 0.9rem;
+}
+
+.horarios-import-file-size {
+  color: var(--neutral-600);
+  font-size: 0.85rem;
+  margin-left: auto;
+}
+
+.horarios-import-result {
+  margin-bottom: 1.5rem;
+  padding: 16px;
+  background: var(--neutral-50);
+  border-radius: 8px;
+  border: 1px solid var(--neutral-200);
+}
+
+.horarios-import-result-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 1rem;
+  color: var(--neutral-900);
+  font-weight: 600;
+}
+
+.horarios-import-result-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.horarios-import-result-stat {
+  text-align: center;
+  padding: 12px;
+  border-radius: 8px;
+  background: white;
+}
+
+.horarios-import-result-stat.success {
+  border: 2px solid var(--success-600);
+}
+
+.horarios-import-result-stat.error {
+  border: 2px solid var(--error-600);
+}
+
+.horarios-import-result-stat.warning {
+  border: 2px solid var(--warning-600);
+}
+
+.horarios-import-result-number {
+  display: block;
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.horarios-import-result-stat.success .horarios-import-result-number {
+  color: var(--success-800);
+}
+
+.horarios-import-result-stat.error .horarios-import-result-number {
+  color: var(--error-800);
+}
+
+.horarios-import-result-stat.warning .horarios-import-result-number {
+  color: var(--warning-800);
+}
+
+.horarios-import-result-label {
+  display: block;
+  font-size: 0.85rem;
+  color: var(--neutral-600);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.horarios-import-errors {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--neutral-200);
+}
+
+.horarios-import-errors strong {
+  display: block;
+  margin-bottom: 0.5rem;
+  color: var(--error-800);
+  font-size: 0.9rem;
+}
+
+.horarios-import-errors ul {
+  margin: 0;
+  padding-left: 1.5rem;
+  font-size: 0.85rem;
+  color: var(--neutral-700);
+}
+
+.horarios-import-errors li {
+  margin-bottom: 0.25rem;
+}
+
+.horarios-import-error-box {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 14px;
+  background: var(--error-50);
+  border: 1px solid var(--error-200);
+  border-radius: 8px;
+  color: var(--error-800);
+  margin-bottom: 1.5rem;
+  font-size: 0.9rem;
+}
+
+.horarios-import-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+}
+
+.horarios-import-actions button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.horarios-import-spinner {
+  width: 16px;
+  height: 16px;
+  border-width: 2px;
+}
+
+/* ============================================
+   ESTILOS PARA ACCIONES DE CLASE
+   ============================================ */
+
+.horarios-action-spinner {
+  width: 14px;
+  height: 14px;
+  border-width: 2px;
+}
+
+.horarios-clase-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.horarios-action-btn {
+  padding: 6px 10px;
+  min-width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.horarios-action-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* ============================================
+   ESTILOS ADICIONALES PARA TABLA
+   ============================================ */
+
+.horarios-table-wrapper {
+  overflow-x: auto;
+  margin-top: 1.5rem;
+}
+
+.horarios-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.horarios-clase-info {
+  font-size: 0.85rem;
+  color: var(--neutral-600);
+  margin-top: 4px;
+}
+
+.horarios-clase-time {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--neutral-700);
+  font-size: 0.9rem;
+}
+
+.horarios-loading {
+  text-align: center;
+  padding: 3rem;
+  color: var(--neutral-600);
+}
+
+/* ============================================
+   RESPONSIVE MEJORADO
+   ============================================ */
+
+@media (max-width: 768px) {
+  .horarios-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .horarios-filters-container {
+    grid-template-columns: 1fr;
+  }
+
+  .horarios-form-actions {
+    flex-direction: column;
+  }
+
+  .horarios-form-actions > * {
+    width: 100%;
+  }
+
+  .horarios-section-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .horarios-section-actions {
+    width: 100%;
+    flex-direction: column;
+  }
+
+  .horarios-dias-container {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .horarios-rango-fechas {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .horarios-fecha-inicio,
+  .horarios-fecha-fin {
+    width: 100%;
+    min-width: auto;
+  }
+
+  .horarios-rango-separador {
+    text-align: center;
+    padding: 4px 0;
+  }
+
+  .horarios-import-modal-content {
+    max-width: 95%;
+    padding: 0;
+  }
+
+  .horarios-import-header {
+    padding: 16px 20px;
+  }
+
+  .horarios-import-body {
+    padding: 20px;
+  }
+
+  .horarios-import-actions {
+    flex-direction: column;
+  }
+
+  .horarios-import-actions button {
+    width: 100%;
+  }
+
+  .horarios-import-result-stats {
+    grid-template-columns: 1fr;
+  }
+
+  .horarios-clase-actions {
+    flex-wrap: wrap;
+  }
+
+  .horarios-action-btn {
+    flex: 1;
+    min-width: 80px;
+  }
+
+  .horarios-table-wrapper {
+    overflow-x: scroll;
+  }
+
+  .horarios-table {
+    min-width: 800px;
+  }
+}
+
+@media (max-width: 480px) {
+  .horarios-dias-container {
+    grid-template-columns: 1fr;
+  }
+
+  .horarios-import-modal-content {
+    max-width: 100%;
+    border-radius: 8px;
+  }
+
+  .horarios-import-title {
+    font-size: 1.1rem;
+  }
+
+  .horarios-import-text {
+    font-size: 0.9rem;
+  }
+
+  .horarios-header-actions {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .horarios-header-actions button {
+    width: 100%;
+  }
+
+  .horarios-filters-container {
+    padding: 0.75rem;
+  }
+
+  .horarios-form-container {
+    padding: 16px;
+  }
+
+  .horarios-clase-actions {
+    flex-direction: column;
+  }
+
+  .horarios-action-btn {
+    width: 100%;
+  }
+}
+

@@ -36,6 +36,51 @@ const transformIdInstructor = (val) => {
   return val;
 };
 
+// Mapeo de días de la semana en español a números (0=Domingo, 1=Lunes, etc.)
+const DIAS_SEMANA_MAP = {
+  'lunes': 1,
+  'martes': 2,
+  'miércoles': 3,
+  'miercoles': 3,
+  'jueves': 4,
+  'viernes': 5,
+  'sábado': 6,
+  'sabado': 6,
+  'domingo': 0
+};
+
+// Función helper para transformar dias_semana de strings a números
+const transformDiasSemana = (val) => {
+  if (!val) return undefined;
+  if (!Array.isArray(val)) return val;
+  
+  // Si ya es un array de números, retornarlo
+  if (val.every(item => typeof item === 'number')) {
+    return val;
+  }
+  
+  // Si es un array de strings, convertirlos a números
+  if (val.every(item => typeof item === 'string')) {
+    const diasNumericos = val
+      .map(d => String(d).trim().toLowerCase())
+      .map(d => DIAS_SEMANA_MAP[d])
+      .filter(d => d !== undefined);
+    
+    // Eliminar duplicados
+    return [...new Set(diasNumericos)];
+  }
+  
+  // Si es un array mixto, intentar convertir cada elemento
+  return val.map(item => {
+    if (typeof item === 'number') return item;
+    if (typeof item === 'string') {
+      const diaLower = item.trim().toLowerCase();
+      return DIAS_SEMANA_MAP[diaLower] !== undefined ? DIAS_SEMANA_MAP[diaLower] : null;
+    }
+    return null;
+  }).filter(item => item !== null);
+};
+
 export const crearClaseSchema = z.object({
   id_ambiente: z.preprocess(
     transformIdAmbiente,
@@ -48,7 +93,13 @@ export const crearClaseSchema = z.object({
   nombre_clase: z.string().min(3, 'El nombre debe tener al menos 3 caracteres').max(200).optional(),
   codigo_ficha: z.string().min(1).max(50).optional(),
   descripcion: z.string().max(1000).nullable().optional(),
-  fecha_clase: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Formato de fecha inválido (YYYY-MM-DD)'),
+  fecha_clase: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Formato de fecha inválido (YYYY-MM-DD)').optional(),
+  fecha_inicio: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Formato de fecha inválido (YYYY-MM-DD)').optional(),
+  fecha_fin: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Formato de fecha inválido (YYYY-MM-DD)').optional(),
+  dias_semana: z.preprocess(
+    transformDiasSemana,
+    z.array(z.number().int().min(0).max(6)).optional()
+  ),
   hora_inicio: z.preprocess(
     transformHora,
     z.string().regex(/^\d{2}:\d{2}:\d{2}$/, 'Formato de hora inválido (HH:MM o HH:MM:SS)')
@@ -70,6 +121,34 @@ export const crearClaseSchema = z.object({
 }, {
   message: 'La hora de fin debe ser posterior a la hora de inicio',
   path: ['hora_fin'],
+}).refine((data) => {
+  // Si hay dias_semana, fecha_inicio y fecha_fin son obligatorias
+  if (data.dias_semana && Array.isArray(data.dias_semana) && data.dias_semana.length > 0) {
+    return !!(data.fecha_inicio && data.fecha_fin);
+  }
+  return true;
+}, {
+  message: 'Para usar días de semana, debe proporcionar fecha_inicio y fecha_fin',
+  path: ['fecha_inicio'],
+}).refine((data) => {
+  // Si hay dias_semana, validar que fecha_inicio <= fecha_fin
+  if (data.dias_semana && Array.isArray(data.dias_semana) && data.dias_semana.length > 0) {
+    if (data.fecha_inicio && data.fecha_fin) {
+      return data.fecha_inicio <= data.fecha_fin;
+    }
+  }
+  return true;
+}, {
+  message: 'La fecha de inicio debe ser menor o igual a la fecha de fin',
+  path: ['fecha_fin'],
+}).refine((data) => {
+  // Debe tener fecha_clase O (fecha_inicio + fecha_fin + dias_semana)
+  const tieneFechaUnica = !!data.fecha_clase;
+  const tieneRangoConDias = !!(data.fecha_inicio && data.fecha_fin && data.dias_semana && Array.isArray(data.dias_semana) && data.dias_semana.length > 0);
+  return tieneFechaUnica || tieneRangoConDias;
+}, {
+  message: 'Debe proporcionar fecha_clase (clase única) o fecha_inicio + fecha_fin + dias_semana (clases recurrentes)',
+  path: ['fecha_clase'],
 });
 
 export const actualizarClaseSchema = z.object({

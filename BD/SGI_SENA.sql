@@ -1030,7 +1030,8 @@ BEGIN
 END;
 //
 
--- Procedimiento para iniciar una clase y asignar responsabilidades
+-- Procedimiento mejorado para iniciar una clase
+-- Asigna responsabilidades de ambiente Y equipos del ambiente al instructor
 CREATE PROCEDURE sp_iniciar_clase(IN p_id_clase INT, IN p_fecha_inicio_real DATETIME)
 BEGIN
     DECLARE v_id_ambiente INT;
@@ -1040,10 +1041,12 @@ BEGIN
     DECLARE v_fecha_clase DATE;
     DECLARE v_done INT DEFAULT FALSE;
     DECLARE v_id_aprendiz INT;
+    DECLARE v_codigo_equipo INT;
     DECLARE cur_aprendices CURSOR FOR 
         SELECT id_aprendiz FROM Participantes_Clase WHERE id_clase = p_id_clase AND presente = TRUE;
     DECLARE CONTINUE HANDLER FOR NOT FOUND SET v_done = TRUE;
     
+    -- Obtener datos de la clase
     SELECT id_ambiente, id_instructor, hora_fin, fecha_clase 
     INTO v_id_ambiente, v_id_instructor, v_hora_fin, v_fecha_clase
     FROM Clases WHERE id_clase = p_id_clase;
@@ -1054,34 +1057,98 @@ BEGIN
     
     SET v_fecha_fin_estimada = CONCAT(v_fecha_clase, ' ', v_hora_fin);
     
-    INSERT INTO Responsabilidades_Ambiente (id_ambiente, id_clase, id_usuario, tipo_responsabilidad, fecha_inicio, fecha_fin, estado_responsabilidad, creado_por)
-    VALUES (v_id_ambiente, p_id_clase, v_id_instructor, 'Principal', p_fecha_inicio_real, v_fecha_fin_estimada, 'Activa', v_id_instructor);
+    -- 1. Asignar responsabilidad principal del ambiente al instructor
+    INSERT INTO Responsabilidades_Ambiente 
+        (id_ambiente, id_clase, id_usuario, tipo_responsabilidad, fecha_inicio, fecha_fin, estado_responsabilidad, asignacion_automatica, creado_por)
+    VALUES (v_id_ambiente, p_id_clase, v_id_instructor, 'Principal', p_fecha_inicio_real, v_fecha_fin_estimada, 'Activa', TRUE, v_id_instructor);
     
+    -- 2. Asignar TODOS los equipos del ambiente al instructor temporalmente
+    -- Esto permite que el instructor tenga responsabilidad sobre el inventario durante la clase
+    -- Usar un cursor dinámico para los equipos
+    BEGIN
+        DECLARE v_done_equipos INT DEFAULT FALSE;
+        DECLARE cur_equipos CURSOR FOR 
+            SELECT codigo_equipo FROM Elementos WHERE id_ambiente = v_id_ambiente AND estado_fisico != 'Baja';
+        DECLARE CONTINUE HANDLER FOR NOT FOUND SET v_done_equipos = TRUE;
+        
+        SET v_done_equipos = FALSE;
+        OPEN cur_equipos;
+        equipos_loop: LOOP
+            FETCH cur_equipos INTO v_codigo_equipo;
+            IF v_done_equipos THEN LEAVE equipos_loop; END IF;
+            
+            -- Insertar o actualizar asignación temporal de equipo
+            -- Nota: Si hay constraint UNIQUE en (codigo_equipo, id_usuario), usar ON DUPLICATE KEY UPDATE
+            -- Si no, usar INSERT IGNORE o verificar existencia primero
+            INSERT INTO Responsables_Equipo 
+                (codigo_equipo, id_usuario, tipo_responsabilidad, estado_responsabilidad, fecha_asignacion, fecha_desvinculacion, observaciones, asignado_por)
+            VALUES (v_codigo_equipo, v_id_instructor, 'Principal', 'Activo', p_fecha_inicio_real, v_fecha_fin_estimada, 
+                    CONCAT('Asignación automática por inicio de clase #', p_id_clase), v_id_instructor);
+        END LOOP;
+        CLOSE cur_equipos;
+    END;
+    
+    -- 3. Asignar responsabilidades secundarias a aprendices
+    SET v_done = FALSE;
     OPEN cur_aprendices;
     read_loop: LOOP
         FETCH cur_aprendices INTO v_id_aprendiz;
         IF v_done THEN LEAVE read_loop; END IF;
         
-        INSERT INTO Responsabilidades_Ambiente (id_ambiente, id_clase, id_usuario, tipo_responsabilidad, fecha_inicio, fecha_fin, estado_responsabilidad, creado_por)
-        VALUES (v_id_ambiente, p_id_clase, v_id_aprendiz, 'Secundario', p_fecha_inicio_real, v_fecha_fin_estimada, 'Activa', v_id_instructor);
+        INSERT INTO Responsabilidades_Ambiente 
+            (id_ambiente, id_clase, id_usuario, tipo_responsabilidad, fecha_inicio, fecha_fin, estado_responsabilidad, asignacion_automatica, creado_por)
+        VALUES (v_id_ambiente, p_id_clase, v_id_aprendiz, 'Secundario', p_fecha_inicio_real, v_fecha_fin_estimada, 'Activa', TRUE, v_id_instructor);
     END LOOP;
     CLOSE cur_aprendices;
     
+    -- 4. Actualizar estado de la clase
     UPDATE Clases SET estado_clase = 'En Curso', fecha_inicio_real = p_fecha_inicio_real WHERE id_clase = p_id_clase;
     
-    SELECT 'Clase iniciada y responsabilidades asignadas correctamente' AS mensaje;
+    SELECT 'Clase iniciada correctamente. Responsabilidades de ambiente y equipos asignadas al instructor.' AS mensaje;
 END;
 //
 
--- Procedimiento para finalizar una clase y finalizar responsabilidades
+-- Procedimiento mejorado para finalizar una clase
+-- Revierte las asignaciones de equipos cuando la clase finaliza
 CREATE PROCEDURE sp_finalizar_clase(IN p_id_clase INT, IN p_fecha_fin_real DATETIME)
 BEGIN
+    DECLARE v_id_ambiente INT;
+    DECLARE v_id_instructor INT;
     DECLARE v_fecha_fin DATETIME;
+    
+    -- Obtener datos de la clase
+    SELECT id_ambiente, id_instructor INTO v_id_ambiente, v_id_instructor
+    FROM Clases WHERE id_clase = p_id_clase;
+    
+    IF v_id_ambiente IS NULL THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Clase no encontrada';
+    END IF;
+    
     SET v_fecha_fin = COALESCE(p_fecha_fin_real, NOW());
     
+    -- 1. Finalizar todas las responsabilidades de ambiente asociadas a esta clase
+    UPDATE Responsabilidades_Ambiente 
+    SET estado_responsabilidad = 'Finalizada',
+        fecha_fin = v_fecha_fin
+    WHERE id_clase = p_id_clase 
+      AND estado_responsabilidad = 'Activa';
+    
+    -- 2. Revertir asignaciones de equipos del ambiente al instructor
+    -- Solo las asignaciones automáticas creadas por esta clase
+    UPDATE Responsables_Equipo 
+    SET estado_responsabilidad = 'Inactivo',
+        fecha_desvinculacion = v_fecha_fin
+    WHERE id_usuario = v_id_instructor
+      AND estado_responsabilidad = 'Activo'
+      AND observaciones LIKE CONCAT('%inicio de clase #', p_id_clase, '%')
+      AND codigo_equipo IN (
+          SELECT codigo_equipo FROM Elementos WHERE id_ambiente = v_id_ambiente
+      );
+    
+    -- 3. Actualizar estado de la clase
     UPDATE Clases SET estado_clase = 'Finalizada', fecha_fin_real = v_fecha_fin WHERE id_clase = p_id_clase;
     
-    SELECT 'Clase finalizada y responsabilidades cerradas correctamente' AS mensaje;
+    SELECT 'Clase finalizada correctamente. Responsabilidades y asignaciones de equipos revertidas.' AS mensaje;
 END;
 //
 

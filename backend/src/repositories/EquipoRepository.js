@@ -1,4 +1,5 @@
 import { BaseRepository } from './BaseRepository.js';
+import { logger } from '../utils/logger.js';
 
 /**
  * EquipoRepository - Repositorio para operaciones de equipos
@@ -133,12 +134,18 @@ export class EquipoRepository extends BaseRepository {
 
     // Filtro por rango de valor
     if (filters.valor_min !== undefined && filters.valor_min !== null) {
-      conditions.push('COALESCE(e.valor_ingreso, 0) >= ?');
-      params.push(parseFloat(filters.valor_min));
+      const valorMin = parseFloat(filters.valor_min);
+      if (!isNaN(valorMin)) {
+        conditions.push('COALESCE(e.valor_ingreso, 0) >= ?');
+        params.push(valorMin);
+      }
     }
     if (filters.valor_max !== undefined && filters.valor_max !== null) {
-      conditions.push('COALESCE(e.valor_ingreso, 0) <= ?');
-      params.push(parseFloat(filters.valor_max));
+      const valorMax = parseFloat(filters.valor_max);
+      if (!isNaN(valorMax)) {
+        conditions.push('COALESCE(e.valor_ingreso, 0) <= ?');
+        params.push(valorMax);
+      }
     }
 
     // Filtro por tipo
@@ -148,17 +155,61 @@ export class EquipoRepository extends BaseRepository {
     }
 
     // Construir WHERE clause
+    const whereClause = conditions.length > 0 ? ` WHERE ${conditions.join(' AND ')}` : '';
     if (conditions.length > 0) {
-      query += ` WHERE ${conditions.join(' AND ')}`;
+      query += whereClause;
     }
 
-    // Contar total de registros
-    const countQuery = query.replace(
-      /SELECT[\s\S]*?FROM/,
-      'SELECT COUNT(DISTINCT e.codigo_equipo) AS total FROM'
-    );
-    const [[{ total }]] = await this.db.execute(countQuery, params);
-    const totalRecords = Number(total) || 0;
+    // Contar total de registros ANTES de agregar ORDER BY, LIMIT y OFFSET
+    // Construir la query de conteo usando la misma estructura
+    const countQuery = `
+      SELECT COUNT(DISTINCT e.codigo_equipo) AS total
+      FROM Elementos e
+      LEFT JOIN Ambientes a ON a.id_ambiente = e.id_ambiente
+      LEFT JOIN Estado_Equipo ee ON e.codigo_equipo = ee.codigo_equipo
+      LEFT JOIN Categorias_Equipo c ON c.id_categoria = e.id_categoria
+      ${whereClause}
+    `;
+    
+    // Usar los mismos parámetros pero sin limit y offset (que se agregan después)
+    // Si no hay condiciones, el array de params estará vacío, lo cual es correcto
+    const countParams = conditions.length > 0 ? [...params] : [];
+    
+    // Validar que no haya valores undefined o null problemáticos
+    const sanitizedCountParams = countParams.map(param => {
+      if (param === undefined) {
+        logger.warn('Parámetro undefined encontrado en countQuery, convirtiendo a null');
+        return null;
+      }
+      // Asegurar que los números sean números válidos
+      if (typeof param === 'number' && (isNaN(param) || !isFinite(param))) {
+        logger.warn('Parámetro numérico inválido encontrado en countQuery, convirtiendo a null');
+        return null;
+      }
+      return param;
+    });
+    
+    // Contar placeholders en la query
+    const countPlaceholderCount = (countQuery.match(/\?/g) || []).length;
+    if (countPlaceholderCount !== sanitizedCountParams.length) {
+      logger.error('Desajuste de parámetros en countQuery', {
+        query: countQuery,
+        placeholderCount: countPlaceholderCount,
+        paramsCount: sanitizedCountParams.length,
+        params: sanitizedCountParams
+      });
+      throw new Error(`Desajuste de parámetros: ${countPlaceholderCount} placeholders, ${sanitizedCountParams.length} parámetros`);
+    }
+    
+    // Logging para depuración
+    logger.debug('Ejecutando countQuery', {
+      query: countQuery.trim(),
+      paramsCount: sanitizedCountParams.length,
+      params: sanitizedCountParams
+    });
+    
+    const countResult = await this.execute(countQuery, sanitizedCountParams);
+    const totalRecords = Number(countResult[0]?.total) || 0;
 
     // Ordenamiento
     const orderByField = safeSortField === 'nombre_ambiente' || safeSortField === 'codigo_ambiente'
@@ -167,10 +218,55 @@ export class EquipoRepository extends BaseRepository {
     query += ` ORDER BY ${orderByField} ${sortOrder}`;
 
     // Paginación
-    query += ` LIMIT ? OFFSET ?`;
-    params.push(limit, offset);
+    // IMPORTANTE: LIMIT y OFFSET deben ser valores literales, no parámetros preparados
+    // Algunas versiones de MySQL/MariaDB no soportan parámetros en LIMIT/OFFSET
+    const validLimit = Number.isInteger(limit) && limit > 0 ? limit : 50;
+    const validOffset = Number.isInteger(offset) && offset >= 0 ? offset : 0;
+    
+    // Sanitizar valores para prevenir SQL injection (ya son números enteros validados)
+    // Asegurar que sean enteros positivos
+    const safeLimit = Math.max(1, Math.min(100, Math.floor(validLimit)));
+    const safeOffset = Math.max(0, Math.floor(validOffset));
+    
+    query += ` LIMIT ${safeLimit} OFFSET ${safeOffset}`;
+    
+    // Validar que no haya valores undefined o null problemáticos
+    // NOTA: Ya no incluimos limit y offset en params porque los usamos como literales
+    const sanitizedParams = params.map(param => {
+      if (param === undefined) {
+        logger.warn('Parámetro undefined encontrado en query principal, convirtiendo a null');
+        return null;
+      }
+      // Validar NaN y valores infinitos
+      if (typeof param === 'number' && (isNaN(param) || !isFinite(param))) {
+        logger.warn('Parámetro numérico inválido encontrado en query principal, convirtiendo a null');
+        return null;
+      }
+      return param;
+    });
+    
+    // Contar placeholders en la query (ya no incluye LIMIT y OFFSET)
+    const mainPlaceholderCount = (query.match(/\?/g) || []).length;
+    if (mainPlaceholderCount !== sanitizedParams.length) {
+      logger.error('Desajuste de parámetros en query principal', {
+        query: query.trim(),
+        placeholderCount: mainPlaceholderCount,
+        paramsCount: sanitizedParams.length,
+        params: sanitizedParams
+      });
+      throw new Error(`Desajuste de parámetros: ${mainPlaceholderCount} placeholders, ${sanitizedParams.length} parámetros`);
+    }
+    
+    // Logging para depuración
+    logger.debug('Ejecutando query principal', {
+      query: query.trim(),
+      paramsCount: sanitizedParams.length,
+      params: sanitizedParams,
+      limit: safeLimit,
+      offset: safeOffset
+    });
 
-    const equipos = await this.execute(query, params);
+    const equipos = await this.execute(query, sanitizedParams);
 
     return {
       equipos,

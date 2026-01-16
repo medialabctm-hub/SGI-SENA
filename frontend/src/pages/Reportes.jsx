@@ -4,7 +4,7 @@ import Sidebar from '../components/Sidebar'
 import Toast from '../components/Toast'
 import ConfirmModal from '../components/ConfirmModal'
 import CustomSelect from '../components/CustomSelect'
-import { FiFileText, FiEye, FiEdit, FiTrash2, FiX, FiPackage, FiType, FiSearch, FiCheck, FiList } from 'react-icons/fi'
+import { FiFileText, FiEye, FiEdit, FiTrash2, FiX, FiPackage, FiType, FiSearch, FiCheck, FiList, FiDownload } from 'react-icons/fi'
 import { parseApiResponse, buildErrorMessage } from '../utils/api'
 import '../styles/equipos.css'
 import '../styles/reportes.css'
@@ -34,6 +34,15 @@ export default function Reportes() {
   const [equipoEncontrado, setEquipoEncontrado] = useState(null)
   const [buscandoEquipo, setBuscandoEquipo] = useState(false)
   const [loadingCrear, setLoadingCrear] = useState(false)
+  const [showPDFModal, setShowPDFModal] = useState(false)
+  const [pdfFilters, setPdfFilters] = useState({
+    tipo_reporte: 'Equipos',
+    id_ambiente: '',
+    fecha_inicio: '',
+    fecha_fin: ''
+  })
+  const [generandoPDF, setGenerandoPDF] = useState(false)
+  const [ambientes, setAmbientes] = useState([])
 
   useEffect(() => {
     try {
@@ -97,8 +106,23 @@ export default function Reportes() {
   useEffect(() => {
     if (activeTab === 'ver') {
       fetchReportes()
+      fetchAmbientes()
     }
   }, [activeTab])
+
+  async function fetchAmbientes() {
+    try {
+      const token = localStorage.getItem('token')
+      const res = await fetch('/api/ambientes/activos', {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      const data = await parseApiResponse(res)
+      setAmbientes(Array.isArray(data) ? data : [])
+    } catch (err) {
+      console.error('Error al obtener ambientes:', err)
+      setAmbientes([])
+    }
+  }
 
   async function fetchReportes() {
     setLoading(true)
@@ -180,16 +204,44 @@ export default function Reportes() {
     try {
       setLoadingCrear(true)
       const token = localStorage.getItem('token')
+      
+      // Preparar payload: codigo_equipo solo si existe, sino null
+      const payload = {
+        tipo_reporte: form.tipo_reporte,
+        titulo: form.titulo.trim(),
+        descripcion: form.descripcion.trim(),
+        codigo_equipo: form.codigo_equipo && form.codigo_equipo !== '' 
+          ? (typeof form.codigo_equipo === 'number' ? form.codigo_equipo : parseInt(form.codigo_equipo, 10))
+          : null
+      }
+      
       const res = await fetch('/api/reportes', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`
         },
-        body: JSON.stringify(form)
+        body: JSON.stringify(payload)
       })
 
       const data = await res.json()
+
+      if (!res.ok) {
+        // Mostrar errores de validación de forma más clara
+        if (data.details && Array.isArray(data.details)) {
+          const errores = data.details.map(d => d.message).join('. ')
+          setToast({ 
+            message: `Error de validación: ${errores}`,
+            type: 'error' 
+          })
+        } else {
+          setToast({ 
+            message: data.error || 'Error al crear el reporte',
+            type: 'error' 
+          })
+        }
+        return
+      }
 
       if (res.ok) {
         setToast({ 
@@ -275,6 +327,52 @@ export default function Reportes() {
     setDeleteConfirm({ open: true, id })
   }
 
+  async function generarPDF() {
+    setGenerandoPDF(true)
+    setToast(null)
+    try {
+      const token = localStorage.getItem('token')
+      const params = new URLSearchParams()
+      if (pdfFilters.tipo_reporte) params.append('tipo_reporte', pdfFilters.tipo_reporte)
+      if (pdfFilters.id_ambiente) params.append('id_ambiente', pdfFilters.id_ambiente)
+      if (pdfFilters.fecha_inicio) params.append('fecha_inicio', pdfFilters.fecha_inicio)
+      if (pdfFilters.fecha_fin) params.append('fecha_fin', pdfFilters.fecha_fin)
+
+      const res = await fetch(`/api/reportes/pdf?${params.toString()}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+
+      // Manejar código 403 (no autorizado) específicamente
+      if (res.status === 403) {
+        const errorData = await res.json().catch(() => ({}))
+        throw new Error(errorData.detalle || errorData.error || 'No tienes permiso para generar reportes PDF. Solo Administradores y Cuentadantes pueden realizar esta acción.')
+      }
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}))
+        throw new Error(errorData.detalle || errorData.error || 'Error al generar el PDF')
+      }
+
+      // Descargar el PDF
+      const blob = await res.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `Reporte_Equipos_${new Date().toISOString().split('T')[0]}.pdf`
+      document.body.appendChild(a)
+      a.click()
+      window.URL.revokeObjectURL(url)
+      document.body.removeChild(a)
+
+      setToast({ message: 'PDF generado y descargado correctamente', type: 'success' })
+      setShowPDFModal(false)
+    } catch (err) {
+      setToast({ message: buildErrorMessage(err, 'Error al generar el PDF'), type: 'error' })
+    } finally {
+      setGenerandoPDF(false)
+    }
+  }
+
   async function handleDelete() {
     const id = deleteConfirm.id
     if (!id) return
@@ -348,6 +446,16 @@ export default function Reportes() {
               <FiFileText size={18} />
               Crear Reporte
             </button>
+            {(user?.nombre_rol === 'Administrador' || user?.nombre_rol === 'Cuentadante') && (
+              <button
+                onClick={() => setShowPDFModal(true)}
+                className="reportes-tab-button reportes-pdf-button"
+                title="Generar reporte en PDF"
+              >
+                <FiDownload size={18} />
+                Generar PDF
+              </button>
+            )}
           </div>
 
           <div className="form-divider form-divider-no-margin"></div>
@@ -712,6 +820,110 @@ export default function Reportes() {
                 )}
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Modal para generar PDF */}
+      {showPDFModal && (
+        <div className="reportes-modal-overlay" onClick={() => setShowPDFModal(false)}>
+          <div className="reportes-modal-sheet" onClick={(e) => e.stopPropagation()}>
+            <div className="reportes-modal-header">
+              <h3 className="reportes-modal-title">Generar Reporte en PDF</h3>
+              <button
+                onClick={() => setShowPDFModal(false)}
+                className="reportes-modal-close-btn"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="reportes-modal-body">
+              <p className="reportes-modal-description">
+                Genera un reporte en PDF con información de equipos, ambientes e instructores.
+                Puedes filtrar por ambiente y rango de fechas.
+              </p>
+
+              <div className="form-group">
+                <label>Tipo de Reporte</label>
+                <CustomSelect
+                  name="tipo_reporte"
+                  value={pdfFilters.tipo_reporte}
+                  onChange={(e) => setPdfFilters({ ...pdfFilters, tipo_reporte: e.target.value })}
+                  options={['Equipos', 'General', 'Mantenimiento', 'Novedades', 'Uso']}
+                  placeholder="Seleccionar tipo"
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Ambiente (Opcional)</label>
+                <CustomSelect
+                  name="id_ambiente"
+                  value={pdfFilters.id_ambiente}
+                  onChange={(e) => setPdfFilters({ ...pdfFilters, id_ambiente: e.target.value })}
+                  options={[
+                    { value: '', label: 'Todos los ambientes' },
+                    ...ambientes.map(amb => ({
+                      value: amb.id_ambiente.toString(),
+                      label: `${amb.codigo_ambiente} - ${amb.nombre_ambiente}`
+                    }))
+                  ]}
+                  placeholder="Seleccionar ambiente"
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Fecha Inicio (Opcional)</label>
+                <input
+                  type="date"
+                  value={pdfFilters.fecha_inicio}
+                  onChange={(e) => setPdfFilters({ ...pdfFilters, fecha_inicio: e.target.value })}
+                  className="reportes-modal-field"
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Fecha Fin (Opcional)</label>
+                <input
+                  type="date"
+                  value={pdfFilters.fecha_fin}
+                  onChange={(e) => setPdfFilters({ ...pdfFilters, fecha_fin: e.target.value })}
+                  className="reportes-modal-field"
+                />
+              </div>
+
+              <div className="reportes-modal-info-box">
+                <strong>Información incluida en el PDF:</strong>
+                <ul>
+                  <li>Lista de equipos por ambiente</li>
+                  <li>Instructores asignados a cada ambiente</li>
+                  <li>Cuentadantes secundarios (instructores con ambientes asignados)</li>
+                  <li>Detalles de equipos (código, tipo, modelo, estado)</li>
+                </ul>
+              </div>
+
+              <div className="reportes-modal-actions">
+                <button
+                  onClick={() => setShowPDFModal(false)}
+                  className="btn-secondary btn-modern reportes-modal-action-button"
+                  disabled={generandoPDF}
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={generarPDF}
+                  className="btn-primary btn-modern reportes-modal-action-button"
+                  disabled={generandoPDF}
+                >
+                  {generandoPDF ? 'Generando...' : (
+                    <>
+                      <FiDownload size={16} />
+                      Generar y Descargar PDF
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

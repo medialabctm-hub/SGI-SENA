@@ -2,6 +2,7 @@ import defaultDb from '../config/dbconfig.js'
 import { createForUsers } from '../services/notificationService.js'
 import { logger } from '../utils/logger.js'
 import { obtenerEquipoPorCodigo } from '../utils/sqlQueries.js'
+import PDFDocument from 'pdfkit'
 
 /**
  * Crear un nuevo reporte
@@ -422,6 +423,332 @@ export async function obtenerTiposReporte(req, res) {
   } catch (err) {
     logger.error('Error al obtener tipos de reporte', { error: err.message, stack: err.stack })
     return res.json(['General', 'Equipos', 'Mantenimiento', 'Novedades', 'Uso', 'Otro'])
+  }
+}
+
+/**
+ * Generar reporte en PDF con equipos, instructores y cuentadantes secundarios
+ * Identifica instructores como cuentadantes secundarios cuando tienen uno o más ambientes asignados
+ */
+export async function generarReportePDF(req, res) {
+  try {
+    const { tipo_reporte = 'Equipos', id_ambiente, fecha_inicio, fecha_fin } = req.query;
+    const userId = req.user?.id;
+    const userRole = req.user?.rol;
+
+    // Los permisos ya fueron validados por el middleware requireAnyPermission
+    // Solo Administradores y Cuentadantes tienen PERMISSIONS.REPORTES.VIEW según permissions.js
+
+    // Crear documento PDF
+    const doc = new PDFDocument({
+      size: 'LETTER',
+      margins: { top: 50, bottom: 50, left: 50, right: 50 }
+    });
+
+    // Configurar headers para descarga
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="Reporte_Equipos_${Date.now()}.pdf"`);
+
+    // Pipe del PDF a la respuesta
+    doc.pipe(res);
+
+    // Encabezado del documento
+    doc.fontSize(20).font('Helvetica-Bold').text('REPORTE DE EQUIPOS E INSTRUCTORES', { align: 'center' });
+    doc.moveDown(0.5);
+    doc.fontSize(12).font('Helvetica').text('Sistema de Gestión de Inventarios SENA', { align: 'center' });
+    doc.moveDown(0.5);
+    doc.fontSize(10).text(`Fecha de generación: ${new Date().toLocaleString('es-ES')}`, { align: 'center' });
+    doc.moveDown(1);
+
+    // Línea separadora
+    doc.moveTo(50, doc.y).lineTo(550, doc.y).stroke();
+    doc.moveDown(1);
+
+    // Obtener equipos con sus ambientes
+    let queryEquipos = `
+      SELECT 
+        e.codigo_equipo,
+        e.placa,
+        e.tipo,
+        e.modelo,
+        e.consecutivo,
+        e.descripcion,
+        e.r_centro,
+        e.estado_fisico,
+        a.id_ambiente,
+        a.nombre_ambiente,
+        a.codigo_ambiente,
+        c.nombre_categoria,
+        u_cuentadante.nombre_usuario AS cuentadante_principal,
+        u_cuentadante.cedula AS cuentadante_cedula
+      FROM Elementos e
+      LEFT JOIN Ambientes a ON e.id_ambiente = a.id_ambiente
+      LEFT JOIN Categorias_Equipo c ON e.id_categoria = c.id_categoria
+      LEFT JOIN Usuarios u_cuentadante ON e.id_cuentadante = u_cuentadante.id_usuario
+      WHERE 1=1
+    `;
+    const paramsEquipos = [];
+
+    if (id_ambiente) {
+      queryEquipos += ' AND e.id_ambiente = ?';
+      paramsEquipos.push(id_ambiente);
+    }
+
+    queryEquipos += ' ORDER BY a.nombre_ambiente, e.tipo, e.placa';
+
+    const [equipos] = await defaultDb.execute(queryEquipos, paramsEquipos);
+
+    if (equipos.length === 0) {
+      doc.fontSize(14).font('Helvetica-Bold').text('No se encontraron equipos para el reporte.', { align: 'center' });
+      doc.end();
+      return;
+    }
+
+    // Agrupar equipos por ambiente
+    const equiposPorAmbiente = {};
+    equipos.forEach(equipo => {
+      const ambienteKey = equipo.id_ambiente || 'sin_ambiente';
+      if (!equiposPorAmbiente[ambienteKey]) {
+        equiposPorAmbiente[ambienteKey] = {
+          ambiente: equipo.nombre_ambiente || 'Sin ambiente asignado',
+          codigo_ambiente: equipo.codigo_ambiente || 'N/A',
+          equipos: []
+        };
+      }
+      equiposPorAmbiente[ambienteKey].equipos.push(equipo);
+    });
+
+    // Procesar cada ambiente
+    for (const [ambienteKey, datosAmbiente] of Object.entries(equiposPorAmbiente)) {
+      // Verificar si necesitamos nueva página
+      if (doc.y > 700) {
+        doc.addPage();
+      }
+
+      // Título del ambiente
+      doc.fontSize(16).font('Helvetica-Bold').fillColor('black');
+      doc.text(`AMBIENTE: ${datosAmbiente.ambiente}`, { underline: true });
+      doc.moveDown(0.3);
+      doc.fontSize(10).font('Helvetica').text(`Código: ${datosAmbiente.codigo_ambiente}`);
+      doc.moveDown(0.5);
+
+      // Obtener ID del ambiente (puede venir de diferentes fuentes)
+      const ambienteId = ambienteKey !== 'sin_ambiente' 
+        ? parseInt(ambienteKey, 10) 
+        : null;
+
+      if (!ambienteId) {
+        // Si no hay ambiente válido, continuar con el siguiente
+        continue;
+      }
+
+      // Obtener instructores asignados a este ambiente
+      let queryInstructores = `
+        SELECT DISTINCT
+          u.id_usuario,
+          u.nombre_usuario,
+          u.cedula,
+          r.nombre_rol,
+          ra.tipo_responsabilidad,
+          COUNT(DISTINCT ra.id_responsabilidad_ambiente) AS total_ambientes_asignados
+        FROM Responsabilidades_Ambiente ra
+        INNER JOIN Usuarios u ON ra.id_usuario = u.id_usuario
+        INNER JOIN Roles r ON u.id_rol = r.id_rol
+        WHERE ra.id_ambiente = ?
+          AND ra.estado_responsabilidad = 'Activa'
+          AND r.nombre_rol = 'Instructor'
+          AND (ra.fecha_fin IS NULL OR ra.fecha_fin >= NOW())
+      `;
+      const paramsInstructores = [ambienteId];
+
+      if (fecha_inicio && fecha_fin) {
+        queryInstructores += ' AND ra.fecha_inicio <= ? AND (ra.fecha_fin IS NULL OR ra.fecha_fin >= ?)';
+        paramsInstructores.push(fecha_fin, fecha_inicio);
+      }
+
+      queryInstructores += ' GROUP BY u.id_usuario, u.nombre_usuario, u.cedula, r.nombre_rol, ra.tipo_responsabilidad';
+
+      const [instructores] = await defaultDb.execute(queryInstructores, paramsInstructores);
+
+      // Obtener cuentadantes secundarios (instructores con ambientes asignados)
+      const cuentadantesSecundarios = [];
+      for (const instructor of instructores) {
+        // Verificar si el instructor tiene uno o más ambientes asignados
+        const [ambientesAsignados] = await defaultDb.execute(
+          `SELECT COUNT(DISTINCT ra.id_ambiente) AS total
+           FROM Responsabilidades_Ambiente ra
+           WHERE ra.id_usuario = ?
+             AND ra.estado_responsabilidad = 'Activa'
+             AND (ra.fecha_fin IS NULL OR ra.fecha_fin >= NOW())`,
+          [instructor.id_usuario]
+        );
+
+        if (ambientesAsignados[0]?.total >= 1) {
+          cuentadantesSecundarios.push({
+            ...instructor,
+            es_cuentadante_secundario: true,
+            total_ambientes: ambientesAsignados[0].total
+          });
+        }
+      }
+
+      // Mostrar instructores a cargo
+      if (instructores.length > 0) {
+        doc.fontSize(12).font('Helvetica-Bold').text('Instructores a cargo:', { continued: false });
+        doc.moveDown(0.3);
+        
+        instructores.forEach((instructor, index) => {
+          const esSecundario = cuentadantesSecundarios.some(cs => cs.id_usuario === instructor.id_usuario);
+          doc.fontSize(10).font('Helvetica');
+          let textoInstructor = `${index + 1}. ${instructor.nombre_usuario} (${instructor.cedula})`;
+          if (esSecundario) {
+            textoInstructor += ' - Cuentadante Secundario';
+            doc.fillColor('blue');
+          } else {
+            doc.fillColor('black');
+          }
+          doc.text(textoInstructor);
+          doc.fillColor('black');
+        });
+        doc.moveDown(0.5);
+      } else {
+        doc.fontSize(10).font('Helvetica').text('No hay instructores asignados a este ambiente.', { continued: false });
+        doc.moveDown(0.5);
+      }
+
+      // Tabla de equipos
+      doc.fontSize(12).font('Helvetica-Bold').text('Equipos del ambiente:', { continued: false });
+      doc.moveDown(0.3);
+
+      // Encabezados de tabla
+      const startY = doc.y;
+      const colWidths = { placa: 80, tipo: 100, modelo: 100, estado: 80, cuentadante: 120 };
+      let currentX = 50;
+
+      doc.fontSize(9).font('Helvetica-Bold');
+      doc.text('Placa', currentX, startY);
+      currentX += colWidths.placa;
+      doc.text('Tipo', currentX, startY);
+      currentX += colWidths.tipo;
+      doc.text('Modelo', currentX, startY);
+      currentX += colWidths.modelo;
+      doc.text('Estado', currentX, startY);
+      currentX += colWidths.estado;
+      doc.text('Cuentadante', currentX, startY);
+
+      // Línea bajo encabezados
+      doc.moveTo(50, startY + 15).lineTo(550, startY + 15).stroke();
+      doc.y = startY + 20;
+
+      // Filas de equipos
+      doc.fontSize(8).font('Helvetica');
+      datosAmbiente.equipos.forEach((equipo, index) => {
+        if (doc.y > 700) {
+          doc.addPage();
+          doc.y = 50;
+        }
+
+        currentX = 50;
+        doc.text(equipo.placa || 'N/A', currentX, doc.y, { width: colWidths.placa, ellipsis: true });
+        currentX += colWidths.placa;
+        doc.text(equipo.tipo || 'N/A', currentX, doc.y, { width: colWidths.tipo, ellipsis: true });
+        currentX += colWidths.tipo;
+        doc.text(equipo.modelo || 'N/A', currentX, doc.y, { width: colWidths.modelo, ellipsis: true });
+        currentX += colWidths.modelo;
+        doc.text(equipo.estado_fisico || 'N/A', currentX, doc.y, { width: colWidths.estado, ellipsis: true });
+        currentX += colWidths.estado;
+        doc.text(equipo.cuentadante_principal || 'Sin asignar', currentX, doc.y, { width: colWidths.cuentadante, ellipsis: true });
+
+        doc.y += 15;
+
+        // Línea separadora cada 5 filas
+        if ((index + 1) % 5 === 0) {
+          doc.moveTo(50, doc.y - 5).lineTo(550, doc.y - 5).stroke();
+          doc.y += 5;
+        }
+      });
+
+      doc.moveDown(1);
+      doc.fontSize(9).font('Helvetica').text(`Total equipos en este ambiente: ${datosAmbiente.equipos.length}`, { align: 'right' });
+      doc.moveDown(1.5);
+    }
+
+    // Resumen final
+    if (doc.y > 650) {
+      doc.addPage();
+    }
+
+    // Calcular totales de instructores y cuentadantes secundarios
+    let totalInstructores = 0;
+    let totalCuentadantesSecundarios = 0;
+    const instructoresUnicos = new Set();
+
+    for (const [ambienteKey, datosAmbiente] of Object.entries(equiposPorAmbiente)) {
+      const ambienteId = ambienteKey !== 'sin_ambiente' ? parseInt(ambienteKey, 10) : null;
+      if (!ambienteId) continue;
+
+      const [instructoresAmb] = await defaultDb.execute(
+        `SELECT DISTINCT u.id_usuario
+         FROM Responsabilidades_Ambiente ra
+         INNER JOIN Usuarios u ON ra.id_usuario = u.id_usuario
+         INNER JOIN Roles r ON u.id_rol = r.id_rol
+         WHERE ra.id_ambiente = ?
+           AND ra.estado_responsabilidad = 'Activa'
+           AND r.nombre_rol = 'Instructor'
+           AND (ra.fecha_fin IS NULL OR ra.fecha_fin >= NOW())`,
+        [ambienteId]
+      );
+
+      instructoresAmb.forEach(inst => instructoresUnicos.add(inst.id_usuario));
+
+      for (const instructor of instructoresAmb) {
+        const [ambientesAsignados] = await defaultDb.execute(
+          `SELECT COUNT(DISTINCT ra.id_ambiente) AS total
+           FROM Responsabilidades_Ambiente ra
+           WHERE ra.id_usuario = ?
+             AND ra.estado_responsabilidad = 'Activa'
+             AND (ra.fecha_fin IS NULL OR ra.fecha_fin >= NOW())`,
+          [instructor.id_usuario]
+        );
+
+        if (ambientesAsignados[0]?.total >= 1) {
+          totalCuentadantesSecundarios++;
+        }
+      }
+    }
+
+    totalInstructores = instructoresUnicos.size;
+
+    doc.fontSize(14).font('Helvetica-Bold').text('RESUMEN', { align: 'center' });
+    doc.moveDown(0.5);
+    doc.fontSize(10).font('Helvetica');
+    doc.text(`Total de ambientes: ${Object.keys(equiposPorAmbiente).length}`);
+    doc.text(`Total de equipos: ${equipos.length}`);
+    doc.text(`Total de instructores únicos: ${totalInstructores}`);
+    doc.text(`Total de cuentadantes secundarios: ${totalCuentadantesSecundarios}`);
+
+    // Pie de página
+    const totalPages = doc.bufferedPageRange().count;
+    for (let i = 0; i < totalPages; i++) {
+      doc.switchToPage(i);
+      doc.fontSize(8).font('Helvetica-Oblique').fillColor('gray');
+      doc.text(
+        `Página ${i + 1} de ${totalPages} - Generado el ${new Date().toLocaleDateString('es-ES')}`,
+        50,
+        doc.page.height - 30,
+        { align: 'center', width: 500 }
+      );
+    }
+
+    doc.end();
+  } catch (err) {
+    logger.error('Error al generar reporte PDF', { error: err.message, stack: err.stack });
+    if (!res.headersSent) {
+      return res.status(500).json({
+        error: 'Error al generar reporte PDF',
+        detalle: err.message
+      });
+    }
   }
 }
 
