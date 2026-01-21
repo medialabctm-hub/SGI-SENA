@@ -13,7 +13,7 @@
 
 .horarios-form-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 20px;
   margin-bottom: 20px;
 }
@@ -24,6 +24,32 @@
   gap: 8px;
 }
 
+/* Limitar ancho del row que contiene rango de fechas para que quepa Hora Inicio en la misma línea */
+.horarios-form-row:has(.horarios-rango-fechas) {
+  max-width: 380px;
+}
+
+/* Contenedor de horas agrupadas */
+.horarios-horas-container {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  width: fit-content;
+}
+
+.horarios-hora-item {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 150px;
+  max-width: 180px;
+}
+
+/* Limitar ancho del row que contiene horas agrupadas */
+.horarios-form-row:has(.horarios-horas-container) {
+  max-width: 380px;
+}
+
 .horarios-form-label {
   display: block;
   margin-bottom: 0.5rem;
@@ -32,27 +58,34 @@
   font-size: 0.95rem;
 }
 
+/* Estilos comunes para formulario */
 .horarios-form-input,
 .horarios-form-select,
 .horarios-form-textarea {
   width: 100%;
-  padding: 10px 14px;
-  border-radius: 8px;
-  border: 2px solid var(--success-800);
   font-size: 1rem;
   font-family: inherit;
-  background: white;
   color: var(--neutral-900);
   transition: all 0.2s ease;
 }
 
+/* Inputs y textareas nativos - necesitan el borde */
+.horarios-form-input,
+.horarios-form-textarea {
+  padding: 10px 14px;
+  border-radius: 8px;
+  border: 2px solid var(--success-800);
+  background: white;
+}
+
 .horarios-form-input:focus,
-.horarios-form-select:focus,
 .horarios-form-textarea:focus {
   outline: none;
   border-color: var(--success-900);
   box-shadow: 0 0 0 4px rgba(1, 175, 0, 0.1);
 }
+
+/* CustomSelect - NO necesita borde (ya lo tiene en customSelect.css) */
 
 .horarios-form-textarea {
   resize: vertical;
@@ -99,25 +132,30 @@
   color: var(--neutral-800);
 }
 
+/* Estilos comunes para filtros */
 .horarios-filter-input,
 .horarios-filter-select {
   width: 100%;
-  padding: 8px 12px;
-  border-radius: 8px;
-  border: 2px solid var(--success-800);
   font-size: 0.95rem;
   font-family: inherit;
-  background: white;
   color: var(--neutral-900);
   transition: all 0.2s ease;
 }
 
-.horarios-filter-input:focus,
-.horarios-filter-select:focus {
+/* Inputs nativos - necesitan el borde */
+.horarios-filter-input {
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 2px solid var(--success-800);
+  background: white;
+}
+
+.horarios-filter-input:focus {
   outline: none;
   border-color: var(--success-900);
-  box-shadow: 0 0 0 4px rgba(1, 175, 0, 0.1);
 }
+
+/* CustomSelect - NO necesita borde ni padding (ya lo tiene en customSelect.css) */
 
 /* Header de sección */
 .horarios-section-header {
@@ -402,14 +440,27 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator:hover {
 .horarios-rango-fechas {
   display: flex;
   align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
+  gap: 8px;
+  flex-wrap: nowrap;
+  width: fit-content;
+  max-width: 360px;
+  flex-direction: row;
+  justify-content: flex-end;
 }
 
 .horarios-fecha-inicio,
 .horarios-fecha-fin {
-  flex: 1;
-  min-width: 150px;
+  flex: 0 0 auto;
+  min-width: 140px;
+  max-width: 180px;
+  width: 180px;
+}
+
+/* Campos de fecha y hora menos anchos pero que quepan en el grid */
+.horarios-form-input[type="date"],
+.horarios-form-input[type="time"] {
+  width: 100%;
+  max-width: 180px;
 }
 
 .horarios-rango-separador {
@@ -417,6 +468,10 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator:hover {
   font-size: 0.9rem;
   font-weight: 500;
   white-space: nowrap;
+  flex-shrink: 0;
+  align-self: center;
+  margin: 0;
+  padding: 0;
 }
 
 /* ============================================

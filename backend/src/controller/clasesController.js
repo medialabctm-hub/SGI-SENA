@@ -192,12 +192,15 @@ export async function crearClase(req, res) {
           continue;
         }
 
+        // Normalizar nombre_clase a mayúsculas sostenidas antes de guardar
+        const nombreClaseNormalizado = nombre_clase ? normalizarNombreClase(nombre_clase) : null;
+        
         // Insertar la clase
         const [result] = await defaultDb.execute(
           `INSERT INTO Clases 
            (id_ambiente, id_instructor, nombre_clase, codigo_ficha, descripcion, fecha_clase, hora_inicio, hora_fin, observaciones, estado_clase, creado_por)
            VALUES (?, ?, ?, ?, ?, DATE(?), ?, ?, ?, 'Programada', ?)`,
-          [id_ambiente, instructorId, nombre_clase || null, codigo_ficha || null, descripcion || null, fechaNormalizada, horaInicioNormalizada, horaFinNormalizada, observaciones || null, creadoPor]
+          [id_ambiente, instructorId, nombreClaseNormalizado, codigo_ficha || null, descripcion || null, fechaNormalizada, horaInicioNormalizada, horaFinNormalizada, observaciones || null, creadoPor]
         );
 
         const idClase = result.insertId;
@@ -1020,6 +1023,10 @@ export async function actualizarClase(req, res) {
           }
           // Usar DATE() en MySQL para asegurar que se almacene correctamente
           sets.push(`${key} = DATE(?)`);
+        } else if (key === 'nombre_clase' && value) {
+          // Normalizar nombre_clase a mayúsculas sostenidas
+          value = normalizarNombreClase(value);
+          sets.push(`${key} = ?`);
         } else {
           sets.push(`${key} = ?`);
         }
@@ -1341,31 +1348,55 @@ function normalizarNombreClase(nombre) {
 
 /**
  * Obtener nombres únicos de clases de formación para autocompletado
+ * Combina nombres de la tabla Clases y de Nombres_Clases validados
  * Retorna lista de nombres únicos ordenados alfabéticamente
  */
 export async function obtenerNombresClases(req, res) {
   try {
     const { busqueda } = req.query; // Opcional: filtrar por búsqueda
     
-    let query = `
+    // Obtener nombres de clases existentes
+    let queryClases = `
       SELECT DISTINCT nombre_clase
       FROM Clases
       WHERE nombre_clase IS NOT NULL 
         AND nombre_clase != ''
     `;
     
+    // Obtener nombres validados de la tabla Nombres_Clases
+    let queryNombres = `
+      SELECT DISTINCT nombre_clase
+      FROM Nombres_Clases
+      WHERE activo = TRUE
+        AND nombre_clase IS NOT NULL 
+        AND nombre_clase != ''
+    `;
+    
     const params = [];
     
     if (busqueda && busqueda.trim()) {
-      query += ' AND nombre_clase LIKE ?';
+      queryClases += ' AND nombre_clase LIKE ?';
+      queryNombres += ' AND nombre_clase LIKE ?';
       params.push(`%${busqueda.trim()}%`);
     }
     
-    query += ' ORDER BY nombre_clase ASC';
+    queryClases += ' ORDER BY nombre_clase ASC';
+    queryNombres += ' ORDER BY nombre_clase ASC';
     
-    const [rows] = await defaultDb.execute(query, params);
+    // Ejecutar ambas consultas
+    const [rowsClases] = await defaultDb.execute(queryClases, busqueda && busqueda.trim() ? params : []);
+    const [rowsNombres] = await defaultDb.execute(queryNombres, busqueda && busqueda.trim() ? params : []);
     
-    const nombres = rows.map(row => row.nombre_clase).filter(n => n);
+    // Combinar y eliminar duplicados
+    const nombresSet = new Set();
+    rowsClases.forEach(row => {
+      if (row.nombre_clase) nombresSet.add(row.nombre_clase);
+    });
+    rowsNombres.forEach(row => {
+      if (row.nombre_clase) nombresSet.add(row.nombre_clase);
+    });
+    
+    const nombres = Array.from(nombresSet).sort();
     
     return res.json({
       ok: true,
@@ -1383,16 +1414,25 @@ export async function obtenerNombresClases(req, res) {
 
 /**
  * Crear un nuevo nombre de clase desde el frontend
+ * Guarda el nombre en la tabla Nombres_Clases para que aparezca en autocompletado
  * Valida duplicados mediante normalización
  */
 export async function crearNombreClase(req, res) {
   try {
     const { nombre_clase } = req.body;
+    const userId = req.user?.id;
     
     if (!nombre_clase || typeof nombre_clase !== 'string' || !nombre_clase.trim()) {
       return res.status(400).json({
         error: 'Campo obligatorio',
         detalle: 'El nombre de la clase es obligatorio'
+      });
+    }
+    
+    if (!userId) {
+      return res.status(401).json({
+        error: 'No autorizado',
+        detalle: 'Usuario no identificado'
       });
     }
     
@@ -1405,8 +1445,26 @@ export async function crearNombreClase(req, res) {
       });
     }
     
-    // Verificar si ya existe un nombre similar (normalizado)
-    const [existentes] = await defaultDb.execute(
+    // Verificar si ya existe un nombre similar (normalizado) en Nombres_Clases
+    const [existentesNombres] = await defaultDb.execute(
+      `SELECT id_nombre_clase, nombre_clase 
+       FROM Nombres_Clases 
+       WHERE nombre_normalizado = ? 
+         AND activo = TRUE
+       LIMIT 1`,
+      [nombreNormalizado]
+    );
+    
+    if (existentesNombres.length > 0) {
+      return res.status(409).json({
+        error: 'Nombre duplicado',
+        detalle: `Ya existe un nombre validado: "${existentesNombres[0].nombre_clase}"`,
+        nombre_existente: existentesNombres[0].nombre_clase
+      });
+    }
+    
+    // Verificar si ya existe en la tabla Clases
+    const [existentesClases] = await defaultDb.execute(
       `SELECT DISTINCT nombre_clase 
        FROM Clases 
        WHERE UPPER(TRIM(REPLACE(REPLACE(nombre_clase, '  ', ' '), CHAR(9), ' '))) = ? 
@@ -1414,26 +1472,33 @@ export async function crearNombreClase(req, res) {
       [nombreNormalizado]
     );
     
-    if (existentes.length > 0) {
+    if (existentesClases.length > 0) {
       return res.status(409).json({
         error: 'Nombre duplicado',
-        detalle: `Ya existe una clase con el nombre "${existentes[0].nombre_clase}". Los nombres se normalizan para evitar duplicados.`,
-        nombre_existente: existentes[0].nombre_clase
+        detalle: `Ya existe una clase con el nombre "${existentesClases[0].nombre_clase}"`,
+        nombre_existente: existentesClases[0].nombre_clase
       });
     }
     
-    // El nombre se creará automáticamente cuando se cree la primera clase con ese nombre
-    // Por ahora, solo validamos y retornamos éxito
+    // Insertar el nuevo nombre en Nombres_Clases
+    // Guardar siempre en mayúsculas sostenidas
+    const [result] = await defaultDb.execute(
+      `INSERT INTO Nombres_Clases (nombre_clase, nombre_normalizado, creado_por) 
+       VALUES (?, ?, ?)`,
+      [nombreNormalizado, nombreNormalizado, userId]
+    );
+    
     return res.status(200).json({
       ok: true,
-      message: 'Nombre de clase validado correctamente',
-      nombre_clase: nombre_clase.trim(),
-      nombre_normalizado: nombreNormalizado
+      message: 'Nombre de clase guardado correctamente',
+      nombre_clase: nombreNormalizado,
+      nombre_normalizado: nombreNormalizado,
+      id: result.insertId
     });
   } catch (err) {
     logger.error('Error al crear nombre de clase', { error: err.message, stack: err.stack });
     return res.status(500).json({ 
-      error: 'Error al validar nombre de clase', 
+      error: 'Error al guardar nombre de clase', 
       detalle: err.message 
     });
   }

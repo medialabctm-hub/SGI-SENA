@@ -64,12 +64,40 @@
   min-height: 44px;
 }
 
-.form-input:focus,
-.form-select:focus,
+.form-input:focus:not(.autocomplete-wrapper),
+.form-select:focus:not(.custom-select-wrapper),
 .form-textarea:focus {
   outline: none;
   border-color: var(--success-800);
   box-shadow: 0 0 0 4px rgba(1, 175, 0, 0.1);
+}
+
+/* Excluir CustomSelect y AutocompleteInput de los estilos de form-select y form-input */
+/* Cuando form-select se aplica al wrapper del CustomSelect, no debe afectar */
+.custom-select-wrapper.form-select,
+.autocomplete-wrapper.form-input {
+  border: none !important;
+  padding: 0 !important;
+  background: transparent !important;
+  min-height: auto !important;
+  border-radius: 0 !important;
+}
+
+/* Eliminar cualquier efecto de focus en los wrappers */
+.custom-select-wrapper.form-select:focus,
+.custom-select-wrapper.form-select:focus-visible,
+.autocomplete-wrapper.form-input:focus,
+.autocomplete-wrapper.form-input:focus-visible {
+  box-shadow: none !important;
+  border: none !important;
+  outline: none !important;
+}
+
+/* Asegurar que los elementos internos no hereden estilos */
+.custom-select-wrapper.form-select .custom-select,
+.autocomplete-wrapper.form-input .autocomplete-input {
+  /* Los componentes manejan sus propios estilos - resetear cualquier herencia */
+  width: 100%;
 }
 
 .form-input:disabled,

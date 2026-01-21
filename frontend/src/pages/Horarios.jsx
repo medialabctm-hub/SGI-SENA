@@ -251,10 +251,16 @@ export default function Horarios() {
         throw new Error(errorData.detalle || errorData.error || 'No tienes permiso para crear nombres de clases')
       }
 
-      // Manejar código 400 (validación - duplicado, etc.)
+      // Manejar código 400 (validación)
       if (res.status === 400) {
         const errorData = await res.json().catch(() => ({}))
-        throw new Error(errorData.detalle || errorData.error || 'El nombre de clase no es válido o ya existe')
+        throw new Error(errorData.detalle || errorData.error || 'El nombre de clase no es válido')
+      }
+
+      // Manejar código 409 (conflicto - duplicado)
+      if (res.status === 409) {
+        const errorData = await res.json().catch(() => ({}))
+        throw new Error(errorData.detalle || errorData.error || 'El nombre de clase ya existe')
       }
 
       const data = await parseApiResponse(res, 'Error al crear nombre de clase')
@@ -1015,7 +1021,6 @@ export default function Horarios() {
                     <label className="horarios-form-label">
                       Fecha de Clase (Clase Única)
                       <span className="horarios-form-help-text">
-                        Para una clase en una fecha específica
                       </span>
                     </label>
                     <input
@@ -1041,7 +1046,6 @@ export default function Horarios() {
                     <label className="horarios-form-label">
                       Rango de Fechas (Clase Recurrente)
                       <span className="horarios-form-help-text">
-                        Para clases que se repiten en varios días
                       </span>
                     </label>
                     <div className="horarios-rango-fechas">
@@ -1089,25 +1093,30 @@ export default function Horarios() {
                       />
                     </div>
                   </div>
+                  {/* Campos de hora agrupados */}
                   <div className="horarios-form-row">
-                    <label className="horarios-form-label form-label-required">Hora Inicio</label>
-                    <input
-                      type="time"
-                      className="horarios-form-input form-input"
-                      value={form.hora_inicio}
-                      onChange={e => setForm({ ...form, hora_inicio: e.target.value })}
-                      required
-                    />
-                  </div>
-                  <div className="horarios-form-row">
-                    <label className="horarios-form-label form-label-required">Hora Fin</label>
-                    <input
-                      type="time"
-                      className="horarios-form-input form-input"
-                      value={form.hora_fin}
-                      onChange={e => setForm({ ...form, hora_fin: e.target.value })}
-                      required
-                    />
+                    <div className="horarios-horas-container">
+                      <div className="horarios-hora-item">
+                        <label className="horarios-form-label form-label-required">Hora Inicio</label>
+                        <input
+                          type="time"
+                          className="horarios-form-input form-input"
+                          value={form.hora_inicio}
+                          onChange={e => setForm({ ...form, hora_inicio: e.target.value })}
+                          required
+                        />
+                      </div>
+                      <div className="horarios-hora-item">
+                        <label className="horarios-form-label form-label-required">Hora Fin</label>
+                        <input
+                          type="time"
+                          className="horarios-form-input form-input"
+                          value={form.hora_fin}
+                          onChange={e => setForm({ ...form, hora_fin: e.target.value })}
+                          required
+                        />
+                      </div>
+                    </div>
                   </div>
                 </div>
                 {/* Días de la semana (solo para clases recurrentes) */}

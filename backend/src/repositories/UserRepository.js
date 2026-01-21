@@ -102,7 +102,10 @@ export class UserRepository extends BaseRepository {
    * @returns {Promise<Array>} Lista de usuarios
    */
   async findAll(rol = null) {
-    // OPTIMIZACIÓN: Usar LEFT JOIN en lugar de subconsulta para evitar N+1
+    // Si se filtra por rol, usar INNER JOIN para asegurar que solo se traigan usuarios con ese rol
+    // Si no se filtra, usar LEFT JOIN para traer todos los usuarios (incluso sin rol)
+    const joinType = rol ? 'INNER JOIN' : 'LEFT JOIN';
+    
     let query = `SELECT 
          u.id_usuario, 
          u.nombre_usuario, 
@@ -121,23 +124,26 @@ export class UserRepository extends BaseRepository {
          creador.nombre_usuario AS creado_por_nombre,
          COUNT(DISTINCT re.codigo_equipo) AS equipos_asignados
        FROM Usuarios u
-       LEFT JOIN Roles r ON r.id_rol = u.id_rol
+       ${joinType} Roles r ON r.id_rol = u.id_rol
        LEFT JOIN Usuarios creador ON creador.id_usuario = u.creado_por
        LEFT JOIN Responsables_Equipo re ON re.id_usuario = u.id_usuario 
          AND re.estado_responsabilidad = 'Activo'
-       WHERE u.estado = 'Activo'
-       GROUP BY u.id_usuario, u.nombre_usuario, u.cedula, u.tipo_documento, 
-                u.tipo_documento_otro, u.correo, u.telefono, r.nombre_rol, 
-                u.estado, u.fecha_registro, u.ultimo_acceso, 
-                u.requiere_cambio_contrasena, u.foto_perfil, u.creado_por, 
-                creador.nombre_usuario`;
+       WHERE u.estado = 'Activo'`;
     
     if (rol) {
       query += ` AND r.nombre_rol = ?`;
-      return this.execute(query + ` ORDER BY u.nombre_usuario`, [rol]);
+      return this.execute(query + ` GROUP BY u.id_usuario, u.nombre_usuario, u.cedula, u.tipo_documento, 
+                u.tipo_documento_otro, u.correo, u.telefono, r.nombre_rol, 
+                u.estado, u.fecha_registro, u.ultimo_acceso, 
+                u.requiere_cambio_contrasena, u.foto_perfil, u.creado_por, 
+                creador.nombre_usuario ORDER BY u.nombre_usuario`, [rol]);
     }
     
-    return this.execute(query + ` ORDER BY u.nombre_usuario`);
+    return this.execute(query + ` GROUP BY u.id_usuario, u.nombre_usuario, u.cedula, u.tipo_documento, 
+                u.tipo_documento_otro, u.correo, u.telefono, r.nombre_rol, 
+                u.estado, u.fecha_registro, u.ultimo_acceso, 
+                u.requiere_cambio_contrasena, u.foto_perfil, u.creado_por, 
+                creador.nombre_usuario ORDER BY u.nombre_usuario`);
   }
 
   /**
