@@ -557,7 +557,8 @@ export async function generarReportePDF(req, res) {
         WHERE ra.id_ambiente = ?
           AND ra.estado_responsabilidad = 'Activa'
           AND r.nombre_rol = 'Instructor'
-          AND (ra.fecha_fin IS NULL OR ra.fecha_fin >= NOW())
+          -- SISTEMA 100% MANUAL: Eliminada comparación con NOW()
+          -- AND (ra.fecha_fin IS NULL OR ra.fecha_fin >= NOW())
       `;
       const paramsInstructores = [ambienteId];
 
@@ -695,7 +696,8 @@ export async function generarReportePDF(req, res) {
          WHERE ra.id_ambiente = ?
            AND ra.estado_responsabilidad = 'Activa'
            AND r.nombre_rol = 'Instructor'
-           AND (ra.fecha_fin IS NULL OR ra.fecha_fin >= NOW())`,
+           -- SISTEMA 100% MANUAL: Eliminada comparación con NOW()
+           -- AND (ra.fecha_fin IS NULL OR ra.fecha_fin >= NOW())`,
         [ambienteId]
       );
 
@@ -707,7 +709,8 @@ export async function generarReportePDF(req, res) {
            FROM Responsabilidades_Ambiente ra
            WHERE ra.id_usuario = ?
              AND ra.estado_responsabilidad = 'Activa'
-             AND (ra.fecha_fin IS NULL OR ra.fecha_fin >= NOW())`,
+             -- SISTEMA 100% MANUAL: Eliminada comparación con NOW()
+             -- AND (ra.fecha_fin IS NULL OR ra.fecha_fin >= NOW())`,
           [instructor.id_usuario]
         );
 

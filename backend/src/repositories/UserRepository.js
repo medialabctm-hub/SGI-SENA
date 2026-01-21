@@ -102,6 +102,7 @@ export class UserRepository extends BaseRepository {
    * @returns {Promise<Array>} Lista de usuarios
    */
   async findAll(rol = null) {
+    // OPTIMIZACIÓN: Usar LEFT JOIN en lugar de subconsulta para evitar N+1
     let query = `SELECT 
          u.id_usuario, 
          u.nombre_usuario, 
@@ -118,13 +119,18 @@ export class UserRepository extends BaseRepository {
          u.foto_perfil,
          u.creado_por,
          creador.nombre_usuario AS creado_por_nombre,
-         (SELECT COUNT(*) FROM Responsables_Equipo re 
-          WHERE re.id_usuario = u.id_usuario 
-          AND re.estado_responsabilidad = 'Activo') AS equipos_asignados
+         COUNT(DISTINCT re.codigo_equipo) AS equipos_asignados
        FROM Usuarios u
        LEFT JOIN Roles r ON r.id_rol = u.id_rol
        LEFT JOIN Usuarios creador ON creador.id_usuario = u.creado_por
-       WHERE u.estado = 'Activo'`;
+       LEFT JOIN Responsables_Equipo re ON re.id_usuario = u.id_usuario 
+         AND re.estado_responsabilidad = 'Activo'
+       WHERE u.estado = 'Activo'
+       GROUP BY u.id_usuario, u.nombre_usuario, u.cedula, u.tipo_documento, 
+                u.tipo_documento_otro, u.correo, u.telefono, r.nombre_rol, 
+                u.estado, u.fecha_registro, u.ultimo_acceso, 
+                u.requiere_cambio_contrasena, u.foto_perfil, u.creado_por, 
+                creador.nombre_usuario`;
     
     if (rol) {
       query += ` AND r.nombre_rol = ?`;

@@ -41,6 +41,14 @@ router.get(
   listarClases
 );
 
+// Autocompletado: Obtener nombres únicos de clases de formación
+// IMPORTANTE: Esta ruta debe ir ANTES de /clases/:id para evitar conflictos
+router.get(
+  '/clases/nombres',
+  requirePermission(PERMISSIONS.CLASES.VIEW),
+  obtenerNombresClases
+);
+
 // Obtener una clase específica
 router.get(
   '/clases/:id',
@@ -106,13 +114,6 @@ router.post(
   '/clases/sincronizar-responsabilidades',
   requirePermission(PERMISSIONS.CLASES.UPDATE),
   sincronizarResponsabilidadesHorarios
-);
-
-// Autocompletado: Obtener nombres únicos de clases de formación
-router.get(
-  '/clases/nombres',
-  requirePermission(PERMISSIONS.CLASES.VIEW),
-  obtenerNombresClases
 );
 
 // Autocompletado: Crear/validar nuevo nombre de clase

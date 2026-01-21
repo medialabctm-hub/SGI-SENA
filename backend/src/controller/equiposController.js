@@ -196,8 +196,10 @@ export async function obtenerEquipoPorCodigo(req, res) {
         LEFT JOIN Clases c ON ra.id_clase = c.id_clase
         WHERE ra.id_usuario = ?
           AND ra.estado_responsabilidad = 'Activa'
-          AND ra.fecha_inicio <= NOW()
-          AND (ra.fecha_fin IS NULL OR ra.fecha_fin >= NOW())
+          -- SISTEMA 100% MANUAL: Eliminadas comparaciones con NOW()
+          -- El estado_responsabilidad = 'Activa' es suficiente
+          -- AND ra.fecha_inicio <= NOW()
+          -- AND (ra.fecha_fin IS NULL OR ra.fecha_fin >= NOW())
           AND (
             -- Asignaciones permanentes (con días/horarios o jornada)
             (ra.id_clase IS NULL)
@@ -658,7 +660,11 @@ export async function obtenerMisEquipos(req, res) {
       INNER JOIN Elementos e ON re.codigo_equipo = e.codigo_equipo
       LEFT JOIN Ambientes a ON e.id_ambiente = a.id_ambiente
       LEFT JOIN Usuarios u_asignado ON re.asignado_por = u_asignado.id_usuario
-      WHERE re.id_usuario = ? AND re.estado_responsabilidad = 'Activo'
+      WHERE re.id_usuario = ? 
+        AND re.estado_responsabilidad = 'Activo'
+        -- EXCLUIR asignaciones temporales por clases (solo mostrar asignaciones permanentes)
+        -- Los equipos asignados por clases aparecen en "Consultar Inventario", no aquí
+        AND (re.observaciones IS NULL OR re.observaciones NOT LIKE '%inicio de clase #%')
       ORDER BY re.fecha_asignacion DESC`,
       [userId]
     )
@@ -1054,22 +1060,19 @@ export async function obtenerEquiposAmbientesInstructor(req, res) {
       LEFT JOIN Clases c ON ra.id_clase = c.id_clase
       WHERE ra.id_usuario = ?
         AND ra.estado_responsabilidad = 'Activa'
-        AND ra.fecha_inicio <= NOW()
-        AND (ra.fecha_fin IS NULL OR ra.fecha_fin >= NOW())
+        -- SISTEMA 100% MANUAL: Eliminadas comparaciones con NOW() y CURDATE()
+        -- El estado_responsabilidad = 'Activa' es suficiente para determinar responsabilidades activas
+        -- AND ra.fecha_inicio <= NOW()
+        -- AND (ra.fecha_fin IS NULL OR ra.fecha_fin >= NOW())
         AND (
           -- Asignaciones permanentes (con días/horarios o jornada)
           (ra.id_clase IS NULL)
           OR
-          -- Asignaciones temporales (clases)
+          -- Asignaciones temporales (clases) - SOLO si la clase está EN_CURSO
+          -- NO mostrar clases Programadas porque aún no han iniciado (no tiene acceso al inventario)
+          -- NO mostrar clases Finalizadas porque ya terminaron (ya no tiene acceso)
           (ra.id_clase IS NOT NULL 
-           AND c.estado_clase IN ('Programada', 'En Curso')
-           AND (
-             -- Si está "En Curso", mostrar sin importar la fecha (clase activa)
-             c.estado_clase = 'En Curso'
-             OR
-             -- Si está "Programada", solo mostrar si la fecha es hoy o futura
-             (c.estado_clase = 'Programada' AND c.fecha_clase >= CURDATE())
-           ))
+           AND c.estado_clase = 'En Curso')
         )
       ORDER BY a.nombre_ambiente`,
       [userId]
@@ -1135,6 +1138,7 @@ export async function obtenerEquiposAmbientesInstructor(req, res) {
       FROM Elementos e
       INNER JOIN Ambientes a ON e.id_ambiente = a.id_ambiente
       WHERE e.id_ambiente IN (${ambienteIds.map(() => '?').join(',')})
+        AND e.estado_fisico != 'Baja'
       ORDER BY a.nombre_ambiente, e.placa`,
       [userId, userId, userId, ...ambienteIds]
     )
@@ -1214,22 +1218,19 @@ export async function registrarVerificacionInventario(req, res) {
        WHERE ra.id_ambiente = ?
          AND ra.id_usuario = ?
          AND ra.estado_responsabilidad = 'Activa'
-         AND ra.fecha_inicio <= NOW()
-         AND (ra.fecha_fin IS NULL OR ra.fecha_fin >= NOW())
+         -- SISTEMA 100% MANUAL: Eliminadas comparaciones con NOW() y CURDATE()
+         -- El estado_responsabilidad = 'Activa' es suficiente
+         -- AND ra.fecha_inicio <= NOW()
+         -- AND (ra.fecha_fin IS NULL OR ra.fecha_fin >= NOW())
          AND (
            -- Asignaciones permanentes (con días/horarios o jornada)
            (ra.id_clase IS NULL)
            OR
-           -- Asignaciones temporales (clases)
+           -- Asignaciones temporales (clases) - SOLO si la clase está EN_CURSO
+           -- NO permitir clases Programadas porque aún no han iniciado (no tiene acceso al inventario)
+           -- NO permitir clases Finalizadas porque ya terminaron (ya no tiene acceso)
            (ra.id_clase IS NOT NULL 
-            AND c.estado_clase IN ('Programada', 'En Curso')
-            AND (
-              -- Si está "En Curso", mostrar sin importar la fecha (clase activa)
-              c.estado_clase = 'En Curso'
-              OR
-              -- Si está "Programada", solo mostrar si la fecha es hoy o futura
-              (c.estado_clase = 'Programada' AND c.fecha_clase >= CURDATE())
-            ))
+            AND c.estado_clase = 'En Curso')
          )
        ORDER BY ra.fecha_inicio DESC
        LIMIT 1`,
@@ -1391,13 +1392,67 @@ export async function consultarHistorialVerificaciones(req, res) {
       params.push(fecha_hasta)
     }
 
-    query += ' ORDER BY vi.fecha_verificacion DESC LIMIT 1000'
+    // OPTIMIZACIÓN: Agregar paginación para evitar cargar todas las verificaciones
+    const page = parseInt(req.query.page) || 1;
+    const limit = Math.min(parseInt(req.query.limit) || 50, 200); // Máximo 200 por página
+    const offset = (page - 1) * limit;
+
+    query += ' ORDER BY vi.fecha_verificacion DESC'
+    query += ` LIMIT ${limit} OFFSET ${offset}`
+
+    // Obtener total para paginación
+    let countQuery = `
+      SELECT COUNT(*) AS total
+      FROM Verificaciones_Inventario vi
+      WHERE 1=1
+    `;
+    const countParams = [];
+
+    if (userRole === 'Instructor') {
+      countQuery += ' AND vi.id_usuario = ?'
+      countParams.push(userId)
+    }
+
+    if (codigo_equipo) {
+      countQuery += ' AND vi.codigo_equipo = ?'
+      countParams.push(codigo_equipo)
+    }
+    if (id_ambiente) {
+      countQuery += ' AND vi.id_ambiente = ?'
+      countParams.push(id_ambiente)
+    }
+    if (id_instructor && userRole === 'Administrador') {
+      countQuery += ' AND vi.id_usuario = ?'
+      countParams.push(id_instructor)
+    }
+    if (estado_verificacion) {
+      countQuery += ' AND vi.estado_verificacion = ?'
+      countParams.push(estado_verificacion)
+    }
+    if (id_clase) {
+      countQuery += ' AND vi.id_clase = ?'
+      countParams.push(id_clase)
+    }
+    if (fecha_desde) {
+      countQuery += ' AND DATE(vi.fecha_verificacion) >= ?'
+      countParams.push(fecha_desde)
+    }
+    if (fecha_hasta) {
+      countQuery += ' AND DATE(vi.fecha_verificacion) <= ?'
+      countParams.push(fecha_hasta)
+    }
 
     const [verificaciones] = await defaultDb.execute(query, params)
+    const [[{ total }]] = await defaultDb.execute(countQuery, countParams)
 
     return res.json({
       verificaciones,
-      total: verificaciones.length
+      paginacion: {
+        pagina: page,
+        limite: limit,
+        total: total,
+        totalPaginas: Math.ceil(total / limit)
+      }
     })
   } catch (err) {
     logger.error('Error al consultar historial de verificaciones', { error: err.message, stack: err.stack })
@@ -1731,6 +1786,8 @@ export async function buscarCuentadantePorDocumento(req, res) {
     }
 
     // Obtener inventario del cuentadante
+    // OPTIMIZACIÓN: Separar consultas para evitar GROUP BY costoso con múltiples JOINs
+    // Primero obtener equipos básicos
     const [inventario] = await defaultDb.execute(
       `SELECT 
         e.codigo_equipo,
@@ -1746,18 +1803,46 @@ export async function buscarCuentadantePorDocumento(req, res) {
         e.cuentadante_principal,
         a.id_ambiente,
         a.nombre_ambiente,
-        a.codigo_ambiente,
-        COUNT(DISTINCT n.id_novedad) AS total_novedades,
-        COUNT(DISTINCT m.id_mantenimiento) AS total_mantenimientos
+        a.codigo_ambiente
        FROM Elementos e
        LEFT JOIN Ambientes a ON e.id_ambiente = a.id_ambiente
-       LEFT JOIN Novedades n ON e.codigo_equipo = n.codigo_equipo
-       LEFT JOIN Mantenimiento m ON e.codigo_equipo = m.codigo_equipo
        WHERE e.id_cuentadante = ?
-       GROUP BY e.codigo_equipo
        ORDER BY e.codigo_equipo ASC`,
       [cuentadante.id_usuario]
     )
+
+    // Luego obtener conteos en una sola consulta optimizada
+    if (inventario.length > 0) {
+      const codigosEquipos = inventario.map(e => e.codigo_equipo);
+      const placeholders = codigosEquipos.map(() => '?').join(',');
+      
+      const [conteos] = await defaultDb.execute(
+        `SELECT 
+          codigo_equipo,
+          COUNT(DISTINCT n.id_novedad) AS total_novedades,
+          COUNT(DISTINCT m.id_mantenimiento) AS total_mantenimientos
+         FROM Elementos e
+         LEFT JOIN Novedades n ON e.codigo_equipo = n.codigo_equipo
+         LEFT JOIN Mantenimiento m ON e.codigo_equipo = m.codigo_equipo
+         WHERE e.codigo_equipo IN (${placeholders})
+         GROUP BY e.codigo_equipo`,
+        codigosEquipos
+      )
+
+      // Combinar resultados
+      const conteosMap = new Map(conteos.map(c => [c.codigo_equipo, c]));
+      inventario.forEach(equipo => {
+        const conteo = conteosMap.get(equipo.codigo_equipo) || { total_novedades: 0, total_mantenimientos: 0 };
+        equipo.total_novedades = conteo.total_novedades;
+        equipo.total_mantenimientos = conteo.total_mantenimientos;
+      })
+    } else {
+      // Si no hay equipos, agregar campos vacíos
+      inventario.forEach(equipo => {
+        equipo.total_novedades = 0;
+        equipo.total_mantenimientos = 0;
+      })
+    }
 
     // Obtener estadísticas del inventario
     const [[estadisticas]] = await defaultDb.execute(

@@ -11,9 +11,11 @@ import logo from '/public/images/logoSena.png';
 import Toast from './Toast';
 import ConfirmModal from './ConfirmModal';
 import NotificationsModal from './NotificationsModal';
+import ClassNotificationModal from './ClassNotificationModal';
 import { buildErrorMessage, parseApiResponse } from '../utils/api';
 import { useSidebar } from '../contexts/SidebarContext';
 import { useDuplicados } from '../contexts/DuplicadosContext';
+import { useSocket } from '../contexts/SocketContext';
 import '../styles/header.css';
 import '../styles/toast.css';
 import '../styles/modal.css';
@@ -21,6 +23,7 @@ import '../styles/notifications.css';
 
 export default function Header() {
   const { tieneDuplicadosPendientes } = useDuplicados();
+  const socketHook = useSocket();
   const [user, setUser] = useState(
     JSON.parse(localStorage.getItem('user') || '{}')
   );
@@ -31,6 +34,7 @@ export default function Header() {
   const [notificationsLoading, setNotificationsLoading] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const [lastSync, setLastSync] = useState(null);
+  const [classNotificationModal, setClassNotificationModal] = useState(null);
   const nav = useNavigate();
   const notificationsRef = useRef(null);
   const { toggleSidebar } = useSidebar();
@@ -229,6 +233,39 @@ export default function Header() {
     fetchNotifications({ silent: true })
   }, [fetchNotifications])
 
+  // Suscribirse a actualizaciones en tiempo real de notificaciones
+  useEffect(() => {
+    if (!socketHook || !socketHook.subscribe) return;
+    
+    const unsubscribe = socketHook.subscribe('notification:new', () => {
+      // Recargar notificaciones cuando llegue una nueva
+      fetchNotifications({ silent: true });
+    });
+    
+    return unsubscribe;
+  }, [socketHook, fetchNotifications])
+
+  // Detectar notificaciones de clases y mostrar modal automáticamente
+  useEffect(() => {
+    if (notifications.length === 0) return
+
+    // Buscar notificaciones no leídas con acciones de clases
+    const notificacionClase = notifications.find(
+      (notif) =>
+        !notif.leida &&
+        notif.metadata &&
+        notif.metadata.acciones &&
+        Array.isArray(notif.metadata.acciones) &&
+        notif.metadata.acciones.length > 0 &&
+        (notif.metadata.tipo === 'clase_iniciar' || 
+         notif.metadata.tipo === 'clase_finalizar')
+    )
+
+    if (notificacionClase && !classNotificationModal) {
+      setClassNotificationModal(notificacionClase)
+    }
+  }, [notifications, classNotificationModal])
+
   // Actualizar usuario cuando cambie en localStorage (ej: al actualizar foto de perfil)
   useEffect(() => {
     const handleStorageChange = () => {
@@ -298,6 +335,19 @@ export default function Header() {
         onConfirm={confirmLogout}
         onCancel={cancelLogout}
       />
+      {classNotificationModal && (
+        <ClassNotificationModal
+          notification={classNotificationModal}
+          onClose={() => {
+            setClassNotificationModal(null)
+            // Marcar como leída al cerrar
+            if (classNotificationModal.id) {
+              markNotificationAsRead(classNotificationModal.id)
+            }
+          }}
+          onMarkAsRead={markNotificationAsRead}
+        />
+      )}
       <header className="app-header-wrapper">
         <div className="app-header">
           <div className="header-left">

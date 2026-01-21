@@ -263,8 +263,10 @@ export async function crearNovedad(req, res) {
              INNER JOIN Roles r ON u.id_rol = r.id_rol
              WHERE ra.id_ambiente = ?
                AND ra.estado_responsabilidad = 'Activa'
-               AND ra.fecha_inicio <= NOW()
-               AND (ra.fecha_fin IS NULL OR ra.fecha_fin >= NOW())
+               -- SISTEMA 100% MANUAL: Eliminadas comparaciones con NOW()
+               -- El estado_responsabilidad = 'Activa' es suficiente
+               -- AND ra.fecha_inicio <= NOW()
+               -- AND (ra.fecha_fin IS NULL OR ra.fecha_fin >= NOW())
                AND r.nombre_rol = 'Instructor'`,
             [equipo.id_ambiente]
           )

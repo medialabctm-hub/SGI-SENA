@@ -79,47 +79,10 @@ const requiredEnvVars = [
   "FRONTEND_URL",
 ];
 
-// Log de configuración de BD con más detalles para debugging
-console.log(`[CONFIG] Configuración de Base de Datos:`);
-console.log(`[CONFIG]   Host: ${dbConfig.host ? '✓ ' + dbConfig.host.substring(0, 20) + '...' : '✗ Faltante'}`);
-console.log(`[CONFIG]   User: ${dbConfig.user ? '✓ ' + dbConfig.user : '✗ Faltante'}`);
-console.log(`[CONFIG]   Password: ${dbConfig.password ? '✓ (' + dbConfig.password.length + ' caracteres)' : '✗ Faltante'}`);
-console.log(`[CONFIG]   Database: ${dbConfig.database ? '✓ ' + dbConfig.database : '✗ Faltante'}`);
-console.log(`[CONFIG]   Port: ${dbConfig.port ? '✓ ' + dbConfig.port : '✗ Faltante'}`);
-
-// Debug: mostrar valores de variables de entorno relacionadas
-const dbEnvVars = ['DB_NAME', 'MYSQLDATABASE', 'MYSQL_DATABASE'];
-const foundDbVars = dbEnvVars.filter(v => process.env[v]);
-if (foundDbVars.length > 0) {
-  console.log(`[CONFIG]   Debug - Variables DB_NAME encontradas en process.env: ${foundDbVars.join(', ')}`);
-  foundDbVars.forEach(v => {
-    const val = process.env[v];
-    console.log(`[CONFIG]     ${v} = "${val}" (tipo: ${typeof val}, longitud: ${val?.length || 0})`);
-  });
-}
-
 // Verificar variables de entorno requeridas (excluyendo BD)
 const missingEnvVars = requiredEnvVars.filter((envVar) => {
   const value = process.env[envVar];
   const exists = !!value && typeof value === 'string' && value.trim() !== '';
-  
-  // Log para debugging
-  if (!exists) {
-    console.warn(`[CONFIG] Variable de entorno faltante o vacía: ${envVar}`);
-    // Mostrar todas las variables relacionadas para debugging
-    const relatedVars = Object.keys(process.env).filter(k => 
-      k.toUpperCase().includes(envVar.split('_')[0]) || 
-      k.toUpperCase() === envVar.toUpperCase()
-    );
-    if (relatedVars.length > 0) {
-      console.warn(`[CONFIG] Variables relacionadas encontradas: ${relatedVars.join(', ')}`);
-    }
-  } else {
-    // Confirmar que la variable existe (sin mostrar el valor completo por seguridad)
-    const preview = value.length > 20 ? value.substring(0, 20) + '...' : value.substring(0, value.length);
-    console.log(`[CONFIG] ✓ ${envVar} configurada (${value.length} caracteres)`);
-  }
-  
   return !exists;
 });
 

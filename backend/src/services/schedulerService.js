@@ -1,5 +1,6 @@
 import defaultDb from '../config/dbconfig.js';
 import { logger } from '../utils/logger.js';
+import { createForUsers } from './notificationService.js';
 
 /**
  * Obtener fecha/hora local en formato MySQL (YYYY-MM-DD HH:MM:SS)
@@ -15,24 +16,65 @@ function getLocalDateTimeString(date = new Date()) {
   return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
 }
 
-/**
- * Obtener fecha local en formato MySQL (YYYY-MM-DD)
- */
-function getLocalDateString(date = new Date()) {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
+function normalizarHora(hora) {
+  const horaStr = String(hora);
+  if (horaStr.split(':').length === 2) {
+    return `${horaStr}:00`;
+  }
+  return horaStr;
+}
+
+function crearDateTime(fecha, hora) {
+  const horaNormalizada = normalizarHora(hora);
+  return new Date(`${fecha}T${horaNormalizada}`);
+}
+
+function convertirFechaMySqlALocal(fecha) {
+  if (!fecha) return null;
+  const fechaStr = fecha instanceof Date ? fecha.toISOString().slice(0, 19).replace('T', ' ') : String(fecha);
+  // Interpretar como hora local (sin aplicar UTC) para evitar sumar/restar horas por zona
+  return new Date(fechaStr.replace(' ', 'T'));
 }
 
 /**
- * Servicio de tareas programadas para sincronización automática
- * Ejecuta la sincronización de responsabilidades cada minuto
+ * Extraer YYYY-MM-DD sin depender de la zona horaria del Date
+ */
+function obtenerFechaISO(fecha) {
+  if (!fecha) return null;
+  if (fecha instanceof Date) {
+    const y = fecha.getFullYear();
+    const m = String(fecha.getMonth() + 1).padStart(2, '0');
+    const d = String(fecha.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`; // usar componentes locales para evitar corrimientos
+  }
+  const str = String(fecha);
+  if (str.includes('T')) return str.split('T')[0];
+  return str.split(' ')[0];
+}
+
+/**
+ * Servicio de MONITOREO y NOTIFICACIONES de clases (SISTEMA 100% MANUAL)
+ * 
+ * IMPORTANTE: Este servicio SOLO envía alertas informativas.
+ * NO cambia estados automáticamente.
+ * NO inicia ni finaliza clases.
+ * NO activa ni desactiva responsabilidades.
+ * 
+ * Los estados se cambian ÚNICAMENTE mediante acciones manuales:
+ * - iniciarClase() -> sp_iniciar_clase()
+ * - finalizarClase() -> sp_finalizar_clase()
+ * 
+ * El tiempo es SOLO INFORMATIVO para alertas de UX.
+ * 
+ * ZONA HORARIA: Colombia (UTC-5) para comparaciones de horarios (solo informativo)
  */
 class SchedulerService {
   constructor() {
     this.intervalId = null;
     this.isRunning = false;
+    this.isExecuting = false;
+    this.intervalMinutes = 1;
+    this.notificacionesEnviadas = new Set(); // Para evitar notificaciones duplicadas
   }
 
   /**
@@ -45,6 +87,7 @@ class SchedulerService {
       return;
     }
 
+    this.intervalMinutes = intervalMinutes;
     const intervalMs = intervalMinutes * 60 * 1000;
     
     // Ejecutar inmediatamente al iniciar
@@ -56,7 +99,7 @@ class SchedulerService {
     }, intervalMs);
 
     this.isRunning = true;
-    logger.info(`Scheduler iniciado. Sincronización cada ${intervalMinutes} minuto(s)`);
+    logger.info(`Scheduler de monitoreo iniciado. Ejecución cada ${intervalMinutes} minuto(s)`);
   }
 
   /**
@@ -72,376 +115,237 @@ class SchedulerService {
   }
 
   /**
-   * Ejecutar sincronización de responsabilidades
+   * Obtener hora actual en zona horaria de Colombia (UTC-5)
+   */
+  getHoraColombia() {
+    const ahora = new Date();
+    // Colombia está en UTC-5 (sin horario de verano)
+    const offsetColombia = -5 * 60; // -5 horas en minutos
+    const utc = ahora.getTime() + (ahora.getTimezoneOffset() * 60000);
+    return new Date(utc + (offsetColombia * 60000));
+  }
+
+  /**
+   * Ejecutar monitoreo de clases y enviar notificaciones (SISTEMA 100% MANUAL)
+   * 
+   * IMPORTANTE: Este método SOLO envía alertas informativas.
+   * NO cambia estados automáticamente.
+   * NO inicia ni finaliza clases.
+   * NO activa ni desactiva responsabilidades.
+   * 
+   * Los estados se cambian ÚNICAMENTE mediante acciones manuales del usuario.
+   * El tiempo es SOLO INFORMATIVO para alertas de UX.
+   * 
+   * Zona horaria: Colombia (UTC-5) para comparaciones (solo informativo)
    */
   async executeSync() {
+    if (this.isExecuting) {
+      logger.warn('Monitoreo en progreso. Se omite ejecución concurrente.');
+      return { notificaciones: 0, errores: [{ tipo: 'concurrencia', detalle: 'Ejecución ya en curso' }] };
+    }
+
+    this.isExecuting = true;
+    const resultado = { notificaciones: 0, errores: [] };
+
     try {
-      const ahora = new Date();
-      const fechaActual = getLocalDateString(ahora);
-      const horaActual = ahora.toTimeString().slice(0, 8); // HH:MM:SS
-      
-      // Log para debugging - verificar hora actual del servidor
-      logger.debug('Sincronización automática ejecutándose', {
-        fecha_actual: fechaActual,
-        hora_actual: horaActual,
-        timestamp_local: getLocalDateTimeString(ahora),
-        timestamp_utc: ahora.toISOString()
-      });
+      // Usar hora de Colombia (UTC-5) para comparaciones
+      const ahoraColombia = this.getHoraColombia();
+      const fechaHoy = obtenerFechaISO(ahoraColombia);
 
-      // Buscar clases programadas que NO tienen responsabilidades asignadas
-      // IMPORTANTE: NO filtrar por tiempo en SQL - hacerlo en JavaScript con hora local
-      // La BD solo guarda datos, JavaScript decide el tiempo actual
+      // 1. MONITOREAR CLASES PROGRAMADAS QUE DEBEN INICIARSE
       const [clasesProgramadas] = await defaultDb.execute(
-        `SELECT 
-          c.id_clase,
-          c.id_ambiente,
-          c.id_instructor,
-          c.fecha_clase,
-          c.hora_inicio,
-          c.hora_fin,
-          c.estado_clase
+        `SELECT c.id_clase, c.fecha_clase, c.hora_inicio, c.hora_fin, 
+                c.nombre_clase, c.id_instructor,
+                a.codigo_ambiente, a.nombre_ambiente,
+                u.nombre_usuario AS instructor_nombre
          FROM Clases c
+         INNER JOIN Ambientes a ON c.id_ambiente = a.id_ambiente
+         INNER JOIN Usuarios u ON c.id_instructor = u.id_usuario
          WHERE c.estado_clase = 'Programada'
-           AND NOT EXISTS (
-             SELECT 1 FROM Responsabilidades_Ambiente ra
-             WHERE ra.id_clase = c.id_clase
-               AND ra.estado_responsabilidad = 'Activa'
-               AND ra.tipo_responsabilidad = 'Principal'
-           )`,
-        []
+           AND c.fecha_clase = ?`,
+        [fechaHoy]
       );
 
-      // Filtrar en JavaScript usando hora local
-      // Usar las variables ya declaradas arriba (ahora, fechaActual, horaActual)
-      const clasesSinResponsabilidades = clasesProgramadas.filter(clase => {
-        // Convertir fecha_clase a string
-        const fechaClaseStr = clase.fecha_clase instanceof Date
-          ? getLocalDateString(clase.fecha_clase)
-          : String(clase.fecha_clase).split('T')[0];
+      const clasesParaIniciar = clasesProgramadas.filter((clase) => {
+        const fechaClaseStr = obtenerFechaISO(clase.fecha_clase);
+        const horaInicio = normalizarHora(clase.hora_inicio);
+        const inicioProgramado = crearDateTime(fechaClaseStr, horaInicio);
         
-        // Solo procesar clases del día actual
-        if (fechaClaseStr !== fechaActual) {
-          return false;
-        }
+        // Enviar notificación 5 minutos antes y en el momento exacto (con margen de 10 minutos)
+        const minutosAntes = 5;
+        const tiempoLimite = new Date(inicioProgramado.getTime() - (minutosAntes * 60000));
+        const tiempoLimiteFinal = new Date(inicioProgramado.getTime() + (10 * 60000)); // 10 min de margen
         
-        // Normalizar hora_inicio y hora_fin a formato HH:MM:SS
-        let horaInicio = String(clase.hora_inicio);
-        if (horaInicio.split(':').length === 2) {
-          horaInicio = `${horaInicio}:00`;
-        }
-        let horaFin = String(clase.hora_fin);
-        if (horaFin.split(':').length === 2) {
-          horaFin = `${horaFin}:00`;
-        }
-        
-        // Comparar usando hora local de JavaScript
-        const debeIniciar = horaActual >= horaInicio;
-        const aunNoTermina = horaActual < horaFin;
-        
-        return debeIniciar && aunNoTermina;
+        return ahoraColombia >= tiempoLimite && ahoraColombia <= tiempoLimiteFinal;
       });
-      
-      // Log para debugging - verificar clases programadas cercanas
-      const [clasesProgramadasCercanas] = await defaultDb.execute(
-        `SELECT 
-          c.id_clase,
-          c.fecha_clase,
-          c.hora_inicio,
-          c.hora_fin,
-          c.estado_clase
-         FROM Clases c
-         WHERE c.estado_clase = 'Programada'
-           AND c.fecha_clase >= DATE_SUB(CURDATE(), INTERVAL 1 DAY)
-           AND c.fecha_clase <= DATE_ADD(CURDATE(), INTERVAL 1 DAY)
-         ORDER BY c.fecha_clase, c.hora_inicio
-         LIMIT 10`,
-        []
-      );
-      
-      if (clasesProgramadasCercanas.length > 0) {
-        const ahoraLog = new Date();
-        const fechaLog = getLocalDateString(ahoraLog);
-        const horaLog = ahoraLog.toTimeString().slice(0, 8);
+
+      // Enviar notificaciones para iniciar clases
+      for (const clase of clasesParaIniciar) {
+        const claveNotificacion = `clase_iniciar_${clase.id_clase}`;
         
-        logger.debug('Clases programadas cercanas encontradas', {
-          total: clasesProgramadasCercanas.length,
-          ahora_utc: ahoraLog.toISOString(),
-          ahora_local_js: getLocalDateTimeString(ahoraLog),
-          fecha_actual: fechaLog,
-          hora_actual: horaLog,
-          clases: clasesProgramadasCercanas.map(c => {
-            const fechaClaseStr = c.fecha_clase instanceof Date
-              ? getLocalDateString(c.fecha_clase)
-              : String(c.fecha_clase).split('T')[0];
-            let horaInicio = String(c.hora_inicio);
-            if (horaInicio.split(':').length === 2) horaInicio = `${horaInicio}:00`;
-            let horaFin = String(c.hora_fin);
-            if (horaFin.split(':').length === 2) horaFin = `${horaFin}:00`;
-            
-            const esHoy = fechaClaseStr === fechaLog;
-            const debeIniciar = esHoy && horaLog >= horaInicio;
-            const aunNoTermina = esHoy && horaLog < horaFin;
-            
-            return {
-              id: c.id_clase,
-              fecha: fechaClaseStr,
-              hora_inicio: horaInicio,
-              hora_fin: horaFin,
-              es_hoy: esHoy,
-              debe_iniciar: debeIniciar,
-              aun_no_termina: aunNoTermina
-            };
-          })
-        });
-      }
-      
-      // Log para debugging
-      if (clasesSinResponsabilidades.length > 0) {
-        const ahoraLog = new Date();
-        logger.info(`Sincronización automática: ${clasesSinResponsabilidades.length} clase(s) encontrada(s) para iniciar`, {
-          ahora_utc: ahoraLog.toISOString(),
-          ahora_local_js: getLocalDateTimeString(ahoraLog),
-          fecha_actual: fechaActual,
-          hora_actual: horaActual,
-          clases: clasesSinResponsabilidades.map(c => {
-            const fechaClaseStr = c.fecha_clase instanceof Date
-              ? getLocalDateString(c.fecha_clase)
-              : String(c.fecha_clase).split('T')[0];
-            let horaInicio = String(c.hora_inicio);
-            if (horaInicio.split(':').length === 2) horaInicio = `${horaInicio}:00`;
-            let horaFin = String(c.hora_fin);
-            if (horaFin.split(':').length === 2) horaFin = `${horaFin}:00`;
-            
-            return {
-              id: c.id_clase,
-              fecha: fechaClaseStr,
-              hora_inicio: horaInicio,
-              hora_fin: horaFin,
-              debe_iniciar: horaActual >= horaInicio,
-              aun_no_termina: horaActual < horaFin
-            };
-          })
-        });
-      } else {
-        // Log periódico para verificar que el scheduler está funcionando
-        if (ahora.getMinutes() % 5 === 0) {
-          logger.debug('Sincronización automática: No hay clases para iniciar', {
-            ahora_utc: ahora.toISOString(),
-            ahora_local: getLocalDateTimeString(ahora),
-            fecha_actual: fechaActual,
-            hora_actual: horaActual
-          });
+        if (this.notificacionesEnviadas.has(claveNotificacion)) {
+          continue;
         }
-      }
 
-      let asignadas = 0;
-      const errores = [];
-
-      if (clasesSinResponsabilidades.length > 0) {
-        logger.info(`Sincronización automática: ${clasesSinResponsabilidades.length} clase(s) encontrada(s) para iniciar`);
-      }
-
-      for (const clase of clasesSinResponsabilidades) {
         try {
-          // Convertir fecha_clase a string en formato YYYY-MM-DD
-          const fechaClaseStr = clase.fecha_clase instanceof Date
-            ? clase.fecha_clase.toISOString().split('T')[0]
-            : String(clase.fecha_clase).split('T')[0];
+          const fechaClaseStr = obtenerFechaISO(clase.fecha_clase);
+          const horaInicio = normalizarHora(clase.hora_inicio);
+          const inicioProgramado = crearDateTime(fechaClaseStr, horaInicio);
+          const minutosRestantes = Math.floor((inicioProgramado.getTime() - ahoraColombia.getTime()) / 60000);
+
+          await createForUsers({
+            userIds: [clase.id_instructor],
+            titulo: minutosRestantes > 0 
+              ? `Clase por iniciar en ${minutosRestantes} minuto(s)`
+              : 'Es hora de iniciar tu clase',
+            cuerpo: `La clase "${clase.nombre_clase}" en el ambiente ${clase.codigo_ambiente} (${clase.nombre_ambiente}) ${minutosRestantes > 0 ? `inicia en ${minutosRestantes} minuto(s)` : 'debe iniciarse ahora'}.`,
+            tipo: minutosRestantes > 0 ? 'aviso' : 'alerta',
+            metadata: {
+              id_clase: clase.id_clase,
+              id_ambiente: clase.id_ambiente,
+              tipo: 'clase_iniciar',
+              hora_inicio: horaInicio,
+              acciones: [
+                {
+                  tipo: 'iniciar_clase',
+                  label: 'Iniciar Clase',
+                  endpoint: `/api/clases/${clase.id_clase}/iniciar`,
+                  metodo: 'POST'
+                },
+                {
+                  tipo: 'cancelar_clase',
+                  label: 'Cancelar Clase',
+                  endpoint: `/api/clases/${clase.id_clase}/cancelar`,
+                  metodo: 'POST'
+                }
+              ]
+            },
+            creadoPor: null
+          });
+
+          this.notificacionesEnviadas.add(claveNotificacion);
+          resultado.notificaciones += 1;
           
-          // Asegurar formato correcto de hora (puede venir con o sin segundos)
-          let horaInicio = String(clase.hora_inicio);
-          if (horaInicio.split(':').length === 2) {
-            horaInicio = `${horaInicio}:00`;
-          }
-          
-          let horaFin = String(clase.hora_fin);
-          if (horaFin.split(':').length === 2) {
-            horaFin = `${horaFin}:00`;
-          }
-          
-          const fechaInicioClase = `${fechaClaseStr} ${horaInicio}`;
-          const fechaFinClase = `${fechaClaseStr} ${horaFin}`;
-          
-          logger.info(`Sincronización automática: Procesando clase ${clase.id_clase} - Inicio=${fechaInicioClase}`);
-
-          // Finalizar responsabilidades anteriores que se solapen
-          await defaultDb.execute(
-            `UPDATE Responsabilidades_Ambiente
-             SET estado_responsabilidad = 'Finalizada',
-                 fecha_fin = ?
-             WHERE id_ambiente = ?
-               AND estado_responsabilidad = 'Activa'
-               AND (
-                 (fecha_inicio < ? AND fecha_fin > ?) OR
-                 (fecha_inicio < ? AND fecha_fin > ?) OR
-                 (fecha_inicio >= ? AND fecha_fin <= ?)
-               )`,
-            [fechaInicioClase, clase.id_ambiente, fechaInicioClase, fechaInicioClase, fechaFinClase, fechaFinClase, fechaInicioClase, fechaFinClase]
-          );
-
-          // Asignar responsabilidad principal al instructor
-          await defaultDb.execute(
-            `INSERT INTO Responsabilidades_Ambiente
-             (id_ambiente, id_clase, id_usuario, tipo_responsabilidad, fecha_inicio, fecha_fin, estado_responsabilidad, asignacion_automatica, creado_por)
-             VALUES (?, ?, ?, 'Principal', ?, ?, 'Activa', TRUE, ?)`,
-            [clase.id_ambiente, clase.id_clase, clase.id_instructor, fechaInicioClase, fechaFinClase, clase.id_instructor]
-          );
-
-          // Obtener aprendices y asignar responsabilidades secundarias
-          const [aprendices] = await defaultDb.execute(
-            `SELECT id_aprendiz FROM Participantes_Clase WHERE id_clase = ? AND presente = TRUE`,
-            [clase.id_clase]
-          );
-
-          for (const aprendiz of aprendices) {
-            await defaultDb.execute(
-              `INSERT INTO Responsabilidades_Ambiente
-               (id_ambiente, id_clase, id_usuario, tipo_responsabilidad, fecha_inicio, fecha_fin, estado_responsabilidad, asignacion_automatica, creado_por)
-               VALUES (?, ?, ?, 'Secundario', ?, ?, 'Activa', TRUE, ?)`,
-              [clase.id_ambiente, clase.id_clase, aprendiz.id_aprendiz, fechaInicioClase, fechaFinClase, clase.id_instructor]
-            );
-          }
-
-          // Actualizar estado de la clase a "En Curso"
-          if (clase.estado_clase === 'Programada') {
-            await defaultDb.execute(
-              `UPDATE Clases SET estado_clase = 'En Curso', fecha_inicio_real = ? WHERE id_clase = ?`,
-              [fechaInicioClase, clase.id_clase]
-            );
-            logger.info(`Clase ${clase.id_clase} iniciada automáticamente - Estado cambiado a "En Curso"`);
-          }
-
-          asignadas++;
+          logger.info(`Notificación enviada: Clase ${clase.id_clase} por iniciar`, {
+            id_clase: clase.id_clase,
+            instructor: clase.instructor_nombre,
+            minutos_restantes: minutosRestantes
+          });
         } catch (err) {
-          logger.error(`Error al asignar responsabilidades para clase ${clase.id_clase}:`, err);
-          errores.push({ id_clase: clase.id_clase, error: err.message });
+          logger.error(`Error al enviar notificación para clase ${clase.id_clase}`, { error: err.message });
+          resultado.errores.push({ id_clase: clase.id_clase, error: err.message });
         }
       }
 
-      // Finalizar responsabilidades de clases que ya terminaron
-      // IMPORTANTE: NO filtrar por tiempo en SQL - hacerlo en JavaScript con hora local
+      // 2. MONITOREAR CLASES EN CURSO QUE DEBEN FINALIZARSE
       const [clasesEnCurso] = await defaultDb.execute(
-        `SELECT DISTINCT 
-          c.id_clase, 
-          c.fecha_clase, 
-          c.hora_inicio,
-          c.hora_fin, 
-          c.fecha_inicio_real
+        `SELECT c.id_clase, c.fecha_clase, c.hora_inicio, c.hora_fin, 
+                c.fecha_inicio_real, c.nombre_clase, c.id_instructor,
+                a.codigo_ambiente, a.nombre_ambiente,
+                u.nombre_usuario AS instructor_nombre
          FROM Clases c
-         INNER JOIN Responsabilidades_Ambiente ra ON c.id_clase = ra.id_clase
-         WHERE c.estado_clase = 'En Curso'
-           AND ra.estado_responsabilidad = 'Activa'`,
-        []
+         INNER JOIN Ambientes a ON c.id_ambiente = a.id_ambiente
+         INNER JOIN Usuarios u ON c.id_instructor = u.id_usuario
+         WHERE c.estado_clase = 'En Curso'`
       );
 
-      // Filtrar en JavaScript usando hora local
-      const clasesFinalizadas = clasesEnCurso.filter(clase => {
-        const fechaClaseStr = clase.fecha_clase instanceof Date
-          ? getLocalDateString(clase.fecha_clase)
-          : String(clase.fecha_clase).split('T')[0];
+      const clasesParaFinalizar = clasesEnCurso.filter((clase) => {
+        const fechaClaseStr = obtenerFechaISO(clase.fecha_clase);
+        const horaFin = normalizarHora(clase.hora_fin);
+        const finProgramado = crearDateTime(fechaClaseStr, horaFin);
+
+        // Enviar notificación 5 minutos antes y cuando llegue la hora
+        const minutosAntes = 5;
+        const tiempoLimite = new Date(finProgramado.getTime() - (minutosAntes * 60000));
         
-        // Normalizar hora_fin
-        let horaFin = String(clase.hora_fin);
-        if (horaFin.split(':').length === 2) {
-          horaFin = `${horaFin}:00`;
-        }
-        
-        // Construir datetime de fin de clase
-        const datetimeFinClase = `${fechaClaseStr} ${horaFin}`;
-        const datetimeFinClaseObj = new Date(datetimeFinClase.replace(' ', 'T'));
-        
-        // Verificar que la hora de fin ya pasó (con margen de 1 minuto)
-        const ahoraObj = new Date();
-        const unMinutoAtras = new Date(ahoraObj.getTime() - 60000);
-        
-        if (datetimeFinClaseObj > unMinutoAtras) {
-          return false; // Aún no ha terminado
-        }
-        
-        // Verificar que la clase fue iniciada hace al menos 1 minuto
-        if (clase.fecha_inicio_real) {
-          const fechaInicioReal = new Date(clase.fecha_inicio_real);
-          const minutosDesdeInicio = Math.floor((ahoraObj - fechaInicioReal) / 60000);
-          if (minutosDesdeInicio < 1) {
-            return false; // Iniciada hace menos de 1 minuto
-          }
-        }
-        
-        return true;
+        return ahoraColombia >= tiempoLimite;
       });
 
-      let finalizadas = 0;
-      for (const clase of clasesFinalizadas) {
+      // Enviar notificaciones para finalizar clases
+      for (const clase of clasesParaFinalizar) {
+        const claveNotificacion = `clase_finalizar_${clase.id_clase}`;
+        
+        if (this.notificacionesEnviadas.has(claveNotificacion)) {
+          continue;
+        }
+
         try {
-          // Calcular minutos desde inicio usando JavaScript
-          let minutosDesdeInicio = 0;
-          if (clase.fecha_inicio_real) {
-            const fechaInicioReal = new Date(clase.fecha_inicio_real);
-            const ahoraObj = new Date();
-            minutosDesdeInicio = Math.floor((ahoraObj - fechaInicioReal) / 60000);
-          } else {
-            // Si no hay fecha_inicio_real, usar hora_inicio programada
-            const fechaClaseStr = clase.fecha_clase instanceof Date
-              ? getLocalDateString(clase.fecha_clase)
-              : String(clase.fecha_clase).split('T')[0];
-            let horaInicio = String(clase.hora_inicio);
-            if (horaInicio.split(':').length === 2) {
-              horaInicio = `${horaInicio}:00`;
-            }
-            const datetimeInicio = `${fechaClaseStr} ${horaInicio}`;
-            const fechaInicioObj = new Date(datetimeInicio.replace(' ', 'T'));
-            const ahoraObj = new Date();
-            minutosDesdeInicio = Math.floor((ahoraObj - fechaInicioObj) / 60000);
-          }
-          
-          if (minutosDesdeInicio < 1) {
-            logger.debug(`Clase ${clase.id_clase} iniciada hace menos de 1 minuto, no se finaliza automáticamente`, {
-              minutos_desde_inicio: minutosDesdeInicio,
-              hora_fin: clase.hora_fin
-            });
-            continue;
-          }
+          const fechaClaseStr = obtenerFechaISO(clase.fecha_clase);
+          const horaFin = normalizarHora(clase.hora_fin);
+          const finProgramado = crearDateTime(fechaClaseStr, horaFin);
+          const minutosRestantes = Math.floor((finProgramado.getTime() - ahoraColombia.getTime()) / 60000);
 
-          // IMPORTANTE: Usar hora local, NO UTC
-          const fechaFin = getLocalDateTimeString(new Date());
-          
-          logger.info(`Finalizando clase ${clase.id_clase} automáticamente - Hora fin: ${clase.hora_fin}, Minutos desde inicio: ${minutosDesdeInicio}`, {
-            fecha_fin_local: fechaFin,
-            minutos_desde_inicio: minutosDesdeInicio
+          await createForUsers({
+            userIds: [clase.id_instructor],
+            titulo: minutosRestantes > 0 
+              ? `Clase por finalizar en ${minutosRestantes} minuto(s)`
+              : 'Es hora de finalizar tu clase',
+            cuerpo: `La clase "${clase.nombre_clase}" en el ambiente ${clase.codigo_ambiente} (${clase.nombre_ambiente}) ${minutosRestantes > 0 ? `finaliza en ${minutosRestantes} minuto(s)` : 'debe finalizarse ahora'}.`,
+            tipo: minutosRestantes > 0 ? 'aviso' : 'alerta',
+            metadata: {
+              id_clase: clase.id_clase,
+              id_ambiente: clase.id_ambiente,
+              tipo: 'clase_finalizar',
+              hora_fin: horaFin,
+              acciones: [
+                {
+                  tipo: 'finalizar_clase',
+                  label: 'Finalizar Clase',
+                  endpoint: `/api/clases/${clase.id_clase}/finalizar`,
+                  metodo: 'POST'
+                },
+                {
+                  tipo: 'cancelar_clase',
+                  label: 'Cancelar Clase',
+                  endpoint: `/api/clases/${clase.id_clase}/cancelar`,
+                  metodo: 'POST'
+                }
+              ]
+            },
+            creadoPor: null
           });
+
+          this.notificacionesEnviadas.add(claveNotificacion);
+          resultado.notificaciones += 1;
           
-          await defaultDb.execute(
-            `UPDATE Responsabilidades_Ambiente
-             SET estado_responsabilidad = 'Finalizada',
-                 fecha_fin = ?
-             WHERE id_clase = ? AND estado_responsabilidad = 'Activa'`,
-            [fechaFin, clase.id_clase]
-          );
-
-          await defaultDb.execute(
-            `UPDATE Clases SET estado_clase = 'Finalizada', fecha_fin_real = ? WHERE id_clase = ?`,
-            [fechaFin, clase.id_clase]
-          );
-
-          finalizadas++;
+          logger.info(`Notificación enviada: Clase ${clase.id_clase} por finalizar`, {
+            id_clase: clase.id_clase,
+            instructor: clase.instructor_nombre,
+            minutos_restantes: minutosRestantes
+          });
         } catch (err) {
-          logger.error(`Error al finalizar clase ${clase.id_clase}:`, err);
-          errores.push({ id_clase: clase.id_clase, error: err.message });
+          logger.error(`Error al enviar notificación para clase ${clase.id_clase}`, { error: err.message });
+          resultado.errores.push({ id_clase: clase.id_clase, error: err.message });
         }
       }
 
-
-      if (asignadas > 0 || finalizadas > 0) {
-        logger.info(`Sincronización automática completada: ${asignadas} clase(s) iniciada(s), ${finalizadas} clase(s) finalizada(s)`);
-      } else {
-        // Log periódico para verificar que el scheduler está funcionando
-        const ahora = new Date();
-        if (ahora.getMinutes() % 5 === 0) { // Log cada 5 minutos
-          logger.debug('Sincronización automática ejecutada - No hay clases para procesar');
+      // 3. Limpiar notificaciones enviadas de clases que ya no aplican
+      const clasesEnCursoIds = new Set(clasesEnCurso.map(c => c.id_clase));
+      const clasesProgramadasIds = new Set(clasesProgramadas.map(c => c.id_clase));
+      
+      for (const clave of this.notificacionesEnviadas) {
+        const matchIniciar = clave.match(/clase_iniciar_(\d+)/);
+        const matchFinalizar = clave.match(/clase_finalizar_(\d+)/);
+        
+        if (matchIniciar && !clasesProgramadasIds.has(parseInt(matchIniciar[1]))) {
+          this.notificacionesEnviadas.delete(clave);
+        }
+        if (matchFinalizar && !clasesEnCursoIds.has(parseInt(matchFinalizar[1]))) {
+          this.notificacionesEnviadas.delete(clave);
         }
       }
+
+      if (resultado.notificaciones > 0) {
+        logger.info(`Monitoreo completado: ${resultado.notificaciones} notificación(es) enviada(s)`);
+      }
+
+      return resultado;
     } catch (error) {
-      logger.error('Error en sincronización automática:', error);
+      logger.error('Error en monitoreo de clases:', error);
+      resultado.errores.push({ tipo: 'error_general', detalle: error.message });
+      return resultado;
+    } finally {
+      this.isExecuting = false;
     }
   }
 
@@ -451,7 +355,8 @@ class SchedulerService {
   getStatus() {
     return {
       isRunning: this.isRunning,
-      intervalMinutes: this.intervalId ? 1 : null
+      intervalMinutes: this.intervalId ? this.intervalMinutes : null,
+      isExecuting: this.isExecuting
     };
   }
 }

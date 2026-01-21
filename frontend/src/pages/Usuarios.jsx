@@ -8,6 +8,7 @@ import CustomSelect from '../components/CustomSelect';
 import { FiUpload, FiDownload } from 'react-icons/fi';
 import * as XLSX from 'xlsx';
 import { parseApiResponse, buildErrorMessage, getAuthHeaders } from '../utils/api';
+import { useSocket } from '../contexts/SocketContext';
 import '../styles/equipos.css';
 import '../styles/usuarios.css';
 import '../styles/modal.css';
@@ -34,6 +35,8 @@ export default function Usuarios() {
   const [confirm, setConfirm] = useState({ open: false, id: null });
   const [currentUser, setCurrentUser] = useState(null);
   const [showImport, setShowImport] = useState(false);
+  
+  const { subscribe } = useSocket();
 
   // Obtener rol del usuario actual
   useEffect(() => {
@@ -104,6 +107,18 @@ export default function Usuarios() {
   useEffect(() => {
     fetchUsers();
   }, []);
+
+  // Suscribirse a actualizaciones en tiempo real de usuarios
+  useEffect(() => {
+    if (!subscribe) return;
+    
+    const unsubscribe = subscribe('user:updated', () => {
+      // Recargar usuarios cuando haya un cambio
+      fetchUsers();
+    });
+    
+    return unsubscribe;
+  }, [subscribe, fetchUsers]);
 
   const displayedUsers = users.filter((u) => {
     if (!query) return true;

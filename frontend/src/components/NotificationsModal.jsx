@@ -1,6 +1,6 @@
-import React, { useMemo } from 'react'
+import React, { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { FiCircle } from 'react-icons/fi'
+import { FiCircle, FiPlay, FiSquare } from 'react-icons/fi'
 
 function formatRelativeTime(dateString) {
   if (!dateString) return ''
@@ -30,6 +30,7 @@ function NotificationsModal({
   onClose,
 }) {
   const navigate = useNavigate()
+  const [procesandoAccion, setProcesandoAccion] = useState(null)
 
   function handleNotificationClick(notification) {
     // Si tiene metadata con ruta, navegar allí
@@ -40,6 +41,54 @@ function NotificationsModal({
       if (!notification.leida && onMarkAsRead) {
         onMarkAsRead(notification.id)
       }
+    }
+  }
+
+  async function handleAccion(notification, accion) {
+    if (!accion || !accion.endpoint) return
+
+    setProcesandoAccion(notification.id)
+    try {
+      const token = localStorage.getItem('token')
+      if (!token) {
+        alert('No hay sesión activa')
+        return
+      }
+
+      const res = await fetch(accion.endpoint, {
+        method: accion.metodo || 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: accion.metodo !== 'GET' ? JSON.stringify({}) : undefined,
+      })
+
+      const data = await res.json()
+
+      if (!res.ok) {
+        throw new Error(data.error || data.detalle || 'Error al ejecutar acción')
+      }
+
+      // Marcar notificación como leída después de la acción
+      if (onMarkAsRead) {
+        onMarkAsRead(notification.id)
+      }
+
+      // Mostrar mensaje de éxito
+      alert(data.message || data.ok ? 'Acción ejecutada correctamente' : 'Acción completada')
+
+      // Cerrar modal si está abierto
+      if (onClose) {
+        onClose()
+      }
+
+      // Recargar la página para actualizar el estado
+      window.location.reload()
+    } catch (err) {
+      alert(err.message || 'Error al ejecutar la acción')
+    } finally {
+      setProcesandoAccion(null)
     }
   }
   const footerLabel = useMemo(() => {
@@ -68,11 +117,17 @@ function NotificationsModal({
         <div className="notifications-list">
           {notifications.map((notification) => {
             const hasRoute = notification.metadata && notification.metadata.ruta
+            const hasAcciones = notification.metadata && 
+                               notification.metadata.acciones && 
+                               Array.isArray(notification.metadata.acciones) &&
+                               notification.metadata.acciones.length > 0
+            const estaProcesando = procesandoAccion === notification.id
+
             return (
               <div
                 key={notification.id}
-                className={`notifications-item${notification.leida ? '' : ' is-unread'}${hasRoute ? ' clickable' : ''}`}
-                onClick={hasRoute ? () => handleNotificationClick(notification) : undefined}
+                className={`notifications-item${notification.leida ? '' : ' is-unread'}${hasRoute && !hasAcciones ? ' clickable' : ''}`}
+                onClick={hasRoute && !hasAcciones ? () => handleNotificationClick(notification) : undefined}
               >
                 <div className="notifications-status">
                   <FiCircle className={notification.leida ? 'notifications-circle-read' : 'notifications-circle-unread'} />
@@ -80,10 +135,42 @@ function NotificationsModal({
                 <div className="notifications-body">
                   <div className="notif-title">{notification.titulo}</div>
                   <div className="notif-text">{notification.cuerpo}</div>
+                  
+                  {/* Botones de acción */}
+                  {hasAcciones && (
+                    <div className="notifications-actions-buttons">
+                      {notification.metadata.acciones.map((accion, idx) => (
+                        <button
+                          key={idx}
+                          type="button"
+                          className={`notification-action-btn ${
+                            accion.tipo === 'iniciar_clase' ? 'btn-iniciar' : 
+                            accion.tipo === 'finalizar_clase' ? 'btn-finalizar' : 
+                            'btn-default'
+                          }`}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleAccion(notification, accion)
+                          }}
+                          disabled={estaProcesando}
+                        >
+                          {estaProcesando ? (
+                            <div className="loading-spinner notification-action-spinner"></div>
+                          ) : (
+                            <>
+                              {accion.tipo === 'iniciar_clase' && <FiPlay size={14} />}
+                              {accion.tipo === 'finalizar_clase' && <FiSquare size={14} />}
+                              {accion.label}
+                            </>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
                 <div className="notifications-actions">
                   <span>{formatRelativeTime(notification.fecha_creacion)}</span>
-                  {!notification.leida && (
+                  {!notification.leida && !hasAcciones && (
                     <button 
                       type="button" 
                       onClick={(e) => {

@@ -35,10 +35,12 @@ import ProtectedRoute from './components/ProtectedRoute';
 import RedirectIfAuth from './components/RedirectIfAuth';
 import ErrorBoundary from './components/ErrorBoundary';
 import NavigationBlocker from './components/NavigationBlocker';
+import { SocketProvider } from './contexts/SocketContext';
 
 export default function App() {
   return (
     <ErrorBoundary>
+      <SocketProvider>
       <NavigationBlocker />
       <Routes>
       <Route
@@ -295,6 +297,7 @@ export default function App() {
       {/* Ruta 404 */}
       <Route element={<PaginaNoEncontrada />} path="*" />
         </Routes>
+      </SocketProvider>
     </ErrorBoundary>
   );
 }

@@ -122,8 +122,10 @@ export async function obtenerAmbiente(req, res) {
        LEFT JOIN Clases c ON ra.id_clase = c.id_clase
        WHERE ra.id_ambiente = ?
        AND ra.estado_responsabilidad = 'Activa'
-       AND ra.fecha_inicio <= NOW()
-       AND (ra.fecha_fin IS NULL OR ra.fecha_fin >= NOW())
+       -- SISTEMA 100% MANUAL: Eliminadas comparaciones con NOW()
+       -- El estado_responsabilidad = 'Activa' es suficiente
+       -- AND ra.fecha_inicio <= NOW()
+       -- AND (ra.fecha_fin IS NULL OR ra.fecha_fin >= NOW())
        ORDER BY ra.tipo_responsabilidad DESC, ra.fecha_inicio DESC`,
       [id]
     );
@@ -624,12 +626,15 @@ export async function desasignarAmbienteInstructor(req, res) {
       });
     }
 
+    // SISTEMA 100% MANUAL: Usar fecha/hora actual del servidor para fecha_fin
+    // pero el cambio de estado es manual, no automático
+    const fechaFin = new Date().toISOString().slice(0, 19).replace('T', ' ');
     await defaultDb.execute(
       `UPDATE Responsabilidades_Ambiente
        SET estado_responsabilidad = 'Finalizada',
-           fecha_fin = NOW()
+           fecha_fin = ?
        WHERE id_responsabilidad_ambiente = ?`,
-      [id_responsabilidad]
+      [fechaFin, id_responsabilidad]
     );
 
     return res.json({
@@ -782,22 +787,47 @@ export async function obtenerInstructoresAmbiente(req, res) {
       INNER JOIN Roles r ON u.id_rol = r.id_rol
       LEFT JOIN Responsabilidades_Ambiente ra2 ON ra2.id_usuario = u.id_usuario 
         AND ra2.estado_responsabilidad = 'Activa'
-        AND (ra2.fecha_fin IS NULL OR ra2.fecha_fin >= NOW())
+        -- SISTEMA 100% MANUAL: Eliminada comparación con NOW()
+        -- AND (ra2.fecha_fin IS NULL OR ra2.fecha_fin >= NOW())
       WHERE ra.id_ambiente = ?
         AND r.nombre_rol = 'Instructor'
         AND ra.estado_responsabilidad = 'Activa'
     `;
     const params = [id];
 
-    if (fecha_consulta) {
-      const fechaConsulta = new Date(fecha_consulta).toISOString().slice(0, 19).replace('T', ' ');
-      query += ' AND ra.fecha_inicio <= ? AND (ra.fecha_fin IS NULL OR ra.fecha_fin >= ?)';
-      params.push(fechaConsulta, fechaConsulta);
-    } else {
-      query += ' AND (ra.fecha_fin IS NULL OR ra.fecha_fin >= NOW())';
-    }
+    // SISTEMA 100% MANUAL: fecha_consulta es solo informativa
+    // Las responsabilidades activas se determinan por estado_responsabilidad = 'Activa'
+    // if (fecha_consulta) {
+    //   const fechaConsulta = new Date(fecha_consulta).toISOString().slice(0, 19).replace('T', ' ');
+    //   query += ' AND ra.fecha_inicio <= ? AND (ra.fecha_fin IS NULL OR ra.fecha_fin >= ?)';
+    //   params.push(fechaConsulta, fechaConsulta);
+    // } else {
+    //   query += ' AND (ra.fecha_fin IS NULL OR ra.fecha_fin >= NOW())';
+    // }
 
-    query += ' GROUP BY u.id_usuario, u.nombre_usuario, u.cedula, u.correo, r.nombre_rol, ra.tipo_responsabilidad, ra.fecha_inicio, ra.fecha_fin, ra.estado_responsabilidad';
+    // OPTIMIZACIÓN: Usar subconsulta en lugar de LEFT JOIN con GROUP BY para mejor rendimiento
+    query = `
+      SELECT 
+        u.id_usuario,
+        u.nombre_usuario,
+        u.cedula,
+        u.correo,
+        r.nombre_rol,
+        ra.tipo_responsabilidad,
+        ra.fecha_inicio,
+        ra.fecha_fin,
+        ra.estado_responsabilidad,
+        (SELECT COUNT(DISTINCT ra2.id_ambiente) 
+         FROM Responsabilidades_Ambiente ra2 
+         WHERE ra2.id_usuario = u.id_usuario 
+           AND ra2.estado_responsabilidad = 'Activa') AS total_ambientes_asignados
+      FROM Responsabilidades_Ambiente ra
+      INNER JOIN Usuarios u ON ra.id_usuario = u.id_usuario
+      INNER JOIN Roles r ON u.id_rol = r.id_rol
+      WHERE ra.id_ambiente = ?
+        AND r.nombre_rol = 'Instructor'
+        AND ra.estado_responsabilidad = 'Activa'
+    `;
 
     const [instructores] = await defaultDb.execute(query, params);
 
@@ -905,7 +935,8 @@ export async function cambiarInstructorACuentadanteSecundario(req, res) {
        WHERE id_ambiente = ?
          AND id_usuario = ?
          AND estado_responsabilidad = 'Activa'
-         AND (fecha_fin IS NULL OR fecha_fin >= NOW())`,
+         -- SISTEMA 100% MANUAL: Eliminada comparación con NOW()
+         -- AND (fecha_fin IS NULL OR fecha_fin >= NOW())`,
       [id_ambiente, id_instructor]
     );
 
@@ -922,7 +953,8 @@ export async function cambiarInstructorACuentadanteSecundario(req, res) {
        FROM Responsabilidades_Ambiente
        WHERE id_usuario = ?
          AND estado_responsabilidad = 'Activa'
-         AND (fecha_fin IS NULL OR fecha_fin >= NOW())`,
+         -- SISTEMA 100% MANUAL: Eliminada comparación con NOW()
+         -- AND (fecha_fin IS NULL OR fecha_fin >= NOW())`,
       [id_instructor]
     );
 

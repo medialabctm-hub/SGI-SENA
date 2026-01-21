@@ -156,6 +156,7 @@ CREATE TABLE Ambientes (
   edificio VARCHAR(50),
   descripcion TEXT,
   estado_ambiente ENUM('Activo', 'Inactivo', 'En Mantenimiento') DEFAULT 'Activo',
+  detalles_uso JSON NULL COMMENT 'Historial de uso del ambiente, incluyendo instructores por fecha y clase',
   fecha_creacion DATETIME DEFAULT NOW(),
   INDEX idx_codigo (codigo_ambiente),
   INDEX idx_tipo (tipo_ambiente),
@@ -354,6 +355,23 @@ CREATE TABLE Clases (
   INDEX idx_fecha_clase (fecha_clase)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
 COMMENT = 'Programación de clases en ambientes con horarios específicos';
+
+-- ============================================
+-- TABLA DE AUDITORÍA DE CAMBIOS DE ESTADO DE CLASES
+-- ============================================
+CREATE TABLE Auditoria_Clases (
+    id_auditoria INT AUTO_INCREMENT PRIMARY KEY,
+    id_clase INT NOT NULL,
+    estado_anterior VARCHAR(20),
+    estado_nuevo VARCHAR(20),
+    fecha_cambio TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    usuario_cambio INT NULL,
+    origen VARCHAR(100) COMMENT 'Origen del cambio: API, Trigger, Stored Procedure, etc.',
+    stack_trace TEXT,
+    FOREIGN KEY (id_clase) REFERENCES Clases(id_clase) ON DELETE CASCADE,
+    INDEX idx_clase_fecha (id_clase, fecha_cambio DESC)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+COMMENT = 'Auditoría de cambios de estado en clases para debugging';
 
 -- ============================================
 -- TABLA DE PARTICIPANTES DE CLASE
@@ -735,25 +753,10 @@ BEGIN
 END;
 //
 
--- Trigger para finalizar responsabilidades anteriores cuando inicia una nueva clase
-CREATE TRIGGER trg_finalizar_responsabilidades_ambiente_anterior
-BEFORE UPDATE ON Clases
-FOR EACH ROW
-BEGIN
-    IF OLD.estado_clase <> 'En Curso' AND NEW.estado_clase = 'En Curso' THEN
-        UPDATE Responsabilidades_Ambiente
-        SET estado_responsabilidad = 'Finalizada', fecha_fin = NOW()
-        WHERE id_ambiente = NEW.id_ambiente
-        AND estado_responsabilidad = 'Activa'
-        AND (fecha_fin IS NULL OR fecha_fin > NOW());
-    END IF;
-    
-    IF OLD.estado_clase <> 'Finalizada' AND NEW.estado_clase = 'Finalizada' THEN
-        UPDATE Responsabilidades_Ambiente
-        SET estado_responsabilidad = 'Finalizada', fecha_fin = COALESCE(NEW.fecha_fin_real, NOW())
-        WHERE id_clase = NEW.id_clase AND estado_responsabilidad = 'Activa';
-    END IF;
-END;
+-- TRIGGER ELIMINADO: trg_finalizar_responsabilidades_ambiente_anterior
+-- RAZÓN: El sistema es 100% manual. Los estados se cambian únicamente mediante
+-- sp_iniciar_clase y sp_finalizar_clase. No debe haber automatización basada en tiempo.
+-- Las responsabilidades se gestionan explícitamente en los stored procedures.
 //
 
 -- Trigger para calcular automáticamente la duración cuando se actualiza fecha_hora_fin
@@ -765,6 +768,33 @@ BEGIN
     SET NEW.duracion_minutos = TIMESTAMPDIFF(MINUTE, NEW.fecha_hora_inicio, NEW.fecha_hora_fin);
     SET NEW.estado = 'Finalizado';
   END IF;
+END;
+//
+
+-- Trigger de auditoría para detectar cambios automáticos en estado de clases
+CREATE TRIGGER trg_auditoria_estado_clase
+AFTER UPDATE ON Clases
+FOR EACH ROW
+BEGIN
+    IF OLD.estado_clase <> NEW.estado_clase THEN
+        INSERT INTO Auditoria_Clases (
+            id_clase,
+            estado_anterior,
+            estado_nuevo,
+            origen,
+            stack_trace
+        ) VALUES (
+            NEW.id_clase,
+            OLD.estado_clase,
+            NEW.estado_clase,
+            'TRIGGER_AUDITORIA',
+            CONCAT('Cambio detectado. Usuario: ', IFNULL(@usuario_actual, 'Sistema'), 
+                   ' | fecha_inicio_real: ', IFNULL(OLD.fecha_inicio_real, 'NULL'), 
+                   ' -> ', IFNULL(NEW.fecha_inicio_real, 'NULL'),
+                   ' | fecha_fin_real: ', IFNULL(OLD.fecha_fin_real, 'NULL'), 
+                   ' -> ', IFNULL(NEW.fecha_fin_real, 'NULL'))
+        );
+    END IF;
 END;
 //
 
@@ -870,6 +900,7 @@ WHERE ra.estado_responsabilidad = 'Activa';
 DELIMITER //
 
 -- Procedimiento para asignar múltiples responsables a un equipo
+DROP PROCEDURE IF EXISTS sp_asignar_responsables//
 CREATE PROCEDURE sp_asignar_responsables(
     IN p_codigo_equipo INT,
     IN p_usuarios_json JSON,
@@ -903,6 +934,7 @@ END;
 //
 
 -- Procedimiento para devolver equipo y finalizar responsabilidades
+DROP PROCEDURE IF EXISTS sp_devolver_equipo//
 CREATE PROCEDURE sp_devolver_equipo(IN p_codigo_equipo INT, IN p_actualizado_por INT)
 BEGIN
     UPDATE Responsables_Equipo
@@ -919,6 +951,7 @@ END;
 //
 
 -- Procedimiento para asignación automática de equipos
+DROP PROCEDURE IF EXISTS sp_asignar_automatico//
 CREATE PROCEDURE sp_asignar_automatico(
     IN p_id_usuario INT, IN p_id_ambiente INT, IN p_tipo_equipo VARCHAR(100), IN p_asignado_por INT
 )
@@ -956,6 +989,7 @@ END;
 //
 
 -- Procedimiento para obtener historial completo de un equipo
+DROP PROCEDURE IF EXISTS sp_historial_equipo//
 CREATE PROCEDURE sp_historial_equipo(IN p_codigo_equipo INT)
 BEGIN
     SELECT 
@@ -972,6 +1006,7 @@ END;
 //
 
 -- Procedimiento para obtener equipos por usuario
+DROP PROCEDURE IF EXISTS sp_equipos_por_usuario//
 CREATE PROCEDURE sp_equipos_por_usuario(IN p_id_usuario INT)
 BEGIN
     SELECT 
@@ -988,6 +1023,7 @@ END;
 //
 
 -- Procedimiento para reportar novedad con actualización de estado
+DROP PROCEDURE IF EXISTS sp_reportar_novedad//
 CREATE PROCEDURE sp_reportar_novedad(
     IN p_codigo_equipo INT,
     IN p_tipo_novedad ENUM('Daño', 'Pérdida', 'Robo', 'Mal Funcionamiento', 'Daño Físico', 'Falta de Componente', 'Otro'),
@@ -1009,6 +1045,7 @@ END;
 //
 
 -- Procedimiento para obtener estadísticas del sistema
+DROP PROCEDURE IF EXISTS sp_estadisticas_sistema//
 CREATE PROCEDURE sp_estadisticas_sistema()
 BEGIN
     SELECT 
@@ -1032,6 +1069,7 @@ END;
 
 -- Procedimiento mejorado para iniciar una clase
 -- Asigna responsabilidades de ambiente Y equipos del ambiente al instructor
+DROP PROCEDURE IF EXISTS sp_iniciar_clase//
 CREATE PROCEDURE sp_iniciar_clase(IN p_id_clase INT, IN p_fecha_inicio_real DATETIME)
 BEGIN
     DECLARE v_id_ambiente INT;
@@ -1042,14 +1080,20 @@ BEGIN
     DECLARE v_done INT DEFAULT FALSE;
     DECLARE v_id_aprendiz INT;
     DECLARE v_codigo_equipo INT;
+    DECLARE v_nombre_instructor VARCHAR(100);
+    DECLARE v_nombre_clase VARCHAR(200);
+    DECLARE v_detalles_uso JSON;
+    DECLARE v_nuevo_registro JSON;
     DECLARE cur_aprendices CURSOR FOR 
         SELECT id_aprendiz FROM Participantes_Clase WHERE id_clase = p_id_clase AND presente = TRUE;
     DECLARE CONTINUE HANDLER FOR NOT FOUND SET v_done = TRUE;
     
-    -- Obtener datos de la clase
-    SELECT id_ambiente, id_instructor, hora_fin, fecha_clase 
-    INTO v_id_ambiente, v_id_instructor, v_hora_fin, v_fecha_clase
-    FROM Clases WHERE id_clase = p_id_clase;
+    -- Obtener datos de la clase e instructor
+    SELECT c.id_ambiente, c.id_instructor, c.hora_fin, c.fecha_clase, c.nombre_clase, u.nombre_usuario
+    INTO v_id_ambiente, v_id_instructor, v_hora_fin, v_fecha_clase, v_nombre_clase, v_nombre_instructor
+    FROM Clases c
+    INNER JOIN Usuarios u ON c.id_instructor = u.id_usuario
+    WHERE c.id_clase = p_id_clase;
     
     IF v_id_ambiente IS NULL THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Clase no encontrada';
@@ -1101,7 +1145,32 @@ BEGIN
     END LOOP;
     CLOSE cur_aprendices;
     
-    -- 4. Actualizar estado de la clase
+    -- 4. Actualizar historial de instructores en detalles_uso del ambiente
+    -- Obtener el JSON actual o inicializar si es NULL
+    SELECT COALESCE(detalles_uso, JSON_ARRAY()) INTO v_detalles_uso
+    FROM Ambientes WHERE id_ambiente = v_id_ambiente;
+    
+    -- Crear nuevo registro de uso
+    SET v_nuevo_registro = JSON_OBJECT(
+        'id_clase', p_id_clase,
+        'id_instructor', v_id_instructor,
+        'nombre_instructor', v_nombre_instructor,
+        'nombre_clase', COALESCE(v_nombre_clase, ''),
+        'fecha_clase', DATE_FORMAT(v_fecha_clase, '%Y-%m-%d'),
+        'fecha_inicio_real', DATE_FORMAT(p_fecha_inicio_real, '%Y-%m-%d %H:%i:%s'),
+        'fecha_fin_estimada', DATE_FORMAT(v_fecha_fin_estimada, '%Y-%m-%d %H:%i:%s'),
+        'estado', 'En Curso'
+    );
+    
+    -- Agregar el nuevo registro al array JSON
+    SET v_detalles_uso = JSON_ARRAY_APPEND(v_detalles_uso, '$', v_nuevo_registro);
+    
+    -- Actualizar el campo detalles_uso en Ambientes
+    UPDATE Ambientes 
+    SET detalles_uso = v_detalles_uso
+    WHERE id_ambiente = v_id_ambiente;
+    
+    -- 5. Actualizar estado de la clase
     UPDATE Clases SET estado_clase = 'En Curso', fecha_inicio_real = p_fecha_inicio_real WHERE id_clase = p_id_clase;
     
     SELECT 'Clase iniciada correctamente. Responsabilidades de ambiente y equipos asignadas al instructor.' AS mensaje;
@@ -1110,11 +1179,18 @@ END;
 
 -- Procedimiento mejorado para finalizar una clase
 -- Revierte las asignaciones de equipos cuando la clase finaliza
+-- CORRECCIÓN: Usa JOIN en lugar de subconsulta IN para evitar errores de MySQL
+DROP PROCEDURE IF EXISTS sp_finalizar_clase//
 CREATE PROCEDURE sp_finalizar_clase(IN p_id_clase INT, IN p_fecha_fin_real DATETIME)
 BEGIN
     DECLARE v_id_ambiente INT;
     DECLARE v_id_instructor INT;
     DECLARE v_fecha_fin DATETIME;
+    DECLARE v_detalles_uso JSON;
+    DECLARE v_array_length INT;
+    DECLARE v_index INT DEFAULT 0;
+    DECLARE v_registro JSON;
+    DECLARE v_id_clase_registro INT;
     
     -- Obtener datos de la clase
     SELECT id_ambiente, id_instructor INTO v_id_ambiente, v_id_instructor
@@ -1124,7 +1200,13 @@ BEGIN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Clase no encontrada';
     END IF;
     
-    SET v_fecha_fin = COALESCE(p_fecha_fin_real, NOW());
+    -- SISTEMA 100% MANUAL: p_fecha_fin_real es obligatorio
+    -- No usar NOW() como fallback para evitar automatización
+    IF p_fecha_fin_real IS NULL THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'fecha_fin_real es obligatoria. El sistema es 100% manual.';
+    END IF;
+    
+    SET v_fecha_fin = p_fecha_fin_real;
     
     -- 1. Finalizar todas las responsabilidades de ambiente asociadas a esta clase
     UPDATE Responsabilidades_Ambiente 
@@ -1135,17 +1217,50 @@ BEGIN
     
     -- 2. Revertir asignaciones de equipos del ambiente al instructor
     -- Solo las asignaciones automáticas creadas por esta clase
-    UPDATE Responsables_Equipo 
-    SET estado_responsabilidad = 'Inactivo',
-        fecha_desvinculacion = v_fecha_fin
-    WHERE id_usuario = v_id_instructor
-      AND estado_responsabilidad = 'Activo'
-      AND observaciones LIKE CONCAT('%inicio de clase #', p_id_clase, '%')
-      AND codigo_equipo IN (
-          SELECT codigo_equipo FROM Elementos WHERE id_ambiente = v_id_ambiente
-      );
+    -- CORRECCIÓN: Usar JOIN en lugar de subconsulta IN para evitar errores de MySQL
+    UPDATE Responsables_Equipo re
+    INNER JOIN Elementos e ON re.codigo_equipo = e.codigo_equipo
+    SET re.estado_responsabilidad = 'Finalizado',
+        re.fecha_desvinculacion = v_fecha_fin
+    WHERE re.id_usuario = v_id_instructor
+      AND re.estado_responsabilidad = 'Activo'
+      AND re.observaciones LIKE CONCAT('%inicio de clase #', p_id_clase, '%')
+      AND e.id_ambiente = v_id_ambiente;
     
-    -- 3. Actualizar estado de la clase
+    -- 3. Actualizar historial de instructores en detalles_uso del ambiente
+    -- Buscar el registro correspondiente a esta clase y actualizarlo
+    SELECT COALESCE(detalles_uso, JSON_ARRAY()) INTO v_detalles_uso
+    FROM Ambientes WHERE id_ambiente = v_id_ambiente;
+    
+    -- Obtener longitud del array
+    SET v_array_length = JSON_LENGTH(v_detalles_uso);
+    
+    -- Buscar y actualizar el registro de esta clase
+    buscar_loop: WHILE v_index < v_array_length DO
+        SET v_registro = JSON_EXTRACT(v_detalles_uso, CONCAT('$[', v_index, ']'));
+        SET v_id_clase_registro = JSON_UNQUOTE(JSON_EXTRACT(v_registro, '$.id_clase'));
+        
+        IF v_id_clase_registro = p_id_clase THEN
+            -- Actualizar el registro encontrado
+            SET v_registro = JSON_SET(
+                v_registro,
+                '$.estado', 'Finalizada',
+                '$.fecha_fin_real', DATE_FORMAT(v_fecha_fin, '%Y-%m-%d %H:%i:%s')
+            );
+            -- Reemplazar el elemento en el array
+            SET v_detalles_uso = JSON_SET(v_detalles_uso, CONCAT('$[', v_index, ']'), v_registro);
+            LEAVE buscar_loop;
+        END IF;
+        
+        SET v_index = v_index + 1;
+    END WHILE buscar_loop;
+    
+    -- Actualizar el campo detalles_uso en Ambientes
+    UPDATE Ambientes 
+    SET detalles_uso = v_detalles_uso
+    WHERE id_ambiente = v_id_ambiente;
+    
+    -- 4. Actualizar estado de la clase
     UPDATE Clases SET estado_clase = 'Finalizada', fecha_fin_real = v_fecha_fin WHERE id_clase = p_id_clase;
     
     SELECT 'Clase finalizada correctamente. Responsabilidades y asignaciones de equipos revertidas.' AS mensaje;
@@ -1153,10 +1268,17 @@ END;
 //
 
 -- Procedimiento para obtener responsables actuales de un ambiente
+DROP PROCEDURE IF EXISTS sp_responsables_ambiente_actual//
 CREATE PROCEDURE sp_responsables_ambiente_actual(IN p_id_ambiente INT, IN p_fecha_consulta DATETIME)
 BEGIN
-    SET p_fecha_consulta = COALESCE(p_fecha_consulta, NOW());
+    -- SISTEMA 100% MANUAL: p_fecha_consulta es opcional solo para consultas informativas
+    -- Si no se proporciona, usar NULL para indicar que es una consulta sin filtro temporal
+    -- Las responsabilidades activas se determinan por estado_responsabilidad = 'Activa', no por tiempo
+    -- SET p_fecha_consulta = COALESCE(p_fecha_consulta, NOW()); -- ELIMINADO: No usar NOW() para lógica de negocio
     
+    -- SISTEMA 100% MANUAL: Las responsabilidades activas se determinan por estado_responsabilidad = 'Activa'
+    -- No se usan comparaciones de tiempo. El tiempo es solo informativo.
+    -- p_fecha_consulta se usa solo para información adicional, no para filtrar responsabilidades activas
     SELECT 
         ra.id_responsabilidad_ambiente, ra.id_usuario, u.nombre_usuario, r.nombre_rol,
         ra.tipo_responsabilidad, ra.fecha_inicio, ra.fecha_fin, c.nombre_clase, c.id_clase, c.estado_clase
@@ -1166,8 +1288,9 @@ BEGIN
     LEFT JOIN Clases c ON ra.id_clase = c.id_clase
     WHERE ra.id_ambiente = p_id_ambiente
     AND ra.estado_responsabilidad = 'Activa'
-    AND ra.fecha_inicio <= p_fecha_consulta
-    AND (ra.fecha_fin IS NULL OR ra.fecha_fin >= p_fecha_consulta)
+    -- ELIMINADO: Comparaciones de tiempo. El estado 'Activa' es suficiente.
+    -- AND ra.fecha_inicio <= p_fecha_consulta
+    -- AND (ra.fecha_fin IS NULL OR ra.fecha_fin >= p_fecha_consulta)
     ORDER BY ra.tipo_responsabilidad DESC, ra.fecha_inicio DESC;
 END;
 //
@@ -1300,3 +1423,95 @@ INSERT IGNORE INTO Permisos (codigo_permiso, modulo, accion, descripcion) VALUES
 
 -- Roles
 ('roles:manage', 'ROLES', 'MANAGE', 'Gestionar roles y permisos');
+
+-- ============================================
+-- OPTIMIZACIÓN DE ÍNDICES
+-- Índices compuestos para mejorar el rendimiento de consultas frecuentes
+-- ============================================
+
+-- Índices compuestos para consultas frecuentes de Clases
+-- Optimiza listarClases con filtros múltiples
+CREATE INDEX idx_clases_filtros 
+ON Clases(id_instructor, fecha_clase, estado_clase, id_ambiente);
+
+-- Optimiza búsqueda de clases por ambiente y fecha
+CREATE INDEX idx_clases_ambiente_fecha 
+ON Clases(id_ambiente, fecha_clase DESC, hora_inicio);
+
+-- Índice para Participantes_Clase (optimiza COUNT en listarClases)
+CREATE INDEX idx_participantes_clase_presente 
+ON Participantes_Clase(id_clase, presente);
+
+-- Índices compuestos para Responsabilidades_Ambiente
+-- Optimiza consultas de instructores con ambientes
+CREATE INDEX idx_resp_ambiente_usuario_estado 
+ON Responsabilidades_Ambiente(id_usuario, estado_responsabilidad, id_ambiente);
+
+-- Optimiza búsqueda por ambiente y estado
+CREATE INDEX idx_resp_ambiente_ambiente_estado 
+ON Responsabilidades_Ambiente(id_ambiente, estado_responsabilidad, id_usuario);
+
+-- Índice para Responsables_Equipo (optimiza subconsulta en UserRepository)
+CREATE INDEX idx_resp_equipo_usuario_estado 
+ON Responsables_Equipo(id_usuario, estado_responsabilidad);
+
+-- Índice compuesto para Elementos (optimiza búsquedas por ambiente y estado)
+CREATE INDEX idx_elementos_ambiente_estado 
+ON Elementos(id_ambiente, estado_fisico);
+
+-- Índice para búsquedas por cuentadante
+CREATE INDEX idx_elementos_cuentadante 
+ON Elementos(id_cuentadante, estado_fisico);
+
+-- Índice para Verificaciones_Inventario (optimiza consultarHistorialVerificaciones)
+CREATE INDEX idx_verif_inventario_filtros 
+ON Verificaciones_Inventario(id_usuario, id_ambiente, fecha_verificacion DESC);
+
+CREATE INDEX idx_verif_inventario_equipo_fecha 
+ON Verificaciones_Inventario(codigo_equipo, fecha_verificacion DESC);
+
+-- Índice para Historial_Uso_Equipos (optimiza consultarHistorialUso)
+CREATE INDEX idx_historial_uso_usuario_fecha 
+ON Historial_Uso_Equipos(id_usuario, fecha_hora_inicio DESC);
+
+CREATE INDEX idx_historial_uso_equipo_fecha 
+ON Historial_Uso_Equipos(codigo_equipo, fecha_hora_inicio DESC);
+
+-- Índice para Novedades (optimiza consultas con estado)
+CREATE INDEX idx_novedades_estado_fecha 
+ON Novedades(estado_resolucion, fecha_novedad DESC);
+
+-- Índice para Mantenimiento (optimiza consultas de mantenimientos próximos)
+CREATE INDEX idx_mantenimiento_fecha_proximo 
+ON Mantenimiento(fecha_proximo, estado_mantenimiento);
+
+-- Índice para Notificaciones (optimiza fetchNotifications)
+CREATE INDEX idx_notificaciones_usuario_leida_fecha 
+ON Notificaciones(id_usuario, leida, fecha_creacion DESC);
+
+-- Índice para Usuarios (optimiza búsquedas por estado y rol)
+CREATE INDEX idx_usuarios_estado_rol 
+ON Usuarios(estado, id_rol);
+
+-- Índice compuesto para Clases con estado y fecha (optimiza scheduler)
+CREATE INDEX idx_clases_estado_fecha_hora 
+ON Clases(estado_clase, fecha_clase, hora_inicio, hora_fin);
+
+-- ============================================
+-- ACTUALIZAR ESTADÍSTICAS DE TABLAS
+-- Mejora el rendimiento del optimizador de consultas
+-- ============================================
+
+ANALYZE TABLE Clases;
+ANALYZE TABLE Responsabilidades_Ambiente;
+ANALYZE TABLE Responsables_Equipo;
+ANALYZE TABLE Elementos;
+ANALYZE TABLE Verificaciones_Inventario;
+ANALYZE TABLE Historial_Uso_Equipos;
+ANALYZE TABLE Novedades;
+ANALYZE TABLE Mantenimiento;
+ANALYZE TABLE Notificaciones;
+ANALYZE TABLE Usuarios;
+ANALYZE TABLE Participantes_Clase;
+ANALYZE TABLE Ambientes;
+ANALYZE TABLE Estado_Equipo;

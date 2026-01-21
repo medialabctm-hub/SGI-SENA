@@ -29,7 +29,7 @@ export default function Aprendices() {
         setCurrentUser(JSON.parse(stored))
       }
     } catch (err) {
-      console.warn('No se pudo leer el usuario de la sesión', err)
+      // Error silencioso al leer usuario de sesión
     }
   }, [])
 

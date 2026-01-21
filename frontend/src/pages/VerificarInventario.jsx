@@ -51,16 +51,10 @@ export default function VerificarInventario() {
     try {
       const token = localStorage.getItem('token')
       
-      // Primero sincronizar responsabilidades para asegurar que las clases activas estén actualizadas
-      try {
-        await fetch('/api/clases/sincronizar-responsabilidades', {
-          method: 'POST',
-          headers: { Authorization: `Bearer ${token}` }
-        })
-      } catch (syncErr) {
-        // No mostrar error si falla la sincronización, solo continuar
-        console.debug('Sincronización automática:', syncErr.message)
-      }
+      // SISTEMA 100% MANUAL: No hay sincronización automática
+      // Los estados se determinan únicamente por estado_responsabilidad = 'Activa'
+      // No se necesita sincronizar antes de obtener los ambientes
+      // La sincronización solo envía alertas informativas, no cambia estados
       
       // Luego obtener los ambientes
       const res = await fetch('/api/equipos/verificacion/ambientes', {

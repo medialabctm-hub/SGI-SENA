@@ -222,14 +222,6 @@ export default function Perfil() {
     fetchUserData();
   }, [fetchUserData]);
 
-  // Debug: Log para verificar la ruta de la imagen
-  useEffect(() => {
-    if (userData?.foto_perfil) {
-      const imageUrl = getImageUrl(userData.foto_perfil);
-      console.log('Foto de perfil detectada:', userData.foto_perfil);
-      console.log('URL construida:', imageUrl);
-    }
-  }, [userData?.foto_perfil, getImageUrl]);
 
   // Return condicional para estado de carga - DEBE estar DESPUÉS de todos los hooks
   if (loading && !userData) {
@@ -321,7 +313,7 @@ export default function Perfil() {
                           }
                         }}
                         onLoad={() => {
-                          console.log('Imagen de perfil cargada correctamente:', fotoPerfil);
+                          // Imagen cargada
                         }}
                       />
                     )}

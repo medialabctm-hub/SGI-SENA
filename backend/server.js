@@ -35,6 +35,7 @@ import webhookRoutes from './src/routes/webhookRoutes.js';
 import imagenesEquipoRoutes from './src/routes/imagenesEquipoRoutes.js';
 import imagenesAmbienteRoutes from './src/routes/imagenesAmbienteRoutes.js';
 import schedulerService from './src/services/schedulerService.js';
+import socketService from './src/services/socketService.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
@@ -223,6 +224,9 @@ const startServer = (port) => {
         env: process.env.NODE_ENV || 'development',
       });
       
+      // Inicializar Socket.io para actualizaciones en tiempo real
+      socketService.initialize(server);
+      
       // Verificar y reinicializar servicio de email si es necesario
       // (por si las variables de entorno se cargaron después de la importación)
       if (process.env.BREVO_SMTP_KEY && !emailService.transporter) {
@@ -230,10 +234,16 @@ const startServer = (port) => {
         emailService.reinitialize();
       }
       
-      // Iniciar scheduler para sincronización automática de responsabilidades
-      // Se ejecuta cada minuto para verificar clases que deben iniciar/finalizar
+      // Scheduler ACTIVADO solo para enviar notificaciones
+      // IMPORTANTE: El scheduler SOLO envía notificaciones con botones de acción
+      // NO cambia estados automáticamente - Los estados son 100% MANUALES
+      // Los estados SOLO se cambian mediante los endpoints iniciarClase/finalizarClase
+      // El scheduler solo monitorea y notifica, no ejecuta acciones automáticas
       if (process.env.NODE_ENV !== 'test') {
-        schedulerService.start(1); // Sincronizar cada 1 minuto
+        schedulerService.start(1); // Ejecutar cada 1 minuto para monitorear y notificar
+        logger.info('✅ Scheduler ACTIVADO - Enviando notificaciones de inicio/finalización de clases');
+      } else {
+        logger.info('⚠️ Scheduler DESACTIVADO - Modo test');
       }
     });
 

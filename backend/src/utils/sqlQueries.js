@@ -289,8 +289,7 @@ export async function deshabilitarAsignacionesActivas(db, codigoEquipo, deshabil
     }
   } catch (histErr) {
     // No fallar si no existe la tabla de historial
-    // Solo loguear el error
-    console.warn('No se pudo registrar en historial:', histErr.message);
+    // Error silencioso
   }
 
   return {

@@ -21,22 +21,30 @@ export class EquipoService {
    * @returns {Promise<Array<number>>} Lista de IDs de ambientes
    */
   async obtenerAmbientesInstructor(userId) {
+    // Determinar jornada actual (misma lógica que estadisticasController)
+    const horaActual = new Date().getHours();
+    let jornadaActual = 'Mañana';
+    if (horaActual >= 12 && horaActual < 18) {
+      jornadaActual = 'Tarde';
+    } else if (horaActual >= 18) {
+      jornadaActual = 'Noche';
+    }
+
+    // SISTEMA 100% MANUAL: Las responsabilidades activas se determinan por estado_responsabilidad = 'Activa'
+    // No se usan comparaciones de tiempo. El tiempo es solo informativo.
+    // Misma lógica que obtenerEstadisticasInstructor para consistencia
     const ambientes = await this.equipoRepository.execute(
       `SELECT DISTINCT ra.id_ambiente
        FROM Responsabilidades_Ambiente ra
        LEFT JOIN Clases c ON ra.id_clase = c.id_clase
        WHERE ra.id_usuario = ?
          AND ra.estado_responsabilidad = 'Activa'
-         AND ra.fecha_inicio <= NOW()
-         AND (ra.fecha_fin IS NULL OR ra.fecha_fin >= NOW())
          AND (
-           (ra.id_clase IS NULL)
+           (ra.id_clase IS NULL AND ra.jornada = ?)
            OR
-           (ra.id_clase IS NOT NULL 
-            AND c.estado_clase IN ('Programada', 'En Curso')
-            AND c.fecha_clase >= CURDATE())
+           (ra.id_clase IS NOT NULL AND c.estado_clase = 'En Curso')
          )`,
-      [userId]
+      [userId, jornadaActual]
     );
     return ambientes.map(a => a.id_ambiente);
   }

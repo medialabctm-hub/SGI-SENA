@@ -187,11 +187,6 @@ export const agregarParticipantesSchema = z.object({
  */
 export const validate = (schema) => (req, res, next) => {
   try {
-    // Log del body recibido para debugging (solo en desarrollo)
-    if (process.env.NODE_ENV === 'development') {
-      console.log('Validating request body:', JSON.stringify(req.body, null, 2));
-    }
-    
     const validated = schema.parse(req.body);
     req.body = validated;
     next();

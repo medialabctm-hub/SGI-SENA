@@ -1,5 +1,6 @@
 import defaultDb from '../config/dbconfig.js'
 import { getUserLanguage, translate } from '../utils/translations.js'
+import socketService from './socketService.js'
 
 const ALLOWED_TYPES = new Set(['info', 'aviso', 'alerta', 'critica'])
 
@@ -194,7 +195,19 @@ export async function createForUsers({ userIds = [], titulo, cuerpo = '', tipo =
   }
 
   const rows = await buildRows({ userIds: filteredIds, titulo, cuerpo, tipo, metadata, creadoPor })
-  return await insertRows(rows)
+  const result = await insertRows(rows)
+  
+  // Emitir eventos WebSocket a los usuarios afectados
+  if (result.inserted > 0) {
+    filteredIds.forEach(userId => {
+      socketService.emitToUser(userId, 'notification:new', {
+        message: 'Nueva notificación disponible',
+        timestamp: new Date().toISOString(),
+      });
+    });
+  }
+  
+  return result
 }
 
 export async function createForRole({ rolNombre, titulo, cuerpo = '', tipo = 'info', metadata = null, creadoPor = null }) {

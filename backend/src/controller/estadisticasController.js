@@ -242,24 +242,19 @@ export async function obtenerEstadisticasInstructor(req, res) {
       jornadaActual = 'Noche';
         }
         
-    // Obtener ambientes donde el instructor tiene responsabilidad activa en este momento
+    // SISTEMA 100% MANUAL: Las responsabilidades activas se determinan por estado_responsabilidad = 'Activa'
+    // No se usan comparaciones de tiempo. El tiempo es solo informativo.
+    // Obtener ambientes donde el instructor tiene responsabilidad activa (sin filtros de tiempo)
     const [ambientes] = await defaultDb.execute(
       `SELECT DISTINCT ra.id_ambiente
        FROM Responsabilidades_Ambiente ra
        LEFT JOIN Clases c ON ra.id_clase = c.id_clase
        WHERE ra.id_usuario = ?
          AND ra.estado_responsabilidad = 'Activa'
-         AND ra.fecha_inicio <= NOW()
-         AND (ra.fecha_fin IS NULL OR ra.fecha_fin >= NOW())
          AND (
            (ra.id_clase IS NULL AND ra.jornada = ?)
-           OR (
-             ra.id_clase IS NOT NULL 
-             AND c.estado_clase IN ('Programada', 'En Curso')
-             AND c.fecha_clase = CURDATE()
-             AND CONCAT(c.fecha_clase, ' ', c.hora_inicio) <= NOW()
-             AND CONCAT(c.fecha_clase, ' ', c.hora_fin) >= NOW()
-           )
+           OR
+           (ra.id_clase IS NOT NULL AND c.estado_clase = 'En Curso')
          )`,
       [userId, jornadaActual]
     );
@@ -277,7 +272,24 @@ export async function obtenerEstadisticasInstructor(req, res) {
       });
     }
 
-    const idsAmbientes = ambientes.map(a => a.id_ambiente);
+    // Filtrar IDs válidos (no null/undefined)
+    const idsAmbientes = ambientes
+      .map(a => a.id_ambiente)
+      .filter(id => id !== null && id !== undefined);
+
+    // Verificar nuevamente después del filtrado
+    if (idsAmbientes.length === 0) {
+      return res.json({
+        stats: {
+          total_equipos: 0,
+          equipos_buenos: 0,
+          equipos_regulares: 0,
+          equipos_danados: 0,
+          valor_total_inventario: 0
+        },
+        generatedAt: new Date().toISOString(),
+      });
+    }
 
     // Obtener estadísticas de equipos de esos ambientes
     const [[estadisticas]] = await defaultDb.execute(

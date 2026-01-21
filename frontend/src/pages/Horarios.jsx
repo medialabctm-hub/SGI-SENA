@@ -27,6 +27,7 @@ import {
   FiFile
 } from 'react-icons/fi'
 import { parseApiResponse, buildErrorMessage } from '../utils/api'
+import { useSocket } from '../contexts/SocketContext'
 import '../styles/equipos.css'
 import '../styles/horarios.css'
 
@@ -80,6 +81,8 @@ export default function Horarios() {
   const [importFile, setImportFile] = useState(null)
   const [nombresClases, setNombresClases] = useState([])
   const [loadingNombres, setLoadingNombres] = useState(false)
+  
+  const { subscribe } = useSocket()
 
   useEffect(() => {
     try {
@@ -101,23 +104,34 @@ export default function Horarios() {
       if (user.nombre_rol === 'Administrador') {
         fetchInstructores()
       }
-      // Sincronizar responsabilidades al cargar la página
-      sincronizarResponsabilidades()
+      // SISTEMA 100% MANUAL: No hay sincronización automática
+      // Los estados se cambian únicamente mediante acciones manuales del usuario
+      // (botones Iniciar/Finalizar Clase)
+      // La función sincronizarResponsabilidades() solo se puede llamar manualmente si es necesario
+      // sincronizarResponsabilidades() // ELIMINADO: No sincronizar automáticamente
     }
   }, [user, filtros])
 
-  // Sincronizar responsabilidades automáticamente cada 2 minutos
+  // Suscribirse a actualizaciones en tiempo real de clases
   useEffect(() => {
-    if (!user) return
+    if (!subscribe) return;
+    
+    const unsubscribe = subscribe('clase:updated', (data) => {
+      // Recargar clases cuando haya un cambio
+      fetchClases();
+    });
+    
+    return unsubscribe;
+  }, [subscribe, fetchClases])
 
-    const interval = setInterval(() => {
-      sincronizarResponsabilidades()
-    }, 2 * 60 * 1000) // Cada 2 minutos
-
-    return () => clearInterval(interval)
-  }, [user])
+  // SISTEMA 100% MANUAL: Sincronización automática ELIMINADA
+  // Los estados de clases son completamente manuales
+  // No hay intervalos, schedulers ni polling
+  // Los estados solo cambian cuando el usuario presiona los botones Iniciar/Finalizar
 
   async function sincronizarResponsabilidades() {
+    // SISTEMA 100% MANUAL: Esta función solo se puede llamar manualmente si es necesario
+    // No se ejecuta automáticamente
     try {
       const token = localStorage.getItem('token')
       await fetch('/api/clases/sincronizar-responsabilidades', {
@@ -127,8 +141,7 @@ export default function Horarios() {
       // Actualizar la lista de clases después de sincronizar
       fetchClases()
     } catch (err) {
-      // Silenciar errores de sincronización automática
-      console.debug('Sincronización automática:', err.message)
+      // Silenciar errores de sincronización
     }
   }
 
@@ -147,7 +160,10 @@ export default function Horarios() {
         headers: { Authorization: `Bearer ${token}` }
       })
       const data = await parseApiResponse(res, 'No se pudo obtener las clases')
-      setClases(data || [])
+      // El backend ahora retorna { clases: [...], paginacion: {...} }
+      // Mantener compatibilidad con respuesta antigua (array directo)
+      const clasesList = Array.isArray(data) ? data : (data?.clases || [])
+      setClases(clasesList)
     } catch (err) {
       setToast({ message: buildErrorMessage(err, 'No se pudo obtener las clases'), type: 'error' })
     } finally {
@@ -193,7 +209,6 @@ export default function Horarios() {
       // Manejar errores de permisos
       if (res.status === 403) {
         const errorData = await res.json().catch(() => ({}))
-        console.warn('No tienes permiso para ver nombres de clases:', errorData.detalle || errorData.error)
         setNombresClases([])
         return
       }
@@ -392,13 +407,6 @@ export default function Horarios() {
           }
         }
       }
-      
-      // Log para debugging
-      console.log('Actualizando clase - Enviando datos al backend:', {
-        fecha_clase: bodyData.fecha_clase,
-        hora_inicio: bodyData.hora_inicio,
-        hora_fin: bodyData.hora_fin
-      })
       
       const res = await fetch(`/api/clases/${editingClase.id_clase}`, {
         method: 'PUT',

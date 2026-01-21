@@ -387,10 +387,12 @@ export async function importarHorariosExcel(req, res) {
             }
 
             // Crear la clase
+            // IMPORTANTE: Establecer explícitamente estado_clase = 'Programada'
+            // El sistema es 100% manual, las clases siempre se crean como Programadas
             const [result] = await defaultDb.execute(
               `INSERT INTO Clases 
-               (id_ambiente, id_instructor, nombre_clase, codigo_ficha, descripcion, fecha_clase, hora_inicio, hora_fin, observaciones, creado_por)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+               (id_ambiente, id_instructor, nombre_clase, codigo_ficha, descripcion, fecha_clase, hora_inicio, hora_fin, observaciones, estado_clase, creado_por)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'Programada', ?)`,
               [
                 ambiente.id_ambiente,
                 instructorData.id_usuario,
