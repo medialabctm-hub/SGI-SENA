@@ -234,14 +234,14 @@ const startServer = (port) => {
         emailService.reinitialize();
       }
       
-      // Scheduler ACTIVADO solo para enviar notificaciones
-      // IMPORTANTE: El scheduler SOLO envía notificaciones con botones de acción
-      // NO cambia estados automáticamente - Los estados son 100% MANUALES
-      // Los estados SOLO se cambian mediante los endpoints iniciarClase/finalizarClase
-      // El scheduler solo monitorea y notifica, no ejecuta acciones automáticas
+      // Scheduler ACTIVADO para automatización de clases
+      // El scheduler AUTOMÁTICAMENTE:
+      // - Inicia clases cuando llega la hora de inicio programada (margen ±2 min)
+      // - Finaliza clases cuando pasa la hora de fin programada (margen ±2 min)
+      // - Envía notificaciones de advertencia 5 minutos antes del inicio/fin
       if (process.env.NODE_ENV !== 'test') {
-        schedulerService.start(1); // Ejecutar cada 1 minuto para monitorear y notificar
-        logger.info('✅ Scheduler ACTIVADO - Enviando notificaciones de inicio/finalización de clases');
+        schedulerService.start(1); // Ejecutar cada 1 minuto para automatizar y notificar
+        logger.info('✅ Scheduler ACTIVADO - Automatizando inicio y finalización de clases');
       } else {
         logger.info('⚠️ Scheduler DESACTIVADO - Modo test');
       }

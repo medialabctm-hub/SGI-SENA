@@ -8,7 +8,7 @@ import { parseApiResponse, buildErrorMessage } from '../utils/api'
 import { FiDownload, FiSearch, FiList, FiClock, FiEye, FiUpload, FiSettings, FiCheckSquare, FiSquare } from 'react-icons/fi'
 import { useNavigate } from 'react-router-dom'
 import * as XLSX from 'xlsx'
-import '../styles/equipos.css'
+import '../styles/pages/equipos.css'
 import '../styles/consultarEquipo.css'
 import '../styles/consultarEquipoBadges.css'
 

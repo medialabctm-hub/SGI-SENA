@@ -18,8 +18,8 @@ import {
   FiStopCircle
 } from 'react-icons/fi'
 import { parseApiResponse, buildErrorMessage } from '../utils/api'
-import '../styles/equipos.css'
-import '../styles/historialUsoEquipos.css'
+import '../styles/pages/equipos.css'
+import '../styles/pages/historiales.css'
 
 export default function HistorialUsoEquipos() {
   const navigate = useNavigate()

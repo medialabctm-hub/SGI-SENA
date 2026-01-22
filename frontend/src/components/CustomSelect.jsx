@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { FiChevronDown } from 'react-icons/fi'
-import '../styles/customSelect.css'
+import '../styles/components/customSelect.css'
 
 /**
  * Componente personalizado de Select/Dropdown

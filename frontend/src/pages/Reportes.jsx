@@ -6,9 +6,9 @@ import ConfirmModal from '../components/ConfirmModal'
 import CustomSelect from '../components/CustomSelect'
 import { FiFileText, FiEye, FiEdit, FiTrash2, FiX, FiPackage, FiType, FiSearch, FiCheck, FiList, FiDownload } from 'react-icons/fi'
 import { parseApiResponse, buildErrorMessage } from '../utils/api'
-import '../styles/equipos.css'
-import '../styles/reportes.css'
-import '../styles/reportesModal.css'
+import '../styles/pages/equipos.css'
+import '../styles/pages/reportes.css'
+import '../styles/components/modals.css'
 
 export default function Reportes() {
   const [activeTab, setActiveTab] = useState('ver') // 'ver' o 'crear'

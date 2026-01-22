@@ -6,11 +6,12 @@ import ConfirmModal from '../components/ConfirmModal'
 import CustomSelect from '../components/CustomSelect'
 import { FiAlertCircle, FiEye, FiCheckCircle, FiXCircle, FiEdit, FiPackage, FiFileText, FiSearch, FiCheck, FiX, FiList, FiType, FiTrash2, FiDownload, FiHash, FiUser, FiCalendar, FiClock, FiInfo } from 'react-icons/fi'
 import { parseApiResponse, buildErrorMessage } from '../utils/api'
+import { useSocket } from '../contexts/SocketContext'
 import jsPDF from 'jspdf'
-import '../styles/equipos.css'
+import '../styles/pages/equipos.css'
 import '../styles/novedades.css'
-import '../styles/reportes.css'
-import '../styles/reportesModal.css'
+import '../styles/pages/reportes.css'
+import '../styles/components/modals.css'
 
 export default function Novedades() {
   const [activeTab, setActiveTab] = useState('ver') // 'ver', 'crear', o 'reportes'
@@ -144,6 +145,30 @@ export default function Novedades() {
       fetchReportes()
     }
   }, [activeTab])
+
+  // Suscribirse a actualizaciones en tiempo real de novedades
+  const { subscribe } = useSocket()
+  useEffect(() => {
+    if (!subscribe || activeTab !== 'ver') return
+    
+    const unsubscribeCreated = subscribe('novedad:created', () => {
+      fetchNovedades()
+    })
+    
+    const unsubscribeUpdated = subscribe('novedad:updated', () => {
+      fetchNovedades()
+    })
+    
+    const unsubscribeResolved = subscribe('novedad:resolved', () => {
+      fetchNovedades()
+    })
+    
+    return () => {
+      unsubscribeCreated()
+      unsubscribeUpdated()
+      unsubscribeResolved()
+    }
+  }, [subscribe, activeTab])
 
   // Bloquear header/sidebar y scroll cuando el modal de novedad está abierto
   useEffect(() => {
@@ -1440,19 +1465,19 @@ export default function Novedades() {
                             onChange={(e) => setObservacionesResolucion(e.target.value)}
                             placeholder="Observaciones de resolución (opcional)..."
                             rows={3}
-                            className="novedades-observaciones-textarea"
+                            className="form-textarea novedades-observaciones-textarea"
                           />
                           <div className="novedades-editar-buttons">
                             <button
                               onClick={guardarEstado}
-                              className="btn-primary btn-modern novedades-editar-btn"
+                              className="btn btn-verde novedades-editar-btn"
                               disabled={loading}
                             >
                               {loading ? 'Guardando...' : 'Guardar'}
                             </button>
                             <button
                               onClick={cancelarEditarEstado}
-                              className="btn-secondary btn-modern novedades-editar-btn"
+                              className="btn btn-secondary novedades-editar-btn"
                               disabled={loading}
                             >
                               Cancelar

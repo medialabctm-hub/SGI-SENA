@@ -6,8 +6,8 @@ import Toast from '../components/Toast'
 import CustomSelect from '../components/CustomSelect'
 import { FiTool, FiPackage, FiCalendar, FiUser, FiFileText, FiSearch, FiCheck, FiX, FiType } from 'react-icons/fi'
 import { parseApiResponse, buildErrorMessage } from '../utils/api'
-import '../styles/equipos.css'
-import '../styles/crearMantenimiento.css'
+import '../styles/pages/equipos.css'
+import '../styles/pages/mantenimientos.css'
 
 export default function CrearMantenimiento() {
   const navigate = useNavigate()

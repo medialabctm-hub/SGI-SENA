@@ -174,6 +174,17 @@ export async function actualizarAprendiz(req, res) {
       [idAprendiz]
     )
 
+    // Emitir evento WebSocket para actualización en tiempo real
+    try {
+      const socketService = (await import('../services/socketService.js')).default;
+      socketService.emitToAll('aprendiz:updated', {
+        id_aprendiz: idAprendiz,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (socketErr) {
+      logger.warn('Error al emitir evento Socket.io', { error: socketErr.message });
+    }
+
     return res.json({ ok: true, aprendiz: actualizado })
   } catch (error) {
     logger.error('Error al actualizar aprendiz', { error: error.message, stack: error.stack })
@@ -199,6 +210,17 @@ export async function eliminarAprendiz(req, res) {
 
     if (resultado.affectedRows === 0) {
       return res.status(404).json({ error: 'El aprendiz no existe' })
+    }
+
+    // Emitir evento WebSocket para actualización en tiempo real
+    try {
+      const socketService = (await import('../services/socketService.js')).default;
+      socketService.emitToAll('aprendiz:deleted', {
+        id_aprendiz: idAprendiz,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (socketErr) {
+      logger.warn('Error al emitir evento Socket.io', { error: socketErr.message });
     }
 
     return res.json({ ok: true })

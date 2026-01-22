@@ -1,9 +1,56 @@
 import React, { useState, useEffect } from 'react'
 import { FiPlay, FiSquare, FiX, FiAlertCircle } from 'react-icons/fi'
-import '../styles/classNotificationModal.css'
+import Toast from './Toast'
+import '../styles/components/modals.css'
 
 function ClassNotificationModal({ notification, onClose, onMarkAsRead }) {
   const [procesandoAccion, setProcesandoAccion] = useState(null)
+  const [estadoClase, setEstadoClase] = useState(null)
+  const [verificandoEstado, setVerificandoEstado] = useState(true)
+  const [toast, setToast] = useState(null)
+
+  // Verificar estado de la clase al montar el componente
+  useEffect(() => {
+    async function verificarEstadoClase() {
+      if (!notification?.metadata?.id_clase) {
+        setVerificandoEstado(false)
+        return
+      }
+
+      try {
+        const token = localStorage.getItem('token')
+        if (!token) {
+          setVerificandoEstado(false)
+          return
+        }
+
+        const res = await fetch(`/api/clases/${notification.metadata.id_clase}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+
+        if (res.ok) {
+          const clase = await res.json()
+          setEstadoClase(clase.estado_clase)
+          
+          // Si la clase ya no está en "Programada", cerrar el modal y marcar como leída
+          if (clase.estado_clase !== 'Programada') {
+            if (onMarkAsRead && notification.id) {
+              onMarkAsRead(notification.id)
+            }
+            if (onClose) {
+              onClose()
+            }
+          }
+        }
+      } catch (err) {
+        console.error('Error al verificar estado de la clase:', err)
+      } finally {
+        setVerificandoEstado(false)
+      }
+    }
+
+    verificarEstadoClase()
+  }, [notification, onClose, onMarkAsRead])
 
   useEffect(() => {
     // Cerrar automáticamente después de 30 segundos si no hay interacción
@@ -21,7 +68,7 @@ function ClassNotificationModal({ notification, onClose, onMarkAsRead }) {
     try {
       const token = localStorage.getItem('token')
       if (!token) {
-        alert('No hay sesión activa')
+        setToast({ message: 'No hay sesión activa', type: 'error' })
         return
       }
 
@@ -45,18 +92,30 @@ function ClassNotificationModal({ notification, onClose, onMarkAsRead }) {
         onMarkAsRead(notification.id)
       }
 
-      // Mostrar mensaje de éxito
-      alert(data.message || (data.ok ? 'Acción ejecutada correctamente' : 'Acción completada'))
+      // Determinar el tipo de toast según la acción
+      const esAceptar = accion.tipo === 'aceptar_consentimiento'
+      const esRechazar = accion.tipo === 'rechazar_consentimiento'
+      const tipoToast = esRechazar ? 'error' : 'success'
 
-      // Cerrar modal
-      if (onClose) {
-        onClose()
-      }
+      // Mostrar mensaje de éxito o error con toast
+      setToast({ 
+        message: data.message || (data.ok ? 'Acción ejecutada correctamente' : 'Acción completada'),
+        type: tipoToast
+      })
 
-      // Recargar la página para actualizar el estado
-      window.location.reload()
+      // Cerrar modal después de un breve delay para que se vea el toast
+      setTimeout(() => {
+        if (onClose) {
+          onClose()
+        }
+      }, 500)
+
+      // No recargar la página - los eventos Socket.io actualizarán automáticamente
     } catch (err) {
-      alert(err.message || 'Error al ejecutar la acción')
+      setToast({ 
+        message: err.message || 'Error al ejecutar la acción',
+        type: 'error'
+      })
     } finally {
       setProcesandoAccion(null)
     }
@@ -66,12 +125,43 @@ function ClassNotificationModal({ notification, onClose, onMarkAsRead }) {
     return null
   }
 
-  const acciones = notification.metadata.acciones || []
+  // Si está verificando el estado, no mostrar nada aún
+  if (verificandoEstado) {
+    return null
+  }
+
+  // Si la clase ya no está en "Programada", no mostrar el modal
+  if (estadoClase && estadoClase !== 'Programada') {
+    return null
+  }
+
+  // Filtrar acciones de consentimiento si la clase ya no está en "Programada"
+  let acciones = notification.metadata.acciones || []
+  if (estadoClase && estadoClase !== 'Programada') {
+    acciones = acciones.filter(accion => 
+      accion.tipo !== 'aceptar_consentimiento' && 
+      accion.tipo !== 'rechazar_consentimiento'
+    )
+  }
+
+  // Si no hay acciones válidas, no mostrar el modal
+  if (acciones.length === 0) {
+    return null
+  }
+
   const tipoNotificacion = notification.metadata.tipo || ''
 
   return (
-    <div className="class-notification-overlay" onClick={onClose}>
-      <div className="class-notification-modal" onClick={(e) => e.stopPropagation()}>
+    <>
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
+      )}
+      <div className="class-notification-overlay" onClick={onClose}>
+        <div className="class-notification-modal" onClick={(e) => e.stopPropagation()}>
         <div className="class-notification-header">
           <div className="class-notification-icon">
             <FiAlertCircle size={24} />
@@ -96,15 +186,17 @@ function ClassNotificationModal({ notification, onClose, onMarkAsRead }) {
               const esIniciar = accion.tipo === 'iniciar_clase'
               const esFinalizar = accion.tipo === 'finalizar_clase'
               const esCancelar = accion.tipo === 'cancelar_clase'
+              const esAceptar = accion.tipo === 'aceptar_consentimiento'
+              const esRechazar = accion.tipo === 'rechazar_consentimiento'
 
               return (
                 <button
                   key={idx}
                   type="button"
                   className={`class-notification-action-btn ${
-                    esIniciar ? 'btn-iniciar' : 
+                    esIniciar || esAceptar ? 'btn-iniciar' : 
                     esFinalizar ? 'btn-finalizar' : 
-                    esCancelar ? 'btn-cancelar' : 
+                    esCancelar || esRechazar ? 'btn-cancelar' : 
                     'btn-default'
                   }`}
                   onClick={() => handleAccion(accion)}
@@ -114,9 +206,9 @@ function ClassNotificationModal({ notification, onClose, onMarkAsRead }) {
                     <div className="loading-spinner class-notification-spinner"></div>
                   ) : (
                     <>
-                      {esIniciar && <FiPlay size={18} />}
+                      {(esIniciar || esAceptar) && <FiPlay size={18} />}
                       {esFinalizar && <FiSquare size={18} />}
-                      {esCancelar && <FiX size={18} />}
+                      {(esCancelar || esRechazar) && <FiX size={18} />}
                       {accion.label}
                     </>
                   )}
@@ -127,6 +219,7 @@ function ClassNotificationModal({ notification, onClose, onMarkAsRead }) {
         </div>
       </div>
     </div>
+    </>
   )
 }
 

@@ -16,9 +16,9 @@ import { buildErrorMessage, parseApiResponse } from '../utils/api';
 import { useSidebar } from '../contexts/SidebarContext';
 import { useDuplicados } from '../contexts/DuplicadosContext';
 import { useSocket } from '../contexts/SocketContext';
-import '../styles/header.css';
-import '../styles/toast.css';
-import '../styles/modal.css';
+import '../styles/layout/header.css';
+import '../styles/components/toast.css';
+import '../styles/components/modals.css';
 import '../styles/notifications.css';
 
 export default function Header() {
@@ -249,7 +249,7 @@ export default function Header() {
   useEffect(() => {
     if (notifications.length === 0) return
 
-    // Buscar notificaciones no leídas con acciones de clases
+    // Buscar notificaciones no leídas con acciones de consentimiento
     const notificacionClase = notifications.find(
       (notif) =>
         !notif.leida &&
@@ -257,14 +257,41 @@ export default function Header() {
         notif.metadata.acciones &&
         Array.isArray(notif.metadata.acciones) &&
         notif.metadata.acciones.length > 0 &&
-        (notif.metadata.tipo === 'clase_iniciar' || 
-         notif.metadata.tipo === 'clase_finalizar')
+        notif.metadata.tipo === 'consentimiento_inicio'
     )
 
-    if (notificacionClase && !classNotificationModal) {
-      setClassNotificationModal(notificacionClase)
+    // Verificar estado de la clase antes de mostrar el modal
+    async function verificarYMostrarModal() {
+      if (!notificacionClase || classNotificationModal) return
+
+      try {
+        const token = localStorage.getItem('token')
+        if (!token || !notificacionClase.metadata?.id_clase) return
+
+        const res = await fetch(`/api/clases/${notificacionClase.metadata.id_clase}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+
+        if (res.ok) {
+          const clase = await res.json()
+          // Solo mostrar el modal si la clase está en estado "Programada"
+          if (clase.estado_clase === 'Programada') {
+            setClassNotificationModal(notificacionClase)
+          } else {
+            // Si la clase ya no está en "Programada", marcar la notificación como leída
+            if (markNotificationAsRead && notificacionClase.id) {
+              markNotificationAsRead(notificacionClase.id)
+            }
+          }
+        }
+      } catch (err) {
+        console.error('Error al verificar estado de la clase:', err)
+        // En caso de error, no mostrar el modal
+      }
     }
-  }, [notifications, classNotificationModal])
+
+    verificarYMostrarModal()
+  }, [notifications, classNotificationModal, markNotificationAsRead])
 
   // Actualizar usuario cuando cambie en localStorage (ej: al actualizar foto de perfil)
   useEffect(() => {
@@ -335,6 +362,7 @@ export default function Header() {
         onConfirm={confirmLogout}
         onCancel={cancelLogout}
       />
+      {/* Modal de consentimiento para iniciar clase */}
       {classNotificationModal && (
         <ClassNotificationModal
           notification={classNotificationModal}

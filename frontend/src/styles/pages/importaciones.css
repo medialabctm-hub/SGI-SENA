@@ -1,0 +1,830 @@
+﻿/* ============================================
+   ESTILOS PARA IMPORTACIONES
+   ============================================ */
+
+/* ============================================
+   IMPORTAR EQUIPOS
+   ============================================ */
+
+.importar-equipos-container {
+  padding: 1.5rem;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.importar-equipos-header {
+  margin-bottom: 1.5rem;
+}
+
+.importar-equipos-title {
+  margin: 0;
+  font-size: 1.5rem;
+  color: var(--neutral-900);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.importar-equipos-subtitle {
+  color: var(--neutral-600);
+  margin-top: 0.5rem;
+  font-size: 0.95rem;
+}
+
+.importar-equipos-form-section {
+  margin-bottom: 1rem;
+}
+
+.importar-equipos-label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+  color: var(--neutral-800);
+}
+
+.importar-equipos-file-wrapper {
+  position: relative;
+  margin-bottom: 1rem;
+}
+
+.importar-equipos-file-input {
+  display: none;
+}
+
+.importar-equipos-file-label {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  border: 2px dashed var(--success-800);
+  border-radius: 12px;
+  background: var(--success-50);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: center;
+}
+
+.importar-equipos-file-label:hover {
+  background: var(--success-100);
+  border-color: var(--success-900);
+}
+
+.importar-equipos-file-icon {
+  color: var(--success-800);
+  margin-bottom: 0.5rem;
+}
+
+.importar-equipos-file-name {
+  color: var(--success-800);
+  font-weight: 600;
+  margin-top: 0.5rem;
+}
+
+.importar-equipos-file-placeholder {
+  color: var(--neutral-600);
+}
+
+.importar-equipos-cuentadante-section {
+  margin-top: 1.5rem;
+  padding: 1rem;
+  background: var(--neutral-50);
+  border-radius: 8px;
+  border: 1px solid var(--neutral-200);
+}
+
+.importar-equipos-cuentadante-search {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.importar-equipos-cuentadante-input {
+  flex: 1;
+  padding: 10px 14px;
+  border: 2px solid var(--success-800);
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font-family: inherit;
+  transition: all 0.2s ease;
+}
+
+.importar-equipos-cuentadante-input:focus {
+  outline: none;
+  border-color: var(--success-900);
+  box-shadow: 0 0 0 4px rgba(1, 175, 0, 0.1);
+}
+
+.importar-equipos-cuentadante-found {
+  padding: 1rem;
+  background: var(--success-100);
+  border: 2px solid var(--success-800);
+  border-radius: 8px;
+  margin-top: 1rem;
+}
+
+.importar-equipos-cuentadante-info {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--success-900);
+  font-weight: 600;
+}
+
+.importar-equipos-cuentadante-info-icon {
+  color: var(--success-800);
+}
+
+.importar-equipos-submit-button {
+  width: 100%;
+  padding: 12px 24px;
+  background: linear-gradient(135deg, var(--success-700) 0%, var(--success-800) 100%);
+  color: white;
+  border: 1px solid var(--success-800);
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 48px;
+}
+
+.importar-equipos-submit-button:hover:not(:disabled) {
+  background: linear-gradient(135deg, var(--success-800) 0%, var(--success-900) 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+
+.importar-equipos-submit-button:disabled {
+  background: linear-gradient(135deg, var(--success-600) 0%, var(--success-700) 100%);
+  border-color: var(--success-600);
+  cursor: not-allowed;
+  transform: none;
+  opacity: 0.8;
+}
+
+.importar-equipos-resultado {
+  margin-top: 1.5rem;
+  padding: 1.5rem;
+  background: var(--neutral-50);
+  border-radius: 12px;
+  border: 1px solid var(--neutral-200);
+}
+
+.importar-equipos-resultado-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--neutral-900);
+  margin-bottom: 1rem;
+}
+
+.importar-equipos-resultado-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.importar-equipos-resultado-stat {
+  text-align: center;
+  padding: 1rem;
+  background: white;
+  border-radius: 8px;
+  border: 1px solid var(--neutral-200);
+}
+
+.importar-equipos-resultado-stat-number {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--success-800);
+  margin-bottom: 0.25rem;
+}
+
+.importar-equipos-resultado-stat-label {
+  color: var(--success-800);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.importar-equipos-resultado-stat.exitosos .importar-equipos-resultado-stat-number {
+  color: var(--success-800);
+}
+
+.importar-equipos-resultado-stat.fallidos .importar-equipos-resultado-stat-number {
+  color: var(--error-500);
+}
+
+.importar-equipos-error {
+  padding: 1rem;
+  background: var(--error-100);
+  color: var(--error-700);
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.importar-equipos-cuentadante-section-warning {
+  margin-top: 2rem;
+  padding: 1.5rem;
+  background: var(--warning-50);
+  border-radius: 8px;
+  border: 1px solid var(--warning-600);
+}
+
+.importar-equipos-cuentadante-title {
+  margin: 0 0 1rem 0;
+  font-size: 1.1rem;
+  color: var(--neutral-900);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.importar-equipos-cuentadante-description {
+  color: var(--neutral-600);
+  margin-bottom: 1rem;
+  font-size: 0.9rem;
+}
+
+.importar-equipos-cuentadante-description strong {
+  font-weight: 700;
+}
+
+.importar-equipos-cuentadante-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.importar-equipos-cuentadante-search-row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+}
+
+.importar-equipos-cuentadante-search-button {
+  padding: 0.75rem 1rem;
+  background: var(--info-600);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.95rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  transition: all 0.2s ease;
+  min-width: 100px;
+}
+
+.importar-equipos-cuentadante-search-button:hover:not(:disabled) {
+  background: var(--info-700);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(59, 139, 255, 0.3);
+}
+
+.importar-equipos-cuentadante-search-button:disabled {
+  background: var(--info-500);
+  cursor: not-allowed;
+  opacity: 0.7;
+  transform: none;
+}
+
+.importar-equipos-download-button {
+  padding: 0.5rem 1rem;
+  background: var(--success-800);
+  color: white;
+  border: 1px solid var(--success-800);
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.importar-equipos-download-button:hover {
+  background: var(--success-900);
+  border-color: var(--success-900);
+}
+
+.importar-equipos-file-container {
+  border: 2px dashed var(--success-300);
+  border-radius: 8px;
+  padding: 1.5rem;
+  text-align: center;
+  background: var(--neutral-50);
+  transition: all 0.2s;
+}
+
+.importar-equipos-file-container.has-file {
+  background: var(--success-50);
+  border-color: var(--success-500);
+}
+
+.importar-equipos-file-label-inner {
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.importar-equipos-loading-spinner-small {
+  width: 18px;
+  height: 18px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  flex-shrink: 0;
+}
+
+.importar-equipos-loading-spinner-tiny {
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  flex-shrink: 0;
+}
+
+.importar-equipos-cuentadante-save-button .importar-equipos-loading-spinner-tiny {
+  border: 2px solid rgba(0, 0, 0, 0.2);
+  border-top-color: var(--neutral-900);
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.importar-equipos-cuentadante-found-info {
+  flex: 1;
+}
+
+.importar-equipos-cuentadante-save-button {
+  padding: 0.75rem 1.5rem;
+  background: var(--warning-600);
+  color: var(--neutral-900);
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.95rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  align-self: flex-start;
+  transition: all 0.2s ease;
+  min-width: 180px;
+  box-shadow: 0 2px 8px rgba(255, 193, 7, 0.2);
+}
+
+.importar-equipos-cuentadante-save-button:hover:not(:disabled) {
+  background: var(--warning-700);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(255, 193, 7, 0.3);
+}
+
+.importar-equipos-cuentadante-save-button:disabled {
+  background: var(--warning-500);
+  cursor: not-allowed;
+  opacity: 0.7;
+  transform: none;
+}
+
+.importar-equipos-cuentadante-current {
+  margin-top: 0.5rem;
+  font-size: 0.85rem;
+  color: var(--neutral-600);
+}
+
+.importar-equipos-cuentadante-current strong {
+  font-weight: 700;
+}
+
+.importar-equipos-resultado-stat-total {
+  text-align: center;
+  padding: 1rem;
+  background: white;
+  border-radius: 8px;
+  border: 1px solid var(--neutral-200);
+}
+
+.importar-equipos-resultado-stat-total-number {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--neutral-900);
+  margin-bottom: 0.25rem;
+}
+
+.importar-equipos-resultado-stat-total-label {
+  color: var(--neutral-600);
+  font-size: 0.9rem;
+}
+
+.importar-equipos-resultado-stat-fallidos {
+  text-align: center;
+  padding: 1rem;
+  background: var(--error-100);
+  border-radius: 8px;
+  border: 1px solid var(--error-200);
+}
+
+.importar-equipos-resultado-stat-fallidos-number {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--error-700);
+  margin-bottom: 0.25rem;
+}
+
+.importar-equipos-resultado-stat-fallidos-label {
+  color: var(--error-700);
+  font-size: 0.9rem;
+}
+
+.importar-equipos-resultado-stat-duplicados {
+  text-align: center;
+  padding: 1rem;
+  background: var(--warning-50);
+  border-radius: 8px;
+  border: 1px solid var(--warning-200);
+}
+
+.importar-equipos-resultado-stat-duplicados-number {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--warning-600);
+  margin-bottom: 0.25rem;
+}
+
+.importar-equipos-resultado-stat-duplicados-label {
+  color: var(--warning-800);
+  font-size: 0.9rem;
+}
+
+.importar-equipos-errores-section {
+  margin-top: 1rem;
+}
+
+.importar-equipos-errores-title {
+  margin: 0 0 0.5rem 0;
+  font-size: 1rem;
+  color: var(--neutral-900);
+}
+
+.importar-equipos-errores-list {
+  max-height: 200px;
+  overflow-y: auto;
+  background: white;
+  border-radius: 6px;
+  padding: 0.5rem;
+}
+
+.importar-equipos-error-item {
+  padding: 0.5rem;
+  margin-bottom: 0.25rem;
+  background: var(--error-100);
+  border-radius: 4px;
+  font-size: 0.85rem;
+  color: var(--error-900);
+}
+
+.importar-equipos-error-item strong {
+  font-weight: 700;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .importar-equipos-container {
+    padding: 1rem;
+  }
+
+  .importar-equipos-cuentadante-search {
+    flex-direction: column;
+  }
+
+  .importar-equipos-cuentadante-search-row {
+    flex-direction: column;
+  }
+
+  .importar-equipos-resultado-stats {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
+  }
+
+  .importar-equipos-resultado-stat {
+    padding: 0.75rem;
+  }
+
+  .importar-equipos-resultado-stat-total-number,
+  .importar-equipos-resultado-stat-number,
+  .importar-equipos-resultado-stat-fallidos-number,
+  .importar-equipos-resultado-stat-duplicados-number {
+    font-size: 1.5rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .importar-equipos-container {
+    padding: 0.75rem;
+  }
+
+  .importar-equipos-title {
+    font-size: 1.25rem;
+  }
+
+  .importar-equipos-subtitle {
+    font-size: 0.85rem;
+  }
+
+  .importar-equipos-resultado-stats {
+    grid-template-columns: 1fr;
+    gap: 0.5rem;
+  }
+
+  .importar-equipos-resultado-stat {
+    padding: 0.75rem;
+  }
+
+  .importar-equipos-cuentadante-section-warning {
+    padding: 1rem;
+  }
+
+  .importar-equipos-cuentadante-title {
+    font-size: 1rem;
+  }
+
+  .importar-equipos-file-container {
+    padding: 1rem;
+  }
+}
+
+/* ============================================
+   IMPORTAR USUARIOS
+   ============================================ */
+
+.importar-usuarios-description {
+  color: #666;
+  margin-bottom: 1rem;
+  font-size: 0.9rem;
+}
+
+.importar-usuarios-download-section {
+  margin-bottom: 1rem;
+}
+
+.importar-usuarios-download-btn {
+  padding: 0.5rem 1rem;
+  background: var(--success-800);
+  color: white;
+  border: 1px solid var(--success-800);
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 500;
+  transition: background 0.2s;
+}
+
+.importar-usuarios-download-btn:hover {
+  background: var(--success-900);
+  border-color: var(--success-900);
+  color: white;
+}
+
+.importar-usuarios-file-section {
+  margin-bottom: 1rem;
+}
+
+.importar-usuarios-file-label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+  color: #1a2a3a;
+  font-size: 0.9rem;
+}
+
+.importar-usuarios-file-dropzone {
+  border: 2px dashed #b2dfdb;
+  border-radius: 8px;
+  padding: 1rem;
+  text-align: center;
+  background: #f5f5f5;
+  transition: all 0.2s;
+}
+
+.importar-usuarios-file-dropzone.has-file {
+  background: #e8f5e9;
+}
+
+.importar-usuarios-file-input {
+  display: none;
+}
+
+.importar-usuarios-file-label-inner {
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.importar-usuarios-file-name {
+  color: var(--success-800);
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.importar-usuarios-file-placeholder {
+  color: #666;
+  font-size: 0.9rem;
+}
+
+.importar-usuarios-error {
+  padding: 1rem;
+  background: #fee2e2;
+  color: var(--error-700);
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.importar-usuarios-submit-section {
+  display: flex;
+  justify-content: center;
+  margin-top: 1rem;
+}
+
+.importar-usuarios-submit-btn {
+  padding: 0.75rem 1.5rem;
+  background: var(--success-800);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.95rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: background 0.2s;
+}
+
+.importar-usuarios-submit-btn:hover:not(:disabled) {
+  background: var(--success-900);
+  color: #fff;
+}
+
+.importar-usuarios-submit-btn:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+}
+
+.importar-usuarios-spinner {
+  width: 16px;
+  height: 16px;
+  border-width: 2px;
+}
+
+.importar-usuarios-resultados {
+  margin-top: 1.5rem;
+  padding: 1rem;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+}
+
+.importar-usuarios-resultados-title {
+  margin: 0 0 0.75rem 0;
+  font-size: 1rem;
+  color: #1a2a3a;
+  font-weight: 600;
+}
+
+.importar-usuarios-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.importar-usuarios-stat {
+  text-align: center;
+  padding: 0.75rem;
+  background: #fff;
+  border-radius: 6px;
+}
+
+.importar-usuarios-stat.success {
+  background: #d1fae5;
+}
+
+.importar-usuarios-stat.error {
+  background: #fee2e2;
+}
+
+.importar-usuarios-stat-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #1a2a3a;
+}
+
+.importar-usuarios-stat-value.success {
+  color: var(--success-800);
+}
+
+.importar-usuarios-stat-value.error {
+  color: var(--error-700);
+}
+
+.importar-usuarios-stat-label {
+  color: #666;
+  font-size: 0.85rem;
+}
+
+.importar-usuarios-stat-label.success {
+  color: var(--success-800);
+}
+
+.importar-usuarios-stat-label.error {
+  color: var(--error-700);
+}
+
+.importar-usuarios-emails {
+  margin-bottom: 0.75rem;
+  padding: 0.75rem;
+  background: #e0f2fe;
+  border-radius: 6px;
+  border: 1px solid #0ea5e9;
+}
+
+.importar-usuarios-emails-title {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #0369a1;
+  margin-bottom: 0.5rem;
+}
+
+.importar-usuarios-emails-list {
+  display: flex;
+  gap: 1rem;
+  font-size: 0.85rem;
+}
+
+.importar-usuarios-emails-success {
+  color: var(--success-800);
+}
+
+.importar-usuarios-emails-error {
+  color: var(--error-700);
+}
+
+.importar-usuarios-errores {
+  margin-top: 0.75rem;
+}
+
+.importar-usuarios-errores-title {
+  margin: 0 0 0.5rem 0;
+  font-size: 0.9rem;
+  color: #1a2a3a;
+  font-weight: 600;
+}
+
+.importar-usuarios-errores-list {
+  max-height: 150px;
+  overflow-y: auto;
+  background: #fff;
+  border-radius: 6px;
+  padding: 0.5rem;
+}
+
+.importar-usuarios-error-item {
+  padding: 0.5rem;
+  margin-bottom: 0.25rem;
+  background: #fee2e2;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  line-height: 1.4;
+}

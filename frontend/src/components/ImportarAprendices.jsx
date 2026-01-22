@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { FiFile, FiDownload, FiAlertCircle } from 'react-icons/fi'
 import * as XLSX from 'xlsx'
 import { parseApiResponse, buildErrorMessage } from '../utils/api'
-import '../styles/importarUsuarios.css'
+import '../styles/pages/importaciones.css'
 
 export default function ImportarAprendices({ onImportComplete }) {
   const [archivo, setArchivo] = useState(null)

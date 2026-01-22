@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import Toast from '../../components/Toast'
 import { parseApiResponse, buildErrorMessage, getAuthHeaders } from '../../utils/api'
-import '../../styles/tiposEquipo.css'
+import '../../styles/pages/tiposEquipo.css'
 
 export default function TiposEquipo() {
   const [categorias, setCategorias] = useState([])

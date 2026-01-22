@@ -948,6 +948,22 @@ export async function actualizarEstadoNovedad(req, res) {
       [estado_resolucion, fechaResolucion, resueltoPor, observaciones_resolucion || null, id]
     )
 
+    // Emitir evento WebSocket para actualización en tiempo real
+    try {
+      const socketService = (await import('../services/socketService.js')).default;
+      const eventType = estado_resolucion === 'Resuelto' || estado_resolucion === 'No Resuelto' 
+        ? 'novedad:resolved' 
+        : 'novedad:updated';
+      socketService.emitToAll(eventType, {
+        id_novedad: id,
+        codigo_equipo: novedad.codigo_equipo,
+        estado_resolucion,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (socketErr) {
+      logger.warn('Error al emitir evento Socket.io', { error: socketErr.message });
+    }
+
     return res.json({ 
       message: 'Estado de novedad actualizado correctamente',
       estado_resolucion,

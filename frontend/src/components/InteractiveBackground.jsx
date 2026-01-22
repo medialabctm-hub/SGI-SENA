@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from "react";
-import "../styles/interactiveBackground.css";
+import "../styles/components/interactiveBackground.css";
 
 export default function InteractiveBackground() {
   const canvasRef = useRef(null);

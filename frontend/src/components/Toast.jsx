@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import '../styles/toast.css'
+import '../styles/components/toast.css'
 
 export default function Toast({ message, type = 'info', onClose }) {
   const [isClosing, setIsClosing] = useState(false)

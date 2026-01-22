@@ -4,7 +4,7 @@ import Toast from '../../components/Toast';
 import ConfirmModal from '../../components/ConfirmModal';
 import CustomSelect from '../../components/CustomSelect';
 import { parseApiResponse, buildErrorMessage, getAuthHeaders } from '../../utils/api';
-import '../../styles/equipos.css';
+import '../../styles/pages/equipos.css';
 import '../../styles/invitationCodes.css';
 
 export default function InvitationCodes() {

@@ -3,7 +3,8 @@ import Header from '../components/Header'
 import Sidebar from '../components/Sidebar'
 import Toast from '../components/Toast'
 import { FiPackage, FiInbox } from 'react-icons/fi'
-import '../styles/equipos.css'
+import { useSocket } from '../contexts/SocketContext'
+import '../styles/pages/equipos.css'
 import '../styles/misEquipos.css'
 
 export default function MisEquipos() {
@@ -23,6 +24,35 @@ export default function MisEquipos() {
       console.error('Error al obtener datos del usuario:', error)
     }
   }, [])
+
+  // Suscribirse a actualizaciones en tiempo real de equipos y asignaciones
+  const { subscribe } = useSocket()
+  useEffect(() => {
+    if (!subscribe) return
+    
+    const unsubscribeEquipo = subscribe('equipo:updated', () => {
+      fetchMisEquipos()
+    })
+    
+    const unsubscribeEquipoDeleted = subscribe('equipo:deleted', () => {
+      fetchMisEquipos()
+    })
+    
+    const unsubscribeAsignacionCreated = subscribe('asignacion:created', () => {
+      fetchMisEquipos()
+    })
+    
+    const unsubscribeAsignacionDeleted = subscribe('asignacion:deleted', () => {
+      fetchMisEquipos()
+    })
+    
+    return () => {
+      unsubscribeEquipo()
+      unsubscribeEquipoDeleted()
+      unsubscribeAsignacionCreated()
+      unsubscribeAsignacionDeleted()
+    }
+  }, [subscribe])
 
   async function fetchMisEquipos() {
     setLoading(true)

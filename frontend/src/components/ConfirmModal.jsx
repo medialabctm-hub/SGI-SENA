@@ -1,6 +1,6 @@
 import React from 'react'
 import { FiAlertTriangle } from 'react-icons/fi'
-import '../styles/confirmModal.css'
+import '../styles/components/modals.css'
 
 export default function ConfirmModal({ open, message, onConfirm, onCancel, title = 'Confirmar acción', confirmText = 'Aceptar', cancelText = 'Cancelar', type = 'danger', loading = false }) {
   if (!open) return null;

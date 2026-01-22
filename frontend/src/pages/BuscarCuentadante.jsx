@@ -4,8 +4,8 @@ import Sidebar from '../components/Sidebar'
 import Toast from '../components/Toast'
 import { FiSearch, FiUser, FiPackage, FiDollarSign, FiTrendingUp, FiTrendingDown, FiAlertCircle, FiCheckCircle } from 'react-icons/fi'
 import { parseApiResponse, buildErrorMessage } from '../utils/api'
-import '../styles/equipos.css'
-import '../styles/buscarCuentadante.css'
+import '../styles/pages/equipos.css'
+import '../styles/pages/verificaciones.css'
 
 export default function BuscarCuentadante() {
   const [documento, setDocumento] = useState('')

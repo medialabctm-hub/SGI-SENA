@@ -226,6 +226,18 @@ export async function crearMantenimiento(req, res) {
       logger.error('Error al crear reporte automático de mantenimiento', { error: reportErr.message })
     }
 
+    // Emitir evento WebSocket para actualización en tiempo real
+    try {
+      const socketService = (await import('../services/socketService.js')).default;
+      socketService.emitToAll('mantenimiento:created', {
+        id_mantenimiento: result.insertId,
+        codigo_equipo,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (socketErr) {
+      logger.warn('Error al emitir evento Socket.io', { error: socketErr.message });
+    }
+
     return res.status(201).json({
       ok: true,
       id: result.insertId,
@@ -624,6 +636,17 @@ export async function eliminarMantenimiento(req, res) {
       'DELETE FROM Mantenimiento WHERE id_mantenimiento = ?',
       [id]
     )
+
+    // Emitir evento WebSocket para actualización en tiempo real
+    try {
+      const socketService = (await import('../services/socketService.js')).default;
+      socketService.emitToAll('mantenimiento:deleted', {
+        id_mantenimiento: id,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (socketErr) {
+      logger.warn('Error al emitir evento Socket.io', { error: socketErr.message });
+    }
 
     return res.json({ 
       ok: true,

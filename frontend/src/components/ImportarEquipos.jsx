@@ -5,7 +5,7 @@ import { parseApiResponse, buildErrorMessage, handleError } from '../utils/api'
 import RevisarDuplicados from './RevisarDuplicados'
 import { useDuplicados } from '../contexts/DuplicadosContext'
 import InfoModal from './InfoModal'
-import '../styles/importarEquipos.css'
+import '../styles/pages/importaciones.css'
 
 export default function ImportarEquipos({ onImportComplete, onEstadoDuplicadosChange }) {
   const [archivo, setArchivo] = useState(null)

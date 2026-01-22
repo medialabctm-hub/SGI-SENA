@@ -218,17 +218,31 @@ export async function crearAmbiente(req, res) {
       ]
     );
 
+    const ambienteCreado = {
+      id_ambiente: result.insertId,
+      codigo_ambiente,
+      nombre_ambiente,
+      tipo_ambiente,
+      estado_ambiente
+    };
+
+    // Emitir evento WebSocket para actualización en tiempo real
+    try {
+      const socketService = (await import('../services/socketService.js')).default;
+      socketService.emitToAll('ambiente:created', {
+        id_ambiente: result.insertId,
+        codigo_ambiente,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (socketErr) {
+      logger.warn('Error al emitir evento Socket.io', { error: socketErr.message });
+    }
+
     return res.status(201).json({
       ok: true,
       id_ambiente: result.insertId,
       message: 'Ambiente creado correctamente',
-      ambiente: {
-        id_ambiente: result.insertId,
-        codigo_ambiente,
-        nombre_ambiente,
-        tipo_ambiente,
-        estado_ambiente
-      }
+      ambiente: ambienteCreado
     });
   } catch (err) {
     logger.error('Error al crear ambiente', { error: err.message, stack: err.stack });
@@ -326,6 +340,17 @@ export async function actualizarAmbiente(req, res) {
       return res.status(404).json({ error: 'Ambiente no encontrado' });
     }
 
+    // Emitir evento WebSocket para actualización en tiempo real
+    try {
+      const socketService = (await import('../services/socketService.js')).default;
+      socketService.emitToAll('ambiente:updated', {
+        id_ambiente: id,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (socketErr) {
+      logger.warn('Error al emitir evento Socket.io', { error: socketErr.message });
+    }
+
     return res.json({ ok: true, message: 'Ambiente actualizado correctamente' });
   } catch (err) {
     logger.error('Error al actualizar ambiente', { error: err.message, stack: err.stack });
@@ -380,8 +405,30 @@ export async function eliminarAmbiente(req, res) {
       [id]
     );
 
+    // Emitir evento WebSocket para actualización en tiempo real
+    try {
+      const socketService = (await import('../services/socketService.js')).default;
+      socketService.emitToAll('ambiente:deleted', {
+        id_ambiente: id,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (socketErr) {
+      logger.warn('Error al emitir evento Socket.io', { error: socketErr.message });
+    }
+
     if (result.affectedRows === 0) {
       return res.status(404).json({ error: 'Ambiente no encontrado' });
+    }
+
+    // Emitir evento WebSocket para actualización en tiempo real
+    try {
+      const socketService = (await import('../services/socketService.js')).default;
+      socketService.emitToAll('ambiente:deleted', {
+        id_ambiente: id,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (socketErr) {
+      logger.warn('Error al emitir evento Socket.io', { error: socketErr.message });
     }
 
     return res.json({

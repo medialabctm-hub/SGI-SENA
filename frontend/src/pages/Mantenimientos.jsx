@@ -7,9 +7,9 @@ import ConfirmModal from '../components/ConfirmModal'
 import CustomSelect from '../components/CustomSelect'
 import { FiTool, FiEye, FiCheckCircle, FiClock, FiXCircle, FiAlertCircle, FiPlus, FiEdit, FiTrash2, FiList, FiPackage, FiCalendar, FiUser, FiFileText, FiSearch, FiCheck, FiX, FiType } from 'react-icons/fi'
 import { parseApiResponse, buildErrorMessage } from '../utils/api'
-import '../styles/equipos.css'
-import '../styles/mantenimientos.css'
-import '../styles/crearMantenimiento.css'
+import { useSocket } from '../contexts/SocketContext'
+import '../styles/pages/equipos.css'
+import '../styles/pages/mantenimientos.css'
 
 export default function Mantenimientos() {
   const navigate = useNavigate()
@@ -92,6 +92,30 @@ export default function Mantenimientos() {
       cargarOpcionesMantenimiento()
     }
   }, [activeTab])
+
+  // Suscribirse a actualizaciones en tiempo real de mantenimientos
+  const { subscribe } = useSocket()
+  useEffect(() => {
+    if (!subscribe || activeTab !== 'historial') return
+    
+    const unsubscribeCreated = subscribe('mantenimiento:created', () => {
+      fetchMantenimientos()
+    })
+    
+    const unsubscribeUpdated = subscribe('mantenimiento:updated', () => {
+      fetchMantenimientos()
+    })
+    
+    const unsubscribeDeleted = subscribe('mantenimiento:deleted', () => {
+      fetchMantenimientos()
+    })
+    
+    return () => {
+      unsubscribeCreated()
+      unsubscribeUpdated()
+      unsubscribeDeleted()
+    }
+  }, [subscribe, activeTab])
   
   // Cargar tipos y estados de mantenimiento desde la API
   async function cargarOpcionesMantenimiento() {
@@ -973,14 +997,14 @@ export default function Mantenimientos() {
                     <div className="mantenimientos-modal-actions-row">
                       <button
                         onClick={guardarEstado}
-                        className="btn-primary btn-modern mantenimientos-modal-action-button"
+                        className="btn btn-verde mantenimientos-modal-action-button"
                         disabled={loading}
                       >
                         {loading ? 'Guardando...' : 'Guardar'}
                       </button>
                       <button
                         onClick={cancelarEditarEstado}
-                        className="btn-secondary btn-modern mantenimientos-modal-action-button"
+                        className="btn btn-secondary mantenimientos-modal-action-button"
                         disabled={loading}
                       >
                         Cancelar
@@ -1029,7 +1053,7 @@ export default function Mantenimientos() {
                             setLoading(false)
                           }
                         }}
-                        className="btn-primary btn-modern mantenimientos-modal-action-button"
+                        className="btn btn-verde mantenimientos-modal-action-button"
                         disabled={loading || !nuevaFechaMantenimiento}
                       >
                         {loading ? 'Guardando...' : 'Guardar'}
@@ -1039,7 +1063,7 @@ export default function Mantenimientos() {
                           setEditandoFechaMantenimiento(false)
                           setNuevaFechaMantenimiento('')
                         }}
-                        className="btn-secondary btn-modern mantenimientos-modal-action-button"
+                        className="btn btn-secondary mantenimientos-modal-action-button"
                         disabled={loading}
                       >
                         Cancelar
@@ -1120,7 +1144,7 @@ export default function Mantenimientos() {
                             setLoading(false)
                           }
                         }}
-                        className="btn-primary btn-modern mantenimientos-modal-action-button"
+                        className="btn btn-verde mantenimientos-modal-action-button"
                         disabled={loading || !nuevaFechaProximo}
                       >
                         {loading ? 'Guardando...' : 'Guardar'}
@@ -1130,7 +1154,7 @@ export default function Mantenimientos() {
                           setEditandoFechaProximo(false)
                           setNuevaFechaProximo('')
                         }}
-                        className="btn-secondary btn-modern mantenimientos-modal-action-button"
+                        className="btn btn-secondary mantenimientos-modal-action-button"
                         disabled={loading}
                       >
                         Cancelar

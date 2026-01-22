@@ -6,9 +6,9 @@ import ConfirmModal from '../components/ConfirmModal'
 import CustomSelect from '../components/CustomSelect'
 import { FiMapPin, FiUser, FiPlus, FiTrash2, FiRefreshCw, FiPackage, FiCalendar, FiClock } from 'react-icons/fi'
 import { parseApiResponse, buildErrorMessage } from '../utils/api'
-import '../styles/equipos.css'
-import '../styles/verificacion.css'
-import '../styles/asignarAmbientes.css'
+import '../styles/pages/equipos.css'
+import '../styles/pages/verificaciones.css'
+import '../styles/pages/asignaciones.css'
 
 export default function AsignarAmbientes() {
   const [user, setUser] = useState(null)

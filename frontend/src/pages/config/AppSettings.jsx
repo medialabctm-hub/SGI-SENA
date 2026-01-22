@@ -3,7 +3,7 @@ import Toast from '../../components/Toast'
 import CustomSelect from '../../components/CustomSelect'
 import { parseApiResponse, buildErrorMessage, getAuthHeaders } from '../../utils/api'
 import { useLanguage } from '../../contexts/LanguageContext'
-import '../../styles/appSettings.css'
+import '../../styles/pages/config.css'
 
 export default function AppSettings() {
   const { language, updateLanguage } = useLanguage()

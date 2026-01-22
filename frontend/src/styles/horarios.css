@@ -58,24 +58,29 @@
   font-size: 0.95rem;
 }
 
-/* Estilos comunes para formulario */
+/* Usar clases globales de forms.css */
+/* Los inputs dentro de .horarios-form-container deben usar .form-input, .form-select, .form-textarea */
+.horarios-form-container .form-input,
+.horarios-form-container .form-select,
+.horarios-form-container .form-textarea {
+  /* Estilos específicos si es necesario */
+}
+
+/* Mantener compatibilidad con clases antiguas */
 .horarios-form-input,
 .horarios-form-select,
 .horarios-form-textarea {
+  /* Aplicar estilos de form-input global */
   width: 100%;
-  font-size: 1rem;
-  font-family: inherit;
-  color: var(--neutral-900);
-  transition: all 0.2s ease;
-}
-
-/* Inputs y textareas nativos - necesitan el borde */
-.horarios-form-input,
-.horarios-form-textarea {
   padding: 10px 14px;
   border-radius: 8px;
   border: 2px solid var(--success-800);
   background: white;
+  font-size: 1rem;
+  font-family: inherit;
+  color: var(--neutral-900);
+  transition: all 0.2s ease;
+  min-height: 44px;
 }
 
 .horarios-form-input:focus,
@@ -84,8 +89,6 @@
   border-color: var(--success-900);
   box-shadow: 0 0 0 4px rgba(1, 175, 0, 0.1);
 }
-
-/* CustomSelect - NO necesita borde (ya lo tiene en customSelect.css) */
 
 .horarios-form-textarea {
   resize: vertical;
@@ -132,27 +135,25 @@
   color: var(--neutral-800);
 }
 
-/* Estilos comunes para filtros */
+/* Usar clases globales de forms.css con modificador filter-style */
 .horarios-filter-input,
 .horarios-filter-select {
   width: 100%;
-  font-size: 0.95rem;
-  font-family: inherit;
-  color: var(--neutral-900);
-  transition: all 0.2s ease;
-}
-
-/* Inputs nativos - necesitan el borde */
-.horarios-filter-input {
   padding: 8px 12px;
   border-radius: 8px;
   border: 2px solid var(--success-800);
   background: white;
+  font-size: 0.95rem;
+  font-family: inherit;
+  color: var(--neutral-900);
+  transition: all 0.2s ease;
+  min-height: 38px;
 }
 
 .horarios-filter-input:focus {
   outline: none;
   border-color: var(--success-900);
+  box-shadow: 0 0 0 3px rgba(1, 175, 0, 0.1);
 }
 
 /* CustomSelect - NO necesita borde ni padding (ya lo tiene en customSelect.css) */
@@ -763,6 +764,42 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator:hover {
 .horarios-action-btn:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+.horarios-auto-badge {
+  display: inline-block;
+  padding: 4px 8px;
+  background: var(--success-100);
+  color: var(--success-700);
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.horarios-consentimiento-rechazado {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 4px 8px;
+  background: var(--error-100);
+  color: var(--error-700);
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border: 1px solid var(--error-300);
+  animation: pulse-warning 2s infinite;
+}
+
+@keyframes pulse-warning {
+  0%, 100% {
+    opacity: 1;
+    box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.4);
+  }
+  50% {
+    opacity: 0.9;
+    box-shadow: 0 0 0 4px rgba(220, 38, 38, 0);
+  }
 }
 
 /* ============================================

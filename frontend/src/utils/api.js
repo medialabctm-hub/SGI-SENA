@@ -46,7 +46,13 @@ const getUserFriendlyError = (error, status, originalMessage) => {
           message.includes('credenciales invalidas') ||
           message.includes('usuario o contraseña incorrectos') ||
           message.includes('contraseña incorrecta') ||
+          message.includes('contraseña actual') ||
+          message.includes('la contraseña actual es incorrecta') ||
           message.includes('usuario no encontrado')) {
+        // Si es un error de contraseña actual, mostrar el mensaje específico
+        if (message.includes('contraseña actual')) {
+          return originalMessage || error?.message || 'La contraseña actual es incorrecta';
+        }
         return 'Usuario o contraseña incorrectos';
       }
       // Para otros errores 401 (token expirado, etc.)

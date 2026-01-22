@@ -1,6 +1,7 @@
 import defaultDb from '../config/dbconfig.js';
 import { logger } from '../utils/logger.js';
 import { createForUsers } from './notificationService.js';
+import { getColombiaDateTimeString } from '../utils/timezone.js';
 
 /**
  * Obtener fecha/hora local en formato MySQL (YYYY-MM-DD HH:MM:SS)
@@ -53,20 +54,18 @@ function obtenerFechaISO(fecha) {
 }
 
 /**
- * Servicio de MONITOREO y NOTIFICACIONES de clases (SISTEMA 100% MANUAL)
+ * Servicio de AUTOMATIZACIÓN de gestión de horarios de clases
  * 
- * IMPORTANTE: Este servicio SOLO envía alertas informativas.
- * NO cambia estados automáticamente.
- * NO inicia ni finaliza clases.
- * NO activa ni desactiva responsabilidades.
+ * Este servicio AUTOMÁTICAMENTE:
+ * - Inicia clases cuando llega la hora de inicio programada (con margen de ±2 minutos)
+ * - Finaliza clases cuando pasa la hora de fin programada (con margen de ±2 minutos)
+ * - Envía notificaciones de advertencia 5 minutos antes del inicio/fin
  * 
- * Los estados se cambian ÚNICAMENTE mediante acciones manuales:
- * - iniciarClase() -> sp_iniciar_clase()
- * - finalizarClase() -> sp_finalizar_clase()
+ * Los procedimientos almacenados utilizados son:
+ * - sp_iniciar_clase() - Cambia estado a "En Curso" y asigna responsabilidades
+ * - sp_finalizar_clase() - Cambia estado a "Finalizada" y cierra responsabilidades
  * 
- * El tiempo es SOLO INFORMATIVO para alertas de UX.
- * 
- * ZONA HORARIA: Colombia (UTC-5) para comparaciones de horarios (solo informativo)
+ * ZONA HORARIA: Colombia (UTC-5) para todas las comparaciones y ejecuciones
  */
 class SchedulerService {
   constructor() {
@@ -75,6 +74,8 @@ class SchedulerService {
     this.isExecuting = false;
     this.intervalMinutes = 1;
     this.notificacionesEnviadas = new Set(); // Para evitar notificaciones duplicadas
+    this.clasesIniciadas = new Set(); // Para evitar iniciar la misma clase múltiples veces en una ejecución
+    this.clasesFinalizadas = new Set(); // Para evitar finalizar la misma clase múltiples veces en una ejecución
   }
 
   /**
@@ -99,7 +100,7 @@ class SchedulerService {
     }, intervalMs);
 
     this.isRunning = true;
-    logger.info(`Scheduler de monitoreo iniciado. Ejecución cada ${intervalMinutes} minuto(s)`);
+    logger.info(`Scheduler de automatización de clases iniciado. Ejecución cada ${intervalMinutes} minuto(s)`);
   }
 
   /**
@@ -126,26 +127,37 @@ class SchedulerService {
   }
 
   /**
-   * Ejecutar monitoreo de clases y enviar notificaciones (SISTEMA 100% MANUAL)
+   * Ejecutar automatización de clases: iniciar y finalizar automáticamente según horarios
    * 
-   * IMPORTANTE: Este método SOLO envía alertas informativas.
-   * NO cambia estados automáticamente.
-   * NO inicia ni finaliza clases.
-   * NO activa ni desactiva responsabilidades.
+   * Este método:
+   * - Inicia automáticamente clases programadas cuando llega la hora de inicio (margen ±2 min)
+   * - Finaliza automáticamente clases en curso cuando pasa la hora de fin (margen ±2 min)
+   * - Envía notificaciones de advertencia 5 minutos antes del inicio/fin
    * 
-   * Los estados se cambian ÚNICAMENTE mediante acciones manuales del usuario.
-   * El tiempo es SOLO INFORMATIVO para alertas de UX.
-   * 
-   * Zona horaria: Colombia (UTC-5) para comparaciones (solo informativo)
+   * Zona horaria: Colombia (UTC-5) para todas las comparaciones y ejecuciones
    */
   async executeSync() {
     if (this.isExecuting) {
-      logger.warn('Monitoreo en progreso. Se omite ejecución concurrente.');
-      return { notificaciones: 0, errores: [{ tipo: 'concurrencia', detalle: 'Ejecución ya en curso' }] };
+      logger.warn('Automatización en progreso. Se omite ejecución concurrente.');
+      return { 
+        notificaciones: 0, 
+        clasesIniciadas: 0, 
+        clasesFinalizadas: 0,
+        errores: [{ tipo: 'concurrencia', detalle: 'Ejecución ya en curso' }] 
+      };
     }
 
     this.isExecuting = true;
-    const resultado = { notificaciones: 0, errores: [] };
+    // Limpiar sets de clases procesadas para esta ejecución
+    this.clasesIniciadas.clear();
+    this.clasesFinalizadas.clear();
+    
+    const resultado = { 
+      notificaciones: 0, 
+      clasesIniciadas: 0, 
+      clasesFinalizadas: 0,
+      errores: [] 
+    };
 
     try {
       // Usar hora de Colombia (UTC-5) para comparaciones
@@ -166,24 +178,43 @@ class SchedulerService {
         [fechaHoy]
       );
 
-      const clasesParaIniciar = clasesProgramadas.filter((clase) => {
+      // Separar clases para consentimiento (3-5 min antes) y para inicio automático (hora exacta ±2 min)
+      const clasesParaConsentimiento = [];
+      const clasesParaIniciarAuto = [];
+      
+      clasesProgramadas.forEach((clase) => {
         const fechaClaseStr = obtenerFechaISO(clase.fecha_clase);
         const horaInicio = normalizarHora(clase.hora_inicio);
         const inicioProgramado = crearDateTime(fechaClaseStr, horaInicio);
         
-        // Enviar notificación 5 minutos antes y en el momento exacto (con margen de 10 minutos)
-        const minutosAntes = 5;
-        const tiempoLimite = new Date(inicioProgramado.getTime() - (minutosAntes * 60000));
-        const tiempoLimiteFinal = new Date(inicioProgramado.getTime() + (10 * 60000)); // 10 min de margen
+        // Margen para inicio automático: ±2 minutos
+        const margenInicio = 2 * 60000; // 2 minutos en milisegundos
+        const tiempoInicioMin = new Date(inicioProgramado.getTime() - margenInicio);
+        const tiempoInicioMax = new Date(inicioProgramado.getTime() + margenInicio);
         
-        return ahoraColombia >= tiempoLimite && ahoraColombia <= tiempoLimiteFinal;
+        // Consentimiento: 3-5 minutos antes de la hora de inicio
+        const minutosConsentimientoMin = 3;
+        const minutosConsentimientoMax = 5;
+        const tiempoConsentimientoMin = new Date(inicioProgramado.getTime() - (minutosConsentimientoMax * 60000));
+        const tiempoConsentimientoMax = new Date(inicioProgramado.getTime() - (minutosConsentimientoMin * 60000));
+        
+        // Si está en el rango de inicio automático (y ya pasó el tiempo de consentimiento)
+        if (ahoraColombia >= tiempoInicioMin && ahoraColombia <= tiempoInicioMax) {
+          clasesParaIniciarAuto.push(clase);
+        }
+        
+        // Si está en el rango de consentimiento (3-5 minutos antes)
+        if (ahoraColombia >= tiempoConsentimientoMin && ahoraColombia <= tiempoConsentimientoMax) {
+          clasesParaConsentimiento.push(clase);
+        }
       });
 
-      // Enviar notificaciones para iniciar clases
-      for (const clase of clasesParaIniciar) {
-        const claveNotificacion = `clase_iniciar_${clase.id_clase}`;
+      // ENVIAR NOTIFICACIONES DE CONSENTIMIENTO (3-5 minutos antes)
+      for (const clase of clasesParaConsentimiento) {
+        const claveConsentimiento = `consentimiento_${clase.id_clase}`;
         
-        if (this.notificacionesEnviadas.has(claveNotificacion)) {
+        // Evitar enviar múltiples notificaciones de consentimiento
+        if (this.notificacionesEnviadas.has(claveConsentimiento)) {
           continue;
         }
 
@@ -195,27 +226,26 @@ class SchedulerService {
 
           await createForUsers({
             userIds: [clase.id_instructor],
-            titulo: minutosRestantes > 0 
-              ? `Clase por iniciar en ${minutosRestantes} minuto(s)`
-              : 'Es hora de iniciar tu clase',
-            cuerpo: `La clase "${clase.nombre_clase}" en el ambiente ${clase.codigo_ambiente} (${clase.nombre_ambiente}) ${minutosRestantes > 0 ? `inicia en ${minutosRestantes} minuto(s)` : 'debe iniciarse ahora'}.`,
-            tipo: minutosRestantes > 0 ? 'aviso' : 'alerta',
+            titulo: 'Consentimiento para iniciar clase',
+            cuerpo: `¿Seguro que desea convertirse en CUENTADANTE TEMPORAL del inventario correspondiente al Ambiente ${clase.codigo_ambiente} (${clase.nombre_ambiente})?`,
+            tipo: 'alerta',
             metadata: {
               id_clase: clase.id_clase,
               id_ambiente: clase.id_ambiente,
-              tipo: 'clase_iniciar',
+              tipo: 'consentimiento_inicio',
               hora_inicio: horaInicio,
+              minutos_restantes: minutosRestantes,
               acciones: [
                 {
-                  tipo: 'iniciar_clase',
-                  label: 'Iniciar Clase',
-                  endpoint: `/api/clases/${clase.id_clase}/iniciar`,
+                  tipo: 'aceptar_consentimiento',
+                  label: 'Aceptar',
+                  endpoint: `/api/clases/${clase.id_clase}/consentimiento/aceptar`,
                   metodo: 'POST'
                 },
                 {
-                  tipo: 'cancelar_clase',
-                  label: 'Cancelar Clase',
-                  endpoint: `/api/clases/${clase.id_clase}/cancelar`,
+                  tipo: 'rechazar_consentimiento',
+                  label: 'Rechazar',
+                  endpoint: `/api/clases/${clase.id_clase}/consentimiento/rechazar`,
                   metodo: 'POST'
                 }
               ]
@@ -223,17 +253,86 @@ class SchedulerService {
             creadoPor: null
           });
 
-          this.notificacionesEnviadas.add(claveNotificacion);
+          this.notificacionesEnviadas.add(claveConsentimiento);
           resultado.notificaciones += 1;
           
-          logger.info(`Notificación enviada: Clase ${clase.id_clase} por iniciar`, {
+          logger.info(`📋 Notificación de consentimiento enviada: Clase ${clase.id_clase}`, {
             id_clase: clase.id_clase,
             instructor: clase.instructor_nombre,
             minutos_restantes: minutosRestantes
           });
         } catch (err) {
-          logger.error(`Error al enviar notificación para clase ${clase.id_clase}`, { error: err.message });
+          logger.error(`Error al enviar notificación de consentimiento para clase ${clase.id_clase}`, { error: err.message });
           resultado.errores.push({ id_clase: clase.id_clase, error: err.message });
+        }
+      }
+
+      // AUTOMATIZACIÓN: Iniciar clases automáticamente (solo si ya pasó el tiempo de consentimiento)
+      // Esto solo ocurre si el instructor no respondió al consentimiento
+      for (const clase of clasesParaIniciarAuto) {
+        // Verificar si ya se envió consentimiento (si pasó el tiempo de consentimiento sin respuesta, iniciar automáticamente)
+        const claveConsentimiento = `consentimiento_${clase.id_clase}`;
+        const yaEnviadoConsentimiento = this.notificacionesEnviadas.has(claveConsentimiento);
+        
+        // Si ya se envió consentimiento, no iniciar automáticamente (esperar respuesta)
+        if (yaEnviadoConsentimiento) {
+          continue;
+        }
+        
+        // Evitar iniciar la misma clase múltiples veces
+        if (this.clasesIniciadas.has(clase.id_clase)) {
+          continue;
+        }
+
+        try {
+          const fechaInicio = getColombiaDateTimeString();
+          
+          logger.info(`🟢 AUTOMATIZACIÓN: Iniciando clase ${clase.id_clase} automáticamente (sin consentimiento previo)`, {
+            id_clase: clase.id_clase,
+            nombre_clase: clase.nombre_clase,
+            instructor: clase.instructor_nombre,
+            ambiente: clase.codigo_ambiente,
+            fecha_inicio: fechaInicio,
+            hora_programada: clase.hora_inicio
+          });
+
+          // Ejecutar procedimiento almacenado para iniciar la clase
+          await defaultDb.execute(
+            'CALL sp_iniciar_clase(?, ?)',
+            [clase.id_clase, fechaInicio]
+          );
+
+          this.clasesIniciadas.add(clase.id_clase);
+          resultado.clasesIniciadas += 1;
+          
+          // Emitir evento WebSocket para actualización en tiempo real
+          try {
+            const socketService = (await import('./socketService.js')).default;
+            socketService.emitToAll('clase:updated', {
+              id_clase: clase.id_clase,
+              estado_clase: 'En Curso',
+              action: 'auto_started',
+              timestamp: new Date().toISOString(),
+            });
+          } catch (socketErr) {
+            logger.warn('Error al emitir evento Socket.io', { error: socketErr.message });
+          }
+          
+          logger.info(`✅ Clase ${clase.id_clase} iniciada automáticamente`, {
+            id_clase: clase.id_clase,
+            instructor: clase.instructor_nombre
+          });
+        } catch (err) {
+          logger.error(`❌ Error al iniciar automáticamente la clase ${clase.id_clase}`, { 
+            id_clase: clase.id_clase, 
+            error: err.message,
+            stack: err.stack 
+          });
+          resultado.errores.push({ 
+            tipo: 'inicio_automatico', 
+            id_clase: clase.id_clase, 
+            error: err.message 
+          });
         }
       }
 
@@ -249,94 +348,107 @@ class SchedulerService {
          WHERE c.estado_clase = 'En Curso'`
       );
 
-      const clasesParaFinalizar = clasesEnCurso.filter((clase) => {
+      // Clases para finalización automática (solo después de la hora de fin)
+      const clasesParaFinalizarAuto = [];
+      
+      clasesEnCurso.forEach((clase) => {
         const fechaClaseStr = obtenerFechaISO(clase.fecha_clase);
         const horaFin = normalizarHora(clase.hora_fin);
         const finProgramado = crearDateTime(fechaClaseStr, horaFin);
 
-        // Enviar notificación 5 minutos antes y cuando llegue la hora
-        const minutosAntes = 5;
-        const tiempoLimite = new Date(finProgramado.getTime() - (minutosAntes * 60000));
+        // Margen para finalización automática: solo DESPUÉS de la hora de fin (no antes)
+        // La clase debe finalizarse cuando haya pasado la hora de fin, con un margen de 2 minutos después
+        const margenFin = 2 * 60000; // 2 minutos en milisegundos
+        const tiempoFinMin = finProgramado; // No permitir finalizar antes de la hora programada
+        const tiempoFinMax = new Date(finProgramado.getTime() + margenFin); // Permitir hasta 2 minutos después
         
-        return ahoraColombia >= tiempoLimite;
+        // Si está en el rango de finalización automática (después de la hora de fin)
+        if (ahoraColombia >= tiempoFinMin && ahoraColombia <= tiempoFinMax) {
+          clasesParaFinalizarAuto.push(clase);
+        }
       });
 
-      // Enviar notificaciones para finalizar clases
-      for (const clase of clasesParaFinalizar) {
-        const claveNotificacion = `clase_finalizar_${clase.id_clase}`;
-        
-        if (this.notificacionesEnviadas.has(claveNotificacion)) {
+      // AUTOMATIZACIÓN: Finalizar clases automáticamente
+      for (const clase of clasesParaFinalizarAuto) {
+        // Evitar finalizar la misma clase múltiples veces
+        if (this.clasesFinalizadas.has(clase.id_clase)) {
           continue;
         }
 
         try {
-          const fechaClaseStr = obtenerFechaISO(clase.fecha_clase);
-          const horaFin = normalizarHora(clase.hora_fin);
-          const finProgramado = crearDateTime(fechaClaseStr, horaFin);
-          const minutosRestantes = Math.floor((finProgramado.getTime() - ahoraColombia.getTime()) / 60000);
-
-          await createForUsers({
-            userIds: [clase.id_instructor],
-            titulo: minutosRestantes > 0 
-              ? `Clase por finalizar en ${minutosRestantes} minuto(s)`
-              : 'Es hora de finalizar tu clase',
-            cuerpo: `La clase "${clase.nombre_clase}" en el ambiente ${clase.codigo_ambiente} (${clase.nombre_ambiente}) ${minutosRestantes > 0 ? `finaliza en ${minutosRestantes} minuto(s)` : 'debe finalizarse ahora'}.`,
-            tipo: minutosRestantes > 0 ? 'aviso' : 'alerta',
-            metadata: {
-              id_clase: clase.id_clase,
-              id_ambiente: clase.id_ambiente,
-              tipo: 'clase_finalizar',
-              hora_fin: horaFin,
-              acciones: [
-                {
-                  tipo: 'finalizar_clase',
-                  label: 'Finalizar Clase',
-                  endpoint: `/api/clases/${clase.id_clase}/finalizar`,
-                  metodo: 'POST'
-                },
-                {
-                  tipo: 'cancelar_clase',
-                  label: 'Cancelar Clase',
-                  endpoint: `/api/clases/${clase.id_clase}/cancelar`,
-                  metodo: 'POST'
-                }
-              ]
-            },
-            creadoPor: null
+          const fechaFin = getColombiaDateTimeString();
+          
+          logger.info(`🔴 AUTOMATIZACIÓN: Finalizando clase ${clase.id_clase} automáticamente`, {
+            id_clase: clase.id_clase,
+            nombre_clase: clase.nombre_clase,
+            instructor: clase.instructor_nombre,
+            ambiente: clase.codigo_ambiente,
+            fecha_fin: fechaFin,
+            hora_programada: clase.hora_fin
           });
 
-          this.notificacionesEnviadas.add(claveNotificacion);
-          resultado.notificaciones += 1;
+          // Ejecutar procedimiento almacenado para finalizar la clase
+          await defaultDb.execute(
+            'CALL sp_finalizar_clase(?, ?)',
+            [clase.id_clase, fechaFin]
+          );
+
+          this.clasesFinalizadas.add(clase.id_clase);
+          resultado.clasesFinalizadas += 1;
           
-          logger.info(`Notificación enviada: Clase ${clase.id_clase} por finalizar`, {
+          // Emitir evento WebSocket para actualización en tiempo real
+          try {
+            const socketService = (await import('./socketService.js')).default;
+            socketService.emitToAll('clase:updated', {
+              id_clase: clase.id_clase,
+              estado_clase: 'Finalizada',
+              action: 'auto_finished',
+              timestamp: new Date().toISOString(),
+            });
+          } catch (socketErr) {
+            logger.warn('Error al emitir evento Socket.io', { error: socketErr.message });
+          }
+          
+          logger.info(`✅ Clase ${clase.id_clase} finalizada automáticamente`, {
             id_clase: clase.id_clase,
-            instructor: clase.instructor_nombre,
-            minutos_restantes: minutosRestantes
+            instructor: clase.instructor_nombre
           });
         } catch (err) {
-          logger.error(`Error al enviar notificación para clase ${clase.id_clase}`, { error: err.message });
-          resultado.errores.push({ id_clase: clase.id_clase, error: err.message });
+          logger.error(`❌ Error al finalizar automáticamente la clase ${clase.id_clase}`, { 
+            id_clase: clase.id_clase, 
+            error: err.message,
+            stack: err.stack 
+          });
+          resultado.errores.push({ 
+            tipo: 'finalizacion_automatica', 
+            id_clase: clase.id_clase, 
+            error: err.message 
+          });
         }
       }
 
+      // Notificaciones de finalización eliminadas - las clases se finalizan automáticamente sin notificaciones
+      // Solo se envían notificaciones de consentimiento para el inicio de clases
+
       // 3. Limpiar notificaciones enviadas de clases que ya no aplican
-      const clasesEnCursoIds = new Set(clasesEnCurso.map(c => c.id_clase));
       const clasesProgramadasIds = new Set(clasesProgramadas.map(c => c.id_clase));
       
       for (const clave of this.notificacionesEnviadas) {
-        const matchIniciar = clave.match(/clase_iniciar_(\d+)/);
-        const matchFinalizar = clave.match(/clase_finalizar_(\d+)/);
+        const matchConsentimiento = clave.match(/consentimiento_(\d+)/);
         
-        if (matchIniciar && !clasesProgramadasIds.has(parseInt(matchIniciar[1]))) {
-          this.notificacionesEnviadas.delete(clave);
-        }
-        if (matchFinalizar && !clasesEnCursoIds.has(parseInt(matchFinalizar[1]))) {
+        // Limpiar notificaciones de consentimiento de clases que ya no están programadas
+        if (matchConsentimiento && !clasesProgramadasIds.has(parseInt(matchConsentimiento[1]))) {
           this.notificacionesEnviadas.delete(clave);
         }
       }
 
-      if (resultado.notificaciones > 0) {
-        logger.info(`Monitoreo completado: ${resultado.notificaciones} notificación(es) enviada(s)`);
+      // Log resumen de la ejecución
+      if (resultado.clasesIniciadas > 0 || resultado.clasesFinalizadas > 0 || resultado.notificaciones > 0) {
+        logger.info(`Automatización completada`, {
+          clases_iniciadas: resultado.clasesIniciadas,
+          clases_finalizadas: resultado.clasesFinalizadas,
+          notificaciones: resultado.notificaciones
+        });
       }
 
       return resultado;

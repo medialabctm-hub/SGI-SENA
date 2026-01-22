@@ -7,7 +7,8 @@ import Toast from '../components/Toast'
 import ImportarAprendices from '../components/ImportarAprendices'
 import CustomSelect from '../components/CustomSelect'
 import { parseApiResponse, buildErrorMessage, getAuthHeaders } from '../utils/api'
-import '../styles/usuarios.css'
+import { useSocket } from '../contexts/SocketContext'
+import '../styles/pages/usuarios.css'
 
 export default function Aprendices() {
   const [currentUser, setCurrentUser] = useState(null)
@@ -60,6 +61,25 @@ export default function Aprendices() {
       fetchAprendices()
     }
   }, [canView, fetchAprendices])
+
+  // Suscribirse a actualizaciones en tiempo real de aprendices
+  const { subscribe } = useSocket()
+  useEffect(() => {
+    if (!subscribe || !canView) return
+    
+    const unsubscribeUpdated = subscribe('aprendiz:updated', () => {
+      fetchAprendices()
+    })
+    
+    const unsubscribeDeleted = subscribe('aprendiz:deleted', () => {
+      fetchAprendices()
+    })
+    
+    return () => {
+      unsubscribeUpdated()
+      unsubscribeDeleted()
+    }
+  }, [subscribe, canView, fetchAprendices])
 
   const filteredAprendices = useMemo(() => {
     if (!query.trim()) {

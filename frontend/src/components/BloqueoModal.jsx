@@ -1,5 +1,5 @@
 import { FiAlertTriangle, FiX } from 'react-icons/fi'
-import '../styles/bloqueoModal.css'
+import '../styles/components/modals.css'
 
 export default function BloqueoModal({ isOpen, onClose }) {
   if (!isOpen) return null

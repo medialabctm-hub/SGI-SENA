@@ -6,8 +6,9 @@ import ConfirmModal from '../components/ConfirmModal'
 import CustomSelect from '../components/CustomSelect'
 import { FiUserPlus, FiPackage, FiUsers, FiShield, FiFileText, FiSearch, FiCheck, FiUserCheck, FiTrash2, FiList, FiAlertCircle } from 'react-icons/fi'
 import { parseApiResponse, buildErrorMessage } from '../utils/api'
-import '../styles/equipos.css'
-import '../styles/asignarEquipo.css'
+import { useSocket } from '../contexts/SocketContext'
+import '../styles/pages/equipos.css'
+import '../styles/pages/asignaciones.css'
 
 export default function AsignarEquipo() {
   const [activeTab, setActiveTab] = useState('asignar') // 'asignar' o 'ver'
@@ -55,6 +56,30 @@ export default function AsignarEquipo() {
       fetchAsignaciones()
     }
   }, [activeTab])
+
+  // Suscribirse a actualizaciones en tiempo real de asignaciones
+  const { subscribe } = useSocket()
+  useEffect(() => {
+    if (!subscribe || activeTab !== 'ver') return
+    
+    const unsubscribeCreated = subscribe('asignacion:created', () => {
+      fetchAsignaciones()
+    })
+    
+    const unsubscribeDeleted = subscribe('asignacion:deleted', () => {
+      fetchAsignaciones()
+    })
+    
+    const unsubscribeUpdated = subscribe('asignacion:updated', () => {
+      fetchAsignaciones()
+    })
+    
+    return () => {
+      unsubscribeCreated()
+      unsubscribeDeleted()
+      unsubscribeUpdated()
+    }
+  }, [subscribe, activeTab])
 
   const isInstructor = user?.nombre_rol === 'Instructor'
   const isAdmin = user?.nombre_rol === 'Administrador'

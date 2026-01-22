@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { FiChevronDown, FiX } from 'react-icons/fi'
-import '../styles/autocompleteInput.css'
+import '../styles/components/autocompleteInput.css'
 
 export default function AutocompleteInput({
   value,
@@ -197,6 +197,8 @@ export default function AutocompleteInput({
     </div>
   )
 }
+
+
 
 
 

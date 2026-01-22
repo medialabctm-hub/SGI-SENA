@@ -3,7 +3,7 @@ import { FiCheck, FiX, FiAlertCircle, FiCheckCircle, FiClock, FiSave } from 'rea
 import { parseApiResponse, buildErrorMessage, handleError } from '../utils/api'
 import { useDuplicados } from '../contexts/DuplicadosContext'
 import InfoModal from './InfoModal'
-import '../styles/revisarDuplicados.css'
+import '../styles/pages/verificaciones.css'
 
 export default function RevisarDuplicados({ idImportacion, onProcesarCompleto }) {
   const { limpiarDuplicados } = useDuplicados()

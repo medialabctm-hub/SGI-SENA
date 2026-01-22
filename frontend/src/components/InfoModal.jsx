@@ -1,6 +1,6 @@
 import React from 'react'
 import { FiCheckCircle, FiInfo, FiAlertCircle } from 'react-icons/fi'
-import '../styles/infoModal.css'
+import '../styles/components/modals.css'
 
 export default function InfoModal({ 
   open, 

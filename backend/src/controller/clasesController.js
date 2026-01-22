@@ -324,6 +324,21 @@ export async function crearClase(req, res) {
       });
     }
 
+    // Emitir eventos WebSocket para actualización en tiempo real
+    try {
+      const socketService = (await import('../services/socketService.js')).default;
+      for (const claseCreada of clasesCreadas) {
+        socketService.emitToAll('clase:updated', {
+          id_clase: claseCreada.id_clase,
+          estado_clase: 'Programada',
+          action: 'created',
+          timestamp: new Date().toISOString(),
+        });
+      }
+    } catch (socketErr) {
+      logger.warn('Error al emitir evento Socket.io', { error: socketErr.message });
+    }
+
     // Éxito total
     if (clasesCreadas.length === 1) {
       return res.status(201).json({
@@ -1046,10 +1061,169 @@ export async function actualizarClase(req, res) {
       return res.status(404).json({ error: 'Clase no encontrada' });
     }
 
+    // Emitir evento WebSocket para actualización en tiempo real
+    try {
+      const socketService = (await import('../services/socketService.js')).default;
+      socketService.emitToAll('clase:updated', {
+        id_clase: id,
+        action: 'updated',
+        timestamp: new Date().toISOString(),
+      });
+    } catch (socketErr) {
+      logger.warn('Error al emitir evento Socket.io', { error: socketErr.message });
+    }
+
     return res.json({ ok: true, message: 'Clase actualizada correctamente' });
   } catch (err) {
     logger.error('Error al actualizar clase', { error: err.message, stack: err.stack });
     return res.status(500).json({ error: 'Error al actualizar la clase', detalle: err.message });
+  }
+}
+
+/**
+ * Manejar consentimiento para iniciar clase - Aceptar
+ */
+export async function aceptarConsentimiento(req, res) {
+  try {
+    const { id } = req.params;
+    const userId = req.user?.id;
+
+    logger.info('✅ ACEPTAR CONSENTIMIENTO - INTENTO', {
+      id_clase: id,
+      usuario: userId,
+      timestamp: new Date().toISOString()
+    });
+
+    // Validar que la clase existe y está en estado "Programada"
+    const [[clase]] = await defaultDb.execute(
+      'SELECT id_clase, estado_clase, id_instructor FROM Clases WHERE id_clase = ?',
+      [id]
+    );
+
+    if (!clase) {
+      return res.status(404).json({ error: 'Clase no encontrada' });
+    }
+
+    // Verificar que el usuario es el instructor de la clase
+    if (clase.id_instructor !== userId) {
+      return res.status(403).json({ 
+        error: 'No autorizado',
+        detalle: 'Solo el instructor de la clase puede aceptar el consentimiento'
+      });
+    }
+
+    if (clase.estado_clase !== 'Programada') {
+      return res.status(400).json({ 
+        error: 'La clase no puede ser iniciada',
+        detalle: `La clase está en estado "${clase.estado_clase}". Solo se pueden iniciar clases programadas.`
+      });
+    }
+
+    // Iniciar la clase
+    const fechaInicio = getColombiaDateTimeString();
+
+    await defaultDb.execute(
+      'CALL sp_iniciar_clase(?, ?)',
+      [id, fechaInicio]
+    );
+
+    logger.info('✅ CONSENTIMIENTO ACEPTADO - Clase iniciada', {
+      id_clase: id,
+      usuario: userId,
+      fecha_inicio: fechaInicio
+    });
+
+    // Emitir evento WebSocket
+    const socketService = (await import('../services/socketService.js')).default;
+    socketService.emitToAll('clase:updated', {
+      id_clase: id,
+      estado_clase: 'En Curso',
+      action: 'iniciada',
+      timestamp: new Date().toISOString(),
+    });
+
+    return res.json({
+      ok: true,
+      message: 'Consentimiento aceptado. Clase iniciada correctamente.',
+      fecha_inicio: fechaInicio
+    });
+  } catch (err) {
+    logger.error('Error al aceptar consentimiento', { error: err.message, stack: err.stack });
+    return res.status(500).json({ error: 'Error al aceptar consentimiento', detalle: err.message });
+  }
+}
+
+/**
+ * Manejar consentimiento para iniciar clase - Rechazar
+ */
+export async function rechazarConsentimiento(req, res) {
+  try {
+    const { id } = req.params;
+    const userId = req.user?.id;
+
+    logger.info('❌ RECHAZAR CONSENTIMIENTO - INTENTO', {
+      id_clase: id,
+      usuario: userId,
+      timestamp: new Date().toISOString()
+    });
+
+    // Validar que la clase existe y está en estado "Programada"
+    const [[clase]] = await defaultDb.execute(
+      'SELECT id_clase, estado_clase, id_instructor FROM Clases WHERE id_clase = ?',
+      [id]
+    );
+
+    if (!clase) {
+      return res.status(404).json({ error: 'Clase no encontrada' });
+    }
+
+    // Verificar que el usuario es el instructor de la clase
+    if (clase.id_instructor !== userId) {
+      return res.status(403).json({ 
+        error: 'No autorizado',
+        detalle: 'Solo el instructor de la clase puede rechazar el consentimiento'
+      });
+    }
+
+    if (clase.estado_clase !== 'Programada') {
+      return res.status(400).json({ 
+        error: 'La clase no puede ser cancelada',
+        detalle: `La clase está en estado "${clase.estado_clase}". Solo se pueden cancelar clases programadas.`
+      });
+    }
+
+    // Cancelar la clase y agregar descripción "Consentimiento Rechazado"
+    const observaciones = 'Consentimiento Rechazado';
+    
+    await defaultDb.execute(
+      'UPDATE Clases SET estado_clase = "Cancelada", observaciones = CONCAT(COALESCE(observaciones, ""), IF(observaciones IS NULL OR observaciones = "", "", " - "), ?) WHERE id_clase = ?',
+      [observaciones, id]
+    );
+
+    logger.info('❌ CONSENTIMIENTO RECHAZADO - Clase cancelada', {
+      id_clase: id,
+      usuario: userId,
+      observaciones: observaciones
+    });
+
+    // Emitir evento WebSocket
+    const socketService = (await import('../services/socketService.js')).default;
+    socketService.emitToAll('clase:updated', {
+      id_clase: id,
+      estado_clase: 'Cancelada',
+      action: 'cancelada',
+      motivo: 'Consentimiento Rechazado',
+      timestamp: new Date().toISOString(),
+    });
+
+    return res.json({
+      ok: true,
+      message: 'Consentimiento rechazado. Clase cancelada.',
+      observaciones: observaciones
+    });
+  } catch (err) {
+    logger.error('Error al rechazar consentimiento', { error: err.message, stack: err.stack });
+    return res.status(500).json({ error: 'Error al rechazar consentimiento', detalle: err.message });
   }
 }
 
@@ -1125,16 +1299,32 @@ export async function cancelarClase(req, res) {
       });
     }
 
-    // Cambiar estado a Cancelada
-    await defaultDb.execute(
-      'UPDATE Clases SET estado_clase = "Cancelada" WHERE id_clase = ?',
-      [id]
-    );
+    // Obtener descripción adicional del body si existe (para casos como "Consentimiento Rechazado")
+    const { descripcion_adicional } = req.body || {};
+    let observaciones = '';
+    
+    if (descripcion_adicional) {
+      observaciones = descripcion_adicional;
+    }
+
+    // Cambiar estado a Cancelada y actualizar observaciones si hay descripción adicional
+    if (observaciones) {
+      await defaultDb.execute(
+        'UPDATE Clases SET estado_clase = "Cancelada", observaciones = CONCAT(COALESCE(observaciones, ""), IF(observaciones IS NULL OR observaciones = "", "", " - "), ?) WHERE id_clase = ?',
+        [observaciones, id]
+      );
+    } else {
+      await defaultDb.execute(
+        'UPDATE Clases SET estado_clase = "Cancelada" WHERE id_clase = ?',
+        [id]
+      );
+    }
 
     logger.info('🟡 CANCELAR CLASE - COMPLETADO', {
       id_clase: id,
       estado_final: 'Cancelada',
       usuario: userId,
+      observaciones: observaciones || null,
       timestamp: new Date().toISOString()
     });
 
@@ -1301,18 +1491,15 @@ export async function consultarResponsablesTiempoReal(req, res) {
 }
 
 /**
- * Monitoreo de clases (SISTEMA 100% MANUAL - SOLO ALERTAS INFORMATIVAS)
+ * Ejecutar automatización de clases manualmente (endpoint de sincronización)
  * 
- * IMPORTANTE: Este endpoint SOLO envía alertas informativas.
- * NO cambia estados automáticamente.
- * NO inicia ni finaliza clases.
- * NO activa ni desactiva responsabilidades.
+ * Este endpoint ejecuta el scheduler que AUTOMÁTICAMENTE:
+ * - Inicia clases cuando llega la hora de inicio programada (margen ±2 min)
+ * - Finaliza clases cuando pasa la hora de fin programada (margen ±2 min)
+ * - Envía notificaciones de advertencia 5 minutos antes del inicio/fin
  * 
- * Los estados se cambian ÚNICAMENTE mediante acciones manuales:
- * - iniciarClase() -> sp_iniciar_clase()
- * - finalizarClase() -> sp_finalizar_clase()
- * 
- * El tiempo es SOLO INFORMATIVO para alertas de UX.
+ * Nota: El scheduler también se ejecuta automáticamente cada 1 minuto en segundo plano.
+ * Este endpoint permite ejecutarlo manualmente cuando sea necesario.
  */
 export async function sincronizarResponsabilidadesHorarios(req, res) {
   try {
@@ -1320,8 +1507,10 @@ export async function sincronizarResponsabilidadesHorarios(req, res) {
 
     return res.json({
       ok: true,
-      message: 'Monitoreo completado (solo alertas informativas - no cambia estados)',
-      alertas: resultado.notificaciones || resultado.alertas || [],
+      message: 'Automatización de clases ejecutada',
+      clases_iniciadas: resultado.clasesIniciadas || 0,
+      clases_finalizadas: resultado.clasesFinalizadas || 0,
+      notificaciones: resultado.notificaciones || 0,
       errores: resultado?.errores?.length ? resultado.errores : undefined
     });
   } catch (err) {

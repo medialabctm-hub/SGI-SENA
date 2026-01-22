@@ -1,5 +1,5 @@
 import React from 'react';
-import '../styles/errorBoundary.css';
+import '../styles/components/errorBoundary.css';
 
 /**
  * Error Boundary para capturar errores de React

@@ -6,7 +6,8 @@ import ImportarEquipos from '../components/ImportarEquipos'
 import CustomSelect from '../components/CustomSelect'
 import { FiPlus, FiUpload, FiSearch, FiCheckCircle } from 'react-icons/fi'
 import { parseApiResponse, buildErrorMessage, handleError } from '../utils/api'
-import '../styles/equipos.css'
+import { useSocket } from '../contexts/SocketContext'
+import '../styles/pages/equipos.css'
 
 const ESTADOS_FISICOS = ['Nuevo', 'Bueno', 'Regular', 'Malo', 'Dañado']
 
@@ -89,6 +90,55 @@ export default function Equipos() {
     }
     cargarCategorias()
   }, [])
+
+  // Suscribirse a actualizaciones en tiempo real de equipos
+  const { subscribe } = useSocket()
+  useEffect(() => {
+    if (!subscribe) return
+    
+    const unsubscribeEquipoCreated = subscribe('equipo:created', () => {
+      // Recargar categorías cuando se cree un equipo (puede haber nuevas categorías)
+      const token = localStorage.getItem('token')
+      fetch('/api/equipos/categorias', {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+        .then(res => parseApiResponse(res))
+        .then(data => {
+          const nombresCategorias = Array.isArray(data) 
+            ? data.map(cat => cat.nombre_categoria)
+            : []
+          setCategorias(nombresCategorias)
+        })
+        .catch(err => console.error('Error al recargar categorías:', err))
+    })
+    
+    const unsubscribeEquipoUpdated = subscribe('equipo:updated', () => {
+      // Si hay una lista de equipos visible, podría recargarse aquí
+      // Por ahora solo actualizamos categorías
+    })
+    
+    const unsubscribeEquipoDeleted = subscribe('equipo:deleted', () => {
+      // Recargar categorías cuando se elimine un equipo
+      const token = localStorage.getItem('token')
+      fetch('/api/equipos/categorias', {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+        .then(res => parseApiResponse(res))
+        .then(data => {
+          const nombresCategorias = Array.isArray(data) 
+            ? data.map(cat => cat.nombre_categoria)
+            : []
+          setCategorias(nombresCategorias)
+        })
+        .catch(err => console.error('Error al recargar categorías:', err))
+    })
+    
+    return () => {
+      unsubscribeEquipoCreated()
+      unsubscribeEquipoUpdated()
+      unsubscribeEquipoDeleted()
+    }
+  }, [subscribe])
 
   // Buscar cuentadante por cédula
   const buscarCuentadante = async () => {

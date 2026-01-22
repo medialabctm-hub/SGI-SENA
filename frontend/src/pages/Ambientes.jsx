@@ -6,11 +6,12 @@ import Toast from '../components/Toast';
 import ConfirmModal from '../components/ConfirmModal';
 import CustomSelect from '../components/CustomSelect';
 import { parseApiResponse, buildErrorMessage, handleError, getAuthHeaders } from '../utils/api';
-import '../styles/equipos.css';
-import '../styles/usuarios.css';
-import '../styles/modal.css';
-import '../styles/sidebar.css';
-import '../styles/ambientes.css';
+import { useSocket } from '../contexts/SocketContext';
+import '../styles/pages/equipos.css';
+import '../styles/pages/usuarios.css';
+import '../styles/components/modals.css';
+import '../styles/layout/sidebar.css';
+import '../styles/pages/ambientes.css';
 
 const TIPOS_AMBIENTE = ['Laboratorio', 'Aula', 'Taller', 'Oficina', 'Bodega'];
 const ESTADOS_AMBIENTE = ['Activo', 'Inactivo', 'En Mantenimiento'];
@@ -88,6 +89,30 @@ export default function Ambientes() {
   useEffect(() => {
     fetchAmbientes();
   }, [filtros]);
+
+  // Suscribirse a actualizaciones en tiempo real de ambientes
+  const { subscribe } = useSocket();
+  useEffect(() => {
+    if (!subscribe) return;
+    
+    const unsubscribe = subscribe('ambiente:created', () => {
+      fetchAmbientes();
+    });
+    
+    const unsubscribeUpdated = subscribe('ambiente:updated', () => {
+      fetchAmbientes();
+    });
+    
+    const unsubscribeDeleted = subscribe('ambiente:deleted', () => {
+      fetchAmbientes();
+    });
+    
+    return () => {
+      unsubscribe();
+      unsubscribeUpdated();
+      unsubscribeDeleted();
+    };
+  }, [subscribe, fetchAmbientes]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;

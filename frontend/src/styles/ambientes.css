@@ -604,17 +604,20 @@
    ESTILOS PARA EDICIÓN INLINE
    ============================================ */
 
+/* Usar clases globales de forms.css con modificador inline-edit */
 .cell-input-edit,
 .cell-select-edit {
+  /* Aplicar estilos de form-input.inline-edit */
   width: 100%;
   padding: 8px 12px;
-  border: 1px solid var(--success-800);
+  border: 1.5px solid var(--success-800);
   border-radius: 8px;
   font-size: 0.95rem;
   background: white;
   color: #111827;
   transition: all 0.2s;
   box-shadow: 0 2px 4px rgba(67, 160, 71, 0.1);
+  min-height: 38px;
 }
 
 .cell-input-edit:focus,
@@ -623,6 +626,7 @@
   border-color: var(--success-900);
   box-shadow: 0 4px 12px rgba(67, 160, 71, 0.2);
   transform: translateY(-1px);
+  border-width: 2px;
 }
 
 .cell-input-edit:disabled {

@@ -150,7 +150,7 @@ CREATE TABLE Ambientes (
   id_ambiente INT PRIMARY KEY AUTO_INCREMENT,
   codigo_ambiente VARCHAR(20) UNIQUE NOT NULL,
   nombre_ambiente VARCHAR(100) NOT NULL,
-  tipo_ambiente ENUM('Laboratorio', 'Aula', 'Taller', 'Oficina', 'Bodega', 'Neutral') NOT NULL,
+  tipo_ambiente ENUM('Laboratorio', 'Aula', 'Taller', 'Oficina', 'Bodega', 'Sin Asignar') NOT NULL,
   capacidad_personas INT,
   piso VARCHAR(10),
   edificio VARCHAR(50),
@@ -643,6 +643,21 @@ CREATE TABLE Historial_Uso_Equipos (
   INDEX idx_clase (id_clase)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
 COMMENT = 'Historial de uso de equipos: registra quién inició sesión y de qué hora a qué hora';
+
+-- Tabla para almacenar nombres de clases validados
+CREATE TABLE IF NOT EXISTS Nombres_Clases (
+  id_nombre_clase INT PRIMARY KEY AUTO_INCREMENT,
+  nombre_clase VARCHAR(200) NOT NULL,
+  nombre_normalizado VARCHAR(200) NOT NULL,
+  creado_por INT NOT NULL,
+  fecha_creacion DATETIME DEFAULT NOW(),
+  activo BOOLEAN DEFAULT TRUE,
+  UNIQUE KEY uk_nombre_normalizado (nombre_normalizado),
+  FOREIGN KEY (creado_por) REFERENCES Usuarios(id_usuario) ON DELETE RESTRICT,
+  INDEX idx_nombre_clase (nombre_clase),
+  INDEX idx_activo (activo)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+COMMENT = 'Nombres de clases validados por administradores para autocompletado';
 
 -- ============================================
 -- TRIGGERS
@@ -1342,7 +1357,7 @@ INSERT INTO Ambientes (codigo_ambiente, nombre_ambiente, tipo_ambiente) VALUES
 ('301','Ambiente 301','Aula'), ('302','Ambiente 302','Aula'), ('401','Ambiente 401','Aula'),
 ('402','Ambiente 402','Aula'), ('403','Ambiente 403','Aula'), ('501','Ambiente 501','Aula'),
 ('502','Ambiente 502','Aula'), ('503','Ambiente 503','Aula'), ('504','Ambiente 504','Aula'),
-('505','Ambiente 505','Aula'), ('506','Ambiente 506','Aula'), ('Neutral','Neutral','Neutral');
+('505','Ambiente 505','Aula'), ('506','Ambiente 506','Aula'), ('Sin Asignar','Sin Asignar','Sin Asignar');
 
 INSERT INTO Criterios_Asignacion (nombre_criterio, prioridad, descripcion, parametros) VALUES
 ('Estado Físico', 1, 'Prioriza equipos en mejor estado físico', '{"orden": ["Nuevo", "Bueno", "Regular"]}'),
@@ -1497,10 +1512,9 @@ ON Usuarios(estado, id_rol);
 CREATE INDEX idx_clases_estado_fecha_hora 
 ON Clases(estado_clase, fecha_clase, hora_inicio, hora_fin);
 
--- ============================================
+-- ==================================
 -- ACTUALIZAR ESTADÍSTICAS DE TABLAS
--- Mejora el rendimiento del optimizador de consultas
--- ============================================
+-- ==================================
 
 ANALYZE TABLE Clases;
 ANALYZE TABLE Responsabilidades_Ambiente;

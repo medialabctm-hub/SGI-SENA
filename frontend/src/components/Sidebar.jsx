@@ -24,7 +24,7 @@ import {
 } from 'react-icons/fi'
 import { useSidebar } from '../contexts/SidebarContext'
 import { useBlockedNavigate } from '../hooks/useBlockedNavigate'
-import '../styles/sidebar.css'
+import '../styles/layout/sidebar.css'
 
 export default function Sidebar({ user }) {
   const { isOpen, closeSidebar } = useSidebar()

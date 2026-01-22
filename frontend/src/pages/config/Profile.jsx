@@ -164,16 +164,16 @@ export default function Profile() {
         </div>
         <div className="profile-actions">
           {!editing ? (
-            <button className="btn-verde" onClick={() => setEditing(true)}>
+            <button className="btn btn-verde" onClick={() => setEditing(true)}>
               <FiEdit2 size={16} className="perfil-edit-icon" />
               Editar
             </button>
           ) : (
             <>
-              <button className="btn-verde" onClick={handleSave} disabled={loading}>
+              <button className="btn btn-verde" onClick={handleSave} disabled={loading}>
                 {loading ? 'Guardando...' : 'Guardar'}
               </button>
-              <button className="btn profile-cancel-btn" onClick={() => { 
+              <button className="btn btn-secondary profile-cancel-btn" onClick={() => { 
                 setEditing(false);
                 fetchMe();
               }}>
@@ -241,10 +241,10 @@ export default function Profile() {
               </label>
               <input
                 name="nombre_usuario"
+                className={`form-input ${!editing ? 'readonly' : ''}`}
                 value={form.nombre_usuario}
                 onChange={onChange}
                 readOnly={!editing}
-                className={!editing ? 'readonly' : ''}
               />
             </div>
             <div className="form-row profile-form-row">
@@ -254,10 +254,10 @@ export default function Profile() {
               </label>
               <input
                 name="correo"
+                className={`form-input ${!editing ? 'readonly' : ''}`}
                 value={form.correo}
                 onChange={onChange}
                 readOnly={!editing}
-                className={!editing ? 'readonly' : ''}
               />
             </div>
             <div className="form-row profile-form-row">
@@ -267,10 +267,10 @@ export default function Profile() {
               </label>
               <input
                 name="telefono"
+                className={`form-input ${!editing ? 'readonly' : ''}`}
                 value={form.telefono}
                 onChange={onChange}
                 readOnly={!editing}
-                className={!editing ? 'readonly' : ''}
               />
             </div>
             <div className="form-row profile-form-row">
@@ -280,10 +280,10 @@ export default function Profile() {
               </label>
               <input
                 name="cedula"
+                className={`form-input ${!editing ? 'readonly' : ''}`}
                 value={form.cedula}
                 onChange={onChange}
                 readOnly={!editing}
-                className={!editing ? 'readonly' : ''}
               />
             </div>
             <div className="form-row profile-form-row">
@@ -292,9 +292,9 @@ export default function Profile() {
                 Rol
               </label>
               <input
+                className="form-input readonly"
                 value={user?.nombre_rol || '-'}
                 readOnly
-                className="readonly"
               />
             </div>
           </div>

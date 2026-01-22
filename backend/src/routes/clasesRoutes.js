@@ -12,7 +12,9 @@ import {
   consultarResponsablesTiempoReal,
   sincronizarResponsabilidadesHorarios,
   obtenerNombresClases,
-  crearNombreClase
+  crearNombreClase,
+  aceptarConsentimiento,
+  rechazarConsentimiento
 } from '../controller/clasesController.js';
 import { authenticate } from '../middleware/authMiddleware.js';
 import { requirePermission } from '../middleware/authorization.js';
@@ -84,6 +86,19 @@ router.post(
   '/clases/:id/cancelar',
   requirePermission(PERMISSIONS.CLASES.UPDATE),
   cancelarClase
+);
+
+// Consentimiento para iniciar clase
+router.post(
+  '/clases/:id/consentimiento/aceptar',
+  requirePermission(PERMISSIONS.CLASES.UPDATE),
+  aceptarConsentimiento
+);
+
+router.post(
+  '/clases/:id/consentimiento/rechazar',
+  requirePermission(PERMISSIONS.CLASES.UPDATE),
+  rechazarConsentimiento
 );
 
 // Agregar participantes a una clase - Protegido con validación

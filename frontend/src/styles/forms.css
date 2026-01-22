@@ -72,6 +72,68 @@
   box-shadow: 0 0 0 4px rgba(1, 175, 0, 0.1);
 }
 
+/* Modificadores para diferentes contextos */
+.form-input.compact,
+.form-select.compact,
+.form-textarea.compact {
+  padding: 8px 12px;
+  font-size: 0.875rem;
+  min-height: 36px;
+}
+
+.form-input.inline-edit,
+.form-select.inline-edit,
+.form-textarea.inline-edit {
+  padding: 8px 12px;
+  border: 1.5px solid var(--success-800);
+  border-radius: 8px;
+  font-size: 0.95rem;
+  min-height: 38px;
+}
+
+.form-input.inline-edit:focus,
+.form-select.inline-edit:focus,
+.form-textarea.inline-edit:focus {
+  border-color: var(--success-900);
+  box-shadow: 0 0 0 3px rgba(1, 175, 0, 0.15);
+  border-width: 2px;
+}
+
+/* Variante para formularios de equipos (borde verde) */
+.form-input.equipos-style,
+.form-select.equipos-style,
+.form-textarea.equipos-style {
+  border: 1.5px solid var(--success-800);
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+.form-input.equipos-style:focus,
+.form-select.equipos-style:focus,
+.form-textarea.equipos-style:focus {
+  border-color: var(--success-900);
+  box-shadow: 0 0 0 3px rgba(1, 175, 0, 0.15);
+  border-width: 2px;
+}
+
+/* Variante para filtros */
+.form-input.filter-style,
+.form-select.filter-style {
+  padding: 8px 12px;
+  border: 2px solid var(--success-800);
+  border-radius: 8px;
+  font-size: 0.9rem;
+  min-height: 38px;
+}
+
+.form-input.filter-style:focus,
+.form-select.filter-style:focus {
+  border-color: var(--success-900);
+  box-shadow: 0 0 0 3px rgba(1, 175, 0, 0.1);
+}
+
 /* Excluir CustomSelect y AutocompleteInput de los estilos de form-select y form-input */
 /* Cuando form-select se aplica al wrapper del CustomSelect, no debe afectar */
 .custom-select-wrapper.form-select,
@@ -81,6 +143,7 @@
   background: transparent !important;
   min-height: auto !important;
   border-radius: 0 !important;
+  box-shadow: none !important;
 }
 
 /* Eliminar cualquier efecto de focus en los wrappers */
@@ -100,6 +163,26 @@
   width: 100%;
 }
 
+/* Prevenir doble borde en selects nativos cuando tienen clase form-select */
+select.form-select {
+  border: 2px solid var(--neutral-200) !important;
+}
+
+select.form-select:focus {
+  border: 2px solid var(--success-800) !important;
+  box-shadow: 0 0 0 4px rgba(1, 175, 0, 0.1) !important;
+}
+
+/* Si un select tiene clase form-select Y equipos-style, usar solo equipos-style */
+select.form-select.equipos-style {
+  border: 1.5px solid var(--success-800) !important;
+}
+
+select.form-select.equipos-style:focus {
+  border: 2px solid var(--success-900) !important;
+  box-shadow: 0 0 0 3px rgba(1, 175, 0, 0.15) !important;
+}
+
 .form-input:disabled,
 .form-select:disabled,
 .form-textarea:disabled {
@@ -110,6 +193,17 @@
 
 .form-input-success {
   border-color: var(--success-800) !important;
+  background-color: rgba(1, 175, 0, 0.02) !important;
+}
+
+.form-input-error {
+  border-color: var(--error-500) !important;
+  background-color: rgba(220, 53, 69, 0.02) !important;
+}
+
+.form-input-error:focus {
+  border-color: var(--error-600) !important;
+  box-shadow: 0 0 0 4px rgba(220, 53, 69, 0.1) !important;
 }
 
 .form-input-disabled {
@@ -150,6 +244,26 @@
   background-repeat: no-repeat;
   background-position: right 12px center;
   padding-right: 40px;
+}
+
+/* Prevenir doble borde cuando form-select se aplica a un select nativo */
+select.form-select {
+  border: 2px solid var(--neutral-200) !important;
+}
+
+select.form-select:focus {
+  border: 2px solid var(--success-800) !important;
+  box-shadow: 0 0 0 4px rgba(1, 175, 0, 0.1) !important;
+}
+
+/* Si un select tiene clase form-select Y equipos-style, usar solo equipos-style */
+select.form-select.equipos-style {
+  border: 1.5px solid var(--success-800) !important;
+}
+
+select.form-select.equipos-style:focus {
+  border: 2px solid var(--success-900) !important;
+  box-shadow: 0 0 0 3px rgba(1, 175, 0, 0.15) !important;
 }
 
 /* Checkbox y radio */

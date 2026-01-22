@@ -56,9 +56,17 @@
 }
 
 
-.form-equipos input,
-.form-equipos select,
-.form-equipos textarea {
+/* Usar clases globales de forms.css */
+.form-equipos .form-input,
+.form-equipos .form-select,
+.form-equipos .form-textarea {
+  /* Aplicar estilo específico de equipos usando modificador */
+}
+
+.form-equipos input:not(.form-input),
+.form-equipos select:not(.form-select),
+.form-equipos textarea:not(.form-textarea) {
+  /* Para inputs sin clase, aplicar estilo equipos */
   border: 1.5px solid var(--success-800);
   border-radius: 8px;
   padding: 0.75rem 1rem;
@@ -70,16 +78,16 @@
   min-height: 44px;
 }
 
-.form-equipos input:focus,
-.form-equipos select:focus,
-.form-equipos textarea:focus {
+.form-equipos input:not(.form-input):focus,
+.form-equipos select:not(.form-select):focus,
+.form-equipos textarea:not(.form-textarea):focus {
   border-color: var(--success-900);
   outline: none;
   box-shadow: 0 0 0 3px rgba(1, 175, 0, 0.15);
   border-width: 2px;
 }
 
-.form-equipos textarea {
+.form-equipos textarea:not(.form-textarea) {
   min-height: 44px;
   padding: 0.875rem 1rem;
   resize: none;

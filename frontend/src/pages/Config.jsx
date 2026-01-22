@@ -12,7 +12,7 @@ import AppSettings from './config/AppSettings'
 import InvitationCodes from './config/InvitationCodes'
 import TiposEquipo from './config/TiposEquipo'
 import { useNavigate } from 'react-router-dom'
-import '../styles/config.css'
+import '../styles/pages/config.css'
 
 export default function Config() {
   const nav = useNavigate()

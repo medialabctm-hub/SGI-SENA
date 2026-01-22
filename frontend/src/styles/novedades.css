@@ -103,12 +103,14 @@
   white-space: nowrap;
 }
 
+/* Usar estilos globales de buttons.css */
 .novedades-ver-btn {
   padding: 6px 12px;
   font-size: 0.9rem;
   display: flex;
   align-items: center;
   gap: 4px;
+  /* Los estilos base vienen de .btn en buttons.css */
 }
 
 .novedades-icon-inline {
@@ -367,7 +369,9 @@ body.modal-open .app-sidebar {
   margin-top: 0.5rem;
 }
 
+/* Usar estilos globales de buttons.css */
 .novedades-cambiar-estado-btn {
+  /* Los estilos base vienen de .btn en buttons.css */
   padding: 6px 14px;
   font-size: 0.85rem;
   display: flex;
@@ -385,28 +389,52 @@ body.modal-open .app-sidebar {
   border: 1px solid var(--neutral-200);
 }
 
+/* Usar estilos globales de forms.css */
 .novedades-estado-select {
-  padding: 10px;
-  border-radius: 8px;
-  border: 1.5px solid var(--success-300);
-  font-size: 0.95rem;
-  background: white;
+  /* Los estilos base vienen de .form-select en forms.css */
+  /* CustomSelect maneja sus propios estilos, solo necesitamos asegurar que no haya doble borde */
 }
 
 .novedades-observaciones-textarea {
+  /* Los estilos base vienen de .form-textarea en forms.css */
+  width: 100%;
   padding: 10px;
   border-radius: 8px;
-  border: 1.5px solid var(--success-300);
+  border: 1.5px solid var(--success-800);
   font-size: 0.95rem;
   resize: vertical;
   font-family: inherit;
   background: white;
+  transition: border-color 0.2s, box-shadow 0.2s;
 }
 
 .novedades-observaciones-textarea:focus {
   outline: none;
-  border-color: var(--success-500);
-  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.1);
+  border-color: var(--success-900);
+  box-shadow: 0 0 0 3px rgba(1, 175, 0, 0.1);
+}
+
+/* Prevenir doble borde en CustomSelect dentro de formularios de novedades */
+.novedades-form-container .custom-select-wrapper,
+.novedades-editar-estado-grid .custom-select-wrapper {
+  border: none !important;
+  padding: 0 !important;
+  background: transparent !important;
+}
+
+.novedades-form-container .custom-select,
+.novedades-editar-estado-grid .custom-select {
+  border: 1.5px solid var(--success-800) !important;
+}
+
+.novedades-form-container .custom-select:hover,
+.novedades-editar-estado-grid .custom-select:hover {
+  border-color: var(--success-900) !important;
+}
+
+.novedades-form-container .custom-select-open,
+.novedades-editar-estado-grid .custom-select-open {
+  border-color: var(--success-900) !important;
 }
 
 .novedades-editar-buttons {
@@ -414,8 +442,10 @@ body.modal-open .app-sidebar {
   gap: 0.75rem;
 }
 
+/* Usar estilos globales de buttons.css */
 .novedades-editar-btn {
   flex: 1;
+  /* Los estilos base vienen de .btn en buttons.css */
 }
 
 /* Responsive para móviles */

@@ -13,8 +13,8 @@ import {
   FiStopCircle
 } from 'react-icons/fi'
 import { parseApiResponse, buildErrorMessage } from '../utils/api'
-import '../styles/equipos.css'
-import '../styles/historialUsoEquipo.css'
+import '../styles/pages/equipos.css'
+import '../styles/pages/historiales.css'
 
 export default function HistorialUsoEquipo() {
   const { codigo } = useParams()

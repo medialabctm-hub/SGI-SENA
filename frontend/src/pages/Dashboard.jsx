@@ -5,7 +5,8 @@ import Sidebar from '../components/Sidebar'
 import Toast from '../components/Toast'
 import { FiPlus, FiAlertCircle, FiPackage, FiCheckCircle, FiDollarSign, FiTrendingUp, FiUsers, FiCalendar, FiTool, FiBarChart2 } from 'react-icons/fi'
 import { parseApiResponse, buildErrorMessage, handleError } from '../utils/api'
-import '../styles/dashboard.css'
+import { useSocket } from '../contexts/SocketContext'
+import '../styles/layout/dashboard.css'
 
 export default function Dashboard() {
   const [user, setUser] = useState(null)
@@ -72,6 +73,56 @@ export default function Dashboard() {
       return () => clearTimeout(timer)
     }
   }, [user, statsLoaded, cargarEstadisticas, shouldShowStats])
+
+  // Suscribirse a actualizaciones en tiempo real que afectan estadísticas
+  const { subscribe } = useSocket()
+  useEffect(() => {
+    if (!subscribe || !shouldShowStats) return
+    
+    // Recargar estadísticas cuando haya cambios relevantes
+    const unsubscribeEquipo = subscribe('equipo:created', () => {
+      if (statsLoaded) {
+        setStatsLoaded(false) // Forzar recarga
+        cargarEstadisticas()
+      }
+    })
+    
+    const unsubscribeEquipoUpdated = subscribe('equipo:updated', () => {
+      if (statsLoaded) {
+        setStatsLoaded(false)
+        cargarEstadisticas()
+      }
+    })
+    
+    const unsubscribeEquipoDeleted = subscribe('equipo:deleted', () => {
+      if (statsLoaded) {
+        setStatsLoaded(false)
+        cargarEstadisticas()
+      }
+    })
+    
+    const unsubscribeNovedad = subscribe('novedad:created', () => {
+      if (statsLoaded) {
+        setStatsLoaded(false)
+        cargarEstadisticas()
+      }
+    })
+    
+    const unsubscribeMantenimiento = subscribe('mantenimiento:created', () => {
+      if (statsLoaded) {
+        setStatsLoaded(false)
+        cargarEstadisticas()
+      }
+    })
+    
+    return () => {
+      unsubscribeEquipo()
+      unsubscribeEquipoUpdated()
+      unsubscribeEquipoDeleted()
+      unsubscribeNovedad()
+      unsubscribeMantenimiento()
+    }
+  }, [subscribe, shouldShowStats, statsLoaded, cargarEstadisticas])
 
   return (
     <div className="page dashboard-page">

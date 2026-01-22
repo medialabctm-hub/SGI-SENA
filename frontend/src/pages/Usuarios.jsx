@@ -9,10 +9,10 @@ import { FiUpload, FiDownload } from 'react-icons/fi';
 import * as XLSX from 'xlsx';
 import { parseApiResponse, buildErrorMessage, getAuthHeaders } from '../utils/api';
 import { useSocket } from '../contexts/SocketContext';
-import '../styles/equipos.css';
-import '../styles/usuarios.css';
-import '../styles/modal.css';
-import '../styles/sidebar.css';
+import '../styles/pages/equipos.css';
+import '../styles/pages/usuarios.css';
+import '../styles/components/modals.css';
+import '../styles/layout/sidebar.css';
 
 export default function Usuarios() {
   const [users, setUsers] = useState([]);

@@ -134,12 +134,12 @@
 }
 
 .class-notification-action-btn.btn-iniciar {
-  background-color: #10b981;
+  background-color: var(--success-800);
   color: white;
 }
 
 .class-notification-action-btn.btn-iniciar:hover:not(:disabled) {
-  background-color: #059669;
+  background-color: var(--success-900);
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
 }

@@ -123,6 +123,18 @@ export async function registrarEquipo(req, res) {
       logger.error('Error al generar notificación de nuevo equipo', { error: notifyErr?.message || notifyErr });
     }
 
+    // Emitir evento WebSocket para actualización en tiempo real
+    try {
+      const socketService = (await import('../services/socketService.js')).default;
+      socketService.emitToAll('equipo:created', {
+        codigo_equipo: equipoCreado.codigo_equipo,
+        id_ambiente: ambienteInfo?.id_ambiente,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (socketErr) {
+      logger.warn('Error al emitir evento Socket.io', { error: socketErr.message });
+    }
+
     return res.status(201).json({ ok: true, id: equipoCreado.codigo_equipo });
   } catch (err) {
     logger.error('Error al registrar equipo', { 
@@ -464,6 +476,19 @@ export async function actualizarEquipo(req, res) {
     params.push(codigoEquipo);
     const [result] = await defaultDb.execute(query, params);
     if (result.affectedRows === 0) return res.status(404).json({ error: 'Equipo no encontrado' });
+
+    // Emitir evento WebSocket para actualización en tiempo real
+    try {
+      const socketService = (await import('../services/socketService.js')).default;
+      socketService.emitToAll('equipo:updated', {
+        codigo_equipo: codigoEquipo,
+        id_ambiente: ambienteId,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (socketErr) {
+      logger.warn('Error al emitir evento Socket.io', { error: socketErr.message });
+    }
+
     return res.json({ ok: true, updated: result.affectedRows });
   } catch (err) {
     return res.status(500).json({ error: 'Error al actualizar equipo', detalle: err.message });
@@ -495,6 +520,18 @@ export async function eliminarEquipo(req, res) {
 
     const [result] = await defaultDb.execute('DELETE FROM Elementos WHERE codigo_equipo = ?', [codigoEquipo]);
     if (result.affectedRows === 0) return res.status(404).json({ error: 'Equipo no encontrado' });
+
+    // Emitir evento WebSocket para actualización en tiempo real
+    try {
+      const socketService = (await import('../services/socketService.js')).default;
+      socketService.emitToAll('equipo:deleted', {
+        codigo_equipo: codigoEquipo,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (socketErr) {
+      logger.warn('Error al emitir evento Socket.io', { error: socketErr.message });
+    }
+
     return res.json({ ok: true, deleted: result.affectedRows });
   } catch (err) {
     return res.status(500).json({ error: 'Error al eliminar equipo', detalle: err.message });
@@ -616,6 +653,19 @@ export async function asignarEquipo(req, res) {
        VALUES (?, ?, ?, ?, ?, NOW(), NULL)`,
       [codigo_equipo, id_usuario, tipo_responsabilidad, observaciones || null, asignadoPor]
     )
+
+    // Emitir evento WebSocket para actualización en tiempo real
+    try {
+      const socketService = (await import('../services/socketService.js')).default;
+      socketService.emitToAll('asignacion:created', {
+        id_responsable: result.insertId,
+        codigo_equipo,
+        id_usuario,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (socketErr) {
+      logger.warn('Error al emitir evento Socket.io', { error: socketErr.message });
+    }
 
     return res.status(201).json({ 
       ok: true, 
@@ -789,6 +839,19 @@ export async function eliminarAsignacion(req, res) {
        WHERE id_responsable = ?`,
       [id]
     )
+
+    // Emitir evento WebSocket para actualización en tiempo real
+    try {
+      const socketService = (await import('../services/socketService.js')).default;
+      socketService.emitToAll('asignacion:deleted', {
+        id_responsable: id,
+        codigo_equipo: exists.codigo_equipo,
+        id_usuario: exists.id_usuario,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (socketErr) {
+      logger.warn('Error al emitir evento Socket.io', { error: socketErr.message });
+    }
 
     return res.json({ 
       ok: true,
@@ -1007,6 +1070,19 @@ export async function actualizarAsignacionEquipo(req, res) {
       id_usuario: asignacion.id_usuario,
       campos_actualizados: updates.length
     });
+
+    // Emitir evento WebSocket para actualización en tiempo real
+    try {
+      const socketService = (await import('../services/socketService.js')).default;
+      socketService.emitToAll('asignacion:updated', {
+        id_responsable: id,
+        codigo_equipo: asignacion.codigo_equipo,
+        id_usuario: asignacion.id_usuario,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (socketErr) {
+      logger.warn('Error al emitir evento Socket.io', { error: socketErr.message });
+    }
 
     return res.json({
       ok: true,

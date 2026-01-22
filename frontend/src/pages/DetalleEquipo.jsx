@@ -8,9 +8,9 @@ import ImageViewer from '../components/ImageViewer';
 import CustomSelect from '../components/CustomSelect';
 import { parseApiResponse, buildErrorMessage } from '../utils/api';
 import { FiArrowLeft, FiUpload, FiTrash2, FiStar, FiImage, FiX, FiInfo, FiPackage, FiMapPin, FiCalendar, FiDollarSign, FiUsers, FiUser, FiEdit2 } from 'react-icons/fi';
-import '../styles/equipos.css';
+import '../styles/pages/equipos.css';
 import '../styles/detalleEquipo.css';
-import '../styles/ambientes.css';
+import '../styles/pages/ambientes.css';
 
 export default function DetalleEquipo() {
   const { codigoEquipo } = useParams();

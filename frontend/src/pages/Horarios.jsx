@@ -28,8 +28,8 @@ import {
 } from 'react-icons/fi'
 import { parseApiResponse, buildErrorMessage } from '../utils/api'
 import { useSocket } from '../contexts/SocketContext'
-import '../styles/equipos.css'
-import '../styles/horarios.css'
+import '../styles/pages/equipos.css'
+import '../styles/pages/horarios.css'
 
 export default function Horarios() {
   const [user, setUser] = useState(null)
@@ -55,8 +55,9 @@ export default function Horarios() {
     observaciones: ''
   })
   const [infoModal, setInfoModal] = useState({ open: false, message: '', title: '', type: 'info' })
-  const [iniciandoClase, setIniciandoClase] = useState(null) // ID de clase que se está iniciando
-  const [claseParaIniciar, setClaseParaIniciar] = useState(null) // Datos de la clase a iniciar
+  // Estados de modals eliminados temporalmente para probar automatización
+  // const [iniciandoClase, setIniciandoClase] = useState(null) // ID de clase que se está iniciando
+  // const [claseParaIniciar, setClaseParaIniciar] = useState(null) // Datos de la clase a iniciar
   const [importResult, setImportResult] = useState(null) // Resultado de la importación
   const [importing, setImporting] = useState(false) // Estado de carga de importación
   
@@ -75,8 +76,9 @@ export default function Horarios() {
     fecha: '',
     estado_clase: ''
   })
-  const [confirmDelete, setConfirmDelete] = useState({ open: false, id: null })
-  const [confirmIniciar, setConfirmIniciar] = useState({ open: false, id: null })
+  // Modals de confirmación eliminados temporalmente para probar automatización
+  // const [confirmDelete, setConfirmDelete] = useState({ open: false, id: null })
+  // const [confirmIniciar, setConfirmIniciar] = useState({ open: false, id: null })
   const [showImport, setShowImport] = useState(false)
   const [importFile, setImportFile] = useState(null)
   const [nombresClases, setNombresClases] = useState([])
@@ -435,6 +437,8 @@ export default function Horarios() {
     }
   }
 
+  // Funciones de acciones manuales eliminadas temporalmente para probar automatización
+  /*
   async function handleDelete() {
     setLoading(true)
     setToast(null)
@@ -538,6 +542,7 @@ export default function Horarios() {
       setLoading(false)
     }
   }
+  */
 
   function handleEdit(clase) {
     setEditingClase(clase)
@@ -780,6 +785,8 @@ export default function Horarios() {
         <Header user={user} />
         {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
 
+        {/* Modals de confirmación eliminados temporalmente para probar automatización */}
+        {/*
         <ConfirmModal
           open={confirmDelete.open}
           title="Cancelar Clase"
@@ -812,6 +819,7 @@ export default function Horarios() {
             }}
           />
         )}
+        */}
 
         <InfoModal
           open={infoModal.open}
@@ -1360,7 +1368,14 @@ export default function Horarios() {
                       </td>
                       <td>{clase.instructor_nombre}</td>
                       <td>{clase.codigo_ficha || '-'}</td>
-                      <td>{clase.nombre_clase || '-'}</td>
+                      <td>
+                        {clase.nombre_clase || '-'}
+                        {clase.observaciones && clase.observaciones.includes('Consentimiento Rechazado') && (
+                          <span className="horarios-consentimiento-rechazado" title="Consentimiento Rechazado">
+                            ⚠️ Consentimiento Rechazado
+                          </span>
+                        )}
+                      </td>
                       <td>{formatDate(clase.fecha_clase)}</td>
                       <td>
                         <div className="horarios-clase-time">
@@ -1374,6 +1389,8 @@ export default function Horarios() {
                         <div className="horarios-clase-actions">
                           {clase.estado_clase === 'Programada' && (
                             <>
+                              {/* Botones de acción eliminados temporalmente para probar automatización */}
+                              {/*
                               <button
                                 className="btn btn-verde horarios-action-btn"
                                 onClick={() => handleIniciarClase(clase.id_clase)}
@@ -1386,6 +1403,7 @@ export default function Horarios() {
                                   <FiPlay size={14} />
                                 )}
                               </button>
+                              */}
                               <button
                                 className="btn btn-edit horarios-action-btn"
                                 onClick={() => handleEdit(clase)}
@@ -1394,6 +1412,8 @@ export default function Horarios() {
                               >
                                 <FiEdit size={14} />
                               </button>
+                              {/* Botón de eliminar eliminado temporalmente */}
+                              {/*
                               <button
                                 className="btn btn-delete horarios-action-btn"
                                 onClick={() => setConfirmDelete({ open: true, id: clase.id_clase })}
@@ -1402,17 +1422,26 @@ export default function Horarios() {
                               >
                                 <FiTrash2 size={14} />
                               </button>
+                              */}
                             </>
                           )}
                           {clase.estado_clase === 'En Curso' && (
-                            <button
-                              className="btn btn-verde horarios-action-btn"
-                              onClick={() => handleFinalizarClase(clase.id_clase)}
-                              disabled={loading}
-                              title="Finalizar Clase"
-                            >
-                              <FiSquare size={14} />
-                            </button>
+                            <>
+                              {/* Botón de finalizar eliminado temporalmente para probar automatización */}
+                              {/*
+                              <button
+                                className="btn btn-verde horarios-action-btn"
+                                onClick={() => handleFinalizarClase(clase.id_clase)}
+                                disabled={loading}
+                                title="Finalizar Clase"
+                              >
+                                <FiSquare size={14} />
+                              </button>
+                              */}
+                              <span className="horarios-auto-badge" title="La clase se finalizará automáticamente">
+                                Auto
+                              </span>
+                            </>
                           )}
                         </div>
                       </td>

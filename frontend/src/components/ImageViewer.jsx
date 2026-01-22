@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { FiX, FiChevronLeft, FiChevronRight, FiStar } from 'react-icons/fi';
-import '../styles/imageViewer.css';
+import '../styles/components/imageViewer.css';
 
 /**
  * Componente ImageViewer - Lightbox para ver imágenes en tamaño original

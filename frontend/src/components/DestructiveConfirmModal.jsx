@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { FiAlertTriangle } from 'react-icons/fi'
-import '../styles/destructiveConfirmModal.css'
+import '../styles/components/modals.css'
 
 export default function DestructiveConfirmModal({ 
   open, 

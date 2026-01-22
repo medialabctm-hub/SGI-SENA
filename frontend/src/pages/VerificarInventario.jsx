@@ -7,9 +7,9 @@ import CustomSelect from '../components/CustomSelect'
 import { FiCheckCircle, FiXCircle, FiAlertCircle, FiPackage, FiMapPin, FiRefreshCw } from 'react-icons/fi'
 import { parseApiResponse, buildErrorMessage } from '../utils/api'
 import { useNavigate } from 'react-router-dom'
-import '../styles/equipos.css'
-import '../styles/verificacion.css'
-import '../styles/verificarInventario.css'
+import { useSocket } from '../contexts/SocketContext'
+import '../styles/pages/equipos.css'
+import '../styles/pages/verificaciones.css'
 
 export default function VerificarInventario() {
   const [user, setUser] = useState(null)
@@ -44,6 +44,30 @@ export default function VerificarInventario() {
       fetchEquiposAmbientes()
     }
   }, [user])
+
+  // Suscribirse a actualizaciones en tiempo real de equipos y ambientes
+  const { subscribe } = useSocket()
+  useEffect(() => {
+    if (!subscribe || user?.nombre_rol !== 'Instructor') return
+    
+    const unsubscribeEquipo = subscribe('equipo:updated', () => {
+      fetchEquiposAmbientes()
+    })
+    
+    const unsubscribeEquipoCreated = subscribe('equipo:created', () => {
+      fetchEquiposAmbientes()
+    })
+    
+    const unsubscribeAmbiente = subscribe('ambiente:updated', () => {
+      fetchEquiposAmbientes()
+    })
+    
+    return () => {
+      unsubscribeEquipo()
+      unsubscribeEquipoCreated()
+      unsubscribeAmbiente()
+    }
+  }, [subscribe, user])
 
   async function fetchEquiposAmbientes() {
     setLoading(true)
