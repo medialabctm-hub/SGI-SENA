@@ -1,106 +1,103 @@
-# SGE-SENA
-Repositorio en el cual se aloja el software SGISENA
+# Tests - Sistema de Gestión de Inventario SENA
 
-## Descripción
-SGE-SENA es un software de gestion de equipos tecnologicos y mobiliarios que pertenecen a las instalaciones del sena, para facilitar el inventariado de este mismo
+Este directorio contiene los tests del proyecto.
 
+## Estructura
 
-## Estructura del proyecto
 ```
-backend/
-├── src/
-│   ├── config/     # Configuraciones de la aplicación
-│   ├── controllers/# Controladores de la lógica 
-│   ├── models/     # Modelos de datos
-│   └── routes/     # Rutas de la API
-│       ├── authRoutes.js    # Rutas de autenticación
-├── server.js        # Punto de entrada de la aplicación
-└── package.json    # Dependencias y scripts
+tests/
+├── setup.js                    # Configuración global de tests
+├── controllers/                # Tests de controladores
+│   └── webhookController.test.js
+├── services/                   # Tests de servicios
+│   └── authService.test.js
+└── README.md                   # Este archivo
 ```
-## Requisitos Previos
-Node.js (versión recomendada: 18.x o superior)
-MySQL (versión recomendada: 8.x o superior)
 
 ## Instalación
-1. Clonar el repositorio:
-   
-```bash
-git clone [URL_DEL_REPOSITORIO]
-cd SGISENA
-```
 
-2. Instalar dependencias:
-   
+Las dependencias de testing ya están incluidas en `package.json`. Para instalar:
+
 ```bash
 cd backend
 npm install
 ```
-3. Configurar variables de entorno: Crear un archivo `.env` en la raíz del proyecto backend con las siguientes variables:
 
-```
-PORT=3000
-DB_HOST=localhost
-DB_USER=tu_cliente
-DB_PASSWORD=tu_contraseña
-DB_NAME=GestionEquipo
-JWT_SECRET=tu_secreto_jwt
-SESSION_SECRET=secret_key
-```
-
-## Ejecución del Proyecto
-Para iniciar el servidor en modo desarrollo:
-
+## Ejecutar Tests
 
 ```bash
-npm run dev
+# Ejecutar todos los tests
+npm test
+
+# Ejecutar tests en modo watch
+npm run test:watch
+
+# Ejecutar tests con cobertura
+npm run test:coverage
 ```
-El servidor se ejecutará en `http://localhost:3000`
 
-## Tecnologías Utilizadas
+## Escribir Nuevos Tests
 
-## Backend
+### Ejemplo de Test de Servicio
 
-- Node.js y Express.js como framework principal
-- MySQL como base de datos
-- JWT para autenticación
-- Express Session para manejo de sesiones
-- CORS configurado para desarrollo local (puerto 5173)
-- Cookie Parser para manejo de cookies
-- Morgan para logging
-- Validator para validación de datos
+```javascript
+import { describe, it, expect, beforeEach } from '@jest/globals';
+import { MiService } from '../../src/services/miService.js';
 
-## Endpoints de la API
+describe('MiService', () => {
+  let service;
 
-### Autenticación
+  beforeEach(() => {
+    // Configurar mocks y servicio
+  });
 
-- `POST /api/auth/login` - Inicio de sesión
-- `POST /api/auth/register` - Registro de clientes
-- `POST /api/auth/logout` - Cierre de sesión
+  it('debe hacer algo correctamente', async () => {
+    // Arrange
+    const input = 'test';
+    
+    // Act
+    const result = await service.miMetodo(input);
+    
+    // Assert
+    expect(result).toBeDefined();
+  });
+});
+```
 
-## Scripts Disponibles
+### Ejemplo de Test de Controlador
 
-- `npm run dev`: Inicia el servidor en modo desarrollo con nodemon
-- `npm test`: Ejecuta las pruebas (pendiente de implementar)
+```javascript
+import { describe, it, expect, beforeEach } from '@jest/globals';
+import { miControlador } from '../../src/controller/miController.js';
 
-## Configuración de CORS
+describe('miControlador', () => {
+  let req, res, next;
 
-El backend está configurado para aceptar peticiones desde `http://localhost:5173` (frontend de desarrollo). Para producción, actualizar la configuración CORS en `server.js`.
+  beforeEach(() => {
+    req = { body: {}, user: {} };
+    res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
+    next = jest.fn();
+  });
 
-## Despliegue en Railway
+  it('debe retornar 400 si faltan datos', async () => {
+    await miControlador(req, res, next);
+    expect(res.status).toHaveBeenCalledWith(400);
+  });
+});
+```
 
-Este proyecto está configurado para desplegarse en Railway. Para más información sobre:
+## Cobertura de Tests
 
-- **Configuración de volúmenes persistentes**: Ver [RAILWAY_VOLUMES.md](./RAILWAY_VOLUMES.md) para configurar volúmenes que persistan las imágenes entre deploys.
-- **Configuración de variables de entorno**: Consulta `backend/env.example` para ver todas las variables necesarias.
+El objetivo es alcanzar al menos:
+- **70%** de cobertura en servicios críticos
+- **60%** de cobertura en controladores
+- **80%** de cobertura en utilidades
 
-## Contribución
+## Notas
 
-1. Fork el proyecto
-2. Crea una rama para tu feature (`git checkout -b feature/AmazingFeature`)
-3. Commit tus cambios (`git commit -m 'Add some AmazingFeature'`)
-4. Push a la rama (`git push origin feature/AmazingFeature`)
-5. Abre un Pull Request
+- Los tests usan Jest con soporte para ES modules
+- Se configuran variables de entorno de prueba automáticamente
+- Los mocks se limpian después de cada test
 
-## Licencia
 
-Este proyecto está bajo la Licencia ISC.
+
