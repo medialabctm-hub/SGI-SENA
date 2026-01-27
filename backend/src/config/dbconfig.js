@@ -22,13 +22,11 @@ export const dbConfig = {
   waitForConnections: true,
   connectionLimit: getConnectionLimit(),
   queueLimit: 0,
-  // Configuraciones específicas para Railway/Producción
-  // Habilitar SSL cuando se conecta a Railway (host remoto) incluso desde localhost
+  // Habilitar SSL para conexiones remotas en producción
+  // Configurar DB_SSL=true en .env si necesitas SSL
   ssl:
-    (process.env.NODE_ENV === "production" || 
-     config.db.host?.includes('railway') || 
-     config.db.host?.includes('rlwy.net') ||
-     config.db.host?.includes('shuttle.proxy'))
+    (process.env.DB_SSL === 'true' || 
+     (process.env.NODE_ENV === "production" && config.db.host !== 'localhost' && config.db.host !== 'db'))
       ? { rejectUnauthorized: false }
       : false,
   // Configuración de timeout para conexiones lentas

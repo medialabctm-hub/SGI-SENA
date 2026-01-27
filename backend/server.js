@@ -46,7 +46,7 @@ const desiredPort = Number(config.server.PORT) || 3000;
 // ============================================
 // CONFIGURACIÓN DE PROXY
 // ============================================
-// Confiar en el primer proxy (Railway usa 1 proxy)
+// Confiar en el primer proxy (útil cuando hay un proxy reverso como nginx)
 // Esto permite que express-rate-limit identifique correctamente las IPs reales
 // sin permitir que cualquiera eluda el rate limiting
 app.set('trust proxy', 1);
@@ -87,13 +87,7 @@ const getAllowedOrigins = () => {
     origins.push('http://localhost:5173');
   }
   
-  // Agregar dominio de página externa para endpoints públicos
-  // Este dominio también puede ser usado para endpoints protegidos si está configurado
-  const externalDomain = 'https://sgi-senadata.up.railway.app';
-  if (!origins.includes(externalDomain)) {
-    origins.push(externalDomain);
-  }
-  
+  // Los orígenes adicionales pueden configurarse en CORS_ORIGIN separados por comas
   return origins;
 };
 
@@ -106,6 +100,12 @@ const corsOptions = {
 
     const allowedOrigins = getAllowedOrigins();
     
+    // Debug: Log para ver qué origen está llegando
+    if (process.env.NODE_ENV === 'production') {
+      console.log('[CORS DEBUG] Origin recibido:', origin);
+      console.log('[CORS DEBUG] Orígenes permitidos:', allowedOrigins);
+    }
+    
     // Verificar si el origen está en la lista permitida
     if (allowedOrigins.includes(origin)) {
       callback(null, true);
@@ -113,7 +113,7 @@ const corsOptions = {
       // Permitir localhost SOLO en desarrollo
       const isLocalhost = origin.startsWith('http://localhost:') || origin.startsWith('http://127.0.0.1:');
       if (isLocalhost && process.env.NODE_ENV === 'development') {
-        // En desarrollo, permitir localhost para desarrollo local conectándose a Railway DB
+        // En desarrollo, permitir localhost para desarrollo local
         callback(null, true);
       } else if (process.env.NODE_ENV === 'development') {
         // En desarrollo, permitir cualquier origen para facilitar pruebas

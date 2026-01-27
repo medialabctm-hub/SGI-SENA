@@ -150,7 +150,9 @@ export default function Profile() {
   const getImageUrl = (path) => {
     if (!path) return null;
     if (path.startsWith('http')) return path;
-    return `https://sgi-sena.up.railway.app${path}`;
+    // Usar URL relativa en producción (mismo dominio) o variable de entorno
+    const baseUrl = import.meta.env.VITE_API_URL || '';
+    return baseUrl ? `${baseUrl}${path}` : path;
   };
 
   return (

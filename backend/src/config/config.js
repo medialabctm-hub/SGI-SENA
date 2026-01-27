@@ -7,8 +7,8 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 // Cargar variables de entorno desde .env si existe (solo para desarrollo local)
-// En producción (Docker/Railway), las variables vienen de process.env directamente
-// Usar override: false para que las variables de Railway (process.env) tengan prioridad
+// En producción (Docker), las variables vienen de process.env directamente
+// Usar override: false para que las variables de process.env tengan prioridad
 const envPath = join(__dirname, "../../.env");
 dotenv.config({ path: envPath, override: false });
 
@@ -38,7 +38,7 @@ if (!process.env.JWT_AUDIENCE) {
   process.env.JWT_AUDIENCE = 'gse-users';
 }
   
-// Variables de base de datos: acepta tanto formato estándar como Railway
+// Variables de base de datos: acepta tanto formato estándar (DB_*) como alternativo (MYSQL*)
 const getDbConfig = () => {
   return {
     host: process.env.DB_HOST || process.env.MYSQLHOST || process.env.MYSQL_HOST,
@@ -102,17 +102,17 @@ const missingEnvVars = requiredEnvVars.filter((envVar) => {
       
       if (hasSmtpKey) {
         errorMsg += `   ⚠️  Tienes BREVO_SMTP_KEY configurada, pero ahora necesitas BREVO_API_KEY\n`;
-        errorMsg += `   📝 En Railway, REEMPLAZA la variable BREVO_SMTP_KEY por BREVO_API_KEY:\n\n`;
+        errorMsg += `   📝 REEMPLAZA la variable BREVO_SMTP_KEY por BREVO_API_KEY:\n\n`;
         errorMsg += `   1. Ve a https://app.brevo.com/settings/keys/api (pestaña API Keys)\n`;
         errorMsg += `   2. Genera o copia tu API Key de Brevo\n`;
-        errorMsg += `   3. En Railway > Variables de Entorno:\n`;
+        errorMsg += `   3. En tu archivo .env o variables de entorno:\n`;
         errorMsg += `      ❌ ELIMINA: BREVO_SMTP_KEY\n`;
         errorMsg += `      ✅ AGREGA: BREVO_API_KEY=tu_api_key_aqui\n`;
         errorMsg += `      ✅ MANTÉN: BREVO_SENDER_EMAIL=tu_email_verificado@dominio.com\n\n`;
       } else {
         errorMsg += `   1. Ve a https://app.brevo.com/settings/keys/api (pestaña API Keys)\n`;
         errorMsg += `   2. Genera o copia tu API Key de Brevo\n`;
-        errorMsg += `   3. En Railway, ve a Variables de Entorno y agrega:\n`;
+        errorMsg += `   3. En tu archivo .env o variables de entorno, agrega:\n`;
         errorMsg += `      - BREVO_API_KEY=tu_api_key_aqui\n`;
         errorMsg += `      - BREVO_SENDER_EMAIL=tu_email_verificado@dominio.com\n\n`;
       }
@@ -130,8 +130,8 @@ const missingEnvVars = requiredEnvVars.filter((envVar) => {
   }
   
   errorMsg += `\n💡 SOLUCIÓN:\n`;
-  errorMsg += `   En Railway, ve a tu proyecto > Variables y agrega todas las variables requeridas.\n`;
-  errorMsg += `   Después de agregarlas, Railway reiniciará automáticamente el servicio.\n`;
+  errorMsg += `   Agrega todas las variables requeridas en tu archivo .env o variables de entorno.\n`;
+  errorMsg += `   Después de agregarlas, reinicia el servicio.\n`;
   
   console.error('[CONFIG ERROR]', errorMsg);
   throw new Error(errorMsg);
@@ -141,13 +141,12 @@ export const config = {
   // Configuración del servidor
   server: {
     // En producción con Docker, el backend siempre usa 3000 (interno)
-    // Railway asigna PORT para nginx, no para el backend
     PORT: process.env.BACKEND_PORT || process.env.PORT || 3000,
     mode: process.env.NODE_ENV,
   },
 
   // Configuración de la base de datos
-  // Soporta tanto variables estándar (DB_*) como variables de Railway (MYSQL*)
+  // Soporta tanto variables estándar (DB_*) como variables alternativas (MYSQL*)
   db: {
     host: process.env.DB_HOST || process.env.MYSQLHOST || process.env.MYSQL_HOST,
     user: process.env.DB_USER || process.env.MYSQLUSER || process.env.MYSQL_USER,

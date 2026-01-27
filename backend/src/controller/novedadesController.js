@@ -687,7 +687,7 @@ export async function crearNovedad(req, res) {
                   </div>
 
                   <div style="text-align: center; padding: 0 24px 24px 24px;">
-                    <a href="${config.frontendUrl || 'https://sgi-sena.up.railway.app'}/novedades" class="cta-button" style="display: inline-block;">Ver Reporte Completo en el Sistema</a>
+                    <a href="${config.frontendUrl || 'http://localhost:5173'}/novedades" class="cta-button" style="display: inline-block;">Ver Reporte Completo en el Sistema</a>
                   </div>
 
                     <p style="font-size:0.8rem;color:#6b7280;margin-top:8px;text-align:center;">

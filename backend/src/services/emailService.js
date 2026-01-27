@@ -43,7 +43,7 @@ class EmailService {
         }
       }
 
-      // Leer directamente de process.env primero (Railway inyecta las variables aquí)
+      // Leer directamente de process.env primero (variables de entorno)
       const apiKeyFromEnv = process.env.BREVO_API_KEY;
       const apiKeyFromConfig = config.email?.brevoApiKey;
       const apiKey = apiKeyFromEnv || apiKeyFromConfig;

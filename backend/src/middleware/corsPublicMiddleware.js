@@ -6,11 +6,20 @@
 import cors from 'cors';
 
 // Orígenes permitidos para endpoints públicos
-const allowedPublicOrigins = [
-  'https://sgi-senadata.up.railway.app',
-  'https://sgi-senadata.up.railway.app/', // Con barra final
-  // Agregar más orígenes si es necesario
-];
+// Se pueden configurar mediante variable de entorno CORS_PUBLIC_ORIGINS (separados por comas)
+const getAllowedPublicOrigins = () => {
+  const origins = [];
+  
+  // Agregar orígenes desde variable de entorno
+  if (process.env.CORS_PUBLIC_ORIGINS) {
+    const envOrigins = process.env.CORS_PUBLIC_ORIGINS.split(',').map(o => o.trim()).filter(o => o);
+    origins.push(...envOrigins);
+  }
+  
+  return origins;
+};
+
+const allowedPublicOrigins = getAllowedPublicOrigins();
 
 const corsPublicOptions = {
   origin: (origin, callback) => {
@@ -23,11 +32,19 @@ const corsPublicOptions = {
     const normalizedOrigin = origin.endsWith('/') ? origin.slice(0, -1) : origin;
 
     // Verificar si el origen está en la lista permitida
-    if (allowedPublicOrigins.some(allowed => {
+    const currentAllowedOrigins = getAllowedPublicOrigins();
+    if (currentAllowedOrigins.length > 0 && currentAllowedOrigins.some(allowed => {
       const normalizedAllowed = allowed.endsWith('/') ? allowed.slice(0, -1) : allowed;
       return normalizedOrigin === normalizedAllowed;
     })) {
       callback(null, true);
+    } else if (currentAllowedOrigins.length === 0) {
+      // Si no hay orígenes configurados, permitir todos en desarrollo
+      if (process.env.NODE_ENV === 'development') {
+        callback(null, true);
+      } else {
+        callback(new Error('CORS_PUBLIC_ORIGINS no configurado para producción'));
+      }
     } else {
       // En desarrollo, permitir cualquier origen para facilitar pruebas
       if (process.env.NODE_ENV === 'development') {

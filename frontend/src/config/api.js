@@ -1,6 +1,6 @@
 // Configuración de la API
 // En desarrollo, usa el proxy de Vite
-// En producción, usa la variable de entorno o el dominio de Railway
+// En producción, usa la variable de entorno VITE_API_URL
 
 const getApiBaseUrl = () => {
   // Si estamos en desarrollo, usar el proxy de Vite (URLs relativas)
@@ -8,8 +8,14 @@ const getApiBaseUrl = () => {
     return '';
   }
 
-  // En producción, usar la variable de entorno o el dominio de Railway por defecto
-  const apiUrl = import.meta.env.VITE_API_URL || 'https://sgi-sena.up.railway.app';
+  // En producción, usar la variable de entorno VITE_API_URL
+  // Si no está configurada, usar URL relativa (asume mismo dominio)
+  const apiUrl = import.meta.env.VITE_API_URL;
+  
+  // Si no hay variable de entorno, usar URL relativa
+  if (!apiUrl) {
+    return '';
+  }
   
   // Si la URL ya incluye http/https, usarla tal cual
   if (apiUrl.startsWith('http://') || apiUrl.startsWith('https://')) {

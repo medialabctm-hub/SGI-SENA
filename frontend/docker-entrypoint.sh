@@ -7,16 +7,18 @@ if [ -n "$API_URL" ]; then
   # Reemplazar la URL del backend en nginx.conf
   # Escapar caracteres especiales para sed
   API_URL_ESCAPED=$(echo "$API_URL" | sed 's/[[\.*^$()+?{|]/\\&/g')
-  sed -i "s|set \$api_backend.*|set \$api_backend $API_URL_ESCAPED;|g" /etc/nginx/conf.d/default.conf
+  # Reemplazar solo el valor después del =, manteniendo la estructura
+  sed -i "s|\(set \$api_backend \).*|\1$API_URL_ESCAPED;|g" /etc/nginx/nginx.conf
   echo "✓ Configurado API_URL: $API_URL"
 else
-  # Usar el dominio de Railway por defecto
-  DEFAULT_API_URL="https://sgi-sena.up.railway.app"
-  sed -i "s|set \$api_backend.*|set \$api_backend $DEFAULT_API_URL;|g" /etc/nginx/conf.d/default.conf
-  echo "ℹ Usando dominio por defecto de Railway: $DEFAULT_API_URL"
+  # En docker-compose, el backend está en la misma red Docker
+  # Usar el nombre del servicio 'backend' por defecto
+  DEFAULT_API_URL="http://backend:3000"
+  # Reemplazar solo el valor después del =, manteniendo la estructura
+  sed -i "s|\(set \$api_backend \).*|\1$DEFAULT_API_URL;|g" /etc/nginx/nginx.conf
+  echo "ℹ Usando backend por defecto: $DEFAULT_API_URL"
 fi
 
 # Iniciar nginx
 echo "🚀 Iniciando nginx..."
 exec nginx -g "daemon off;"
-

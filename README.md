@@ -86,12 +86,36 @@ El servidor se ejecutará en `http://localhost:3000`
 
 El backend está configurado para aceptar peticiones desde `http://localhost:5173` (frontend de desarrollo). Para producción, actualizar la configuración CORS en `server.js`.
 
-## Despliegue en Railway
+## Despliegue en Producción
 
-Este proyecto está configurado para desplegarse en Railway. Para más información sobre:
+Este proyecto está configurado para desplegarse en un servidor Ubuntu usando Docker Compose. Para más información:
 
-- **Configuración de volúmenes persistentes**: Ver [RAILWAY_VOLUMES.md](./RAILWAY_VOLUMES.md) para configurar volúmenes que persistan las imágenes entre deploys.
-- **Configuración de variables de entorno**: Consulta `backend/env.example` para ver todas las variables necesarias.
+- **Guía completa de despliegue**: Ver [deployment/README.md](./deployment/README.md) para instrucciones detalladas paso a paso.
+- **Configuración de variables de entorno**: Consulta `backend/env.example` y `deployment/.env.production` para ver todas las variables necesarias.
+- **Scripts de despliegue**: Todos los scripts están en el directorio `deployment/`.
+
+### Comandos Rápidos para Producción
+
+```bash
+# 1. Configurar servidor (solo primera vez)
+sudo ./deployment/setup-server.sh
+
+# 2. Obtener IP pública
+./deployment/get-ip.sh
+
+# 3. Configurar variables de entorno
+./deployment/setup-env.sh
+
+# 4. Desplegar
+./deployment/deploy.sh
+
+# Gestión diaria
+docker-compose ps                    # Ver estado
+docker-compose logs -f               # Ver logs
+docker-compose restart               # Reiniciar
+./deployment/backup-db.sh            # Backup
+./deployment/update.sh               # Actualizar
+```
 
 ## Contribución
 

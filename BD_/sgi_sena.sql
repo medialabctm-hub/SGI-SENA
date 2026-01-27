@@ -1,6 +1,6 @@
-DROP DATABASE IF EXISTS GestionEquipo;
-CREATE DATABASE GestionEquipo;
-USE GestionEquipo;
+DROP DATABASE IF EXISTS railway;
+CREATE DATABASE railway;
+USE railway;
 
 -- ============================================
 -- TABLA DE ROLES

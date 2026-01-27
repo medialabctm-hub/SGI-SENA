@@ -14,24 +14,24 @@ echo "📂 Archivos en /usr/share/nginx/html:"
 ls -la /usr/share/nginx/html/ | head -10
 
 # Configurar puertos
-# Railway asigna un puerto dinámico (ej: 8080) en la variable PORT
-# Nginx debe escuchar en ese puerto (el que Railway expone)
+# En producción local, usar puerto 80 fijo para nginx
 # El backend debe usar siempre el puerto 3000 (interno, no expuesto)
 NGINX_PORT=${PORT:-80}
 BACKEND_PORT=3000
 
 echo "🔧 Configurando puertos:"
-echo "  - Nginx escuchará en puerto $NGINX_PORT (asignado por Railway)"
+echo "  - Nginx escuchará en puerto $NGINX_PORT"
 echo "  - Backend correrá en puerto $BACKEND_PORT (interno)"
 
-# Forzar que el backend use el puerto 3000 (no el PORT de Railway)
-# Railway asigna PORT para el servicio principal (nginx), no para el backend interno
+# Forzar que el backend use el puerto 3000
 export BACKEND_PORT=$BACKEND_PORT
 export PORT=$BACKEND_PORT
 
-# Configurar nginx para escuchar en el puerto que Railway asigna
-echo "🔧 Configurando nginx para escuchar en puerto $NGINX_PORT"
-sed -i "s|listen 80;|listen $NGINX_PORT;|g" /etc/nginx/conf.d/default.conf
+# Configurar nginx para escuchar en el puerto especificado
+if [ "$NGINX_PORT" != "80" ]; then
+  echo "🔧 Configurando nginx para escuchar en puerto $NGINX_PORT"
+  sed -i "s|listen 80;|listen $NGINX_PORT;|g" /etc/nginx/conf.d/default.conf
+fi
 
 # Configurar la URL del backend para nginx
 # El backend corre en 127.0.0.1:3000 en el mismo contenedor
@@ -107,7 +107,7 @@ echo "ℹ Nginx servirá el frontend en / y hará proxy de /api al backend en 12
 echo "ℹ Si nginx falla, los logs estarán en /var/log/nginx/error.log"
 
 # Iniciar nginx en primer plano
-# Usar exec para que nginx reemplace este proceso y Railway pueda monitorearlo
+# Usar exec para que nginx reemplace este proceso
 # Con daemon off en nginx.conf, nginx se quedará en primer plano
 exec nginx
 

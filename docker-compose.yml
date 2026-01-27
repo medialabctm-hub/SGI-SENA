@@ -11,11 +11,12 @@ services:
       MYSQL_DATABASE: ${DB_NAME:-GestionEquipo}
       MYSQL_USER: ${DB_USER:-sge_user}
       MYSQL_PASSWORD: ${DB_PASSWORD:-sge_password}
-    ports:
-      - "${DB_PORT:-3306}:3306"
+    # NO exponer puerto 3306 externamente en producción (solo acceso interno)
+    # ports:
+    #   - "${DB_PORT:-3306}:3306"
     volumes:
       - mysql_data:/var/lib/mysql
-      - ./BD/GestionEquipo.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./BD/SGI_SENA.sql:/docker-entrypoint-initdb.d/init.sql:ro
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${DB_ROOT_PASSWORD:-rootpassword}"]
       interval: 10s
@@ -23,6 +24,11 @@ services:
       retries: 5
     networks:
       - sge-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   # Backend API
   backend:
@@ -41,18 +47,22 @@ services:
       DB_PORT: 3306
       JWT_SECRET: ${JWT_SECRET:-your-super-secret-jwt-key-change-in-production}
       COOKIE_SECRET: ${COOKIE_SECRET:-your-cookie-secret-change-in-production}
-      EMAIL_USER: ${EMAIL_USER}
-      EMAIL_PASSWORD: ${EMAIL_PASSWORD}
-      CORS_ORIGIN: ${CORS_ORIGIN:-https://sgi-sena.up.railway.app}
-      FRONTEND_URL: ${FRONTEND_URL:-https://sgi-sena.up.railway.app}
+      BREVO_API_KEY: ${BREVO_API_KEY:-}
+      BREVO_SENDER_EMAIL: ${BREVO_SENDER_EMAIL:-}
+      EMAIL_USER: ${EMAIL_USER:-}
+      EMAIL_PASSWORD: ${EMAIL_PASSWORD:-}
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost}
       JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-24h}
       JWT_REFRESH_EXPIRES_IN: ${JWT_REFRESH_EXPIRES_IN:-7d}
       JWT_ISSUER: ${JWT_ISSUER:-gse-app}
       JWT_AUDIENCE: ${JWT_AUDIENCE:-gse-users}
       LOG_LEVEL: ${LOG_LEVEL:-info}
       WEBHOOK_SECRET: ${WEBHOOK_SECRET:-}
-    ports:
-      - "${BACKEND_PORT:-3000}:3000"
+    # Backend solo accesible internamente (a través de nginx)
+    # No exponer puerto 3000 externamente en producción
+    # ports:
+    #   - "${BACKEND_PORT:-3000}:3000"
     volumes:
       - ./backend/uploads:/app/uploads
     depends_on:
@@ -66,6 +76,11 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   # Frontend
   frontend:
@@ -76,8 +91,8 @@ services:
     restart: unless-stopped
     environment:
       # API_URL se usa para configurar el proxy de nginx
-      # Si no se proporciona, se usa el dominio de Railway por defecto
-      API_URL: ${API_URL:-https://sgi-sena.up.railway.app}
+      # En producción, el backend está en la misma red Docker
+      API_URL: ${API_URL:-http://backend:3000}
     ports:
       - "${FRONTEND_PORT:-80}:80"
     depends_on:
@@ -90,6 +105,11 @@ services:
       timeout: 3s
       retries: 3
       start_period: 10s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
 networks:
   sge-network:
