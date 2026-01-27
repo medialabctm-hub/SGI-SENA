@@ -1,0 +1,15 @@
+[Unit]
+Description=Cloudflare Tunnel
+After=network.target docker.service
+
+[Service]
+Type=simple
+User=medialab
+ExecStart=/usr/local/bin/cloudflared tunnel --url http://localhost:80
+Restart=always
+RestartSec=5
+StandardOutput=append:/home/medialab/cloudflared.log
+StandardError=append:/home/medialab/cloudflared.log
+
+[Install]
+WantedBy=multi-user.target
