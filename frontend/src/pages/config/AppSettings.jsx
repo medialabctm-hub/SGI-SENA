@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react'
 import Toast from '../../components/Toast'
-import { parseApiResponse, buildErrorMessage } from '../../utils/api'
+import CustomSelect from '../../components/CustomSelect'
+import { parseApiResponse, buildErrorMessage, getAuthHeaders } from '../../utils/api'
 import { useLanguage } from '../../contexts/LanguageContext'
-import '../../styles/appSettings.css'
+import '../../styles/pages/config.css'
 
 export default function AppSettings() {
   const { language, updateLanguage } = useLanguage()
@@ -16,13 +17,6 @@ export default function AppSettings() {
   useEffect(() => {
     setLang(language)
   }, [language])
-
-  const getAuthHeaders = () => {
-    const token = localStorage.getItem('token')
-    return token
-      ? { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
-      : { 'Content-Type': 'application/json' }
-  }
 
   useEffect(() => {
     fetchPreferences()
@@ -122,14 +116,17 @@ export default function AppSettings() {
       <div className="app-settings-form">
         <div className="form-row">
           <label>Idioma</label>
-          <select
+          <CustomSelect
+            name="lang"
             value={lang}
             onChange={e => setLang(e.target.value)}
+            options={[
+              { value: 'es', label: 'Español' },
+              { value: 'en', label: 'English' }
+            ]}
+            placeholder="Seleccionar idioma"
             className="app-settings-select"
-          >
-            <option value="es">Español</option>
-            <option value="en">English</option>
-          </select>
+          />
           <small className="app-settings-help">
             Selecciona el idioma de la interfaz
           </small>
@@ -137,17 +134,17 @@ export default function AppSettings() {
 
         <div className="form-row">
           <label>Zona horaria</label>
-          <select
+          <CustomSelect
+            name="tz"
             value={tz}
             onChange={e => setTz(e.target.value)}
+            options={timeZones.map(tzOption => ({
+              value: tzOption,
+              label: tzOption.replace('_', ' ')
+            }))}
+            placeholder="Seleccionar zona horaria"
             className="app-settings-select"
-          >
-            {timeZones.map(tzOption => (
-              <option key={tzOption} value={tzOption}>
-                {tzOption.replace('_', ' ')}
-              </option>
-            ))}
-          </select>
+          />
           <small className="app-settings-help">
             Zona horaria para mostrar fechas y horas
           </small>

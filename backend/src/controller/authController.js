@@ -44,6 +44,28 @@ export const loginUser = async (req, res, next) => {
 };
 
 /**
+ * Login de usuario con validación de placa (para app de escritorio)
+ */
+export const loginUserWithPlaca = async (req, res, next) => {
+  try {
+    const { cedula, contrasena, placa } = req.body;
+    
+    if (!cedula || !contrasena || !placa) {
+      return res.status(400).json({ 
+        error: 'Faltan campos obligatorios: cedula, contrasena, placa' 
+      });
+    }
+
+    const authService = ServiceFactory.create('authService');
+    const result = await authService.loginUserWithPlaca(cedula, contrasena, placa);
+    return res.json(result);
+  } catch (error) {
+    logger.error('Error en loginUserWithPlaca', { error: error.message });
+    return next(error);
+  }
+};
+
+/**
  * Obtener perfil del usuario autenticado
  */
 export const me = async (req, res, next) => {
@@ -63,11 +85,13 @@ export const me = async (req, res, next) => {
 
 /**
  * Listar usuarios activos
+ * Query params: rol (opcional) - Filtrar por nombre de rol
  */
 export const listUsers = async (req, res, next) => {
   try {
     const authService = ServiceFactory.create('authService');
-    const users = await authService.listUsers();
+    const rol = req.query.rol || null;
+    const users = await authService.listUsers(rol);
     return res.json(users);
   } catch (error) {
     logger.error('Error en listUsers', { error: error.message });
@@ -199,6 +223,35 @@ export const restablecerContrasena = async (req, res, next) => {
     return res.json(result);
   } catch (error) {
     logger.error('Error en restablecerContrasena', { error: error.message });
+    return next(error);
+  }
+};
+
+/**
+ * Subir foto de perfil
+ */
+export const uploadProfilePhoto = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user?.id_usuario || req.user?.id;
+    
+    // Verificar que el usuario solo puede subir su propia foto
+    if (parseInt(id) !== parseInt(userId)) {
+      return res.status(403).json({ error: 'No tienes permiso para actualizar este perfil' });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({ error: 'No se proporcionó ninguna imagen' });
+    }
+
+    const authService = ServiceFactory.create('authService');
+    const { getProfileImagePath } = await import('../middleware/uploadProfileMiddleware.js');
+    const fotoPerfilPath = getProfileImagePath(req.file.filename);
+    
+    const result = await authService.updateUserProfilePhoto(id, fotoPerfilPath);
+    return res.json(result);
+  } catch (error) {
+    logger.error('Error en uploadProfilePhoto', { error: error.message });
     return next(error);
   }
 };

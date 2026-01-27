@@ -1,5 +1,6 @@
 import defaultDb from '../config/dbconfig.js'
 import { getUserLanguage, translate } from '../utils/translations.js'
+import socketService from './socketService.js'
 
 const ALLOWED_TYPES = new Set(['info', 'aviso', 'alerta', 'critica'])
 
@@ -194,37 +195,59 @@ export async function createForUsers({ userIds = [], titulo, cuerpo = '', tipo =
   }
 
   const rows = await buildRows({ userIds: filteredIds, titulo, cuerpo, tipo, metadata, creadoPor })
-  return await insertRows(rows)
+  const result = await insertRows(rows)
+  
+  // Emitir eventos WebSocket a los usuarios afectados
+  if (result.inserted > 0) {
+    filteredIds.forEach(userId => {
+      socketService.emitToUser(userId, 'notification:new', {
+        message: 'Nueva notificación disponible',
+        timestamp: new Date().toISOString(),
+      });
+    });
+  }
+  
+  return result
 }
 
 export async function createForRole({ rolNombre, titulo, cuerpo = '', tipo = 'info', metadata = null, creadoPor = null }) {
   if (!rolNombre || !titulo) {
     return { inserted: 0, insertId: null }
   }
-  const roleUserIds = await fetchActiveUserIdsByRole(rolNombre)
+  let roleUserIds = await fetchActiveUserIdsByRole(rolNombre)
+  
+  // Excluir al usuario que creó la notificación (no debe recibir notificación de sus propias acciones)
+  if (creadoPor && roleUserIds.includes(creadoPor)) {
+    roleUserIds = roleUserIds.filter(id => id !== creadoPor)
+  }
+  
   return createForUsers({ userIds: roleUserIds, titulo, cuerpo, tipo, metadata, creadoPor })
 }
 
 export async function createBroadcast({ titulo, cuerpo = '', tipo = 'info', metadata = null, creadoPor = null }) {
-  const userIds = await fetchAllActiveUserIds()
+  let userIds = await fetchAllActiveUserIds()
+  
+  // Excluir al usuario que creó la notificación (no debe recibir notificación de sus propias acciones)
+  if (creadoPor && userIds.includes(creadoPor)) {
+    userIds = userIds.filter(id => id !== creadoPor)
+  }
+  
   return createForUsers({ userIds, titulo, cuerpo, tipo, metadata, creadoPor })
 }
 
-export async function notifyNuevoEquipo({ equipoId, tipoEquipo, marca, modelo, ambiente, creadoPor, metadataExtra = {} }) {
+export async function notifyNuevoEquipo({ equipoId, tipoEquipo, modelo, ambiente, creadoPor, metadataExtra = {} }) {
   if (!equipoId || !tipoEquipo) {
     return { inserted: 0 }
   }
 
-  const subtipo = [marca, modelo].filter(Boolean).join(' ')
-  const descripcion = subtipo ? `${tipoEquipo} ${subtipo}` : tipoEquipo
+  const descripcion = modelo ? `${tipoEquipo} ${modelo}` : tipoEquipo
 
   const metadata = {
     codigo_equipo: equipoId,
     tipo: tipoEquipo,
-    marca,
     modelo,
     ambiente,
-    ruta: `/equipos/${equipoId}`,
+    ruta: `/equipos/detalle/${equipoId}`,
     ...metadataExtra,
   }
 

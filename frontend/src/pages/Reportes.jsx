@@ -3,9 +3,12 @@ import Header from '../components/Header'
 import Sidebar from '../components/Sidebar'
 import Toast from '../components/Toast'
 import ConfirmModal from '../components/ConfirmModal'
-import { FiFileText, FiEye, FiEdit, FiTrash2, FiX, FiPackage, FiType, FiSearch, FiCheck, FiList } from 'react-icons/fi'
+import CustomSelect from '../components/CustomSelect'
+import { FiFileText, FiEye, FiEdit, FiTrash2, FiX, FiPackage, FiType, FiSearch, FiCheck, FiList, FiDownload } from 'react-icons/fi'
 import { parseApiResponse, buildErrorMessage } from '../utils/api'
-import '../styles/equipos.css'
+import '../styles/pages/equipos.css'
+import '../styles/pages/reportes.css'
+import '../styles/components/modals.css'
 
 export default function Reportes() {
   const [activeTab, setActiveTab] = useState('ver') // 'ver' o 'crear'
@@ -20,15 +23,26 @@ export default function Reportes() {
   
   // Estados para crear reporte
   const [form, setForm] = useState({
-    tipo_reporte: 'General',
+    tipo_reporte: '',
     titulo: '',
     descripcion: '',
     codigo_equipo: '',
   })
+  const [tiposReporte, setTiposReporte] = useState([])
+  const [cargandoOpciones, setCargandoOpciones] = useState(true)
   const [codigoInventario, setCodigoInventario] = useState('')
   const [equipoEncontrado, setEquipoEncontrado] = useState(null)
   const [buscandoEquipo, setBuscandoEquipo] = useState(false)
   const [loadingCrear, setLoadingCrear] = useState(false)
+  const [showPDFModal, setShowPDFModal] = useState(false)
+  const [pdfFilters, setPdfFilters] = useState({
+    tipo_reporte: 'Equipos',
+    id_ambiente: '',
+    fecha_inicio: '',
+    fecha_fin: ''
+  })
+  const [generandoPDF, setGenerandoPDF] = useState(false)
+  const [ambientes, setAmbientes] = useState([])
 
   useEffect(() => {
     try {
@@ -39,6 +53,45 @@ export default function Reportes() {
     } catch (error) {
       console.error('Error al obtener datos del usuario:', error)
     }
+  }, [])
+
+  // Cargar tipos de reporte desde la API
+  useEffect(() => {
+    async function cargarOpcionesReporte() {
+      try {
+        setCargandoOpciones(true)
+        const token = localStorage.getItem('token')
+        
+        // Cargar tipos de reporte
+        const resTipos = await fetch('/api/reportes/tipos', {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+        if (resTipos.ok) {
+          const tipos = await parseApiResponse(resTipos)
+          if (Array.isArray(tipos) && tipos.length > 0) {
+            setTiposReporte(tipos)
+            setForm(prev => ({
+              ...prev,
+              tipo_reporte: prev.tipo_reporte || tipos[0]
+            }))
+          } else {
+            setToast({ message: 'No se pudieron cargar los tipos de reporte', type: 'error' })
+          }
+        } else {
+          throw new Error('Error al cargar tipos de reporte')
+        }
+      } catch (err) {
+        console.error('Error al cargar opciones de reporte:', err)
+        setToast({ 
+          message: 'Error al cargar las opciones de reporte. Por favor, recarga la página.', 
+          type: 'error' 
+        })
+      } finally {
+        setCargandoOpciones(false)
+      }
+    }
+
+    cargarOpcionesReporte()
   }, [])
 
   useEffect(() => {
@@ -53,8 +106,23 @@ export default function Reportes() {
   useEffect(() => {
     if (activeTab === 'ver') {
       fetchReportes()
+      fetchAmbientes()
     }
   }, [activeTab])
+
+  async function fetchAmbientes() {
+    try {
+      const token = localStorage.getItem('token')
+      const res = await fetch('/api/ambientes/activos', {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      const data = await parseApiResponse(res)
+      setAmbientes(Array.isArray(data) ? data : [])
+    } catch (err) {
+      console.error('Error al obtener ambientes:', err)
+      setAmbientes([])
+    }
+  }
 
   async function fetchReportes() {
     setLoading(true)
@@ -136,16 +204,44 @@ export default function Reportes() {
     try {
       setLoadingCrear(true)
       const token = localStorage.getItem('token')
+      
+      // Preparar payload: codigo_equipo solo si existe, sino null
+      const payload = {
+        tipo_reporte: form.tipo_reporte,
+        titulo: form.titulo.trim(),
+        descripcion: form.descripcion.trim(),
+        codigo_equipo: form.codigo_equipo && form.codigo_equipo !== '' 
+          ? (typeof form.codigo_equipo === 'number' ? form.codigo_equipo : parseInt(form.codigo_equipo, 10))
+          : null
+      }
+      
       const res = await fetch('/api/reportes', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`
         },
-        body: JSON.stringify(form)
+        body: JSON.stringify(payload)
       })
 
       const data = await res.json()
+
+      if (!res.ok) {
+        // Mostrar errores de validación de forma más clara
+        if (data.details && Array.isArray(data.details)) {
+          const errores = data.details.map(d => d.message).join('. ')
+          setToast({ 
+            message: `Error de validación: ${errores}`,
+            type: 'error' 
+          })
+        } else {
+          setToast({ 
+            message: data.error || 'Error al crear el reporte',
+            type: 'error' 
+          })
+        }
+        return
+      }
 
       if (res.ok) {
         setToast({ 
@@ -153,7 +249,7 @@ export default function Reportes() {
           type: 'success' 
         })
         setForm({
-          tipo_reporte: 'General',
+          tipo_reporte: tiposReporte[0] || '',
           titulo: '',
           descripcion: '',
           codigo_equipo: '',
@@ -231,6 +327,52 @@ export default function Reportes() {
     setDeleteConfirm({ open: true, id })
   }
 
+  async function generarPDF() {
+    setGenerandoPDF(true)
+    setToast(null)
+    try {
+      const token = localStorage.getItem('token')
+      const params = new URLSearchParams()
+      if (pdfFilters.tipo_reporte) params.append('tipo_reporte', pdfFilters.tipo_reporte)
+      if (pdfFilters.id_ambiente) params.append('id_ambiente', pdfFilters.id_ambiente)
+      if (pdfFilters.fecha_inicio) params.append('fecha_inicio', pdfFilters.fecha_inicio)
+      if (pdfFilters.fecha_fin) params.append('fecha_fin', pdfFilters.fecha_fin)
+
+      const res = await fetch(`/api/reportes/pdf?${params.toString()}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+
+      // Manejar código 403 (no autorizado) específicamente
+      if (res.status === 403) {
+        const errorData = await res.json().catch(() => ({}))
+        throw new Error(errorData.detalle || errorData.error || 'No tienes permiso para generar reportes PDF. Solo Administradores y Cuentadantes pueden realizar esta acción.')
+      }
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}))
+        throw new Error(errorData.detalle || errorData.error || 'Error al generar el PDF')
+      }
+
+      // Descargar el PDF
+      const blob = await res.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `Reporte_Equipos_${new Date().toISOString().split('T')[0]}.pdf`
+      document.body.appendChild(a)
+      a.click()
+      window.URL.revokeObjectURL(url)
+      document.body.removeChild(a)
+
+      setToast({ message: 'PDF generado y descargado correctamente', type: 'success' })
+      setShowPDFModal(false)
+    } catch (err) {
+      setToast({ message: buildErrorMessage(err, 'Error al generar el PDF'), type: 'error' })
+    } finally {
+      setGenerandoPDF(false)
+    }
+  }
+
   async function handleDelete() {
     const id = deleteConfirm.id
     if (!id) return
@@ -275,70 +417,48 @@ export default function Reportes() {
             onCancel={() => setDeleteConfirm({ open: false, id: null })}
           />
           
-          <div className="form-equipos form-modern" style={{ maxWidth: '1200px' }}>
+          <div className="form-equipos form-modern reportes-container">
           <div className="form-header">
-            <div className="form-icon-wrapper" style={{ background: 'linear-gradient(135deg, #4dabf7 0%, #339af0 100%)' }}>
+            <div className="form-icon-wrapper reportes-header-icon">
               <FiFileText size={28} color="#fff" />
             </div>
-            <div style={{ flex: 1 }}>
-              <h2 style={{ margin: 0, fontSize: '28px', fontWeight: 700, color: '#1a2a3a' }}>Reportes</h2>
-              <p style={{ color: '#666', marginTop: 8, fontSize: '15px' }}>
+            <div className="reportes-header-content">
+              <h2 className="reportes-title">Reportes</h2>
+              <p className="reportes-subtitle">
                 Informes sobre equipos, mantenimiento y uso general
               </p>
             </div>
           </div>
 
           {/* Pestañas */}
-          <div style={{ 
-            display: 'flex', 
-            gap: '0.5rem', 
-            marginTop: '1.5rem',
-            borderBottom: '2px solid #e5e7eb',
-            paddingBottom: '0'
-          }}>
+          <div className="reportes-tabs">
             <button
               onClick={() => setActiveTab('ver')}
-              style={{
-                padding: '0.75rem 1.5rem',
-                border: 'none',
-                background: 'transparent',
-                color: activeTab === 'ver' ? '#4dabf7' : '#6b7280',
-                fontWeight: activeTab === 'ver' ? 600 : 400,
-                fontSize: '1rem',
-                cursor: 'pointer',
-                borderBottom: activeTab === 'ver' ? '3px solid #4dabf7' : '3px solid transparent',
-                transition: 'all 0.2s',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem'
-              }}
+              className={`reportes-tab-button ${activeTab === 'ver' ? 'active' : ''}`}
             >
               <FiList size={18} />
               Ver Reportes
             </button>
             <button
               onClick={() => setActiveTab('crear')}
-              style={{
-                padding: '0.75rem 1.5rem',
-                border: 'none',
-                background: 'transparent',
-                color: activeTab === 'crear' ? '#4dabf7' : '#6b7280',
-                fontWeight: activeTab === 'crear' ? 600 : 400,
-                fontSize: '1rem',
-                cursor: 'pointer',
-                borderBottom: activeTab === 'crear' ? '3px solid #4dabf7' : '3px solid transparent',
-                transition: 'all 0.2s',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem'
-              }}
+              className={`reportes-tab-button ${activeTab === 'crear' ? 'active' : ''}`}
             >
               <FiFileText size={18} />
               Crear Reporte
             </button>
+            {(user?.nombre_rol === 'Administrador' || user?.nombre_rol === 'Cuentadante') && (
+              <button
+                onClick={() => setShowPDFModal(true)}
+                className="reportes-tab-button reportes-pdf-button"
+                title="Generar reporte en PDF"
+              >
+                <FiDownload size={18} />
+                Generar PDF
+              </button>
+            )}
           </div>
 
-          <div className="form-divider" style={{ marginTop: '0' }}></div>
+          <div className="form-divider form-divider-no-margin"></div>
 
           {activeTab === 'ver' ? (
             <>
@@ -356,8 +476,8 @@ export default function Reportes() {
               <p>Los reportes generados aparecerán aquí</p>
             </div>
           ) : (
-            <div style={{ overflowX: 'auto' }}>
-              <table className="consulta-table" style={{ marginTop: '1rem' }}>
+            <div className="reportes-table-wrapper">
+              <table className="consulta-table reportes-table">
                 <thead>
                   <tr>
                     <th>ID</th>
@@ -374,14 +494,11 @@ export default function Reportes() {
                     <tr key={reporte.id_reporte}>
                       <td>{reporte.id_reporte}</td>
                       <td>
-                        <span style={{
-                          padding: '4px 10px',
-                          borderRadius: '12px',
-                          fontSize: '0.85rem',
-                          fontWeight: 600,
-                          background: '#e0e7ff',
-                          color: '#4338ca'
-                        }}>
+                        <span className={`reportes-tipo-badge ${
+                          reporte.tipo_reporte === 'General' ? 'reportes-tipo-badge-general' :
+                          reporte.tipo_reporte === 'Mantenimiento' ? 'reportes-tipo-badge-mantenimiento' :
+                          'reportes-tipo-badge-uso'
+                        }`}>
                           {reporte.tipo_reporte}
                         </span>
                       </td>
@@ -394,39 +511,36 @@ export default function Reportes() {
                             {reporte.equipo_tipo} {reporte.equipo_marca} {reporte.equipo_modelo}
                           </div>
                         ) : (
-                          <span style={{ color: '#999', fontStyle: 'italic' }}>General</span>
+                          <span className="text-muted-italic">General</span>
                         )}
                       </td>
                       <td>{reporte.generado_por_nombre}</td>
                       <td>{formatDate(reporte.fecha_generacion)}</td>
                       <td>
-                        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                        <div className="reportes-actions">
                           <button
-                            className="btn"
+                            className="btn reportes-action-button"
                             onClick={() => setSelectedReporte(reporte)}
-                            style={{ padding: '6px 12px', fontSize: '0.9rem' }}
                           >
-                            <FiEye size={14} style={{ marginRight: '4px' }} />
+                            <FiEye size={14} className="reportes-action-icon" />
                             Ver
                           </button>
                           {isAdmin && (
                             <>
                               <button
-                                className="btn"
+                                className="btn reportes-action-button"
                                 onClick={() => startEdit(reporte)}
-                                style={{ padding: '6px 12px', fontSize: '0.9rem' }}
                                 disabled={loading}
                               >
-                                <FiEdit size={14} style={{ marginRight: '4px' }} />
+                                <FiEdit size={14} className="reportes-action-icon" />
                                 Editar
                               </button>
                               <button
-                                className="btn danger"
+                                className="btn danger reportes-action-button"
                                 onClick={() => confirmDelete(reporte.id_reporte)}
-                                style={{ padding: '6px 12px', fontSize: '0.9rem' }}
                                 disabled={loading}
                               >
-                                <FiTrash2 size={14} style={{ marginRight: '4px' }} />
+                                <FiTrash2 size={14} className="reportes-action-icon" />
                                 Eliminar
                               </button>
                             </>
@@ -445,33 +559,30 @@ export default function Reportes() {
               {/* Sección: Información del Reporte */}
               <div className="form-section">
                 <h3 className="form-section-title">
-                  <FiFileText size={18} style={{ marginRight: 8 }} />
+                  <FiFileText size={18} className="reportes-section-icon" />
                   Información del Reporte
                 </h3>
 
                 <div className="form-grid">
                   <div className="form-group">
                     <label>
-                      <FiType size={16} style={{ marginRight: 6, verticalAlign: 'middle' }} />
+                      <FiType size={16} className="reportes-option-icon" />
                       Tipo de Reporte *
                     </label>
-                    <select
+                    <CustomSelect
+                      name="tipo_reporte"
                       value={form.tipo_reporte}
                       onChange={(e) => handleChange('tipo_reporte', e.target.value)}
+                      options={tiposReporte}
+                      placeholder={cargandoOpciones ? "Cargando opciones..." : "Seleccionar tipo de reporte"}
+                      disabled={cargandoOpciones}
                       required
-                    >
-                      <option value="General">General</option>
-                      <option value="Equipos">Equipos</option>
-                      <option value="Mantenimiento">Mantenimiento</option>
-                      <option value="Novedades">Novedades</option>
-                      <option value="Uso">Uso</option>
-                      <option value="Otro">Otro</option>
-                    </select>
+                    />
                   </div>
 
                   <div className="form-group">
                     <label>
-                      <FiFileText size={16} style={{ marginRight: 6, verticalAlign: 'middle' }} />
+                      <FiFileText size={16} className="reportes-option-icon" />
                       Título *
                     </label>
                     <input
@@ -488,7 +599,7 @@ export default function Reportes() {
               {/* Sección: Equipo (Opcional) */}
               <div className="form-section">
                 <h3 className="form-section-title">
-                  <FiPackage size={18} style={{ marginRight: 8 }} />
+                  <FiPackage size={18} className="reportes-section-icon" />
                   Equipo Relacionado (Opcional)
                 </h3>
                 
@@ -526,7 +637,7 @@ export default function Reportes() {
                       )}
                     </button>
                   </div>
-                  <p style={{ marginTop: '8px', fontSize: '0.875rem', color: '#666' }}>
+                  <p className="form-help-text reportes-form-help-text">
                     Si no especificas un equipo, el reporte será general
                   </p>
                 </div>
@@ -559,7 +670,7 @@ export default function Reportes() {
               {/* Sección: Descripción */}
               <div className="form-section">
                 <h3 className="form-section-title">
-                  <FiFileText size={18} style={{ marginRight: 8 }} />
+                  <FiFileText size={18} className="reportes-section-icon" />
                   Descripción del Reporte
                 </h3>
 
@@ -598,61 +709,30 @@ export default function Reportes() {
           </div>
 
       {selectedReporte && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: 'rgba(0,0,0,0.5)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 1000,
-          padding: '20px'
-        }} onClick={() => setSelectedReporte(null)}>
-          <div style={{
-            background: '#fff',
-            borderRadius: '12px',
-            padding: '2rem',
-            maxWidth: '700px',
-            width: '100%',
-            maxHeight: '90vh',
-            overflow: 'auto',
-            boxShadow: '0 20px 60px rgba(0,0,0,0.3)'
-          }} onClick={(e) => e.stopPropagation()}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-              <h3 style={{ margin: 0, fontSize: '24px', color: '#1a2a3a' }}>Detalle de Reporte</h3>
+        <div className="reportes-modal-overlay" onClick={() => setSelectedReporte(null)}>
+          <div className="reportes-modal-sheet" onClick={(e) => e.stopPropagation()}>
+            <div className="reportes-modal-header">
+              <h3 className="reportes-modal-title">Detalle de Reporte</h3>
               <button
                 onClick={() => setSelectedReporte(null)}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  fontSize: '24px',
-                  cursor: 'pointer',
-                  color: '#666'
-                }}
+                className="reportes-modal-close-btn"
               >
                 ×
               </button>
             </div>
 
             {editingReporte === selectedReporte.id_reporte ? (
-              <div style={{ display: 'grid', gap: '1rem' }}>
+              <div className="reportes-modal-info-grid">
                 <div className="form-group">
                   <label>Tipo de Reporte *</label>
-                  <select
+                  <CustomSelect
+                    name="tipo_reporte"
                     value={editForm.tipo_reporte}
                     onChange={(e) => setEditForm(prev => ({ ...prev, tipo_reporte: e.target.value }))}
-                    style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1.5px solid #b2dfdb' }}
-                  >
-                    <option value="General">General</option>
-                    <option value="Equipos">Equipos</option>
-                    <option value="Mantenimiento">Mantenimiento</option>
-                    <option value="Novedades">Novedades</option>
-                    <option value="Uso">Uso</option>
-                    <option value="Otro">Otro</option>
-                  </select>
+                    options={['General', 'Equipos', 'Mantenimiento', 'Novedades', 'Uso', 'Otro']}
+                    placeholder="Seleccionar tipo de reporte"
+                    className="reportes-modal-input"
+                  />
                 </div>
                 <div className="form-group">
                   <label>Título *</label>
@@ -660,7 +740,7 @@ export default function Reportes() {
                     type="text"
                     value={editForm.titulo}
                     onChange={(e) => setEditForm(prev => ({ ...prev, titulo: e.target.value }))}
-                    style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1.5px solid #b2dfdb' }}
+                    className="reportes-modal-input"
                   />
                 </div>
                 <div className="form-group">
@@ -669,44 +749,34 @@ export default function Reportes() {
                     value={editForm.descripcion}
                     onChange={(e) => setEditForm(prev => ({ ...prev, descripcion: e.target.value }))}
                     rows={6}
-                    style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1.5px solid #b2dfdb', resize: 'vertical' }}
+                    className="reportes-modal-textarea"
                   />
                 </div>
-                <div style={{ display: 'flex', gap: '8px', marginTop: '1rem' }}>
+                <div className="reportes-modal-actions-row">
                   <button
                     onClick={saveEdit}
-                    className="btn-primary btn-modern"
+                    className="btn-primary btn-modern reportes-modal-btn"
                     disabled={loading}
-                    style={{ flex: 1 }}
                   >
                     {loading ? 'Guardando...' : 'Guardar'}
                   </button>
                   <button
                     onClick={cancelEdit}
-                    className="btn-secondary btn-modern"
+                    className="btn-secondary btn-modern reportes-modal-btn"
                     disabled={loading}
-                    style={{ flex: 1 }}
                   >
                     Cancelar
                   </button>
                 </div>
               </div>
             ) : (
-              <div style={{ display: 'grid', gap: '1rem' }}>
+              <div className="reportes-modal-info-grid">
                 <div>
                   <strong>ID:</strong> {selectedReporte.id_reporte}
                 </div>
                 <div>
                   <strong>Tipo:</strong> 
-                  <span style={{
-                    marginLeft: '8px',
-                    padding: '4px 10px',
-                    borderRadius: '12px',
-                    fontSize: '0.9rem',
-                    fontWeight: 600,
-                    background: '#e0e7ff',
-                    color: '#4338ca'
-                  }}>
+                  <span className="reportes-modal-badge reportes-tipo-badge-general">
                     {selectedReporte.tipo_reporte}
                   </span>
                 </div>
@@ -720,7 +790,7 @@ export default function Reportes() {
                 )}
                 <div>
                   <strong>Descripción:</strong>
-                  <div style={{ marginTop: '8px', padding: '12px', background: '#f8f9fa', borderRadius: '8px', whiteSpace: 'pre-wrap' }}>
+                  <div className="reportes-modal-description-box">
                     {selectedReporte.descripcion}
                   </div>
                 </div>
@@ -731,27 +801,129 @@ export default function Reportes() {
                   <strong>Fecha de generación:</strong> {formatDate(selectedReporte.fecha_generacion)}
                 </div>
                 {isAdmin && (
-                  <div style={{ display: 'flex', gap: '8px', marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid #e5e7eb' }}>
+                  <div className="reportes-modal-actions-footer">
                     <button
                       onClick={() => startEdit(selectedReporte)}
-                      className="btn"
-                      style={{ flex: 1 }}
+                      className="btn reportes-modal-btn"
                     >
-                      <FiEdit size={14} style={{ marginRight: '4px' }} />
+                      <FiEdit size={14} className="reportes-modal-icon" />
                       Editar
                     </button>
                     <button
                       onClick={() => confirmDelete(selectedReporte.id_reporte)}
-                      className="btn danger"
-                      style={{ flex: 1 }}
+                      className="btn danger reportes-modal-btn"
                     >
-                      <FiTrash2 size={14} style={{ marginRight: '4px' }} />
+                      <FiTrash2 size={14} className="reportes-modal-icon" />
                       Eliminar
                     </button>
                   </div>
                 )}
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Modal para generar PDF */}
+      {showPDFModal && (
+        <div className="reportes-modal-overlay" onClick={() => setShowPDFModal(false)}>
+          <div className="reportes-modal-sheet" onClick={(e) => e.stopPropagation()}>
+            <div className="reportes-modal-header">
+              <h3 className="reportes-modal-title">Generar Reporte en PDF</h3>
+              <button
+                onClick={() => setShowPDFModal(false)}
+                className="reportes-modal-close-btn"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="reportes-modal-body">
+              <p className="reportes-modal-description">
+                Genera un reporte en PDF con información de equipos, ambientes e instructores.
+                Puedes filtrar por ambiente y rango de fechas.
+              </p>
+
+              <div className="form-group">
+                <label>Tipo de Reporte</label>
+                <CustomSelect
+                  name="tipo_reporte"
+                  value={pdfFilters.tipo_reporte}
+                  onChange={(e) => setPdfFilters({ ...pdfFilters, tipo_reporte: e.target.value })}
+                  options={['Equipos', 'General', 'Mantenimiento', 'Novedades', 'Uso']}
+                  placeholder="Seleccionar tipo"
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Ambiente (Opcional)</label>
+                <CustomSelect
+                  name="id_ambiente"
+                  value={pdfFilters.id_ambiente}
+                  onChange={(e) => setPdfFilters({ ...pdfFilters, id_ambiente: e.target.value })}
+                  options={[
+                    { value: '', label: 'Todos los ambientes' },
+                    ...ambientes.map(amb => ({
+                      value: amb.id_ambiente.toString(),
+                      label: `${amb.codigo_ambiente} - ${amb.nombre_ambiente}`
+                    }))
+                  ]}
+                  placeholder="Seleccionar ambiente"
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Fecha Inicio (Opcional)</label>
+                <input
+                  type="date"
+                  value={pdfFilters.fecha_inicio}
+                  onChange={(e) => setPdfFilters({ ...pdfFilters, fecha_inicio: e.target.value })}
+                  className="reportes-modal-field"
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Fecha Fin (Opcional)</label>
+                <input
+                  type="date"
+                  value={pdfFilters.fecha_fin}
+                  onChange={(e) => setPdfFilters({ ...pdfFilters, fecha_fin: e.target.value })}
+                  className="reportes-modal-field"
+                />
+              </div>
+
+              <div className="reportes-modal-info-box">
+                <strong>Información incluida en el PDF:</strong>
+                <ul>
+                  <li>Lista de equipos por ambiente</li>
+                  <li>Instructores asignados a cada ambiente</li>
+                  <li>Cuentadantes secundarios (instructores con ambientes asignados)</li>
+                  <li>Detalles de equipos (código, tipo, modelo, estado)</li>
+                </ul>
+              </div>
+
+              <div className="reportes-modal-actions">
+                <button
+                  onClick={() => setShowPDFModal(false)}
+                  className="btn-secondary btn-modern reportes-modal-action-button"
+                  disabled={generandoPDF}
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={generarPDF}
+                  className="btn-primary btn-modern reportes-modal-action-button"
+                  disabled={generandoPDF}
+                >
+                  {generandoPDF ? 'Generando...' : (
+                    <>
+                      <FiDownload size={16} />
+                      Generar y Descargar PDF
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

@@ -9,7 +9,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 10000;
+  z-index: 999999;
   backdrop-filter: blur(4px);
 }
 
@@ -125,6 +125,11 @@
 
 .confirm-modal-btn-primary.danger:hover {
   background: var(--error-600);
+}
+
+.confirm-modal-btn-disabled {
+  opacity: 0.6 !important;
+  cursor: not-allowed !important;
 }
 
 .confirm-modal-btn-primary.warning {

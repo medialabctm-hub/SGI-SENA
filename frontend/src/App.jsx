@@ -8,6 +8,7 @@ import Dashboard from './pages/Dashboard';
 import Equipos from './pages/Equipos';
 import ConsultarEquipo from './pages/ConsultarEquipo';
 import Usuarios from './pages/Usuarios';
+import Aprendices from './pages/Aprendices';
 import Config from './pages/Config';
 import CrearNovedad from './pages/CrearNovedad';
 import CrearReporte from './pages/CrearReporte';
@@ -16,7 +17,6 @@ import MisEquipos from './pages/MisEquipos';
 import Novedades from './pages/Novedades';
 import Reportes from './pages/Reportes';
 import Mantenimientos from './pages/Mantenimientos';
-import CrearMantenimiento from './pages/CrearMantenimiento';
 import PaginaNoEncontrada from './pages/PaginaNoEncontrada.jsx';
 import Asignaciones from './pages/Asignaciones';
 import Ambientes from './pages/Ambientes';
@@ -25,14 +25,23 @@ import VerificarInventario from './pages/VerificarInventario';
 import Horarios from './pages/Horarios';
 import HistorialVerificaciones from './pages/HistorialVerificaciones';
 import HistorialVerificacionesGeneral from './pages/HistorialVerificacionesGeneral';
+// PÁGINAS DESACTIVADAS
+// import HistorialUsoEquipos from './pages/HistorialUsoEquipos';
+// import HistorialUsoEquipo from './pages/HistorialUsoEquipo';
 import DetalleEquipo from './pages/DetalleEquipo';
+import BuscarCuentadante from './pages/BuscarCuentadante';
+import Perfil from './pages/Perfil';
 import ProtectedRoute from './components/ProtectedRoute';
 import RedirectIfAuth from './components/RedirectIfAuth';
 import ErrorBoundary from './components/ErrorBoundary';
+import NavigationBlocker from './components/NavigationBlocker';
+import { SocketProvider } from './contexts/SocketContext';
 
 export default function App() {
   return (
     <ErrorBoundary>
+      <SocketProvider>
+      <NavigationBlocker />
       <Routes>
       <Route
         path="/login"
@@ -115,10 +124,26 @@ export default function App() {
         }
       />
       <Route
+        path="/aprendices"
+        element={
+          <ProtectedRoute>
+            <Aprendices />
+          </ProtectedRoute>
+        }
+      />
+      <Route
         path="/config"
         element={
           <ProtectedRoute>
             <Config />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/perfil"
+        element={
+          <ProtectedRoute>
+            <Perfil />
           </ProtectedRoute>
         }
       />
@@ -138,11 +163,12 @@ export default function App() {
           </ProtectedRoute>
         }
       />
+      {/* Ruta de reportes redirige a novedades con pestaña de reportes */}
       <Route
         path="/reportes"
         element={
           <ProtectedRoute>
-            <Reportes />
+            <Novedades />
           </ProtectedRoute>
         }
       />
@@ -150,7 +176,7 @@ export default function App() {
         path="/reportes/crear"
         element={
           <ProtectedRoute>
-            <CrearReporte />
+            <Novedades />
           </ProtectedRoute>
         }
       />
@@ -182,7 +208,7 @@ export default function App() {
         path="/mantenimientos/crear"
         element={
           <ProtectedRoute>
-            <CrearMantenimiento />
+            <Mantenimientos />
           </ProtectedRoute>
         }
       />
@@ -218,14 +244,32 @@ export default function App() {
           </ProtectedRoute>
         }
       />
-      <Route
+      {/* RUTAS DESACTIVADAS - Historial de Verificaciones */}
+      {/* <Route
         path="/equipos/verificacion/historial"
         element={
           <ProtectedRoute>
             <HistorialVerificacionesGeneral />
           </ProtectedRoute>
         }
-      />
+      /> */}
+      {/* RUTAS DESACTIVADAS - Historial de Uso */}
+      {/* <Route
+        path="/equipos/uso/historial"
+        element={
+          <ProtectedRoute>
+            <HistorialUsoEquipos />
+          </ProtectedRoute>
+        }
+      /> */}
+      {/* <Route
+        path="/equipos/:codigo/uso/historial"
+        element={
+          <ProtectedRoute>
+            <HistorialUsoEquipo />
+          </ProtectedRoute>
+        }
+      /> */}
       <Route
         path="/equipos/historial-verificaciones/:codigo"
         element={
@@ -242,9 +286,18 @@ export default function App() {
           </ProtectedRoute>
         }
       />
+      <Route
+        path="/equipos/cuentadantes/buscar"
+        element={
+          <ProtectedRoute>
+            <BuscarCuentadante />
+          </ProtectedRoute>
+        }
+      />
       {/* Ruta 404 */}
       <Route element={<PaginaNoEncontrada />} path="*" />
-      </Routes>
+        </Routes>
+      </SocketProvider>
     </ErrorBoundary>
   );
 }

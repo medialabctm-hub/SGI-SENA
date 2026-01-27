@@ -2,13 +2,15 @@ import React, { useState, useEffect } from 'react'
 import Header from '../components/Header'
 import Sidebar from '../components/Sidebar'
 import Toast from '../components/Toast'
-import ConfirmModal from '../components/ConfirmModal'
+import DestructiveConfirmModal from '../components/DestructiveConfirmModal'
+import CustomSelect from '../components/CustomSelect'
 import { parseApiResponse, buildErrorMessage } from '../utils/api'
 import { FiDownload, FiSearch, FiList, FiClock, FiEye, FiUpload, FiSettings, FiCheckSquare, FiSquare } from 'react-icons/fi'
 import { useNavigate } from 'react-router-dom'
 import * as XLSX from 'xlsx'
-import '../styles/equipos.css'
+import '../styles/pages/equipos.css'
 import '../styles/consultarEquipo.css'
+import '../styles/consultarEquipoBadges.css'
 
 export default function ConsultarEquipo() {
   const navigate = useNavigate()
@@ -18,24 +20,25 @@ export default function ConsultarEquipo() {
   const [editingCodigo, setEditingCodigo] = useState(null)
   const [draft, setDraft] = useState({})
   const [toast, setToast] = useState(null)
-  const [deleteConfirm, setDeleteConfirm] = useState({ open: false, codigo: null })
+  const [deleteConfirm, setDeleteConfirm] = useState({ open: false, codigo: null, equipo: null })
   const [user, setUser] = useState(null)
   const [showColumnFilter, setShowColumnFilter] = useState(false)
+  const [ambientes, setAmbientes] = useState([])
+  
+  const ESTADOS_FISICOS = ['Nuevo', 'Bueno', 'Regular', 'Malo', 'Dañado']
   
   // Definir todas las columnas disponibles
   const allColumns = [
     { key: 'codigo_inventario', label: 'Código Inventario', default: true },
-    { key: 'codigo_equipo', label: 'ID Interno', default: false },
-    { key: 'tipo', label: 'Tipo', default: false },
+    { key: 'tipo', label: 'Tipo', default: true },
     { key: 'modelo', label: 'Modelo', default: true },
-    { key: 'consecutivo', label: 'Consecutivo', default: false },
-    { key: 'estado_fisico', label: 'Estado', default: true },
+    { key: 'consecutivo', label: 'Consecutivo', default: true },
+    { key: 'estado_fisico', label: 'Estado Físico', default: true },
     { key: 'fecha_adquisicion', label: 'Fecha Adquisición', default: true },
-    { key: 'costo', label: 'Costo', default: true },
+    { key: 'costo', label: 'Valor Ingreso', default: true },
     { key: 'nombre_ambiente', label: 'Ambiente', default: true },
-    { key: 'codigo_ambiente', label: 'Código Ambiente', default: false },
     { key: 'descripcion', label: 'Descripción', default: true },
-    { key: 'specs_completas', label: 'Especificaciones', default: true },
+    { key: 'specs_completas', label: 'Atributos', default: true },
   ]
 
   // Estado para columnas visibles (inicializado con las columnas por defecto)
@@ -68,6 +71,64 @@ export default function ConsultarEquipo() {
     }
   }, [])
 
+  // Cargar ambientes disponibles
+  useEffect(() => {
+    async function cargarAmbientes() {
+      try {
+        const token = localStorage.getItem('token')
+        const res = await fetch('/api/ambientes/activos', {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+        const data = await parseApiResponse(res, 'No se pudieron cargar los ambientes')
+        setAmbientes(Array.isArray(data) ? data : [])
+      } catch (err) {
+        console.error('Error al cargar ambientes:', err)
+        setAmbientes([])
+      }
+    }
+    cargarAmbientes()
+  }, [])
+
+  // Cargar todos los equipos automáticamente al montar el componente
+  useEffect(() => {
+    // Solo cargar si el usuario está disponible
+    if (!user) return
+    
+    let isMounted = true
+    
+    async function cargarEquiposInicial() {
+      setLoading(true)
+      try {
+        const token = localStorage.getItem('token')
+        const res = await fetch('/api/equipos', {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+        const data = await parseApiResponse(res, 'No se pudo listar los equipos')
+        // El backend ahora retorna { equipos: [...], pagination: {...} }
+        // Si data tiene la propiedad equipos, usarla; si no, asumir que es un array directo
+        const equiposList = data?.equipos || (Array.isArray(data) ? data : [])
+        if (isMounted) {
+          setEquipos(equiposList)
+        }
+      } catch (err) {
+        if (isMounted) {
+          setEquipos([])
+          // No mostrar error en la carga inicial, solo si el usuario hace una acción
+        }
+      } finally {
+        if (isMounted) {
+          setLoading(false)
+        }
+      }
+    }
+    
+    cargarEquiposInicial()
+    
+    return () => {
+      isMounted = false
+    }
+  }, [user]) // Solo ejecutar cuando el usuario se carga
+
   async function handleBuscar(e) {
     e.preventDefault()
     setToast(null)
@@ -83,7 +144,8 @@ export default function ConsultarEquipo() {
         headers: { Authorization: `Bearer ${token}` }
       })
       const data = await parseApiResponse(res, 'No se pudo consultar el equipo')
-      setEquipos([data])
+      // Si es un array, usar directamente; si es un objeto, convertirlo a array
+      setEquipos(Array.isArray(data) ? data : [data])
     } catch (err) {
       setEquipos([])
       setToast({ message: buildErrorMessage(err, 'No se pudo consultar el equipo'), type: 'error' })
@@ -101,7 +163,10 @@ export default function ConsultarEquipo() {
         headers: { Authorization: `Bearer ${token}` }
       })
       const data = await parseApiResponse(res, 'No se pudo listar los equipos')
-      setEquipos(Array.isArray(data) ? data : [])
+      // El backend ahora retorna { equipos: [...], pagination: {...} }
+      // Si data tiene la propiedad equipos, usarla; si no, asumir que es un array directo
+      const equiposList = data?.equipos || (Array.isArray(data) ? data : [])
+      setEquipos(equiposList)
     } catch (err) {
       setEquipos([])
       setToast({ message: buildErrorMessage(err, 'No se pudo listar los equipos'), type: 'error' })
@@ -114,7 +179,8 @@ export default function ConsultarEquipo() {
     setEditingCodigo(eq.codigo_equipo)
     setDraft({
       ...eq,
-      fecha_adquisicion: eq.fecha_adquisicion ? String(eq.fecha_adquisicion).slice(0,10) : ''
+      fecha_adquisicion: eq.fecha_adquisicion ? String(eq.fecha_adquisicion).slice(0,10) : '',
+      id_ambiente: eq.id_ambiente || null
     })
   }
 
@@ -132,9 +198,80 @@ export default function ConsultarEquipo() {
     setLoading(true)
     setToast(null)
     try {
-      const payload = { ...draft }
-      // permitir enviar 'ambiente' como texto/código si el usuario lo edita
-      if (payload.ambiente && payload.ambiente.trim() === '') delete payload.ambiente
+      // Función helper para limpiar valores
+      const cleanValue = (val) => {
+        if (val === undefined || val === '' || val === null) return null;
+        return val;
+      };
+      
+      const cleanNumber = (val) => {
+        if (val === undefined || val === '' || val === null) return null;
+        const num = typeof val === 'string' ? parseFloat(val) : Number(val);
+        return isNaN(num) ? null : num;
+      };
+      
+      // Limpiar el payload para solo enviar campos válidos
+      const payload = {}
+      
+      // Campos de texto - solo incluir si tienen valor
+      if (draft.tipo !== undefined && draft.tipo !== null && draft.tipo !== '') {
+        payload.tipo = String(draft.tipo).trim() || null;
+      }
+      if (draft.modelo !== undefined && draft.modelo !== null && draft.modelo !== '') {
+        payload.modelo = String(draft.modelo).trim() || null;
+      }
+      if (draft.consecutivo !== undefined && draft.consecutivo !== null && draft.consecutivo !== '') {
+        payload.consecutivo = String(draft.consecutivo).trim() || null;
+      }
+      if (draft.descripcion !== undefined && draft.descripcion !== null && draft.descripcion !== '') {
+        payload.descripcion = String(draft.descripcion).trim() || null;
+      }
+      if (draft.specs_completas !== undefined && draft.specs_completas !== null && draft.specs_completas !== '') {
+        payload.specs_completas = String(draft.specs_completas).trim() || null;
+      }
+      if (draft.marca !== undefined && draft.marca !== null && draft.marca !== '') {
+        payload.marca = String(draft.marca).trim() || null;
+      }
+      if (draft.numero_serie !== undefined && draft.numero_serie !== null && draft.numero_serie !== '') {
+        payload.numero_serie = String(draft.numero_serie).trim() || null;
+      }
+      if (draft.placa !== undefined && draft.placa !== null && draft.placa !== '') {
+        payload.placa = String(draft.placa).trim() || null;
+      }
+      if (draft.r_centro !== undefined && draft.r_centro !== null && draft.r_centro !== '') {
+        payload.r_centro = String(draft.r_centro).trim() || null;
+      }
+      
+      // Fecha
+      if (draft.fecha_adquisicion !== undefined && draft.fecha_adquisicion !== null && draft.fecha_adquisicion !== '') {
+        payload.fecha_adquisicion = String(draft.fecha_adquisicion).trim() || null;
+      }
+      
+      // Números
+      if (draft.costo !== undefined) {
+        payload.costo = cleanNumber(draft.costo);
+      }
+      if (draft.valor_ingreso !== undefined) {
+        payload.valor_ingreso = cleanNumber(draft.valor_ingreso);
+      }
+      if (draft.vida_util_meses !== undefined) {
+        payload.vida_util_meses = cleanNumber(draft.vida_util_meses);
+      }
+      
+      // Estado físico
+      if (draft.estado_fisico !== undefined && draft.estado_fisico !== null && draft.estado_fisico !== '') {
+        payload.estado_fisico = String(draft.estado_fisico).trim();
+      }
+      
+      // ID Ambiente
+      if (draft.id_ambiente !== undefined && draft.id_ambiente !== null && draft.id_ambiente !== '') {
+        const idAmb = typeof draft.id_ambiente === 'string' ? parseInt(draft.id_ambiente, 10) : draft.id_ambiente;
+        if (!isNaN(idAmb) && idAmb > 0) {
+          payload.id_ambiente = idAmb;
+        } else {
+          payload.id_ambiente = null;
+        }
+      }
 
       const token = localStorage.getItem('token')
       const res = await fetch(`/api/equipos/${encodeURIComponent(editingCodigo)}`, {
@@ -161,14 +298,14 @@ export default function ConsultarEquipo() {
   }
 
   function confirmDelete(codigoEq) {
-    setDeleteConfirm({ open: true, codigo: codigoEq })
+    const equipo = equipos.find(eq => eq.codigo_equipo === codigoEq)
+    setDeleteConfirm({ open: true, codigo: codigoEq, equipo })
   }
 
   async function handleDelete() {
     const codigoEq = deleteConfirm.codigo
     if (!codigoEq) return
     
-    setDeleteConfirm({ open: false, codigo: null })
     setLoading(true)
     setToast(null)
     try {
@@ -180,9 +317,15 @@ export default function ConsultarEquipo() {
       await parseApiResponse(res, 'No se pudo eliminar el equipo')
       setEquipos(prev => prev.filter(eq => eq.codigo_equipo !== codigoEq))
       if (editingCodigo === codigoEq) cancelEdit()
-      setToast({ message: `Equipo ${codigoEq} eliminado correctamente`, type: 'success' })
+      setDeleteConfirm({ open: false, codigo: null, equipo: null })
+      const equipoInfo = deleteConfirm.equipo
+      const equipoDesc = equipoInfo?.modelo && equipoInfo?.placa 
+        ? `${equipoInfo.modelo} (Placa: ${equipoInfo.placa})`
+        : equipoInfo?.modelo || equipoInfo?.placa || codigoEq
+      setToast({ message: `Equipo ${equipoDesc} eliminado correctamente`, type: 'success' })
     } catch (err) {
       setToast({ message: buildErrorMessage(err, 'No se pudo eliminar el equipo'), type: 'error' })
+      setDeleteConfirm({ open: false, codigo: null, equipo: null })
     } finally {
       setLoading(false)
     }
@@ -191,25 +334,19 @@ export default function ConsultarEquipo() {
   
 
   function getEstadoBadge(estado) {
-    const estados = {
-      'Bueno': { color: 'var(--success-800)', bg: 'var(--success-50)' },
-      'Regular': { color: '#f59e0b', bg: '#fef3c7' },
-      'Malo': { color: '#ef4444', bg: '#fee2e2' },
-      'Nuevo': { color: '#3b82f6', bg: '#dbeafe' },
-      'En Reparación': { color: '#8b5cf6', bg: '#ede9fe' }
-    }
-    const estadoInfo = estados[estado] || { color: '#6b7280', bg: '#f3f4f6' }
+    if (!estado) return <span className="consultar-equipo-estado-badge consultar-equipo-estado-badge-default">-</span>
+    
+    const estadoClass = estado === 'Nuevo' ? 'consultar-equipo-estado-badge-nuevo' :
+                        estado === 'Bueno' ? 'consultar-equipo-estado-badge-bueno' :
+                        estado === 'Regular' ? 'consultar-equipo-estado-badge-regular' :
+                        estado === 'Malo' ? 'consultar-equipo-estado-badge-malo' :
+                        estado === 'Dañado' ? 'consultar-equipo-estado-badge-danado' :
+                        estado === 'En Reparación' ? 'consultar-equipo-estado-badge-en-reparacion' :
+                        'consultar-equipo-estado-badge-default'
+    
     return (
-      <span style={{
-        padding: '4px 10px',
-        borderRadius: '12px',
-        fontSize: '0.85rem',
-        fontWeight: 600,
-        color: estadoInfo.color,
-        background: estadoInfo.bg,
-        display: 'inline-block'
-      }}>
-        {estado || '-'}
+      <span className={`consultar-equipo-estado-badge ${estadoClass}`}>
+        {estado}
       </span>
     )
   }
@@ -282,7 +419,8 @@ export default function ConsultarEquipo() {
           headers: { Authorization: `Bearer ${token}` }
         })
         const data = await parseApiResponse(res, 'No se pudo obtener los equipos para la exportación')
-        equiposParaExportar = Array.isArray(data) ? data : []
+        // El backend retorna { equipos: [...], pagination: {...} }
+        equiposParaExportar = data?.equipos || (Array.isArray(data) ? data : [])
       } catch (err) {
         setToast({ message: buildErrorMessage(err, 'No se pudo obtener los equipos para la exportación'), type: 'error' })
         setLoading(false)
@@ -303,20 +441,15 @@ export default function ConsultarEquipo() {
         const specs = parsearEspecificaciones(eq.specs_completas)
         return {
           'Código Inventario': eq.codigo_inventario || '-',
-          'ID Interno': eq.codigo_equipo || '-',
           'Tipo': eq.tipo || '-',
           'Modelo': eq.modelo || '-',
           'Consecutivo': eq.consecutivo || '-',
-          'Estado': eq.estado_fisico || '-',
+          'Estado Físico': eq.estado_fisico || '-',
           'Fecha Adquisición': eq.fecha_adquisicion ? formatDate(eq.fecha_adquisicion) : '-',
-          'Costo': eq.costo ? formatCurrency(eq.costo) : '-',
+          'Valor Ingreso': eq.costo ? formatCurrency(eq.costo) : '-',
           'Ambiente': eq.nombre_ambiente || '-',
-          'Código Ambiente': eq.codigo_ambiente || '-',
           'Descripción': eq.descripcion || '-',
-          'Marca (Especificaciones)': specs.marca,
-          'Serial (Especificaciones)': specs.serial,
-          'Modelo (Especificaciones)': specs.modelo,
-          'Observaciones': specs.observaciones
+          'Atributos': eq.specs_completas || '-'
         }
       })
 
@@ -362,20 +495,15 @@ export default function ConsultarEquipo() {
       // Ajustar ancho de columnas de forma más adecuada
       const colWidths = [
         { wch: 20 }, // Código Inventario
-        { wch: 12 }, // ID Interno
         { wch: 18 }, // Tipo
         { wch: 25 }, // Modelo
         { wch: 18 }, // Consecutivo
-        { wch: 15 }, // Estado
+        { wch: 15 }, // Estado Físico
         { wch: 20 }, // Fecha Adquisición
-        { wch: 18 }, // Costo
+        { wch: 18 }, // Valor Ingreso
         { wch: 25 }, // Ambiente
-        { wch: 18 }, // Código Ambiente
         { wch: 35 }, // Descripción
-        { wch: 20 }, // Marca (Especificaciones)
-        { wch: 20 }, // Serial (Especificaciones)
-        { wch: 25 }, // Modelo (Especificaciones)
-        { wch: 50 }  // Observaciones
+        { wch: 50 }  // Atributos
       ]
       ws['!cols'] = colWidths
       
@@ -412,21 +540,40 @@ export default function ConsultarEquipo() {
         <Sidebar user={user} />
         <main className="dashboard-main">
           {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
-          <ConfirmModal
+          <DestructiveConfirmModal
             open={deleteConfirm.open}
             title="Eliminar Equipo"
-            message={`¿Estás seguro de que deseas eliminar el equipo ${deleteConfirm.codigo}? Esta acción no se puede deshacer.`}
-            confirmText="Eliminar"
+            message={(() => {
+              const equipo = deleteConfirm.equipo
+              if (!equipo) {
+                return `¿Estás seguro de que quieres eliminar el equipo ${deleteConfirm.codigo}? Esta acción es destructiva e irreversible.`
+              }
+              
+              const modelo = equipo.modelo || ''
+              const codigoInventario = equipo.codigo_inventario || equipo.placa || ''
+              
+              if (modelo && codigoInventario) {
+                return `¿Estás seguro de que quieres eliminar el equipo ${modelo} (${codigoInventario})? Esta acción es destructiva e irreversible.`
+              } else if (modelo) {
+                return `¿Estás seguro de que quieres eliminar el equipo ${modelo}? Esta acción es destructiva e irreversible.`
+              } else if (codigoInventario) {
+                return `¿Estás seguro de que quieres eliminar el equipo ${codigoInventario}? Esta acción es destructiva e irreversible.`
+              } else {
+                return `¿Estás seguro de que quieres eliminar el equipo ${deleteConfirm.codigo}? Esta acción es destructiva e irreversible.`
+              }
+            })()}
+            confirmText="Eliminar Equipo"
             cancelText="Cancelar"
-            type="danger"
+            confirmationPhrase="confirmar accion"
+            loading={loading}
             onConfirm={handleDelete}
-            onCancel={() => setDeleteConfirm({ open: false, codigo: null })}
+            onCancel={() => setDeleteConfirm({ open: false, codigo: null, equipo: null })}
           />
           <div className="users-panel">
           <div className="users-toolbar">
-            <h2 style={{margin:0}}>Consultar Equipo</h2>
-            <div style={{display:'flex', gap:12, alignItems:'center', flexWrap: 'wrap'}}>
-              <form onSubmit={handleBuscar} style={{display:'flex', gap:12, alignItems:'center'}}>
+            <h2 className="consultar-equipo-header">Consultar Inventario</h2>
+            <div className="consultar-equipo-header-row">
+              <form onSubmit={handleBuscar} className="consultar-equipo-search-form">
                 <input
                   type="text"
                   placeholder="Buscar por código de inventario..."
@@ -434,27 +581,40 @@ export default function ConsultarEquipo() {
                   onChange={e => setCodigo(e.target.value)}
                   className="search-input"
                 />
-                <button className="btn btn-verde" type="submit" disabled={loading}>
+                <button 
+                  className="consultar-equipo-btn consultar-equipo-btn-verde" 
+                  type="submit" 
+                  disabled={loading}
+                >
                   <FiSearch size={16} />
                   {loading ? 'Buscando...' : 'Buscar'}
                 </button>
-                <button type="button" className="btn" onClick={handleMostrarTodos} disabled={loading}>
+                <button 
+                  type="button" 
+                  className="consultar-equipo-btn consultar-equipo-btn-gris" 
+                  onClick={handleMostrarTodos} 
+                  disabled={loading}
+                >
                   <FiList size={16} />
                   {loading ? 'Cargando...' : 'Mostrar todos'}
                 </button>
               </form>
-              <div style={{display:'flex', gap:12, alignItems:'center'}}>
+              <div className="consultar-equipo-actions-row">
                 <button 
                   type="button" 
-                  className="btn" 
+                  className="consultar-equipo-btn consultar-equipo-btn-gris" 
                   onClick={() => setShowColumnFilter(true)}
                   title="Configurar columnas visibles"
-                  style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
                 >
                   <FiSettings size={16} />
                   Columnas
                 </button>
-                <button type="button" className="btn btn-verde" onClick={handleDescargarPDF} disabled={loading}>
+                <button 
+                  type="button" 
+                  className="consultar-equipo-btn consultar-equipo-btn-verde" 
+                  onClick={handleDescargarPDF} 
+                  disabled={loading}
+                >
                   <FiDownload size={16} />
                   Descargar Excel
                 </button>
@@ -553,27 +713,25 @@ export default function ConsultarEquipo() {
             </div>
           )}
 
-          <div style={{marginTop:12}}>
+          <div className="consultar-equipo-content">
             {loading ? (
               <div>Cargando equipos...</div>
             ) : equipos.length > 0 ? (
-              <div style={{overflowX:'auto'}}>
-                <table className="users-table" style={{width:'100%'}}>
+              <div className="consultar-equipo-table-wrapper">
+                <table className="users-table consultar-equipo-table">
                   <thead>
                     <tr>
                       {visibleColumns.includes('codigo_inventario') && <th>Código Inventario</th>}
-                      {visibleColumns.includes('codigo_equipo') && <th>ID Interno</th>}
                       {visibleColumns.includes('tipo') && <th>Tipo</th>}
                       {visibleColumns.includes('modelo') && <th>Modelo</th>}
                       {visibleColumns.includes('consecutivo') && <th>Consecutivo</th>}
-                      {visibleColumns.includes('estado_fisico') && <th>Estado</th>}
+                      {visibleColumns.includes('estado_fisico') && <th>Estado Físico</th>}
                       {visibleColumns.includes('fecha_adquisicion') && <th>Fecha Adquisición</th>}
-                      {visibleColumns.includes('costo') && <th>Costo</th>}
+                      {visibleColumns.includes('costo') && <th>Valor Ingreso</th>}
                       {visibleColumns.includes('nombre_ambiente') && <th>Ambiente</th>}
-                      {visibleColumns.includes('codigo_ambiente') && <th>Código Ambiente</th>}
                       {visibleColumns.includes('descripcion') && <th>Descripción</th>}
-                      {visibleColumns.includes('specs_completas') && <th>Especificaciones</th>}
-                      <th style={{width: user?.nombre_rol === 'Administrador' ? '280px' : '120px'}}>Acciones</th>
+                      {visibleColumns.includes('specs_completas') && <th>Atributos</th>}
+                      <th className={user?.nombre_rol === 'Administrador' ? 'consultar-equipo-actions-column' : 'consultar-equipo-actions-column-instructor'}>Acciones</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -581,9 +739,6 @@ export default function ConsultarEquipo() {
                       <tr key={eq.codigo_equipo}>
                         {visibleColumns.includes('codigo_inventario') && (
                           <td>{eq.codigo_inventario || '-'}</td>
-                        )}
-                        {visibleColumns.includes('codigo_equipo') && (
-                          <td>{eq.codigo_equipo}</td>
                         )}
                         {visibleColumns.includes('tipo') && (
                           <td>
@@ -609,7 +764,14 @@ export default function ConsultarEquipo() {
                         {visibleColumns.includes('estado_fisico') && (
                           <td>
                             {editingCodigo === eq.codigo_equipo ? (
-                              <input value={draft.estado_fisico || ''} onChange={e=>onDraft('estado_fisico', e.target.value)} className="cell-input" />
+                              <CustomSelect
+                                name="estado_fisico"
+                                value={draft.estado_fisico || ''}
+                                onChange={e => onDraft('estado_fisico', e.target.value)}
+                                options={['', ...ESTADOS_FISICOS]}
+                                placeholder="Seleccionar estado"
+                                className="cell-input"
+                              />
                             ) : getEstadoBadge(eq.estado_fisico)}
                           </td>
                         )}
@@ -630,15 +792,21 @@ export default function ConsultarEquipo() {
                         {visibleColumns.includes('nombre_ambiente') && (
                           <td>
                             {editingCodigo === eq.codigo_equipo ? (
-                              <input value={draft.nombre_ambiente || ''} onChange={e=>onDraft('nombre_ambiente', e.target.value)} className="cell-input" placeholder="Nombre ambiente (solo visual)" />
+                              <CustomSelect
+                                name="id_ambiente"
+                                value={draft.id_ambiente || eq.id_ambiente || ''}
+                                onChange={e => onDraft('id_ambiente', e.target.value)}
+                                options={[
+                                  { value: '', label: 'Seleccionar ambiente' },
+                                  ...(ambientes || []).map(amb => ({
+                                    value: amb.id_ambiente.toString(),
+                                    label: `${amb.codigo_ambiente} - ${amb.nombre_ambiente}`
+                                  }))
+                                ]}
+                                placeholder="Seleccionar ambiente"
+                                className="cell-input"
+                              />
                             ) : (eq.nombre_ambiente || '-')}
-                          </td>
-                        )}
-                        {visibleColumns.includes('codigo_ambiente') && (
-                          <td>
-                            {editingCodigo === eq.codigo_equipo ? (
-                              <input value={draft.ambiente || eq.codigo_ambiente || ''} onChange={e=>onDraft('ambiente', e.target.value)} className="cell-input" placeholder="ID/ Código/ Nombre" />
-                            ) : (eq.codigo_ambiente || '-')}
                           </td>
                         )}
                         {visibleColumns.includes('descripcion') && (
@@ -664,35 +832,32 @@ export default function ConsultarEquipo() {
                           ) : (
                             <>
                               <button 
-                                className="btn btn-view" 
+                                className="btn btn-view consultar-equipo-action-button" 
                                 type="button" 
                                 onClick={() => navigate(`/equipos/detalle/${eq.codigo_equipo}`)} 
                                 disabled={loading}
                                 title="Ver detalle completo del equipo"
-                                style={{ fontSize: '0.85rem', padding: '6px 12px', marginRight: '6px' }}
                               >
-                                <FiEye size={14} />
+                                <FiEye size={14} className="consultar-equipo-action-icon" />
                                 Ver Detalle
                               </button>
                               <button 
-                                className="btn btn-view" 
+                                className="btn btn-view consultar-equipo-action-button" 
                                 type="button" 
                                 onClick={() => navigate(`/equipos/historial-verificaciones/${eq.codigo_equipo}`)} 
                                 disabled={loading}
                                 title="Ver historial de verificaciones"
-                                style={{ fontSize: '0.85rem', padding: '6px 12px', marginRight: '6px' }}
                               >
-                                <FiClock size={14} />
+                                <FiClock size={14} className="consultar-equipo-action-icon" />
                                 Historial
                               </button>
                               {user?.nombre_rol === 'Administrador' && (
                                 <>
                                   <button 
-                                    className="btn btn-edit" 
+                                    className="btn btn-edit consultar-equipo-action-button" 
                                     type="button" 
                                     onClick={() => startEdit(eq)} 
                                     disabled={loading}
-                                    style={{ marginRight: '6px' }}
                                   >
                                     Editar
                                   </button>
@@ -718,7 +883,7 @@ export default function ConsultarEquipo() {
               <div className="users-empty">
                 <div>
                   <strong>No hay equipos para mostrar</strong>
-                  <div style={{color:'#666', marginTop:6}}>Busca un equipo por código de inventario o haz clic en "Mostrar todos" para ver todos los equipos.</div>
+                  <div className="consultar-equipo-help-text">Busca un equipo por código de inventario o haz clic en "Mostrar todos" para ver todos los equipos.</div>
                 </div>
               </div>
             )}

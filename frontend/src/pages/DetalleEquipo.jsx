@@ -4,10 +4,13 @@ import Header from '../components/Header';
 import Sidebar from '../components/Sidebar';
 import Toast from '../components/Toast';
 import ConfirmModal from '../components/ConfirmModal';
+import ImageViewer from '../components/ImageViewer';
+import CustomSelect from '../components/CustomSelect';
 import { parseApiResponse, buildErrorMessage } from '../utils/api';
-import { FiArrowLeft, FiUpload, FiTrash2, FiStar, FiImage, FiX, FiInfo, FiPackage, FiMapPin, FiCalendar, FiDollarSign } from 'react-icons/fi';
-import '../styles/equipos.css';
+import { FiArrowLeft, FiUpload, FiTrash2, FiStar, FiImage, FiX, FiInfo, FiPackage, FiMapPin, FiCalendar, FiDollarSign, FiUsers, FiUser, FiEdit2 } from 'react-icons/fi';
+import '../styles/pages/equipos.css';
 import '../styles/detalleEquipo.css';
+import '../styles/pages/ambientes.css';
 
 export default function DetalleEquipo() {
   const { codigoEquipo } = useParams();
@@ -23,6 +26,19 @@ export default function DetalleEquipo() {
   const [uploadData, setUploadData] = useState({ tipo_imagen: 'Detalle', descripcion: '', es_principal: false });
   const [user, setUser] = useState(null);
   const [imagenPrincipal, setImagenPrincipal] = useState(null);
+  const [viewerImageIndex, setViewerImageIndex] = useState(null);
+  const [editAsignacionModal, setEditAsignacionModal] = useState({ open: false, asignacion: null });
+  const [deleteAsignacionConfirm, setDeleteAsignacionConfirm] = useState({ open: false, id: null });
+  const [deletingAsignacion, setDeletingAsignacion] = useState(false);
+  const [editAsignacionData, setEditAsignacionData] = useState({
+    ficha: '',
+    nombre_externo: '',
+    documento_externo: '',
+    dias_semana: [],
+    hora_inicio: '',
+    hora_fin: '',
+    observaciones: ''
+  });
 
   useEffect(() => {
     try {
@@ -60,13 +76,85 @@ export default function DetalleEquipo() {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await parseApiResponse(res, 'No se pudieron cargar las imágenes');
-      console.log('Imágenes cargadas:', data);
       setImagenes(data.imagenes || []);
       const principal = (data.imagenes || []).find(img => img.es_principal);
       setImagenPrincipal(principal || (data.imagenes && data.imagenes[0]) || null);
     } catch (err) {
       console.error('Error al cargar imágenes:', err);
       setImagenes([]);
+    }
+  }
+
+  function handleOpenEditAsignacion(responsable) {
+    setEditAsignacionData({
+      ficha: responsable.ficha || '',
+      nombre_externo: responsable.nombre_externo || responsable.nombre_usuario || '',
+      documento_externo: responsable.documento_externo || responsable.cedula || '',
+      dias_semana: Array.isArray(responsable.dias_semana) ? responsable.dias_semana : [],
+      hora_inicio: responsable.hora_inicio ? responsable.hora_inicio.substring(0, 5) : '',
+      hora_fin: responsable.hora_fin ? responsable.hora_fin.substring(0, 5) : '',
+      observaciones: responsable.observaciones || ''
+    });
+    setEditAsignacionModal({ open: true, asignacion: responsable });
+  }
+
+  async function handleUpdateAsignacion() {
+    try {
+      const token = localStorage.getItem('token');
+      const { id_responsable } = editAsignacionModal.asignacion;
+      
+      const payload = {
+        ficha: editAsignacionData.ficha || null,
+        nombre_externo: editAsignacionData.nombre_externo || null,
+        documento_externo: editAsignacionData.documento_externo || null,
+        dias_semana: editAsignacionData.dias_semana.length > 0 ? editAsignacionData.dias_semana : null,
+        hora_inicio: editAsignacionData.hora_inicio || null,
+        hora_fin: editAsignacionData.hora_fin || null,
+        observaciones: editAsignacionData.observaciones || null
+      };
+
+      const res = await fetch(`/api/equipos/asignaciones/${id_responsable}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify(payload)
+      });
+
+      const data = await parseApiResponse(res, 'No se pudo actualizar la asignación');
+      
+      setToast({ message: data.message || 'Asignación actualizada correctamente', type: 'success' });
+      setEditAsignacionModal({ open: false, asignacion: null });
+      fetchEquipo(); // Recargar datos del equipo
+    } catch (err) {
+      setToast({ message: buildErrorMessage(err, 'Error al actualizar la asignación'), type: 'error' });
+    }
+  }
+
+  async function handleDeleteAsignacion() {
+    if (deletingAsignacion) return; // Prevent multiple clicks
+    
+    setDeletingAsignacion(true);
+    const asignacionId = deleteAsignacionConfirm.id;
+    // Close modal immediately to prevent double-clicks
+    setDeleteAsignacionConfirm({ open: false, id: null });
+    
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`/api/equipos/asignaciones/${asignacionId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      const data = await parseApiResponse(res, 'No se pudo eliminar la asignación');
+      
+      setToast({ message: data.message || 'Asignación eliminada correctamente', type: 'success' });
+      fetchEquipo(); // Recargar datos del equipo
+    } catch (err) {
+      setToast({ message: buildErrorMessage(err, 'Error al eliminar la asignación'), type: 'error' });
+    } finally {
+      setDeletingAsignacion(false);
     }
   }
 
@@ -202,27 +290,33 @@ export default function DetalleEquipo() {
     }
   }
 
+  function openImageViewer(index) {
+    setViewerImageIndex(index);
+  }
+
+  function closeImageViewer() {
+    setViewerImageIndex(null);
+  }
+
+  // Preparar imágenes para el ImageViewer
+  const viewerImages = imagenes.map(img => ({
+    url: img.ruta_imagen,
+    titulo: img.tipo_imagen,
+    descripcion: img.descripcion,
+    es_principal: img.es_principal
+  }));
+
   function getEstadoBadge(estado) {
     const estados = {
-      Bueno: { color: 'var(--success-800)', bg: 'var(--success-50)' },
-      Regular: { color: '#f59e0b', bg: '#fef3c7' },
-      Malo: { color: '#ef4444', bg: '#fee2e2' },
-      Nuevo: { color: '#3b82f6', bg: '#dbeafe' },
-      Dañado: { color: '#dc2626', bg: '#fee2e2' },
+      Bueno: { color: 'var(--success-800)', bg: 'var(--success-50)', className: 'detalle-equipo-estado-badge-bueno' },
+      Regular: { color: 'var(--warning-600)', bg: 'var(--warning-100)', className: 'detalle-equipo-estado-badge-regular' },
+      Malo: { color: 'var(--error-700)', bg: 'var(--error-100)', className: 'detalle-equipo-estado-badge-malo' },
+      Nuevo: { color: 'var(--info-600)', bg: 'var(--info-50)', className: 'detalle-equipo-estado-badge-nuevo' },
+      Dañado: { color: 'var(--error-700)', bg: 'var(--error-100)', className: 'detalle-equipo-estado-badge-danado' },
     };
-    const estadoInfo = estados[estado] || { color: '#6b7280', bg: '#f3f4f6' };
+    const estadoInfo = estados[estado] || { color: 'var(--neutral-600)', bg: 'var(--neutral-100)', className: 'detalle-equipo-estado-badge-default' };
     return (
-      <span
-        style={{
-          padding: '4px 10px',
-          borderRadius: '12px',
-          fontSize: '0.85rem',
-          fontWeight: 600,
-          color: estadoInfo.color,
-          background: estadoInfo.bg,
-          display: 'inline-block',
-        }}
-      >
+      <span className={`detalle-equipo-estado-badge ${estadoInfo.className || 'detalle-equipo-estado-badge-default'}`}>
         {estado || '-'}
       </span>
     );
@@ -235,7 +329,7 @@ export default function DetalleEquipo() {
         <div className="dashboard-layout">
           <Sidebar user={user} />
           <main className="dashboard-main">
-            <div style={{ padding: '40px', textAlign: 'center' }}>Cargando equipo...</div>
+            <div className="detalle-equipo-loading">Cargando equipo...</div>
           </main>
         </div>
       </div>
@@ -249,9 +343,9 @@ export default function DetalleEquipo() {
         <div className="dashboard-layout">
           <Sidebar user={user} />
           <main className="dashboard-main">
-            <div style={{ padding: '40px', textAlign: 'center' }}>
+            <div className="detalle-equipo-not-found">
               <p>Equipo no encontrado</p>
-              <button className="btn" onClick={() => navigate('/equipos/consultar')}>
+              <button className="btn btn-secondary" onClick={() => navigate('/equipos/consultar')}>
                 Volver
               </button>
             </div>
@@ -278,6 +372,16 @@ export default function DetalleEquipo() {
             onConfirm={handleDeleteImagen}
             onCancel={() => setDeleteConfirm({ open: false, idImagen: null })}
           />
+
+          {/* ImageViewer para ver imágenes en tamaño original */}
+          {viewerImageIndex !== null && (
+            <ImageViewer
+              images={viewerImages}
+              currentIndex={viewerImageIndex}
+              onClose={closeImageViewer}
+              onImageChange={setViewerImageIndex}
+            />
+          )}
 
           {/* Modal de subida de imágenes - Mejorado */}
           {showUploadModal && (
@@ -359,18 +463,15 @@ export default function DetalleEquipo() {
                   <label className="detalle-equipo-modal-label">
                     Tipo de imagen:
                   </label>
-                  <select
+                  <CustomSelect
+                    name="tipo_imagen"
                     value={uploadData.tipo_imagen}
                     onChange={(e) => setUploadData({ ...uploadData, tipo_imagen: e.target.value })}
+                    options={['Principal', 'Lateral', 'Detalle', 'Serie', 'Daño']}
+                    placeholder="Seleccionar tipo de imagen"
                     disabled={uploading}
                     className="detalle-equipo-modal-select"
-                  >
-                    <option value="Principal">Principal</option>
-                    <option value="Lateral">Lateral</option>
-                    <option value="Detalle">Detalle</option>
-                    <option value="Serie">Serie</option>
-                    <option value="Daño">Daño</option>
-                  </select>
+                  />
                 </div>
 
                 <div className="detalle-equipo-modal-section">
@@ -395,8 +496,8 @@ export default function DetalleEquipo() {
                       disabled={uploading}
                       className="detalle-equipo-modal-checkbox"
                     />
-                    <span style={{ color: 'var(--success-900)' }}>
-                      <FiStar size={18} style={{ display: 'inline', marginRight: '6px', verticalAlign: 'middle' }} />
+                    <span className="detalle-equipo-modal-checkbox-text">
+                      <FiStar size={18} className="detalle-equipo-star-icon" />
                       Marcar como imagen principal
                     </span>
                   </label>
@@ -428,66 +529,30 @@ export default function DetalleEquipo() {
             </div>
           )}
 
-          <div className="users-panel" style={{ background: '#ffffff', borderRadius: '12px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+          <div className="users-panel detalle-equipo-panel">
             {/* Header mejorado */}
-            <div style={{ 
-              display: 'flex', 
-              justifyContent: 'space-between', 
-              alignItems: 'center', 
-              marginBottom: '24px',
-              paddingBottom: '20px',
-              borderBottom: '2px solid #e5e7eb'
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+            <div className="detalle-equipo-header-container">
+              <div className="detalle-equipo-header-left">
                 <button 
-                  className="btn" 
+                  className="btn btn-secondary detalle-equipo-back-button"
                   onClick={() => navigate('/equipos/consultar')}
-                  style={{ 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    gap: '8px',
-                    padding: '10px 16px',
-                    borderRadius: '8px',
-                    border: '1px solid #d1d5db',
-                    background: '#fff',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s'
-                  }}
-                  onMouseOver={(e) => { e.target.style.background = '#f9fafb'; }}
-                  onMouseOut={(e) => { e.target.style.background = '#fff'; }}
                 >
                   <FiArrowLeft size={18} />
                   Volver
                 </button>
-                <div>
-                  <h2 style={{ margin: 0, fontSize: '24px', fontWeight: 700, color: '#111827' }}>
+                <div className="detalle-equipo-title-section">
+                  <h2>
                     {equipo.modelo || equipo.tipo || `Equipo #${equipo.codigo_equipo}`}
                   </h2>
-                  <p style={{ margin: '4px 0 0 0', color: '#6b7280', fontSize: '14px' }}>
+                  <p>
                     {equipo.codigo_inventario || `ID: ${equipo.codigo_equipo}`}
                   </p>
                 </div>
               </div>
               {(user?.nombre_rol === 'Administrador' || user?.nombre_rol === 'Instructor') && (
                 <button 
-                  className="btn btn-verde" 
+                  className="btn btn-verde detalle-equipo-upload-button"
                   onClick={() => setShowUploadModal(true)}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                    padding: '12px 20px',
-                    borderRadius: '8px',
-                    background: 'var(--success-800)',
-                    color: 'white',
-                    border: 'none',
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    transition: 'all 0.2s',
-                    boxShadow: '0 2px 4px rgba(16, 185, 129, 0.3)'
-                  }}
-                  onMouseOver={(e) => { e.target.style.background = 'var(--success-900)'; e.target.style.transform = 'translateY(-1px)'; }}
-                  onMouseOut={(e) => { e.target.style.background = 'var(--success-800)'; e.target.style.transform = 'translateY(0)'; }}
                 >
                   <FiUpload size={18} />
                   Cargar Imágenes
@@ -495,169 +560,128 @@ export default function DetalleEquipo() {
               )}
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', marginBottom: '32px' }}>
+            <div className="detalle-equipo-info-grid">
               {/* Información del Equipo - Mejorado */}
-              <div style={{ 
-                background: 'linear-gradient(135deg, #f9fafb 0%, #ffffff 100%)', 
-                padding: '24px', 
-                borderRadius: '12px',
-                border: '1px solid #e5e7eb',
-                boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px', paddingBottom: '16px', borderBottom: '2px solid #e5e7eb' }}>
+              <div className="detalle-equipo-info-card">
+                <div className="detalle-equipo-card-header">
                   <FiInfo size={20} color="var(--success-800)" />
-                  <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 700, color: '#111827' }}>Información General</h3>
+                  <h3 className="detalle-equipo-card-title">Información General</h3>
                 </div>
-                <div style={{ display: 'grid', gap: '16px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px', background: '#f9fafb', borderRadius: '8px' }}>
-                    <FiPackage size={18} color="#6b7280" />
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: '12px', color: '#6b7280', fontWeight: 600, marginBottom: '4px' }}>CÓDIGO DE INVENTARIO</div>
-                      <div style={{ fontSize: '16px', fontWeight: 600, color: '#111827' }}>{equipo.codigo_inventario || '-'}</div>
+                <div className="detalle-equipo-info-inner-grid">
+                  <div className="detalle-equipo-info-item-with-icon">
+                    <FiPackage size={18} color="var(--neutral-500)" />
+                    <div className="detalle-equipo-info-item-content">
+                      <div className="detalle-equipo-info-label">CÓDIGO DE INVENTARIO</div>
+                      <div className="detalle-equipo-info-value-large">{equipo.codigo_inventario || '-'}</div>
                     </div>
                   </div>
                   
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                    <div style={{ padding: '12px', background: '#f9fafb', borderRadius: '8px' }}>
-                      <div style={{ fontSize: '12px', color: '#6b7280', fontWeight: 600, marginBottom: '4px' }}>TIPO</div>
-                      <div style={{ fontSize: '15px', fontWeight: 500, color: '#111827' }}>{equipo.tipo || '-'}</div>
+                  <div className="detalle-equipo-info-item-grid">
+                    <div className="detalle-equipo-info-item-small">
+                      <div className="detalle-equipo-info-label">TIPO</div>
+                      <div className="detalle-equipo-info-value">{equipo.tipo || '-'}</div>
                     </div>
-                    <div style={{ padding: '12px', background: '#f9fafb', borderRadius: '8px' }}>
-                      <div style={{ fontSize: '12px', color: '#6b7280', fontWeight: 600, marginBottom: '4px' }}>MODELO</div>
-                      <div style={{ fontSize: '15px', fontWeight: 500, color: '#111827' }}>{equipo.modelo || '-'}</div>
-                    </div>
-                  </div>
-
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                    <div style={{ padding: '12px', background: '#f9fafb', borderRadius: '8px' }}>
-                      <div style={{ fontSize: '12px', color: '#6b7280', fontWeight: 600, marginBottom: '4px' }}>NÚMERO DE SERIE</div>
-                      <div style={{ fontSize: '15px', fontWeight: 500, color: '#111827' }}>{equipo.numero_serie || '-'}</div>
-                    </div>
-                    <div style={{ padding: '12px', background: '#f9fafb', borderRadius: '8px' }}>
-                      <div style={{ fontSize: '12px', color: '#6b7280', fontWeight: 600, marginBottom: '4px' }}>CONSECUTIVO</div>
-                      <div style={{ fontSize: '15px', fontWeight: 500, color: '#111827' }}>{equipo.consecutivo || '-'}</div>
+                    <div className="detalle-equipo-info-item-small">
+                      <div className="detalle-equipo-info-label">MODELO</div>
+                      <div className="detalle-equipo-info-value">{equipo.modelo || '-'}</div>
                     </div>
                   </div>
 
-                  <div style={{ padding: '12px', background: '#f9fafb', borderRadius: '8px' }}>
-                    <div style={{ fontSize: '12px', color: '#6b7280', fontWeight: 600, marginBottom: '8px' }}>ESTADO FÍSICO</div>
+                  <div className="detalle-equipo-info-item-grid">
+                    <div className="detalle-equipo-info-item-small">
+                      <div className="detalle-equipo-info-label">NÚMERO DE SERIE</div>
+                      <div className="detalle-equipo-info-value">{equipo.numero_serie || '-'}</div>
+                    </div>
+                    <div className="detalle-equipo-info-item-small">
+                      <div className="detalle-equipo-info-label">CONSECUTIVO</div>
+                      <div className="detalle-equipo-info-value">{equipo.consecutivo || '-'}</div>
+                    </div>
+                  </div>
+
+                  <div className="detalle-equipo-info-card">
+                    <div className="detalle-equipo-info-label">ESTADO FÍSICO</div>
                     {getEstadoBadge(equipo.estado_fisico)}
                   </div>
 
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px', background: '#f9fafb', borderRadius: '8px' }}>
-                      <FiCalendar size={18} color="#6b7280" />
-                      <div style={{ flex: 1 }}>
-                        <div style={{ fontSize: '12px', color: '#6b7280', fontWeight: 600, marginBottom: '4px' }}>FECHA ADQUISICIÓN</div>
-                        <div style={{ fontSize: '15px', fontWeight: 500, color: '#111827' }}>{formatDate(equipo.fecha_adquisicion)}</div>
+                  <div className="detalle-equipo-info-item-grid">
+                    <div className="detalle-equipo-info-item-with-icon">
+                      <FiCalendar size={18} color="var(--neutral-500)" />
+                      <div className="detalle-equipo-info-item-content">
+                        <div className="detalle-equipo-info-label">FECHA ADQUISICIÓN</div>
+                        <div className="detalle-equipo-info-value">{formatDate(equipo.fecha_adquisicion)}</div>
                       </div>
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px', background: '#f9fafb', borderRadius: '8px' }}>
-                      <FiDollarSign size={18} color="#6b7280" />
-                      <div style={{ flex: 1 }}>
-                        <div style={{ fontSize: '12px', color: '#6b7280', fontWeight: 600, marginBottom: '4px' }}>COSTO</div>
-                        <div style={{ fontSize: '15px', fontWeight: 600, color: '#111827' }}>{formatCurrency(equipo.costo)}</div>
+                    <div className="detalle-equipo-info-item-with-icon">
+                      <FiDollarSign size={18} color="var(--neutral-500)" />
+                      <div className="detalle-equipo-info-item-content">
+                        <div className="detalle-equipo-info-label">COSTO</div>
+                        <div className="detalle-equipo-info-value-bold">{formatCurrency(equipo.costo)}</div>
                       </div>
                     </div>
                   </div>
 
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px', background: '#f9fafb', borderRadius: '8px' }}>
-                    <FiMapPin size={18} color="#6b7280" />
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: '12px', color: '#6b7280', fontWeight: 600, marginBottom: '4px' }}>AMBIENTE</div>
-                      <div style={{ fontSize: '15px', fontWeight: 500, color: '#111827' }}>
+                  <div className="detalle-equipo-info-item-with-icon">
+                    <FiMapPin size={18} color="var(--neutral-500)" />
+                    <div className="detalle-equipo-info-item-content">
+                      <div className="detalle-equipo-info-label">AMBIENTE</div>
+                      <div className="detalle-equipo-info-value">
                         {equipo.nombre_ambiente || '-'} {equipo.codigo_ambiente && `(${equipo.codigo_ambiente})`}
                       </div>
                     </div>
                   </div>
 
                   {equipo.descripcion && (
-                    <div style={{ padding: '12px', background: '#f9fafb', borderRadius: '8px' }}>
-                      <div style={{ fontSize: '12px', color: '#6b7280', fontWeight: 600, marginBottom: '8px' }}>DESCRIPCIÓN</div>
-                      <div style={{ fontSize: '15px', color: '#374151', lineHeight: '1.6' }}>{equipo.descripcion}</div>
+                    <div className="detalle-equipo-info-card">
+                      <div className="detalle-equipo-info-label">DESCRIPCIÓN</div>
+                      <div className="detalle-equipo-info-item-text">{equipo.descripcion}</div>
                     </div>
                   )}
                   
                   {equipo.specs_completas && (
-                    <div style={{ padding: '12px', background: '#f9fafb', borderRadius: '8px' }}>
-                      <div style={{ fontSize: '12px', color: '#6b7280', fontWeight: 600, marginBottom: '8px' }}>ESPECIFICACIONES</div>
-                      <div style={{ fontSize: '14px', color: '#374151', whiteSpace: 'pre-wrap', lineHeight: '1.6' }}>
-                        {equipo.specs_completas}
-                      </div>
+                    <div className="detalle-equipo-info-card">
+                      <div className="detalle-equipo-info-label">ESPECIFICACIONES</div>
+                      <div className="detalle-equipo-info-item-text-specs">{equipo.specs_completas}</div>
                     </div>
                   )}
                 </div>
               </div>
 
               {/* Imagen Principal - Mejorado */}
-              <div style={{ 
-                background: 'linear-gradient(135deg, #f9fafb 0%, #ffffff 100%)', 
-                padding: '24px', 
-                borderRadius: '12px',
-                border: '1px solid #e5e7eb',
-                boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px', paddingBottom: '16px', borderBottom: '2px solid #e5e7eb' }}>
+              <div className="detalle-equipo-image-card">
+                <div className="detalle-equipo-image-card-header">
                   <FiImage size={20} color="var(--success-800)" />
-                  <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 700, color: '#111827' }}>Imagen Principal</h3>
+                  <h3 className="detalle-equipo-image-card-title">Imagen Principal</h3>
                 </div>
                 {imagenPrincipal ? (
                   <div>
-                    <div style={{
-                      width: '100%',
-                      height: '400px',
-                      borderRadius: '12px',
-                      overflow: 'hidden',
-                      background: '#fff',
-                      border: '2px solid #e5e7eb',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
-                    }}>
+                    <div className="detalle-equipo-image-wrapper">
                       <img
                         src={imagenPrincipal.ruta_imagen}
                         alt={imagenPrincipal.descripcion || 'Imagen del equipo'}
-                        style={{
-                          width: '100%',
-                          height: '100%',
-                          objectFit: 'contain',
-                        }}
                         onError={(e) => {
                           console.error('Error al cargar imagen:', imagenPrincipal.ruta_imagen);
                           e.target.style.display = 'none';
                         }}
                       />
                     </div>
-                    <div style={{ marginTop: '16px', padding: '12px', background: '#f9fafb', borderRadius: '8px' }}>
+                    <div className="detalle-equipo-image-info-box">
                       {imagenPrincipal.descripcion && (
-                        <div style={{ marginBottom: '8px', fontSize: '14px', color: '#374151', fontWeight: 500 }}>
+                        <div className="detalle-equipo-image-info-description">
                           {imagenPrincipal.descripcion}
                         </div>
                       )}
-                      <div style={{ fontSize: '12px', color: '#6b7280', display: 'flex', gap: '16px' }}>
+                      <div className="detalle-equipo-image-info-meta">
                         <span><strong>Tipo:</strong> {imagenPrincipal.tipo_imagen}</span>
                         <span><strong>Subida:</strong> {formatDate(imagenPrincipal.fecha_subida)}</span>
                       </div>
                     </div>
                   </div>
                 ) : (
-                  <div
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      height: '400px',
-                      background: 'linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%)',
-                      borderRadius: '12px',
-                      border: '2px dashed #d1d5db',
-                      color: '#9ca3af',
-                    }}
-                  >
-                    <div style={{ textAlign: 'center' }}>
-                      <FiImage size={64} style={{ marginBottom: '16px', opacity: 0.4 }} />
-                      <div style={{ fontSize: '16px', fontWeight: 500, marginBottom: '4px' }}>No hay imagen principal</div>
-                      <div style={{ fontSize: '14px', opacity: 0.7 }}>Sube una imagen para verla aquí</div>
+                  <div className="detalle-equipo-image-empty">
+                    <div className="detalle-equipo-image-empty-content">
+                      <FiImage size={64} className="detalle-equipo-image-empty-icon" />
+                      <div className="detalle-equipo-image-empty-title">No hay imagen principal</div>
+                      <div className="detalle-equipo-image-empty-subtitle">Sube una imagen para verla aquí</div>
                     </div>
                   </div>
                 )}
@@ -665,216 +689,98 @@ export default function DetalleEquipo() {
             </div>
 
             {/* Galería de Imágenes - Mejorada */}
-            <div style={{ 
-              background: 'linear-gradient(135deg, #f9fafb 0%, #ffffff 100%)', 
-              padding: '24px', 
-              borderRadius: '12px',
-              border: '1px solid #e5e7eb',
-              boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px', paddingBottom: '16px', borderBottom: '2px solid #e5e7eb' }}>
-                <FiImage size={20} color="#10b981" />
-                <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 700, color: '#111827' }}>
+            <div className="detalle-equipo-gallery-section">
+              <div className="detalle-equipo-gallery-section-header">
+                <FiImage size={20} className="detalle-equipo-gallery-section-icon" />
+                <h3 className="detalle-equipo-gallery-section-title">
                   Galería de Imágenes
-                  <span style={{ marginLeft: '12px', fontSize: '16px', fontWeight: 500, color: '#6b7280' }}>
+                  <span className="detalle-equipo-gallery-section-count">
                     ({imagenes.length})
                   </span>
                 </h3>
               </div>
               {imagenes.length > 0 ? (
-                <div
-                  style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',
-                    gap: '20px',
-                  }}
-                >
-                  {imagenes.map((imagen) => (
+                <div className="detalle-equipo-gallery-thumbnails">
+                  {imagenes.map((imagen, index) => (
                     <div
                       key={imagen.id_imagen_equipo}
-                      style={{
-                        position: 'relative',
-                        background: '#fff',
-                        border: imagen.es_principal ? '3px solid var(--success-800)' : '2px solid #e5e7eb',
-                        borderRadius: '12px',
-                        overflow: 'hidden',
-                        boxShadow: imagen.es_principal 
-                          ? '0 4px 12px rgba(16, 185, 129, 0.2)' 
-                          : '0 2px 8px rgba(0,0,0,0.08)',
-                        transition: 'all 0.3s ease',
-                        cursor: 'pointer'
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.transform = 'translateY(-4px)';
-                        e.currentTarget.style.boxShadow = '0 8px 16px rgba(0,0,0,0.12)';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.transform = 'translateY(0)';
-                        e.currentTarget.style.boxShadow = imagen.es_principal 
-                          ? '0 4px 12px rgba(16, 185, 129, 0.2)' 
-                          : '0 2px 8px rgba(0,0,0,0.08)';
-                      }}
+                      className={`detalle-equipo-gallery-thumbnail ${imagen.es_principal ? 'principal' : ''}`}
+                      onClick={() => openImageViewer(index)}
                     >
-                      {imagen.es_principal && (
-                        <div
-                          style={{
-                            position: 'absolute',
-                            top: '12px',
-                            right: '12px',
-                            background: 'linear-gradient(135deg, var(--success-800) 0%, var(--success-900) 100%)',
-                            color: 'white',
-                            padding: '6px 12px',
-                            borderRadius: '20px',
-                            fontSize: '0.75rem',
-                            fontWeight: 700,
-                            zIndex: 10,
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '6px',
-                            boxShadow: '0 2px 8px rgba(16, 185, 129, 0.4)'
-                          }}
-                        >
-                          <FiStar size={14} style={{ fill: 'white' }} />
-                          Principal
-                        </div>
-                      )}
-                      <div style={{
-                        width: '100%',
-                        height: '220px',
-                        background: '#f9fafb',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        overflow: 'hidden'
-                      }}>
+                      <div className="detalle-equipo-gallery-thumbnail-image">
                         <img
                           src={imagen.ruta_imagen}
                           alt={imagen.descripcion || 'Imagen del equipo'}
-                          style={{
-                            width: '100%',
-                            height: '100%',
-                            objectFit: 'cover',
-                            display: 'block',
-                          }}
                           onError={(e) => {
                             console.error('Error al cargar imagen:', imagen.ruta_imagen);
-                            e.target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="200" height="200"%3E%3Crect fill="%23e5e7eb" width="200" height="200"/%3E%3Ctext fill="%239ca3af" font-family="sans-serif" font-size="14" x="50%25" y="50%25" text-anchor="middle" dy=".3em"%3EImagen no disponible%3C/text%3E%3C/svg%3E';
+                            e.target.style.display = 'none';
+                            const placeholder = e.target.nextElementSibling;
+                            if (placeholder) {
+                              placeholder.style.display = 'flex';
+                            }
                           }}
                         />
-                      </div>
-                      <div style={{ padding: '16px' }}>
-                        <div style={{ 
-                          fontSize: '0.85rem', 
-                          fontWeight: 700, 
-                          marginBottom: '6px',
-                          color: '#111827',
-                          textTransform: 'uppercase',
-                          letterSpacing: '0.5px'
-                        }}>
-                          {imagen.tipo_imagen}
+                        <div className="detalle-equipo-gallery-thumbnail-placeholder">
+                          <FiImage size={24} />
                         </div>
-                        {imagen.descripcion && (
-                          <div style={{ 
-                            fontSize: '0.85rem', 
-                            color: '#6b7280', 
-                            marginBottom: '12px',
-                            lineHeight: '1.4',
-                            display: '-webkit-box',
-                            WebkitLineClamp: 2,
-                            WebkitBoxOrient: 'vertical',
-                            overflow: 'hidden'
-                          }}>
-                            {imagen.descripcion}
+                        {imagen.es_principal && (
+                          <div className="detalle-equipo-gallery-thumbnail-badge">
+                            <FiStar size={12} />
+                            Principal
                           </div>
                         )}
-                        <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
-                          {!imagen.es_principal && (
+                        {(user?.nombre_rol === 'Administrador' || user?.nombre_rol === 'Instructor') && (
+                          <div className="detalle-equipo-gallery-thumbnail-overlay">
+                            {!imagen.es_principal && (
+                              <button
+                                className="detalle-equipo-gallery-thumbnail-btn"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleMarcarPrincipal(imagen.id_imagen_equipo);
+                                }}
+                                title="Marcar como principal"
+                              >
+                                <FiStar size={14} />
+                              </button>
+                            )}
                             <button
-                              className="btn"
-                              style={{ 
-                                flex: 1, 
-                                fontSize: '0.85rem', 
-                                padding: '8px 12px',
-                                borderRadius: '8px',
-                                border: '1px solid #d1d5db',
-                                background: '#fff',
-                                cursor: 'pointer',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                gap: '6px',
-                                transition: 'all 0.2s'
+                              className="detalle-equipo-gallery-thumbnail-btn detalle-equipo-gallery-thumbnail-btn-delete"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setDeleteConfirm({ open: true, idImagen: imagen.id_imagen_equipo });
                               }}
-                              onClick={() => handleMarcarPrincipal(imagen.id_imagen_equipo)}
-                              title="Marcar como principal"
-                              onMouseEnter={(e) => { e.target.style.background = '#f9fafb'; e.target.style.borderColor = 'var(--success-800)'; }}
-                              onMouseLeave={(e) => { e.target.style.background = '#fff'; e.target.style.borderColor = '#d1d5db'; }}
-                            >
-                              <FiStar size={16} />
-                              Principal
-                            </button>
-                          )}
-                          {(user?.nombre_rol === 'Administrador' || user?.nombre_rol === 'Instructor') && (
-                            <button
-                              className="btn btn-delete"
-                              style={{ 
-                                flex: 1, 
-                                fontSize: '0.85rem', 
-                                padding: '8px 12px',
-                                borderRadius: '8px',
-                                background: '#fee2e2',
-                                color: '#dc2626',
-                                border: '1px solid #fecaca',
-                                cursor: 'pointer',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                gap: '6px',
-                                transition: 'all 0.2s'
-                              }}
-                              onClick={() => setDeleteConfirm({ open: true, idImagen: imagen.id_imagen_equipo })}
                               title="Eliminar imagen"
-                              onMouseEnter={(e) => { e.target.style.background = '#fecaca'; }}
-                              onMouseLeave={(e) => { e.target.style.background = '#fee2e2'; }}
                             >
-                              <FiTrash2 size={16} />
-                              Eliminar
+                              <FiX size={14} />
                             </button>
-                          )}
-                        </div>
+                          </div>
+                        )}
+                      </div>
+                      <div className="detalle-equipo-gallery-thumbnail-info">
+                        <p className="detalle-equipo-gallery-thumbnail-type" title={imagen.tipo_imagen}>
+                          {imagen.tipo_imagen}
+                        </p>
+                        {imagen.descripcion && (
+                          <p className="detalle-equipo-gallery-thumbnail-desc" title={imagen.descripcion}>
+                            {imagen.descripcion}
+                          </p>
+                        )}
                       </div>
                     </div>
                   ))}
                 </div>
               ) : (
-                <div
-                  style={{
-                    padding: '60px 40px',
-                    textAlign: 'center',
-                    background: 'linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%)',
-                    borderRadius: '12px',
-                    border: '2px dashed #d1d5db',
-                    color: '#9ca3af',
-                  }}
-                >
-                  <FiImage size={64} style={{ marginBottom: '16px', opacity: 0.4 }} />
-                  <div style={{ fontSize: '18px', fontWeight: 600, marginBottom: '8px', color: '#6b7280' }}>
+                <div className="detalle-equipo-gallery-empty-state">
+                  <FiImage size={64} className="detalle-equipo-gallery-empty-icon" />
+                  <div className="detalle-equipo-gallery-empty-title">
                     No hay imágenes disponibles
                   </div>
-                  <div style={{ fontSize: '14px', marginBottom: '20px', opacity: 0.7 }}>
+                  <div className="detalle-equipo-gallery-empty-subtitle">
                     Sube imágenes para verlas en la galería
                   </div>
                   {(user?.nombre_rol === 'Administrador' || user?.nombre_rol === 'Instructor') && (
                     <button
-                      className="btn btn-verde"
-                      style={{ 
-                        marginTop: '16px',
-                        padding: '12px 24px',
-                        borderRadius: '8px',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '8px'
-                      }}
+                      className="btn btn-verde detalle-equipo-gallery-empty-button"
                       onClick={() => setShowUploadModal(true)}
                     >
                       <FiUpload size={18} />
@@ -884,9 +790,280 @@ export default function DetalleEquipo() {
                 </div>
               )}
             </div>
+
+            {/* Sección de Usuarios Asignados */}
+            {equipo.responsables && equipo.responsables.length > 0 && (
+              <div className="detalle-equipo-responsables-section">
+                <div className="detalle-equipo-responsables-header">
+                  <FiUsers size={20} color="var(--success-800)" />
+                  <h3 className="detalle-equipo-responsables-title">
+                    Usuarios Asignados
+                    <span className="detalle-equipo-responsables-count">
+                      ({equipo.responsables.length})
+                    </span>
+                  </h3>
+                </div>
+                <div className="detalle-equipo-responsables-grid">
+                  {equipo.responsables.map((responsable) => {
+                    const displayName = responsable.nombre_aprendiz || responsable.nombre_usuario || responsable.nombre_externo || 'Usuario sin nombre';
+                    const displayDocumento = responsable.documento_aprendiz || responsable.cedula || responsable.documento_externo || '-';
+                    const displayFicha = responsable.ficha_aprendiz || responsable.ficha;
+                    const displayJornada = responsable.jornada_aprendiz;
+                    const esAprendizImportado = responsable.origen === 'aprendiz' || (!responsable.id_usuario && !!responsable.documento_aprendiz);
+
+                    return (
+                    <div
+                      key={responsable.id_responsable}
+                      className="detalle-equipo-responsable-card"
+                    >
+                      <div className="detalle-equipo-responsable-avatar">
+                        <FiUser size={24} />
+                      </div>
+                      <div className="detalle-equipo-responsable-content">
+                        <div className="detalle-equipo-responsable-header-row">
+                          <div className="detalle-equipo-responsable-name-row">
+                            <strong className="detalle-equipo-responsable-name">
+                              {displayName}
+                            </strong>
+                            {esAprendizImportado && (
+                              <span className="detalle-equipo-responsable-badge-aprendiz">
+                                Aprendiz
+                              </span>
+                            )}
+                            {responsable.nombre_rol && (
+                              <span className="detalle-equipo-responsable-badge-rol">
+                                {responsable.nombre_rol}
+                              </span>
+                            )}
+                          </div>
+                          <div className="detalle-equipo-responsable-actions">
+                            <button
+                              onClick={() => handleOpenEditAsignacion(responsable)}
+                              className="detalle-equipo-responsable-action-btn-edit"
+                              title="Editar asignación"
+                            >
+                              <FiEdit2 size={14} />
+                              Editar
+                            </button>
+                            <button
+                              onClick={() => setDeleteAsignacionConfirm({ open: true, id: responsable.id_responsable })}
+                              className="detalle-equipo-responsable-action-btn-delete-inline"
+                              title="Eliminar asignación"
+                            >
+                              <FiTrash2 size={14} />
+                              Eliminar
+                            </button>
+                          </div>
+                        </div>
+                        <div className="detalle-equipo-responsable-info-grid">
+                          <div className="detalle-equipo-responsable-info-item">
+                            <strong>Documento:</strong> {displayDocumento}
+                          </div>
+                          {displayFicha && (
+                            <div className="detalle-equipo-responsable-info-item">
+                              <strong>Ficha:</strong> {displayFicha}
+                            </div>
+                          )}
+                          {displayJornada && (
+                            <div className="detalle-equipo-responsable-info-item">
+                              <strong>Jornada:</strong> {displayJornada}
+                            </div>
+                          )}
+                          <div className="detalle-equipo-responsable-info-item">
+                            <strong>Asignado hace:</strong> {responsable.dias_asignado || 0} días
+                          </div>
+                          <div className="detalle-equipo-responsable-info-item">
+                            <strong>Fecha asignación:</strong> {formatDate(responsable.fecha_asignacion)}
+                          </div>
+                        </div>
+                        {(responsable.dias_semana || responsable.hora_inicio || responsable.hora_fin) && (
+                          <div className="detalle-equipo-responsable-horario-box">
+                            <div className="detalle-equipo-responsable-horario-title">
+                              Horario de Uso:
+                            </div>
+                            <div className="detalle-equipo-responsable-horario-grid">
+                              {responsable.dias_semana && Array.isArray(responsable.dias_semana) && responsable.dias_semana.length > 0 && (
+                                <div>
+                                  <strong>Días:</strong> {responsable.dias_semana.join(', ')}
+                                </div>
+                              )}
+                              {(responsable.hora_inicio || responsable.hora_fin) && (
+                                <div>
+                                  <strong>Horario:</strong> {
+                                    responsable.hora_inicio && responsable.hora_fin
+                                      ? `${responsable.hora_inicio.substring(0, 5)} - ${responsable.hora_fin.substring(0, 5)}`
+                                      : responsable.hora_inicio
+                                        ? `Desde ${responsable.hora_inicio.substring(0, 5)}`
+                                        : responsable.hora_fin
+                                          ? `Hasta ${responsable.hora_fin.substring(0, 5)}`
+                                          : '-'
+                                  }
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                        {responsable.observaciones && (
+                          <div className="detalle-equipo-responsable-observaciones-box">
+                            <strong>Observaciones:</strong> {responsable.observaciones}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
         </main>
       </div>
+
+      {/* Modal de confirmación para eliminar asignación */}
+      <ConfirmModal
+        open={deleteAsignacionConfirm.open}
+        onClose={() => !deletingAsignacion && setDeleteAsignacionConfirm({ open: false, id: null })}
+        onCancel={() => !deletingAsignacion && setDeleteAsignacionConfirm({ open: false, id: null })}
+        onConfirm={handleDeleteAsignacion}
+        title="Eliminar Asignación"
+        message="¿Estás seguro de que deseas eliminar esta asignación? Esta acción no se puede deshacer."
+        loading={deletingAsignacion}
+      />
+
+      {/* Modal de edición de asignación */}
+      {editAsignacionModal.open && (
+        <div className="detalle-equipo-edit-modal-overlay">
+          <div className="detalle-equipo-edit-modal">
+            <div className="detalle-equipo-edit-modal-header">
+              <h2 className="detalle-equipo-edit-modal-title">Editar Asignación</h2>
+              <button
+                onClick={() => setEditAsignacionModal({ open: false, asignacion: null })}
+                className="detalle-equipo-edit-modal-close"
+              >
+                <FiX />
+              </button>
+            </div>
+
+            <div className="detalle-equipo-edit-modal-form">
+              <div>
+                <label className="detalle-equipo-edit-modal-label">
+                  Ficha
+                </label>
+                <input
+                  type="text"
+                  value={editAsignacionData.ficha}
+                  onChange={(e) => setEditAsignacionData({ ...editAsignacionData, ficha: e.target.value })}
+                  className="detalle-equipo-edit-modal-input"
+                  placeholder="Número de ficha"
+                />
+              </div>
+
+              <div>
+                <label className="detalle-equipo-edit-modal-label">
+                  Nombre
+                </label>
+                <input
+                  type="text"
+                  value={editAsignacionData.nombre_externo}
+                  onChange={(e) => setEditAsignacionData({ ...editAsignacionData, nombre_externo: e.target.value })}
+                  className="detalle-equipo-edit-modal-input"
+                  placeholder="Nombre completo"
+                />
+              </div>
+
+              <div>
+                <label className="detalle-equipo-edit-modal-label">
+                  Documento
+                </label>
+                <input
+                  type="text"
+                  value={editAsignacionData.documento_externo}
+                  onChange={(e) => setEditAsignacionData({ ...editAsignacionData, documento_externo: e.target.value })}
+                  className="detalle-equipo-edit-modal-input"
+                  placeholder="Documento de identificación"
+                />
+              </div>
+
+              <div>
+                <label className="detalle-equipo-edit-modal-label">
+                  Días de la semana
+                </label>
+                <div className="detalle-equipo-edit-modal-dias-grid">
+                  {['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'].map(dia => (
+                    <label key={dia} className="detalle-equipo-edit-modal-dia-label">
+                      <input
+                        type="checkbox"
+                        checked={editAsignacionData.dias_semana.includes(dia)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setEditAsignacionData({ ...editAsignacionData, dias_semana: [...editAsignacionData.dias_semana, dia] });
+                          } else {
+                            setEditAsignacionData({ ...editAsignacionData, dias_semana: editAsignacionData.dias_semana.filter(d => d !== dia) });
+                          }
+                        }}
+                        className="detalle-equipo-edit-modal-dia-checkbox"
+                      />
+                      <span className="detalle-equipo-edit-modal-dia-text">{dia}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <div className="detalle-equipo-edit-modal-horario-grid">
+                <div>
+                  <label className="detalle-equipo-edit-modal-label">
+                    Hora inicio
+                  </label>
+                  <input
+                    type="time"
+                    value={editAsignacionData.hora_inicio}
+                    onChange={(e) => setEditAsignacionData({ ...editAsignacionData, hora_inicio: e.target.value })}
+                    className="detalle-equipo-edit-modal-input"
+                  />
+                </div>
+                <div>
+                  <label className="detalle-equipo-edit-modal-label">
+                    Hora fin
+                  </label>
+                  <input
+                    type="time"
+                    value={editAsignacionData.hora_fin}
+                    onChange={(e) => setEditAsignacionData({ ...editAsignacionData, hora_fin: e.target.value })}
+                    className="detalle-equipo-edit-modal-input"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="detalle-equipo-edit-modal-label">
+                  Observaciones
+                </label>
+                <textarea
+                  value={editAsignacionData.observaciones}
+                  onChange={(e) => setEditAsignacionData({ ...editAsignacionData, observaciones: e.target.value })}
+                  className="detalle-equipo-edit-modal-textarea"
+                  placeholder="Observaciones adicionales"
+                />
+              </div>
+            </div>
+
+            <div className="detalle-equipo-edit-modal-actions">
+              <button
+                onClick={() => setEditAsignacionModal({ open: false, asignacion: null })}
+                className="detalle-equipo-edit-modal-btn"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleUpdateAsignacion}
+                className="detalle-equipo-edit-modal-btn detalle-equipo-edit-modal-btn-primary"
+              >
+                Guardar Cambios
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

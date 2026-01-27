@@ -6,13 +6,13 @@ import Sidebar from '../components/Sidebar'
 import NotificationsModal from '../components/NotificationsModal'
 import Profile from './config/Profile'
 import Security from './config/Security'
-import UsersManagement from './config/UsersManagement'
 import RolesAreas from './config/RolesAreas'
 import Notifications from './config/Notifications'
 import AppSettings from './config/AppSettings'
 import InvitationCodes from './config/InvitationCodes'
+import TiposEquipo from './config/TiposEquipo'
 import { useNavigate } from 'react-router-dom'
-import '../styles/config.css'
+import '../styles/pages/config.css'
 
 export default function Config() {
   const nav = useNavigate()
@@ -136,7 +136,7 @@ export default function Config() {
               <input name="telefono" value={form.telefono || ''} onChange={onChange} readOnly={!editing} />
             </div>
             <div className="form-row">
-              <label>Cédula</label>
+              <label>Documento</label>
               <input name="cedula" value={form.cedula || ''} onChange={onChange} readOnly={!editing} />
             </div>
             <div className="form-row">
@@ -177,17 +177,6 @@ export default function Config() {
     )
   }
 
-  function UsersPanel() {
-    return (
-      <div className="form-equipos config-users-container">
-        <h3>Gestión de Usuarios</h3>
-        <p className="config-users-description">Accede al listado de usuarios para crear, editar o inactivar cuentas.</p>
-        <div className="config-users-button">
-          <button className="btn-verde" onClick={() => nav('/usuarios')}>Ir a Usuarios</button>
-        </div>
-      </div>
-    )
-  }
 
   function Placeholder({title, children}) {
     return (
@@ -208,11 +197,11 @@ export default function Config() {
           <h2 className="config-page-title">Configuración</h2>
           {selected==='profile' && <Profile />}
           {selected==='security' && <Security />}
-          {selected==='users' && <UsersManagement />}
           {selected==='invitation-codes' && <InvitationCodes />}
           {selected==='roles' && <RolesAreas />}
           {selected==='notifications' && <Notifications />}
           {selected==='app' && <AppSettings />}
+          {selected==='tipos-equipo' && <TiposEquipo />}
         </main>
       </div>
       {showNotifications && <NotificationsModal onClose={() => setShowNotifications(false)} />}

@@ -17,13 +17,18 @@ export const dbConfig = {
   user: config.db.user,
   password: config.db.password,
   database: config.db.database,
+  timezone: '-05:00' ,
   port: config.db.port,
   waitForConnections: true,
   connectionLimit: getConnectionLimit(),
   queueLimit: 0,
   // Configuraciones específicas para Railway/Producción
+  // Habilitar SSL cuando se conecta a Railway (host remoto) incluso desde localhost
   ssl:
-    process.env.NODE_ENV === "production"
+    (process.env.NODE_ENV === "production" || 
+     config.db.host?.includes('railway') || 
+     config.db.host?.includes('rlwy.net') ||
+     config.db.host?.includes('shuttle.proxy'))
       ? { rejectUnauthorized: false }
       : false,
   // Configuración de timeout para conexiones lentas
@@ -45,17 +50,32 @@ export const createConnection = async () => {
     waitForConnections: undefined,
     queueLimit: undefined,
   });
+  
+  // CRÍTICO: Establecer zona horaria de Colombia en cada conexión
+  await connection.execute("SET SESSION time_zone = '-05:00'");
+  
   return connection;
 };
 
 // Pool de conexiones reutilizable (mantiene la funcionalidad existente)
 export const pool = mysql.createPool(dbConfig);
 
+// Configurar zona horaria para el pool después de crear cada conexión
+pool.on('connection', async (connection) => {
+  try {
+    await connection.execute("SET SESSION time_zone = '-05:00'");
+  } catch (err) {
+    console.error('Error al configurar timezone en conexión del pool:', err);
+  }
+});
+
 // Wrapper de base de datos reutilizable (usado por DI container y defaultDb)
 export const dbWrapper = {
   execute: async (query, params) => {
     const connection = await pool.getConnection();
     try {
+      // Asegurar que la conexión tenga la zona horaria configurada
+      await connection.execute("SET SESSION time_zone = '-05:00'");
       const [rows] = await connection.execute(query, params);
       return [rows];
     } finally {

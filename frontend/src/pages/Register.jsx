@@ -1,9 +1,10 @@
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { FiMail, FiLock, FiEye, FiUser, FiCreditCard, FiPhone } from 'react-icons/fi'
+import { FiMail, FiLock, FiEye, FiEyeOff, FiUser, FiCreditCard, FiPhone } from 'react-icons/fi'
 import { validarRegistro, validarContraseña, validarEmail, validarTelefono, validarCaracteresEspeciales, validarEspaciosInicioFinalNombre } from '../utils/validaciones';
 import Toast from '../components/Toast';
 import InteractiveBackground from '../components/InteractiveBackground';
+import CustomSelect from '../components/CustomSelect';
 import { parseApiResponse, buildErrorMessage } from '../utils/api';
 import '../styles/auth.css';
 
@@ -11,10 +12,14 @@ import '../styles/auth.css';
 export default function Register() {
   const [name, setName] = useState('')
   const [cedula, setCedula] = useState('')
+  const [tipoDocumento, setTipoDocumento] = useState('CC')
+  const [tipoDocumentoOtro, setTipoDocumentoOtro] = useState('')
   const [email, setEmail] = useState('')
   const [telefono, setTelefono] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
+  const [mostrarPassword, setMostrarPassword] = useState(false)
+  const [mostrarConfirmPassword, setMostrarConfirmPassword] = useState(false)
   const [rol, setRol] = useState('Aprendiz')
   const [codigoInvitacion, setCodigoInvitacion] = useState('')
   const [errores, setErrores] = useState({})
@@ -50,9 +55,9 @@ export default function Register() {
     const errorEspaciosNombre = validarEspaciosInicioFinalNombre(name, 'nombre')
     if (errorEspaciosNombre) nuevosErrores.nombre_usuario = errorEspaciosNombre
     if (!cedula) {
-      nuevosErrores.cedula_usuario = 'La cédula es obligatoria'
-    } else if (validarCaracteresEspeciales(cedula, 'cédula')) {
-      nuevosErrores.cedula_usuario = validarCaracteresEspeciales(cedula, 'cédula')
+      nuevosErrores.cedula_usuario = 'La Documento es obligatoria'
+    } else if (validarCaracteresEspeciales(cedula, 'Documento')) {
+      nuevosErrores.cedula_usuario = validarCaracteresEspeciales(cedula, 'Documento')
     }
     setErrores(nuevosErrores)
     if (Object.keys(nuevosErrores).length > 0) return
@@ -65,11 +70,13 @@ export default function Register() {
         body: JSON.stringify({
           nombre: name,
           cedula,
+          tipo_documento: tipoDocumento,
+          tipo_documento_otro: tipoDocumento === 'Otro' ? tipoDocumentoOtro.trim() : null,
           correo: (email || '').trim().toLowerCase(),
           telefono,
           contrasena: password,
           rol,
-          codigo_invitacion: (rol === 'Instructor' || rol === 'Administrador') ? codigoInvitacion.trim() : null
+          codigo_invitacion: (rol === 'Instructor' || rol === 'Administrador' || rol === 'Cuentadante') ? codigoInvitacion.trim() : null
         })
       })
       const data = await parseApiResponse(res, 'No se pudo completar el registro')
@@ -108,12 +115,36 @@ export default function Register() {
             <span className="icon"><FiCreditCard  /></span>
             <input
               type="text"
-              placeholder="Cédula"
+              placeholder="Documento"
               value={cedula}
               onChange={e => setCedula(e.target.value)}
             />
           </label>
           {errores.cedula_usuario && <div className="error-msg">{errores.cedula_usuario}</div>}
+          <label className="input">
+            <span className="icon"></span>
+            <CustomSelect
+              name="tipo_documento"
+              value={tipoDocumento}
+              onChange={e => setTipoDocumento(e.target.value)}
+              options={['TI', 'CC', 'CE', 'PPT', 'Otro']}
+              placeholder="Tipo de documento"
+              className="auth-select-input"
+            />
+          </label>
+          {tipoDocumento === 'Otro' && (
+            <label className="input">
+              <span className="icon"><FiCreditCard /></span>
+              <input
+                type="text"
+                placeholder="Especificar tipo de documento"
+                value={tipoDocumentoOtro}
+                onChange={e => setTipoDocumentoOtro(e.target.value)}
+                maxLength={50}
+              />
+            </label>
+          )}
+          {errores.tipo_documento_otro && <div className="error-msg">{errores.tipo_documento_otro}</div>}
           <label className="input">
             <span className="icon"><FiMail /></span>
             <input
@@ -137,52 +168,65 @@ export default function Register() {
           <label className="input">
             <span className="icon"><FiLock /></span>
             <input
-              type="password"
+              type={mostrarPassword ? 'text' : 'password'}
               placeholder="Contraseña"
               value={password}
               onChange={e => setPassword(e.target.value)}
             />
-            <span className="eye"><FiEye /></span>
+            <span 
+              className="eye auth-eye-icon" 
+              onClick={() => setMostrarPassword(!mostrarPassword)}
+            >
+              {mostrarPassword ? <FiEyeOff /> : <FiEye />}
+            </span>
           </label>
           {errores.contraseña_usuario && <div className="error-msg">{errores.contraseña_usuario}</div>}
           <label className="input">
             <span className="icon"><FiLock /></span>
             <input
-              type="password"
+              type={mostrarConfirmPassword ? 'text' : 'password'}
               placeholder="Confirmar contraseña"
               value={confirmPassword}
               onChange={e => setConfirmPassword(e.target.value)}
             />
-            <span className="eye"><FiEye /></span>
+            <span 
+              className="eye auth-eye-icon" 
+              onClick={() => setMostrarConfirmPassword(!mostrarConfirmPassword)}
+            >
+              {mostrarConfirmPassword ? <FiEyeOff /> : <FiEye />}
+            </span>
           </label>
           {errores.confirmar_contraseña && <div className="error-msg">{errores.confirmar_contraseña}</div>}
           <label className="input">
             <span className="icon"></span>
-            <select value={rol} onChange={e => {
-              setRol(e.target.value);
-              if (e.target.value === 'Aprendiz') {
-                setCodigoInvitacion('');
-              }
-            }} style={{ width: '100%', border: 'none', outline: 'none', background: 'transparent' }}>
-              <option value="Aprendiz">Aprendiz</option>
-              <option value="Instructor">Instructor</option>
-              <option value="Administrador">Administrador</option>
-            </select>
+            <CustomSelect
+              name="rol"
+              value={rol}
+              onChange={e => {
+                setRol(e.target.value);
+                if (e.target.value === 'Aprendiz') {
+                  setCodigoInvitacion('');
+                }
+              }}
+              options={['Aprendiz', 'Instructor', 'Administrador', 'Cuentadante']}
+              placeholder="Seleccionar rol"
+              className="auth-select-input"
+            />
           </label>
-          {(rol === 'Instructor' || rol === 'Administrador') && (
+          {(rol === 'Instructor' || rol === 'Administrador' || rol === 'Cuentadante') && (
             <>
               <label className="input">
                 <span className="icon"><FiLock /></span>
                 <input
                   type="text"
-                  placeholder={`Código de Seguridad (requerido para ${rol === 'Instructor' ? 'Instructores' : 'Administradores'})`}
+                  placeholder={`Código de Seguridad (requerido para ${rol === 'Instructor' ? 'Instructores' : rol === 'Administrador' ? 'Administradores' : 'Cuentadantes'})`}
                   value={codigoInvitacion}
                   onChange={e => setCodigoInvitacion(e.target.value)}
-                  style={{ textTransform: 'uppercase' }}
+                  className="auth-select-uppercase"
                 />
               </label>
               {errores.codigo_invitacion && <div className="error-msg">{errores.codigo_invitacion}</div>}
-              <p style={{ fontSize: '0.85rem', color: '#666', marginTop: '-0.5rem', marginBottom: '1rem' }}>
+              <p className="auth-help-text">
                 Necesitas un código de invitación válido para registrarte como {rol}
               </p>
             </>

@@ -1,16 +1,16 @@
 import React from 'react'
 import { FiAlertTriangle } from 'react-icons/fi'
-import '../styles/confirmModal.css'
+import '../styles/components/modals.css'
 
-export default function ConfirmModal({ open, message, onConfirm, onCancel, title = 'Confirmar acción', confirmText = 'Aceptar', cancelText = 'Cancelar', type = 'danger' }) {
+export default function ConfirmModal({ open, message, onConfirm, onCancel, title = 'Confirmar acción', confirmText = 'Aceptar', cancelText = 'Cancelar', type = 'danger', loading = false }) {
   if (!open) return null;
   
   const typeStyles = {
     danger: {
-      iconColor: '#ef4444'
+      iconColor: 'var(--error-700)'
     },
     warning: {
-      iconColor: '#f59e0b'
+      iconColor: 'var(--warning-600)'
     },
     info: {
       iconColor: '#3b82f6'
@@ -22,7 +22,7 @@ export default function ConfirmModal({ open, message, onConfirm, onCancel, title
   return (
     <div 
       className="confirm-modal-overlay" 
-      onClick={onCancel}
+      onClick={loading ? undefined : onCancel}
     >
       <div 
         className="confirm-modal-sheet" 
@@ -44,16 +44,18 @@ export default function ConfirmModal({ open, message, onConfirm, onCancel, title
         
         <div className="confirm-modal-footer">
           <button 
-            className="confirm-modal-btn confirm-modal-btn-secondary"
+            className={`confirm-modal-btn confirm-modal-btn-secondary ${loading ? 'confirm-modal-btn-disabled' : ''}`}
             onClick={onCancel}
+            disabled={loading}
           >
             {cancelText}
           </button>
           <button 
-            className={`confirm-modal-btn confirm-modal-btn-primary ${type}`}
+            className={`confirm-modal-btn confirm-modal-btn-primary ${type} ${loading ? 'confirm-modal-btn-disabled' : ''}`}
             onClick={onConfirm}
+            disabled={loading}
           >
-            {confirmText}
+            {loading ? 'Procesando...' : confirmText}
           </button>
         </div>
       </div>

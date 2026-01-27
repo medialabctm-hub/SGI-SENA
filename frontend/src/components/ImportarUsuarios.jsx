@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { FiFile, FiDownload, FiAlertCircle } from 'react-icons/fi'
 import * as XLSX from 'xlsx'
 import { parseApiResponse, buildErrorMessage } from '../utils/api'
-import '../styles/importarUsuarios.css'
+import '../styles/pages/importaciones.css'
 
 export default function ImportarUsuarios({ onImportComplete }) {
   const [archivo, setArchivo] = useState(null)
@@ -69,6 +69,8 @@ export default function ImportarUsuarios({ onImportComplete }) {
     const plantilla = {
       'nombre_usuario': [],
       'cedula': [],
+      'tipo_documento': [],
+      'tipo_documento_otro': [],
       'telefono': [],
       'correo': [],
       'rol': [],
@@ -129,7 +131,7 @@ export default function ImportarUsuarios({ onImportComplete }) {
               htmlFor="file-input-usuarios"
               className="importar-usuarios-file-label-inner"
             >
-              <FiFile size={28} color="#40c057" />
+              <FiFile size={28} color="var(--success-800)" />
               {archivo ? (
                 <span className="importar-usuarios-file-name">{archivo.name}</span>
               ) : (

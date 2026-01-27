@@ -7,7 +7,8 @@
  * - Propiedad de recursos (el usuario solo puede acceder a sus propios recursos)
  */
 
-import { hasPermission, hasAnyPermission, isAdmin } from '../config/permissions.js'
+import { hasPermission, hasAnyPermission, isAdmin, hasPermissionFromDB } from '../config/permissions.js'
+import defaultDb from '../config/dbconfig.js'
 
 /**
  * Middleware para requerir uno o varios roles específicos
@@ -68,7 +69,7 @@ export function requireRole(allowedRoles) {
  * router.post('/equipos', requirePermission(PERMISSIONS.EQUIPOS.CREATE), controller)
  */
 export function requirePermission(permission) {
-  return (req, res, next) => {
+  return async (req, res, next) => {
     try {
       // Verificar que el usuario esté autenticado
       if (!req.user || !req.user.rol) {
@@ -85,8 +86,10 @@ export function requirePermission(permission) {
         return next()
       }
 
-      // Verificar si el rol tiene el permiso requerido
-      if (!hasPermission(userRole, permission)) {
+      // Verificar si el rol tiene el permiso requerido (consulta BD)
+      const hasAccess = await hasPermissionFromDB(defaultDb, userRole, permission)
+      
+      if (!hasAccess) {
         return res.status(403).json({
           error: 'Acceso denegado',
           message: 'No tiene permisos suficientes para realizar esta acción',
@@ -118,7 +121,7 @@ export function requirePermission(permission) {
  * ]), controller)
  */
 export function requireAnyPermission(permissions) {
-  return (req, res, next) => {
+  return async (req, res, next) => {
     try {
       if (!req.user || !req.user.rol) {
         return res.status(401).json({
@@ -134,8 +137,16 @@ export function requireAnyPermission(permissions) {
         return next()
       }
 
-      // Verificar si el rol tiene al menos uno de los permisos
-      if (!hasAnyPermission(userRole, permissions)) {
+      // Verificar si el rol tiene al menos uno de los permisos (consulta BD)
+      let hasAccess = false
+      for (const permission of permissions) {
+        if (await hasPermissionFromDB(defaultDb, userRole, permission)) {
+          hasAccess = true
+          break
+        }
+      }
+
+      if (!hasAccess) {
         return res.status(403).json({
           error: 'Acceso denegado',
           message: 'No tiene permisos suficientes para realizar esta acción',

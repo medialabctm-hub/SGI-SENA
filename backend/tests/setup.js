@@ -3,6 +3,7 @@
  * Este archivo se ejecuta antes de todos los tests
  */
 
+import { jest } from '@jest/globals';
 import { config } from '../src/config/config.js';
 
 // Configurar entorno de pruebas

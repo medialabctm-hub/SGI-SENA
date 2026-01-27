@@ -72,13 +72,13 @@ export class AuthService {
    * @returns {Promise<Object>} Resultado del registro
    */
   async registerUser(userData) {
-    const { nombre, cedula, correo, telefono, contrasena, rol, codigo_invitacion } = userData;
+    const { nombre, cedula, tipo_documento, tipo_documento_otro, correo, telefono, contrasena, rol, codigo_invitacion } = userData;
 
     // Validar datos usando estrategias
     this.validateUserData({ correo, contrasena, cedula });
 
-    // Si el rol es Instructor o Administrador, validar código de invitación
-    if (rol === 'Instructor' || rol === 'Administrador') {
+    // Si el rol es Instructor, Administrador o Cuentadante, validar código de invitación
+    if (rol === 'Instructor' || rol === 'Administrador' || rol === 'Cuentadante') {
       if (!codigo_invitacion) {
         throw new ValidationError(`El código de invitación es requerido para registrarse como ${rol}`);
       }
@@ -128,6 +128,8 @@ export class AuthService {
     const userToCreate = userBuilder
       .withNombre(nombre)
       .withCedula(cedula)
+      .withTipoDocumento(tipo_documento || 'CC')
+      .withTipoDocumentoOtro(tipo_documento === 'Otro' ? tipo_documento_otro : null)
       .withCorreo(correo)
       .withTelefono(telefono)
       .withContrasena(contrasena)
@@ -202,6 +204,75 @@ export class AuthService {
   }
 
   /**
+   * Autentica un usuario con validación de placa del equipo (para app de escritorio)
+   * @param {string} cedula - Cédula del usuario
+   * @param {string} contrasena - Contraseña del usuario
+   * @param {string} placa - Placa del equipo donde se está intentando iniciar sesión
+   * @returns {Promise<Object>} Token y datos del usuario
+   */
+  async loginUserWithPlaca(cedula, contrasena, placa) {
+    const usuario = await this.userRepository.findByCedula(cedula);
+
+    if (!usuario) {
+      this.logger.warn('Intento de login con placa fallido - Usuario no encontrado', { cedula, placa });
+      throw new AuthenticationError('Credenciales inválidas');
+    }
+
+    const valid = await this.passwordService.compare(contrasena, usuario.contrasena);
+    if (!valid) {
+      this.logger.warn('Intento de login con placa fallido - Contraseña incorrecta', { cedula, placa });
+      throw new AuthenticationError('Credenciales inválidas');
+    }
+
+    // Validar que el usuario tenga un equipo asignado con la placa proporcionada
+    // Usar el repositorio de usuarios para obtener equipos asignados
+    const equiposAsignados = await this.userRepository.getAssignedEquipos(usuario.id_usuario);
+    
+    // Filtrar por placa
+    const equipoConPlaca = equiposAsignados.find(eq => eq.placa === placa);
+
+    if (!equipoConPlaca) {
+      this.logger.warn('Intento de login con placa fallido - Placa no asignada al usuario', { 
+        cedula, 
+        placa,
+        id_usuario: usuario.id_usuario 
+      });
+      throw new AuthenticationError('Este equipo no está asignado a su usuario. Por favor, contacte al administrador.');
+    }
+
+    // Generar token JWT
+    const token = this.jwtService.sign({
+      id: usuario.id_usuario,
+      rol: usuario.id_rol,
+    });
+
+    this.logger.info('Usuario autenticado exitosamente con placa', {
+      cedula,
+      id: usuario.id_usuario,
+      placa,
+    });
+
+    return {
+      token,
+      requiereCambioContrasena: usuario.requiere_cambio_contrasena === 1 || usuario.requiere_cambio_contrasena === true,
+      user: {
+        id_usuario: usuario.id_usuario,
+        nombre_usuario: usuario.nombre_usuario,
+        correo: usuario.correo,
+        telefono: usuario.telefono,
+        cedula: usuario.cedula,
+        nombre_rol: usuario.nombre_rol,
+      },
+      equipo: {
+        codigo_equipo: equipoConPlaca.codigo_equipo,
+        placa: equipoConPlaca.placa,
+        tipo: equipoConPlaca.tipo,
+        modelo: equipoConPlaca.modelo,
+      },
+    };
+  }
+
+  /**
    * Obtiene el perfil del usuario autenticado
    * @param {number} userId - ID del usuario
    * @returns {Promise<Object>} Datos del usuario
@@ -220,6 +291,7 @@ export class AuthService {
       telefono: user.telefono,
       cedula: user.cedula,
       nombre_rol: user.nombre_rol,
+      foto_perfil: user.foto_perfil,
       requiere_cambio_contrasena: user.requiere_cambio_contrasena === 1 || user.requiere_cambio_contrasena === true,
     };
   }
@@ -228,8 +300,8 @@ export class AuthService {
    * Lista todos los usuarios activos
    * @returns {Promise<Array>} Lista de usuarios
    */
-  async listUsers() {
-    return this.userRepository.findAll();
+  async listUsers(rol = null) {
+    return this.userRepository.findAll(rol);
   }
 
   /**
@@ -323,6 +395,43 @@ export class AuthService {
   }
 
   /**
+   * Actualiza la foto de perfil del usuario
+   * @param {number} userId - ID del usuario
+   * @param {string} fotoPerfilPath - Ruta de la foto de perfil
+   * @returns {Promise<Object>} Resultado de la actualización
+   */
+  async updateUserProfilePhoto(userId, fotoPerfilPath) {
+    // Obtener usuario actual para eliminar foto anterior si existe
+    const user = await this.userRepository.findById(userId);
+    if (!user) {
+      throw new NotFoundError('Usuario');
+    }
+
+    // Si el usuario ya tiene una foto, eliminarla
+    if (user.foto_perfil) {
+      const { deleteProfileImageFile } = await import('../middleware/uploadProfileMiddleware.js');
+      deleteProfileImageFile(user.foto_perfil);
+    }
+
+    // Actualizar foto de perfil
+    const result = await this.userRepository.update(userId, { fotoPerfil: fotoPerfilPath });
+
+    if (result.affectedRows === 0) {
+      throw new NotFoundError('Usuario');
+    }
+
+    // Obtener usuario actualizado
+    const updatedUser = await this.userRepository.findById(userId);
+    
+    this.logger.info('Foto de perfil actualizada', { userId });
+    return { 
+      message: 'Foto de perfil actualizada correctamente',
+      user: updatedUser,
+      foto_perfil: fotoPerfilPath
+    };
+  }
+
+  /**
    * Elimina un usuario (borrado lógico)
    * @param {number} userId - ID del usuario
    * @returns {Promise<Object>} Resultado de la eliminación
@@ -393,14 +502,41 @@ export class AuthService {
    * @returns {Promise<Object>} Resultado de la solicitud
    */
   async solicitarRecuperacionContrasena(cedula, correo) {
+    // Normalizar el correo del input
+    const correoNormalizado = correo?.toLowerCase().trim();
+    
+    // Verificar primero si el usuario existe por cédula (para diagnóstico)
+    const usuarioPorCedula = await this.userRepository.findOne(
+      'SELECT id_usuario, nombre_usuario, correo, estado FROM Usuarios WHERE cedula = ?',
+      [cedula]
+    );
+    
+    if (usuarioPorCedula) {
+      this.logger.info('Usuario encontrado por cédula', {
+        cedula,
+        correoEnBD: usuarioPorCedula.correo,
+        correoIngresado: correo,
+        correoNormalizado: correoNormalizado,
+        estado: usuarioPorCedula.estado
+      });
+    }
+    
+    // Buscar usuario normalizando también el correo de la base de datos para comparación case-insensitive
     const usuario = await this.userRepository.findOne(
-      'SELECT id_usuario, nombre_usuario, correo FROM Usuarios WHERE cedula = ? AND correo = ? AND estado = "Activo"',
-      [cedula, correo.toLowerCase().trim()]
+      'SELECT id_usuario, nombre_usuario, correo FROM Usuarios WHERE cedula = ? AND LOWER(TRIM(correo)) = ? AND estado = "Activo"',
+      [cedula, correoNormalizado]
     );
 
     if (!usuario) {
       // Por seguridad, no revelamos si el usuario existe o no
-      this.logger.warn('Intento de recuperación de contraseña - Usuario no encontrado', { cedula });
+      this.logger.warn('Intento de recuperación de contraseña - Usuario no encontrado', { 
+        cedula,
+        correoIngresado: correo,
+        correoNormalizado: correoNormalizado,
+        usuarioExistePorCedula: !!usuarioPorCedula,
+        correoEnBD: usuarioPorCedula?.correo,
+        estadoUsuario: usuarioPorCedula?.estado
+      });
       return { message: 'Si el usuario existe, se enviará un correo con las instrucciones' };
     }
 
@@ -419,18 +555,34 @@ export class AuthService {
 
     // Enviar correo con el token
     const emailService = (await import('../services/emailService.js')).default;
+    
+    // Asegurar que el servicio esté inicializado antes de enviar
+    const apiKey = process.env.BREVO_API_KEY;
+    if (!emailService.apiInstance && apiKey) {
+      this.logger.info('Reinicializando servicio de email API con BREVO_API_KEY encontrada');
+      emailService.reinitialize();
+    }
+    
     const urlRecuperacion = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/restablecer-contrasena?token=${token}`;
     
-    await emailService.enviarCorreoRecuperacion(
+    const resultadoCorreo = await emailService.enviarCorreoRecuperacion(
       usuario.correo,
       usuario.nombre_usuario,
       urlRecuperacion
     );
 
-    this.logger.info('Solicitud de recuperación de contraseña procesada', { 
-      userId: usuario.id_usuario,
-      cedula 
-    });
+    if (!resultadoCorreo.success) {
+      this.logger.warn('Error al enviar correo de recuperación', { 
+        userId: usuario.id_usuario,
+        cedula,
+        error: resultadoCorreo.error
+      });
+    } else {
+      this.logger.info('Solicitud de recuperación de contraseña procesada', { 
+        userId: usuario.id_usuario,
+        cedula 
+      });
+    }
 
     return { message: 'Si el usuario existe, se enviará un correo con las instrucciones' };
   }

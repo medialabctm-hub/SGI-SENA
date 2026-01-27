@@ -5,31 +5,36 @@ import {
   FiUser,
   FiMenu,
 } from 'react-icons/fi';
+import { Link } from "react-router-dom";
 import { useNavigate } from 'react-router-dom';
 import logo from '/public/images/logoSena.png';
 import Toast from './Toast';
 import ConfirmModal from './ConfirmModal';
-import PerfilModal from './PerfilModal';
 import NotificationsModal from './NotificationsModal';
+import ClassNotificationModal from './ClassNotificationModal';
 import { buildErrorMessage, parseApiResponse } from '../utils/api';
 import { useSidebar } from '../contexts/SidebarContext';
-import '../styles/header.css';
-import '../styles/toast.css';
-import '../styles/modal.css';
+import { useDuplicados } from '../contexts/DuplicadosContext';
+import { useSocket } from '../contexts/SocketContext';
+import '../styles/layout/header.css';
+import '../styles/components/toast.css';
+import '../styles/components/modals.css';
 import '../styles/notifications.css';
 
 export default function Header() {
+  const { tieneDuplicadosPendientes } = useDuplicados();
+  const socketHook = useSocket();
   const [user, setUser] = useState(
     JSON.parse(localStorage.getItem('user') || '{}')
   );
   const [toast, setToast] = useState(null);
   const [showConfirm, setShowConfirm] = useState(false);
-  const [showPerfil, setShowPerfil] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [notificationsLoading, setNotificationsLoading] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const [lastSync, setLastSync] = useState(null);
+  const [classNotificationModal, setClassNotificationModal] = useState(null);
   const nav = useNavigate();
   const notificationsRef = useRef(null);
   const { toggleSidebar } = useSidebar();
@@ -39,7 +44,41 @@ export default function Header() {
   const isAdmin = userRole === 'Administrador';
   const isInstructor = userRole === 'Instructor';
 
+  // Funciones helper para foto de perfil
+  const getInitials = (name) => {
+    if (!name) return 'U';
+    const parts = name.trim().split(' ');
+    if (parts.length >= 2) {
+      return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+    }
+    return name.substring(0, 2).toUpperCase();
+  };
+
+  const getImageUrl = (path) => {
+    if (!path) return null;
+    // Si ya es una URL completa, devolverla tal cual
+    if (path.startsWith('http://') || path.startsWith('https://')) {
+      return path;
+    }
+    // Si empieza con /, usar ruta relativa (funciona con el proxy de nginx)
+    if (path.startsWith('/')) {
+      return path;
+    }
+    // Si no tiene /, agregarlo
+    return `/${path}`;
+  };
+
+  const fotoPerfil = user?.foto_perfil;
+  const nombreCompleto = user?.nombre_usuario || user?.nombre || 'Usuario';
+
   const handleLogout = () => {
+    if (tieneDuplicadosPendientes) {
+      setToast({
+        message: 'No puedes cerrar sesión mientras haya registros con placas duplicadas pendientes de revisión. Por favor, aprueba o rechaza todos los registros antes de continuar.',
+        type: 'error'
+      });
+      return;
+    }
     setShowConfirm(true);
   };
 
@@ -123,7 +162,7 @@ export default function Header() {
     } catch (err) {
       // Silencioso: si falla seguimos mostrando lo que haya en localStorage
     }
-    setShowPerfil(true);
+    nav('/perfil');
   };
 
   const handleToggleNotifications = () => {
@@ -194,6 +233,106 @@ export default function Header() {
     fetchNotifications({ silent: true })
   }, [fetchNotifications])
 
+  // Suscribirse a actualizaciones en tiempo real de notificaciones
+  useEffect(() => {
+    if (!socketHook || !socketHook.subscribe) return;
+    
+    const unsubscribe = socketHook.subscribe('notification:new', () => {
+      // Recargar notificaciones cuando llegue una nueva
+      fetchNotifications({ silent: true });
+    });
+    
+    return unsubscribe;
+  }, [socketHook, fetchNotifications])
+
+  // Detectar notificaciones de clases y mostrar modal automáticamente
+  useEffect(() => {
+    if (notifications.length === 0) return
+
+    // Buscar notificaciones no leídas con acciones de consentimiento
+    const notificacionClase = notifications.find(
+      (notif) =>
+        !notif.leida &&
+        notif.metadata &&
+        notif.metadata.acciones &&
+        Array.isArray(notif.metadata.acciones) &&
+        notif.metadata.acciones.length > 0 &&
+        notif.metadata.tipo === 'consentimiento_inicio'
+    )
+
+    // Verificar estado de la clase antes de mostrar el modal
+    async function verificarYMostrarModal() {
+      if (!notificacionClase || classNotificationModal) return
+
+      try {
+        const token = localStorage.getItem('token')
+        if (!token || !notificacionClase.metadata?.id_clase) return
+
+        const res = await fetch(`/api/clases/${notificacionClase.metadata.id_clase}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+
+        if (res.ok) {
+          const clase = await res.json()
+          // Solo mostrar el modal si la clase está en estado "Programada"
+          if (clase.estado_clase === 'Programada') {
+            setClassNotificationModal(notificacionClase)
+          } else {
+            // Si la clase ya no está en "Programada", marcar la notificación como leída
+            if (markNotificationAsRead && notificacionClase.id) {
+              markNotificationAsRead(notificacionClase.id)
+            }
+          }
+        }
+      } catch (err) {
+        console.error('Error al verificar estado de la clase:', err)
+        // En caso de error, no mostrar el modal
+      }
+    }
+
+    verificarYMostrarModal()
+  }, [notifications, classNotificationModal, markNotificationAsRead])
+
+  // Actualizar usuario cuando cambie en localStorage (ej: al actualizar foto de perfil)
+  useEffect(() => {
+    const handleStorageChange = () => {
+      try {
+        const userData = localStorage.getItem('user');
+        if (userData) {
+          const parsedUser = JSON.parse(userData);
+          setUser(parsedUser);
+        }
+      } catch (error) {
+        // Ignorar errores de parsing
+      }
+    };
+
+    // Escuchar cambios en localStorage
+    window.addEventListener('storage', handleStorageChange);
+    
+    // También verificar periódicamente (para cambios en la misma pestaña)
+    const interval = setInterval(() => {
+      try {
+        const userData = localStorage.getItem('user');
+        if (userData) {
+          const parsedUser = JSON.parse(userData);
+          // Solo actualizar si hay cambios en foto_perfil
+          if (parsedUser.foto_perfil !== user?.foto_perfil || 
+              parsedUser.nombre_usuario !== user?.nombre_usuario) {
+            setUser(parsedUser);
+          }
+        }
+      } catch (error) {
+        // Ignorar errores
+      }
+    }, 1000); // Verificar cada segundo
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      clearInterval(interval);
+    };
+  }, [user?.foto_perfil, user?.nombre_usuario])
+
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (!showNotifications) return;
@@ -223,11 +362,20 @@ export default function Header() {
         onConfirm={confirmLogout}
         onCancel={cancelLogout}
       />
-      <PerfilModal
-        open={showPerfil}
-        user={user}
-        onClose={() => setShowPerfil(false)}
-      />
+      {/* Modal de consentimiento para iniciar clase */}
+      {classNotificationModal && (
+        <ClassNotificationModal
+          notification={classNotificationModal}
+          onClose={() => {
+            setClassNotificationModal(null)
+            // Marcar como leída al cerrar
+            if (classNotificationModal.id) {
+              markNotificationAsRead(classNotificationModal.id)
+            }
+          }}
+          onMarkAsRead={markNotificationAsRead}
+        />
+      )}
       <header className="app-header-wrapper">
         <div className="app-header">
           <div className="header-left">
@@ -240,7 +388,9 @@ export default function Header() {
               <FiMenu />
             </button>
             <div className="app-logo">
-              <img src={logo} alt="logo" />
+              <Link to="/dashboard">
+                  <img src={logo} alt="logo" />
+                </Link>
             </div>
             <div className="app-title">
               <div className="name">Gestión de Inventario</div>
@@ -275,12 +425,30 @@ export default function Header() {
               )}
             </div>
             <button
-              className="header-icon-btn"
+              className="header-icon-btn header-profile-btn"
               onClick={handleOpenPerfil}
               aria-label="perfil"
               type="button"
             >
-              <FiUser />
+              {fotoPerfil ? (
+                <img
+                  src={getImageUrl(fotoPerfil)}
+                  alt={nombreCompleto}
+                  className="header-profile-photo"
+                  onError={(e) => {
+                    e.target.style.display = 'none';
+                    const placeholder = e.target.nextElementSibling;
+                    if (placeholder) {
+                      placeholder.style.display = 'flex';
+                    }
+                  }}
+                />
+              ) : null}
+              <div
+                className={`header-profile-placeholder ${fotoPerfil ? 'header-avatar-placeholder-hidden' : 'header-avatar-placeholder-visible'}`}
+              >
+                {getInitials(nombreCompleto)}
+              </div>
             </button>
             <button
               className="header-icon-btn"

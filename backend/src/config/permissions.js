@@ -33,6 +33,7 @@ export const PERMISSIONS = {
     DELETE: 'equipos:delete',     // Eliminar equipos
     ASSIGN: 'equipos:assign',     // Asignar equipos a cualquier usuario (Admin)
     ASSIGN_TO_APRENDIZ: 'equipos:assign_to_aprendiz', // Asignar solo a aprendices (Instructor)
+    MANAGE_CATEGORIES: 'equipos:manage_categories', // Gestionar categorías de equipos (Admin)
   },
 
   // Gestión de novedades
@@ -123,6 +124,7 @@ export const ROLE_PERMISSIONS = {
     PERMISSIONS.EQUIPOS.DELETE,
     PERMISSIONS.EQUIPOS.ASSIGN,
     PERMISSIONS.EQUIPOS.ASSIGN_TO_APRENDIZ,
+    PERMISSIONS.EQUIPOS.MANAGE_CATEGORIES,
 
     // Novedades - acceso completo (incluye todos los permisos posibles)
     PERMISSIONS.NOVEDADES.VIEW,
@@ -183,10 +185,9 @@ export const ROLE_PERMISSIONS = {
     PERMISSIONS.EQUIPOS.VIEW_DETAIL,
     PERMISSIONS.EQUIPOS.ASSIGN_TO_APRENDIZ,
 
-    // Novedades - ver todas, crear nuevas, no eliminar
+    // Novedades - ver todas, crear nuevas, no puede cambiar estado ni eliminar
     PERMISSIONS.NOVEDADES.VIEW,
     PERMISSIONS.NOVEDADES.CREATE,
-    PERMISSIONS.NOVEDADES.UPDATE, // Puede editar para agregar observaciones
 
     // Mantenimiento - consulta completa
     PERMISSIONS.MANTENIMIENTO.VIEW,
@@ -228,6 +229,71 @@ export const ROLE_PERMISSIONS = {
     // Notificaciones - solo propias
     PERMISSIONS.NOTIFICACIONES.VIEW,
   ],
+
+  Cuentadante: [
+    // Usuarios - NO tiene acceso (no puede ver Usuarios ni gestionar usuarios)
+    // PERMISSIONS.USERS.VIEW, // NO incluido
+    // PERMISSIONS.USERS.VIEW_DETAIL, // NO incluido
+    // PERMISSIONS.USERS.CREATE, // NO incluido
+    // PERMISSIONS.USERS.UPDATE, // NO incluido
+    // PERMISSIONS.USERS.DELETE, // NO incluido
+    // PERMISSIONS.USERS.MANAGE_ROLES, // NO incluido
+
+    // Equipos - solo su inventario (no todos los inventarios del sistema)
+    PERMISSIONS.EQUIPOS.VIEW_OWN, // Solo ve su inventario
+    PERMISSIONS.EQUIPOS.VIEW_DETAIL, // Puede ver detalles de sus equipos
+    PERMISSIONS.EQUIPOS.CREATE, // Puede registrar equipos en su inventario
+    PERMISSIONS.EQUIPOS.UPDATE, // Puede editar sus equipos
+    PERMISSIONS.EQUIPOS.DELETE, // Puede eliminar sus equipos
+    // PERMISSIONS.EQUIPOS.VIEW, // NO incluido - no puede ver todos los inventarios
+    // PERMISSIONS.EQUIPOS.ASSIGN, // NO incluido
+    // PERMISSIONS.EQUIPOS.ASSIGN_TO_APRENDIZ, // NO incluido
+
+    // Novedades - de su inventario, no puede cambiar estado
+    PERMISSIONS.NOVEDADES.VIEW_OWN,
+    PERMISSIONS.NOVEDADES.CREATE_OWN,
+    PERMISSIONS.NOVEDADES.DELETE,
+    // PERMISSIONS.NOVEDADES.VIEW, // NO incluido - no puede ver todas las novedades
+
+    // Mantenimiento - de su inventario
+    PERMISSIONS.MANTENIMIENTO.VIEW_OWN,
+    PERMISSIONS.MANTENIMIENTO.CREATE,
+    PERMISSIONS.MANTENIMIENTO.UPDATE,
+    PERMISSIONS.MANTENIMIENTO.DELETE,
+    // PERMISSIONS.MANTENIMIENTO.VIEW, // NO incluido - no puede ver todos los mantenimientos
+
+    // Reportes - puede crear y ver sus reportes
+    PERMISSIONS.REPORTES.VIEW,
+    PERMISSIONS.REPORTES.CREATE,
+    PERMISSIONS.REPORTES.UPDATE,
+    PERMISSIONS.REPORTES.DELETE,
+    PERMISSIONS.REPORTES.EXPORT,
+
+    // Ambientes - puede ver ambientes (necesario para asignar equipos)
+    PERMISSIONS.AMBIENTES.VIEW,
+    // PERMISSIONS.AMBIENTES.CREATE, // NO incluido
+    // PERMISSIONS.AMBIENTES.UPDATE, // NO incluido
+    // PERMISSIONS.AMBIENTES.DELETE, // NO incluido
+
+    // Clases - no tiene acceso (no es instructor)
+    // PERMISSIONS.CLASES.VIEW, // NO incluido
+    // PERMISSIONS.CLASES.CREATE, // NO incluido
+    // PERMISSIONS.CLASES.UPDATE, // NO incluido
+    // PERMISSIONS.CLASES.DELETE, // NO incluido
+
+    // Notificaciones - solo propias
+    PERMISSIONS.NOTIFICACIONES.VIEW,
+    // PERMISSIONS.NOTIFICACIONES.CREATE, // NO incluido
+    // PERMISSIONS.NOTIFICACIONES.BROADCAST, // NO incluido
+
+    // Sistema - puede ver su configuración
+    PERMISSIONS.SYSTEM.VIEW_CONFIG,
+    // PERMISSIONS.SYSTEM.UPDATE_CONFIG, // NO incluido
+    // PERMISSIONS.SYSTEM.VIEW_AUDIT, // NO incluido
+
+    // Roles - NO tiene acceso (no puede ver roles y áreas)
+    // PERMISSIONS.ROLES.MANAGE, // NO incluido
+  ],
 }
 
 // ============================================
@@ -235,7 +301,7 @@ export const ROLE_PERMISSIONS = {
 // ============================================
 
 /**
- * Verifica si un rol tiene un permiso específico
+ * Verifica si un rol tiene un permiso específico (versión síncrona - usa defaults)
  * @param {string} roleName - Nombre del rol
  * @param {string} permission - Permiso a verificar
  * @returns {boolean}
@@ -251,6 +317,56 @@ export function hasPermission(roleName, permission) {
     return false
   }
   return rolePermissions.includes(permission)
+}
+
+/**
+ * Verifica si un rol tiene un permiso específico consultando la base de datos
+ * @param {Object} db - Instancia de la base de datos
+ * @param {string} roleName - Nombre del rol
+ * @param {string} permission - Permiso a verificar (código del permiso)
+ * @returns {Promise<boolean>}
+ */
+export async function hasPermissionFromDB(db, roleName, permission) {
+  // El Administrador tiene el 100% de los permisos del sistema
+  if (isAdmin(roleName)) {
+    return true
+  }
+
+  try {
+    // Obtener el ID del rol
+    const [roles] = await db.execute(
+      'SELECT id_rol FROM Roles WHERE nombre_rol = ?',
+      [roleName]
+    )
+
+    if (roles.length === 0) {
+      // Si el rol no existe, usar defaults
+      return hasPermission(roleName, permission)
+    }
+
+    const idRol = roles[0].id_rol
+
+    // Verificar si el permiso está activo en la BD
+    const [permisos] = await db.execute(
+      `SELECT rp.activo 
+       FROM Rol_Permisos rp
+       INNER JOIN Permisos p ON rp.id_permiso = p.id_permiso
+       WHERE rp.id_rol = ? AND p.codigo_permiso = ? AND rp.activo = 1`,
+      [idRol, permission]
+    )
+
+    // Si está en la BD y está activo, retornar true
+    if (permisos.length > 0) {
+      return true
+    }
+
+    // Si no está en la BD, usar los defaults hardcodeados como fallback
+    return hasPermission(roleName, permission)
+  } catch (error) {
+    console.error('Error al verificar permiso desde BD:', error)
+    // En caso de error, usar defaults
+    return hasPermission(roleName, permission)
+  }
 }
 
 /**
@@ -309,15 +425,26 @@ export function isAprendiz(roleName) {
   return roleName === 'Aprendiz'
 }
 
+/**
+ * Verifica si un usuario es cuentadante
+ * @param {string} roleName - Nombre del rol
+ * @returns {boolean}
+ */
+export function isCuentadante(roleName) {
+  return roleName === 'Cuentadante'
+}
+
 export default {
   PERMISSIONS,
   ROLE_PERMISSIONS,
   hasPermission,
+  hasPermissionFromDB,
   hasAnyPermission,
   hasAllPermissions,
   getRolePermissions,
   isAdmin,
   isInstructor,
   isAprendiz,
+  isCuentadante,
 }
 

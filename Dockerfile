@@ -4,7 +4,7 @@
 # ============================================
 # ETAPA 1: Construir Frontend
 # ============================================
-FROM node:18-alpine AS frontend-builder
+FROM node:20-alpine AS frontend-builder
 
 WORKDIR /app/frontend
 
@@ -19,7 +19,7 @@ RUN npm run build
 # ============================================
 # ETAPA 2: Construir Backend
 # ============================================
-FROM node:18-alpine AS backend-builder
+FROM node:20-alpine AS backend-builder
 
 WORKDIR /app/backend
 
@@ -57,13 +57,21 @@ COPY frontend/nginx-server.conf /etc/nginx/conf.d/default.conf
 COPY start.sh /start.sh
 RUN chmod +x /start.sh
 
-# Crear directorio para uploads
-RUN mkdir -p /app/backend/uploads/equipos
+# Crear directorios para uploads (el volumen se montará aquí)
+# Estos directorios se crean por si el volumen no está montado inicialmente
+RUN mkdir -p /app/backend/uploads/equipos \
+    /app/backend/uploads/perfiles \
+    /app/backend/uploads/ambientes
 
-# Exponer puerto
+# Asegurar permisos correctos en el directorio de uploads
+RUN chmod -R 755 /app/backend/uploads
+
+# Exponer puerto (Railway asignará un puerto dinámico via variable PORT)
 EXPOSE 80
+# Nota: Railway asignará un puerto (ej: 8080) y lo pasará como variable PORT
+# El script start.sh configurará nginx para escuchar en ese puerto
 
-# Health check
+# Health check - verifica que nginx esté sirviendo y el backend responda
 HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
   CMD wget --quiet --tries=1 --spider http://localhost/health || exit 1
 

@@ -10,9 +10,9 @@
 
 .importar-usuarios-download-btn {
   padding: 0.5rem 1rem;
-  background: #e3f2fd;
-  color: #1976d2;
-  border: 1px solid #1976d2;
+  background: var(--success-800);
+  color: white;
+  border: 1px solid var(--success-800);
   border-radius: 6px;
   cursor: pointer;
   font-size: 0.85rem;
@@ -20,6 +20,13 @@
   align-items: center;
   gap: 0.5rem;
   font-weight: 500;
+  transition: background 0.2s;
+}
+
+.importar-usuarios-download-btn:hover {
+  background: var(--success-900);
+  border-color: var(--success-900);
+  color: white;
 }
 
 .importar-usuarios-file-section {
@@ -60,7 +67,7 @@
 }
 
 .importar-usuarios-file-name {
-  color: #40c057;
+  color: var(--success-800);
   font-weight: 600;
   font-size: 0.9rem;
 }
@@ -73,7 +80,7 @@
 .importar-usuarios-error {
   padding: 1rem;
   background: #fee2e2;
-  color: #dc2626;
+  color: var(--error-700);
   border-radius: 8px;
   margin-bottom: 1rem;
   display: flex;
@@ -89,7 +96,7 @@
 
 .importar-usuarios-submit-btn {
   padding: 0.75rem 1.5rem;
-  background: #40c057;
+  background: var(--success-800);
   color: #fff;
   border: none;
   border-radius: 8px;
@@ -99,6 +106,12 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  transition: background 0.2s;
+}
+
+.importar-usuarios-submit-btn:hover:not(:disabled) {
+  background: var(--success-900);
+  color: #fff;
 }
 
 .importar-usuarios-submit-btn:disabled {
@@ -156,11 +169,11 @@
 }
 
 .importar-usuarios-stat-value.success {
-  color: #10b981;
+  color: var(--success-800);
 }
 
 .importar-usuarios-stat-value.error {
-  color: #ef4444;
+  color: var(--error-700);
 }
 
 .importar-usuarios-stat-label {
@@ -169,11 +182,11 @@
 }
 
 .importar-usuarios-stat-label.success {
-  color: #059669;
+  color: var(--success-800);
 }
 
 .importar-usuarios-stat-label.error {
-  color: #dc2626;
+  color: var(--error-700);
 }
 
 .importar-usuarios-emails {
@@ -198,11 +211,11 @@
 }
 
 .importar-usuarios-emails-success {
-  color: #059669;
+  color: var(--success-800);
 }
 
 .importar-usuarios-emails-error {
-  color: #dc2626;
+  color: var(--error-700);
 }
 
 .importar-usuarios-errores {

@@ -5,18 +5,25 @@ import { z } from 'zod';
  */
 
 const tiposReporteValidos = [
+  'General',
+  'Equipos',
   'Mantenimiento',
   'Novedad',
   'Consulta',
   'Solicitud',
+  'Novedades',
+  'Uso',
   'Otro'
 ];
 
 export const crearReporteSchema = z.object({
+  // codigo_equipo es opcional (puede ser reporte general o específico de equipo)
   codigo_equipo: z.union([
-    z.string().min(1, 'El código del equipo es requerido'),
-    z.number().int().positive('El código del equipo debe ser un número positivo'),
-  ]),
+    z.string().min(1),
+    z.number().int().positive(),
+    z.null(),
+    z.undefined()
+  ]).optional().nullable(),
   tipo_reporte: z.enum(tiposReporteValidos, {
     errorMap: () => ({ 
       message: `Tipo de reporte inválido. Tipos válidos: ${tiposReporteValidos.join(', ')}` 
@@ -49,16 +56,21 @@ export const validate = (schema) => (req, res, next) => {
     req.body = validated;
     next();
   } catch (error) {
-    if (error instanceof z.ZodError) {
+    if (error instanceof z.ZodError && error.errors && Array.isArray(error.errors)) {
+      const details = error.errors.map((e) => ({
+        path: e.path && Array.isArray(e.path) ? e.path.join('.') : 'unknown',
+        message: e.message || 'Error de validación',
+        code: e.code || 'invalid_type',
+      }));
+      
       return res.status(400).json({
         success: false,
         error: 'Error de validación',
-        details: error.errors.map((e) => ({
-          path: e.path.join('.'),
-          message: e.message,
-        })),
+        details: details.length > 0 ? details : [{ path: 'unknown', message: 'Error de validación desconocido' }],
       });
     }
+    // Si no es un ZodError o no tiene errors, loguear y pasar al siguiente middleware
+    console.error('Validation middleware error:', error);
     next(error);
   }
 };

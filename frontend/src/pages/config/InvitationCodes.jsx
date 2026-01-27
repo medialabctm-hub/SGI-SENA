@@ -2,8 +2,9 @@ import { useState, useEffect } from 'react';
 import { FiPlus, FiTrash2, FiCopy, FiX, FiCheck, FiAlertCircle } from 'react-icons/fi';
 import Toast from '../../components/Toast';
 import ConfirmModal from '../../components/ConfirmModal';
-import { parseApiResponse, buildErrorMessage } from '../../utils/api';
-import '../../styles/equipos.css';
+import CustomSelect from '../../components/CustomSelect';
+import { parseApiResponse, buildErrorMessage, getAuthHeaders } from '../../utils/api';
+import '../../styles/pages/equipos.css';
 import '../../styles/invitationCodes.css';
 
 export default function InvitationCodes() {
@@ -22,13 +23,6 @@ export default function InvitationCodes() {
   useEffect(() => {
     fetchCodes();
   }, []);
-
-  const getAuthHeaders = () => {
-    const token = localStorage.getItem('token');
-    return token
-      ? { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
-      : { 'Content-Type': 'application/json' };
-  };
 
   async function fetchCodes() {
     setLoading(true);
@@ -118,18 +112,9 @@ export default function InvitationCodes() {
   }
 
   function getStatusBadge(estado) {
-    const badges = {
-      'Activo': { bg: '#d1fae5', color: '#065f46' },
-      'Inactivo': { bg: '#f3f4f6', color: '#374151' },
-      'Expirado': { bg: '#fee2e2', color: '#991b1b' },
-      'Agotado': { bg: '#fef3c7', color: '#92400e' }
-    };
-    const badge = badges[estado] || badges['Inactivo'];
+    const estadoLower = estado?.toLowerCase() || 'inactivo';
     return (
-      <span className="invitation-codes-status-badge" style={{
-        background: badge.bg,
-        color: badge.color
-      }}>
+      <span className={`invitation-codes-status-badge invitation-codes-status-badge-${estadoLower}`}>
         {estado}
       </span>
     );
@@ -153,7 +138,7 @@ export default function InvitationCodes() {
         <div>
           <h3 className="invitation-codes-title">Códigos de Seguridad</h3>
           <p className="invitation-codes-description">
-            Genera códigos para que los instructores se registren en el sistema
+            Genera códigos para que los usuarios (Instructores, Administradores, Aprendices o Cuentadantes) se registren en el sistema
           </p>
         </div>
         <button
@@ -172,15 +157,14 @@ export default function InvitationCodes() {
             <div className="form-grid">
               <div className="form-group">
                 <label>Rol Destinado</label>
-                <select
+                <CustomSelect
+                  name="rol_destinado"
                   value={form.rol_destinado}
                   onChange={e => setForm({ ...form, rol_destinado: e.target.value })}
+                  options={['Instructor', 'Administrador', 'Aprendiz', 'Cuentadante']}
+                  placeholder="Seleccionar rol"
                   required
-                >
-                  <option value="Instructor">Instructor</option>
-                  <option value="Administrador">Administrador</option>
-                  <option value="Aprendiz">Aprendiz</option>
-                </select>
+                />
               </div>
               <div className="form-group">
                 <label>Máximo de Usos</label>

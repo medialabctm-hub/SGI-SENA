@@ -3,9 +3,12 @@ import Header from '../components/Header'
 import Sidebar from '../components/Sidebar'
 import Toast from '../components/Toast'
 import ConfirmModal from '../components/ConfirmModal'
+import CustomSelect from '../components/CustomSelect'
 import { FiUserPlus, FiPackage, FiUsers, FiShield, FiFileText, FiSearch, FiCheck, FiUserCheck, FiTrash2, FiList, FiAlertCircle } from 'react-icons/fi'
 import { parseApiResponse, buildErrorMessage } from '../utils/api'
-import '../styles/equipos.css'
+import { useSocket } from '../contexts/SocketContext'
+import '../styles/pages/equipos.css'
+import '../styles/pages/asignaciones.css'
 
 export default function AsignarEquipo() {
   const [activeTab, setActiveTab] = useState('asignar') // 'asignar' o 'ver'
@@ -14,7 +17,6 @@ export default function AsignarEquipo() {
     id_usuario: '',
     tipo_responsabilidad: 'Principal',
     observaciones: '',
-    dias_asignados: '',
   })
   const [toast, setToast] = useState(null)
   const [loading, setLoading] = useState(false)
@@ -55,6 +57,30 @@ export default function AsignarEquipo() {
     }
   }, [activeTab])
 
+  // Suscribirse a actualizaciones en tiempo real de asignaciones
+  const { subscribe } = useSocket()
+  useEffect(() => {
+    if (!subscribe || activeTab !== 'ver') return
+    
+    const unsubscribeCreated = subscribe('asignacion:created', () => {
+      fetchAsignaciones()
+    })
+    
+    const unsubscribeDeleted = subscribe('asignacion:deleted', () => {
+      fetchAsignaciones()
+    })
+    
+    const unsubscribeUpdated = subscribe('asignacion:updated', () => {
+      fetchAsignaciones()
+    })
+    
+    return () => {
+      unsubscribeCreated()
+      unsubscribeDeleted()
+      unsubscribeUpdated()
+    }
+  }, [subscribe, activeTab])
+
   const isInstructor = user?.nombre_rol === 'Instructor'
   const isAdmin = user?.nombre_rol === 'Administrador'
 
@@ -88,23 +114,9 @@ export default function AsignarEquipo() {
   }
 
   function getTipoResponsabilidadBadge(tipo) {
-    const tipos = {
-      'Principal': { color: '#3b82f6', bg: '#dbeafe' },
-      'Secundario': { color: '#6b7280', bg: '#f3f4f6' }
-    }
-    const tipoInfo = tipos[tipo] || tipos['Principal']
+    const badgeClass = tipo === 'Principal' ? 'asignar-equipo-badge-principal' : 'asignar-equipo-badge-secundario'
     return (
-      <span style={{
-        padding: '4px 10px',
-        borderRadius: '12px',
-        fontSize: '0.85rem',
-        fontWeight: 600,
-        color: tipoInfo.color,
-        background: tipoInfo.bg,
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: '4px'
-      }}>
+      <span className={badgeClass}>
         <FiShield size={12} />
         {tipo}
       </span>
@@ -132,11 +144,11 @@ export default function AsignarEquipo() {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` }
       })
-      const data = await parseApiResponse(res, 'No se pudo eliminar la asignación')
-      setToast({ message: data.message || 'Asignación eliminada correctamente', type: 'success' })
+      const data = await parseApiResponse(res, 'No se pudo eliminar la habilitación')
+      setToast({ message: data.message || 'Habilitación eliminada correctamente', type: 'success' })
       await fetchAsignaciones()
     } catch (err) {
-      setToast({ message: buildErrorMessage(err, 'Error al eliminar la asignación'), type: 'error' })
+      setToast({ message: buildErrorMessage(err, 'Error al eliminar la habilitación'), type: 'error' })
     } finally {
       setLoadingAsignaciones(false)
     }
@@ -184,7 +196,7 @@ export default function AsignarEquipo() {
 
   async function buscarUsuario() {
     if (!cedulaUsuario.trim()) {
-      setToast({ message: 'Ingresa una cédula', type: 'error' })
+      setToast({ message: 'Ingresa una Documento', type: 'error' })
       return
     }
 
@@ -261,7 +273,7 @@ export default function AsignarEquipo() {
     // Validar que el equipo no esté en mantenimiento
     if (equipoEncontrado?.estado_mantenimiento_activo === 'En Proceso') {
       setToast({ 
-        message: `Este equipo está en mantenimiento (${equipoEncontrado.tipo_mantenimiento_activo || 'En Proceso'}). No se puede asignar hasta que el mantenimiento finalice.`, 
+        message: `Este equipo está en mantenimiento (${equipoEncontrado.tipo_mantenimiento_activo || 'En Proceso'}). No se puede habilitar hasta que el mantenimiento finalice.`, 
         type: 'error' 
       })
       return
@@ -283,7 +295,7 @@ export default function AsignarEquipo() {
 
       if (res.ok) {
         setToast({ 
-          message: data.message || 'Equipo asignado correctamente', 
+          message: data.message || 'Equipo habilitado correctamente', 
           type: 'success' 
         })
         setForm({
@@ -291,7 +303,6 @@ export default function AsignarEquipo() {
           id_usuario: '',
           tipo_responsabilidad: 'Principal',
           observaciones: '',
-          dias_asignados: '',
         })
         limpiarEquipo()
         limpiarUsuario()
@@ -301,7 +312,7 @@ export default function AsignarEquipo() {
         }
       } else {
         setToast({ 
-          message: data.error || 'Error al asignar el equipo', 
+          message: data.error || 'Error al habilitar el equipo', 
           type: 'error' 
         })
       }
@@ -321,7 +332,7 @@ export default function AsignarEquipo() {
           {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
           <ConfirmModal
             open={deleteConfirm.open}
-            title="Eliminar Asignación"
+            title="Eliminar Habilitación"
             message={`¿Estás seguro de que deseas eliminar ${deleteConfirm.info}? Esta acción no se puede deshacer.`}
             confirmText="Eliminar"
             cancelText="Cancelar"
@@ -331,82 +342,50 @@ export default function AsignarEquipo() {
           />
         <div className="form-equipos form-modern">
           <div className="form-header">
-            <div className="form-icon-wrapper" style={{ background: 'linear-gradient(135deg, #51cf66 0%, #40c057 100%)' }}>
+            <div className="form-icon-wrapper asignar-equipo-header-icon">
               <FiUserPlus size={28} color="#fff" />
             </div>
-            <div style={{ flex: 1 }}>
-              <h2 style={{ margin: 0, fontSize: '28px', fontWeight: 700, color: '#1a2a3a' }}>Asignación de Equipos</h2>
-              <p style={{ color: '#666', marginTop: 8, fontSize: '15px' }}>
+            <div className="asignar-equipo-header-content">
+              <h2 className="asignar-equipo-header-title">Habilitación de Equipos</h2>
+              <p className="asignar-equipo-header-description">
                 {isInstructor 
-                  ? 'Asigna equipos a aprendices y gestiona las asignaciones'
-                  : 'Asigna equipos a usuarios y gestiona todas las asignaciones'
+                  ? 'Habilita equipos para aprendices. Esto permite que el aprendiz inicie sesión en la aplicación de escritorio para desbloquear el equipo. El inventario permanece asignado al ambiente.'
+                  : 'Habilita equipos para usuarios. Esto permite que el usuario inicie sesión en la aplicación de escritorio para desbloquear el equipo. El inventario permanece asignado al ambiente.'
                 }
               </p>
             </div>
           </div>
 
           {/* Pestañas */}
-          <div style={{ 
-            display: 'flex', 
-            gap: '0.5rem', 
-            marginTop: '1.5rem',
-            borderBottom: '2px solid #e5e7eb',
-            paddingBottom: '0'
-          }}>
+          <div className="asignar-equipo-tabs">
             <button
               onClick={() => setActiveTab('asignar')}
-              style={{
-                padding: '0.75rem 1.5rem',
-                border: 'none',
-                background: 'transparent',
-                color: activeTab === 'asignar' ? '#40c057' : '#6b7280',
-                fontWeight: activeTab === 'asignar' ? 600 : 400,
-                fontSize: '1rem',
-                cursor: 'pointer',
-                borderBottom: activeTab === 'asignar' ? '3px solid #40c057' : '3px solid transparent',
-                transition: 'all 0.2s',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem'
-              }}
+              className={`asignar-equipo-tab ${activeTab === 'asignar' ? 'active' : ''}`}
             >
               <FiUserPlus size={18} />
-              Asignar Equipo
+              Habilitar Equipo
             </button>
             <button
               onClick={() => setActiveTab('ver')}
-              style={{
-                padding: '0.75rem 1.5rem',
-                border: 'none',
-                background: 'transparent',
-                color: activeTab === 'ver' ? '#40c057' : '#6b7280',
-                fontWeight: activeTab === 'ver' ? 600 : 400,
-                fontSize: '1rem',
-                cursor: 'pointer',
-                borderBottom: activeTab === 'ver' ? '3px solid #40c057' : '3px solid transparent',
-                transition: 'all 0.2s',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem'
-              }}
+              className={`asignar-equipo-tab ${activeTab === 'ver' ? 'active' : ''}`}
             >
               <FiList size={18} />
-              Ver Asignaciones
+              Ver Habilitaciones
             </button>
           </div>
 
-          <div className="form-divider" style={{ marginTop: '0' }}></div>
+          <div className="form-divider asignar-equipo-divider-no-margin"></div>
 
           {activeTab === 'asignar' ? (
-          <form onSubmit={handleSubmit}>
-            {/* Sección: Búsqueda de Equipo */}
-            <div className="form-section">
-              <h3 className="form-section-title">
-                <FiPackage size={18} style={{ marginRight: 8 }} />
-                Equipo a Asignar
-              </h3>
-              
-              <div className="form-group">
+            <form onSubmit={handleSubmit}>
+              {/* Sección: Búsqueda de Equipo */}
+              <div className="form-section">
+                <h3 className="form-section-title">
+                  <FiPackage size={18} className="asignar-equipo-section-icon" />
+                  Equipo a Asignar
+                </h3>
+                
+                <div className="form-group">
                 <label>
                   Código de Inventario *
                 </label>
@@ -439,15 +418,15 @@ export default function AsignarEquipo() {
                       </>
                     )}
                   </button>
+                  </div>
                 </div>
-              </div>
 
-              {equipoEncontrado && (
-                <div className="equipo-found-card">
+                {equipoEncontrado && (
+                  <div className="equipo-found-card">
                   <div className="equipo-found-header">
                     {equipoEncontrado.estado_mantenimiento_activo === 'En Proceso' ? (
                       <>
-                        <FiAlertCircle size={20} color="#f59e0b" />
+                        <FiAlertCircle size={20} color="var(--warning-600)" />
                         <span>Equipo en Mantenimiento</span>
                       </>
                     ) : (
@@ -464,15 +443,9 @@ export default function AsignarEquipo() {
                       <div><strong>Ambiente:</strong> {equipoEncontrado.nombre_ambiente}</div>
                     )}
                     {equipoEncontrado.estado_mantenimiento_activo === 'En Proceso' && (
-                      <div style={{ 
-                        marginTop: '12px', 
-                        padding: '12px', 
-                        background: '#fef3c7', 
-                        borderRadius: '8px',
-                        border: '1px solid #f59e0b'
-                      }}>
-                        <strong style={{ color: '#f59e0b' }}>⚠️ Equipo en Mantenimiento</strong>
-                        <div style={{ marginTop: '4px', fontSize: '0.9rem', color: '#92400e' }}>
+                      <div className="asignar-equipo-warning-box">
+                        <strong className="asignar-equipo-warning-title">⚠️ Equipo en Mantenimiento</strong>
+                        <div className="asignar-equipo-warning-text">
                           Este equipo está actualmente en mantenimiento ({equipoEncontrado.tipo_mantenimiento_activo || 'En Proceso'}). 
                           No se puede asignar hasta que el mantenimiento finalice.
                         </div>
@@ -486,20 +459,20 @@ export default function AsignarEquipo() {
                   >
                     Cambiar equipo
                   </button>
-                </div>
-              )}
-            </div>
+                  </div>
+                )}
+              </div>
 
-            {/* Sección: Usuario y Responsabilidad */}
-            <div className="form-section">
-              <h3 className="form-section-title">
-                <FiUsers size={18} style={{ marginRight: 8 }} />
-                Asignación
-              </h3>
+              {/* Sección: Usuario y Responsabilidad */}
+              <div className="form-section">
+                <h3 className="form-section-title">
+                  <FiUsers size={18} className="asignar-equipo-section-icon" />
+                  Asignación
+                </h3>
 
-              <div className="form-group">
+                <div className="form-group">
                 <label>
-                  Cédula del Usuario {isInstructor ? '(Aprendiz) ' : ''}*
+                  Documento del Usuario {isInstructor ? '(Aprendiz) ' : ''}*
                 </label>
                 <div className="search-equipo-wrapper">
                   <input
@@ -512,7 +485,7 @@ export default function AsignarEquipo() {
                         buscarUsuario()
                       }
                     }}
-                    placeholder="Ingresa la cédula del usuario"
+                    placeholder="Ingresa la Documento del usuario"
                     className="search-equipo-input"
                   />
                   <button
@@ -529,19 +502,19 @@ export default function AsignarEquipo() {
                         Buscar
                       </>
                     )}
-                  </button>
+                    </button>
+                  </div>
                 </div>
-              </div>
 
-              {usuarioEncontrado && (
-                <div className="equipo-found-card">
+                {usuarioEncontrado && (
+                  <div className="equipo-found-card">
                   <div className="equipo-found-header">
                     <FiCheck size={20} color="#43a047" />
                     <span>Usuario encontrado</span>
                   </div>
                   <div className="equipo-found-info">
                     <div><strong>Nombre:</strong> {usuarioEncontrado.nombre_usuario}</div>
-                    <div><strong>Cédula:</strong> {usuarioEncontrado.cedula}</div>
+                    <div><strong>Documento:</strong> {usuarioEncontrado.cedula}</div>
                     <div><strong>Rol:</strong> {usuarioEncontrado.nombre_rol}</div>
                     {usuarioEncontrado.equipos_asignados !== undefined && (
                       <div><strong>Equipos asignados:</strong> {usuarioEncontrado.equipos_asignados}</div>
@@ -554,104 +527,87 @@ export default function AsignarEquipo() {
                   >
                     Cambiar usuario
                   </button>
-            </div>
-              )}
+                </div>
+                )}
 
-              <div className="form-grid" style={{ marginTop: '1.5rem' }}>
-            <div className="form-group">
-              <label>
-                <FiShield size={16} style={{ marginRight: 6, verticalAlign: 'middle' }} />
-                Tipo de Responsabilidad
-              </label>
-              <select
-                value={form.tipo_responsabilidad}
-                onChange={(e) => handleChange('tipo_responsabilidad', e.target.value)}
-              >
-                <option value="Principal">Principal</option>
-                <option value="Secundario">Secundario</option>
-              </select>
-            </div>
-
-            <div className="form-group">
-              <label>
-                    Días de Asignación (Opcional)
-              </label>
-                  <input
-                    type="number"
-                    min="1"
-                    value={form.dias_asignados}
-                    onChange={(e) => handleChange('dias_asignados', e.target.value)}
-                    placeholder="Ej: 30, 60, 90..."
-                    style={{ width: '100%' }}
-                  />
-                  <p style={{ marginTop: '4px', fontSize: '0.8rem', color: '#666' }}>
-                    Duración esperada de la asignación en días
-                  </p>
+                <div className="form-grid asignar-equipo-form-grid">
+                  <div className="form-group">
+                    <label>
+                      <FiShield size={16} className="asignar-equipo-shield-icon" />
+                      Tipo de Responsabilidad
+                    </label>
+                    <CustomSelect
+                      name="tipo_responsabilidad"
+                      value={form.tipo_responsabilidad}
+                      onChange={(e) => handleChange('tipo_responsabilidad', e.target.value)}
+                      options={['Principal', 'Secundario']}
+                      placeholder="Seleccionar tipo"
+                    />
+                  </div>
                 </div>
               </div>
-            </div>
 
-            {/* Sección: Observaciones */}
-            <div className="form-section">
-              <h3 className="form-section-title">
-                <FiFileText size={18} style={{ marginRight: 8 }} />
-                Observaciones (Opcional)
-              </h3>
-              
-              <div className="form-group">
-              <textarea
-                value={form.observaciones}
-                onChange={(e) => handleChange('observaciones', e.target.value)}
-                  placeholder="Notas adicionales sobre la asignación..."
-                rows={4}
-              />
+              {/* Sección: Observaciones */}
+              <div className="form-section">
+                <h3 className="form-section-title">
+                  <FiFileText size={18} className="asignar-equipo-section-icon" />
+                  Observaciones (Opcional)
+                </h3>
+                
+                <div className="form-group">
+                  <textarea
+                    value={form.observaciones}
+                    onChange={(e) => handleChange('observaciones', e.target.value)}
+                    placeholder="Notas adicionales sobre la asignación..."
+                    rows={4}
+                  />
+                </div>
               </div>
-            </div>
 
-            <div className="form-actions">
-              <button 
-                type="submit" 
-                className="btn-primary btn-modern"
-                disabled={loading}
-              >
-                {loading ? 'Asignando...' : 'Asignar Equipo'}
-              </button>
-              <button 
-                type="button" 
-                className="btn-secondary btn-modern"
-                onClick={() => window.history.back()}
-              >
-                Cancelar
-              </button>
-            </div>
-          </form>
+              <div className="form-actions">
+                <button 
+                  type="submit" 
+                  className="btn-primary btn-modern"
+                  disabled={loading}
+                >
+                  {loading ? 'Habilitando...' : 'Habilitar Equipo'}
+                </button>
+                <button 
+                  type="button" 
+                  className="btn-secondary btn-modern"
+                  onClick={() => window.history.back()}
+                >
+                  Cancelar
+                </button>
+              </div>
+            </form>
           ) : (
-            <div style={{ marginTop: '1.5rem' }}>
+            <div className="asignar-equipo-content-wrapper">
               {loadingAsignaciones ? (
-                <div style={{ textAlign: 'center', padding: '3rem' }}>
+                <div className="asignar-equipo-loading">
                   <div className="loading-spinner"></div>
-                  <p style={{ marginTop: '1rem', color: '#666' }}>Cargando asignaciones...</p>
+                  <p className="asignar-equipo-loading-text">Cargando asignaciones...</p>
                 </div>
               ) : asignaciones.length === 0 ? (
                 <div className="empty-state">
                   <div className="empty-icon-wrapper">
                     <FiUserCheck size={48} color="#9ca3af" />
                   </div>
-                  <h3>No hay asignaciones activas</h3>
-                  <p>Las asignaciones de equipos aparecerán aquí</p>
+                  <h3>No hay habilitaciones activas</h3>
+                  <p>Las habilitaciones de equipos aparecerán aquí</p>
                 </div>
               ) : (
-                <div style={{ overflowX: 'auto' }}>
-                  <table className="consulta-table asignaciones-table" style={{ marginTop: '1rem' }}>
+                <div className="asignar-equipo-table-wrapper">
+                  <table className="consulta-table asignaciones-table asignar-equipo-table">
                     <thead>
                       <tr>
                         <th>ID</th>
                         <th>Equipo</th>
                         <th>Usuario</th>
                         <th>Tipo Responsabilidad</th>
-                        <th>Fecha Asignación</th>
-                        <th>Días Asignado</th>
-                        <th>Asignado Por</th>
+                        <th>Fecha Habilitación</th>
+                        <th>Días Habilitado</th>
+                        <th>Habilitado Por</th>
                         <th>Observaciones</th>
                         <th>Acciones</th>
                       </tr>
@@ -663,7 +619,7 @@ export default function AsignarEquipo() {
                           <td>
                             <div>
                               <strong>{asig.equipo_tipo} {asig.equipo_marca} {asig.equipo_modelo}</strong>
-                              <div style={{ fontSize: '0.85rem', color: '#666', marginTop: '4px' }}>
+                              <div className="asignar-equipo-equipo-info">
                                 Código: {asig.codigo_inventario || asig.codigo_equipo}
                                 {asig.consecutivo && <span> | Consecutivo: {asig.consecutivo}</span>}
                               </div>
@@ -672,18 +628,10 @@ export default function AsignarEquipo() {
                           <td>
                             <div>
                               <strong>{asig.usuario_nombre}</strong>
-                              <div style={{ fontSize: '0.85rem', color: '#666', marginTop: '4px' }}>
-                                Cédula: {asig.usuario_cedula}
+                              <div className="asignar-equipo-usuario-info">
+                                Documento: {asig.usuario_cedula}
                                 {asig.usuario_rol && (
-                                  <span style={{
-                                    marginLeft: '8px',
-                                    padding: '2px 8px',
-                                    borderRadius: '8px',
-                                    fontSize: '0.75rem',
-                                    background: '#e0e7ff',
-                                    color: '#4338ca',
-                                    fontWeight: 600
-                                  }}>
+                                  <span className="asignar-equipo-rol-badge">
                                     {asig.usuario_rol}
                                   </span>
                                 )}
@@ -693,25 +641,24 @@ export default function AsignarEquipo() {
                           <td>{getTipoResponsabilidadBadge(asig.tipo_responsabilidad)}</td>
                           <td>{formatDate(asig.fecha_asignacion)}</td>
                           <td>
-                            <span style={{ fontWeight: 600, color: '#3b82f6' }}>
+                            <span className="asignar-equipo-dias-badge">
                               {asig.dias_asignado || 0} días
                             </span>
                           </td>
                           <td>{asig.asignado_por_nombre || 'Sistema'}</td>
-                          <td style={{ maxWidth: '200px', fontSize: '0.9rem', color: '#666' }}>
+                          <td className="asignar-equipo-observaciones-cell">
                             {asig.observaciones || '-'}
                           </td>
                           <td>
                             <button
-                              className="btn danger"
+                              className="btn danger asignar-equipo-delete-btn"
                               onClick={() => confirmDelete(
                                 asig.id_responsable,
-                                `la asignación del equipo "${asig.equipo_tipo} ${asig.equipo_marca} ${asig.equipo_modelo}" a "${asig.usuario_nombre}"`
+                                `la habilitación del equipo "${asig.equipo_tipo} ${asig.equipo_marca} ${asig.equipo_modelo}" a "${asig.usuario_nombre}"`
                               )}
-                              style={{ padding: '6px 12px', fontSize: '0.9rem' }}
                               disabled={loadingAsignaciones}
                             >
-                              <FiTrash2 size={14} style={{ marginRight: '4px' }} />
+                              <FiTrash2 size={14} className="asignar-equipo-delete-icon" />
                               Eliminar
                             </button>
                           </td>

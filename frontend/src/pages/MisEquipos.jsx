@@ -3,7 +3,9 @@ import Header from '../components/Header'
 import Sidebar from '../components/Sidebar'
 import Toast from '../components/Toast'
 import { FiPackage, FiInbox } from 'react-icons/fi'
-import '../styles/equipos.css'
+import { useSocket } from '../contexts/SocketContext'
+import '../styles/pages/equipos.css'
+import '../styles/misEquipos.css'
 
 export default function MisEquipos() {
   const [equipos, setEquipos] = useState([])
@@ -22,6 +24,35 @@ export default function MisEquipos() {
       console.error('Error al obtener datos del usuario:', error)
     }
   }, [])
+
+  // Suscribirse a actualizaciones en tiempo real de equipos y asignaciones
+  const { subscribe } = useSocket()
+  useEffect(() => {
+    if (!subscribe) return
+    
+    const unsubscribeEquipo = subscribe('equipo:updated', () => {
+      fetchMisEquipos()
+    })
+    
+    const unsubscribeEquipoDeleted = subscribe('equipo:deleted', () => {
+      fetchMisEquipos()
+    })
+    
+    const unsubscribeAsignacionCreated = subscribe('asignacion:created', () => {
+      fetchMisEquipos()
+    })
+    
+    const unsubscribeAsignacionDeleted = subscribe('asignacion:deleted', () => {
+      fetchMisEquipos()
+    })
+    
+    return () => {
+      unsubscribeEquipo()
+      unsubscribeEquipoDeleted()
+      unsubscribeAsignacionCreated()
+      unsubscribeAsignacionDeleted()
+    }
+  }, [subscribe])
 
   async function fetchMisEquipos() {
     setLoading(true)
@@ -57,12 +88,12 @@ export default function MisEquipos() {
           {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
         <div className="form-equipos form-modern">
           <div className="form-header">
-            <div className="form-icon-wrapper" style={{ background: 'linear-gradient(135deg, #845ef7 0%, #7048e8 100%)' }}>
+            <div className="form-icon-wrapper mis-equipos-header-icon">
               <FiPackage size={28} color="#fff" />
             </div>
             <div>
-              <h2 style={{ margin: 0, fontSize: '28px', fontWeight: 700, color: '#1a2a3a' }}>Mis Equipos Asignados</h2>
-              <p style={{ color: '#666', marginTop: 8, fontSize: '15px' }}>
+              <h2 className="mis-equipos-title">Mis Equipos Asignados</h2>
+              <p className="mis-equipos-subtitle">
                 Equipos que tienes bajo tu responsabilidad actualmente
               </p>
             </div>
@@ -84,8 +115,8 @@ export default function MisEquipos() {
               <p>Actualmente no hay equipos bajo tu responsabilidad</p>
             </div>
           ) : (
-            <div style={{ overflowX: 'auto' }}>
-              <table className="consulta-table" style={{ width: '100%' }}>
+            <div className="mis-equipos-table-wrapper">
+              <table className="consulta-table mis-equipos-table">
                 <thead>
                   <tr>
                     <th>Código Inventario</th>
@@ -111,40 +142,27 @@ export default function MisEquipos() {
                       <td>{eq.modelo}</td>
                       <td>{eq.consecutivo}</td>
                       <td>
-                        <span 
-                          className="badge" 
-                          style={{ 
-                            background: 
-                              eq.estado_fisico === 'Nuevo' ? '#28a745' :
-                              eq.estado_fisico === 'Bueno' ? '#17a2b8' :
-                              eq.estado_fisico === 'Regular' ? '#ffc107' :
-                              eq.estado_fisico === 'Malo' ? '#fd7e14' :
-                              eq.estado_fisico === 'Dañado' ? '#dc3545' : '#6c757d',
-                            color: '#fff',
-                            padding: '4px 8px',
-                            borderRadius: '4px',
-                            fontSize: '12px',
-                            fontWeight: 600
-                          }}
-                        >
+                        <span className={`badge ${
+                          eq.estado_fisico === 'Nuevo' ? 'badge-success' :
+                          eq.estado_fisico === 'Bueno' ? 'badge-info' :
+                          eq.estado_fisico === 'Regular' ? 'badge-warning' :
+                          eq.estado_fisico === 'Malo' ? 'badge-warning' :
+                          eq.estado_fisico === 'Dañado' ? 'badge-error' :
+                          'badge-info'
+                        }`}>
                           {eq.estado_fisico}
                         </span>
                       </td>
                       <td>
                         {eq.nombre_ambiente || 'Sin ambiente'}
                         {eq.codigo_ambiente && (
-                          <div style={{ fontSize: 12, color: '#666' }}>
+                          <div className="mis-equipos-info-text">
                             ({eq.codigo_ambiente})
                           </div>
                         )}
                       </td>
                       <td>
-                        <span 
-                          style={{ 
-                            color: eq.tipo_responsabilidad === 'Principal' ? '#007bff' : '#6c757d',
-                            fontWeight: eq.tipo_responsabilidad === 'Principal' ? 600 : 400
-                          }}
-                        >
+                        <span className={eq.tipo_responsabilidad === 'Principal' ? 'mis-equipos-responsabilidad-badge' : 'mis-equipos-responsabilidad-secundario'}>
                           {eq.tipo_responsabilidad}
                         </span>
                       </td>
@@ -154,12 +172,12 @@ export default function MisEquipos() {
                           : '-'}
                       </td>
                       <td>
-                        <span style={{ fontWeight: 600, color: '#007bff' }}>
+                        <span className="mis-equipos-responsabilidad-badge">
                           {eq.dias_asignado || 0}
                         </span>
                       </td>
                       <td>{eq.asignado_por_nombre || 'Sistema'}</td>
-                      <td style={{ maxWidth: 200, fontSize: 13, color: '#666' }}>
+                      <td className="mis-equipos-observaciones">
                         {eq.observaciones || '-'}
                       </td>
                     </tr>
@@ -169,7 +187,7 @@ export default function MisEquipos() {
             </div>
           )}
 
-          <div className="form-actions" style={{ marginTop: 24 }}>
+          <div className="form-actions mis-equipos-actions">
             <button 
               className="btn-secondary btn-modern"
               onClick={() => window.history.back()}

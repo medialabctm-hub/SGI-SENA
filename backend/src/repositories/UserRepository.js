@@ -86,8 +86,9 @@ export class UserRepository extends BaseRepository {
    */
   async findById(userId) {
     return this.findOne(
-      `SELECT u.id_usuario, u.nombre_usuario, u.correo, u.telefono, u.cedula, 
-              u.id_rol, r.nombre_rol, u.requiere_cambio_contrasena
+      `SELECT u.id_usuario, u.nombre_usuario, u.correo, u.telefono, u.cedula,
+              u.tipo_documento, u.tipo_documento_otro,
+              u.id_rol, r.nombre_rol, u.requiere_cambio_contrasena, u.foto_perfil
        FROM Usuarios u
        LEFT JOIN Roles r ON r.id_rol = u.id_rol
        WHERE u.id_usuario = ? AND u.estado = "Activo"`,
@@ -97,14 +98,20 @@ export class UserRepository extends BaseRepository {
 
   /**
    * Lista todos los usuarios activos con información completa
+   * @param {string} rol - Filtro opcional por rol (nombre_rol)
    * @returns {Promise<Array>} Lista de usuarios
    */
-  async findAll() {
-    return this.execute(
-      `SELECT 
+  async findAll(rol = null) {
+    // Si se filtra por rol, usar INNER JOIN para asegurar que solo se traigan usuarios con ese rol
+    // Si no se filtra, usar LEFT JOIN para traer todos los usuarios (incluso sin rol)
+    const joinType = rol ? 'INNER JOIN' : 'LEFT JOIN';
+    
+    let query = `SELECT 
          u.id_usuario, 
          u.nombre_usuario, 
-         u.cedula, 
+         u.cedula,
+         u.tipo_documento,
+         u.tipo_documento_otro,
          u.correo, 
          u.telefono,
          r.nombre_rol,
@@ -112,17 +119,31 @@ export class UserRepository extends BaseRepository {
          u.fecha_registro,
          u.ultimo_acceso,
          u.requiere_cambio_contrasena,
+         u.foto_perfil,
          u.creado_por,
          creador.nombre_usuario AS creado_por_nombre,
-         (SELECT COUNT(*) FROM Responsables_Equipo re 
-          WHERE re.id_usuario = u.id_usuario 
-          AND re.estado_responsabilidad = 'Activo') AS equipos_asignados
+         COUNT(DISTINCT re.codigo_equipo) AS equipos_asignados
        FROM Usuarios u
-       LEFT JOIN Roles r ON r.id_rol = u.id_rol
+       ${joinType} Roles r ON r.id_rol = u.id_rol
        LEFT JOIN Usuarios creador ON creador.id_usuario = u.creado_por
-       WHERE u.estado = 'Activo'
-       ORDER BY u.nombre_usuario`
-    );
+       LEFT JOIN Responsables_Equipo re ON re.id_usuario = u.id_usuario 
+         AND re.estado_responsabilidad = 'Activo'
+       WHERE u.estado = 'Activo'`;
+    
+    if (rol) {
+      query += ` AND r.nombre_rol = ?`;
+      return this.execute(query + ` GROUP BY u.id_usuario, u.nombre_usuario, u.cedula, u.tipo_documento, 
+                u.tipo_documento_otro, u.correo, u.telefono, r.nombre_rol, 
+                u.estado, u.fecha_registro, u.ultimo_acceso, 
+                u.requiere_cambio_contrasena, u.foto_perfil, u.creado_por, 
+                creador.nombre_usuario ORDER BY u.nombre_usuario`, [rol]);
+    }
+    
+    return this.execute(query + ` GROUP BY u.id_usuario, u.nombre_usuario, u.cedula, u.tipo_documento, 
+                u.tipo_documento_otro, u.correo, u.telefono, r.nombre_rol, 
+                u.estado, u.fecha_registro, u.ultimo_acceso, 
+                u.requiere_cambio_contrasena, u.foto_perfil, u.creado_por, 
+                creador.nombre_usuario ORDER BY u.nombre_usuario`);
   }
 
   /**
@@ -134,6 +155,8 @@ export class UserRepository extends BaseRepository {
     const {
       nombre,
       cedula,
+      tipo_documento,
+      tipo_documento_otro,
       correo,
       telefono,
       contrasena,
@@ -143,9 +166,19 @@ export class UserRepository extends BaseRepository {
     try {
       const [result] = await this.db.execute(
         `INSERT INTO Usuarios 
-         (nombre_usuario, cedula, correo, telefono, contrasena, id_rol, estado) 
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
-        [nombre, cedula, correo.toLowerCase().trim(), telefono, contrasena, idRol, 'Activo']
+         (nombre_usuario, cedula, tipo_documento, tipo_documento_otro, correo, telefono, contrasena, id_rol, estado) 
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          nombre, 
+          cedula, 
+          tipo_documento || 'CC', 
+          tipo_documento === 'Otro' ? tipo_documento_otro : null,
+          correo.toLowerCase().trim(), 
+          telefono, 
+          contrasena, 
+          idRol, 
+          'Activo'
+        ]
       );
 
       return { insertId: result.insertId, affectedRows: result.affectedRows };
@@ -170,6 +203,11 @@ export class UserRepository extends BaseRepository {
    * @returns {Promise<Object>} Resultado de la actualización
    */
   async update(userId, userData) {
+    // Mapear fotoPerfil a foto_perfil para la base de datos
+    if (userData.fotoPerfil !== undefined) {
+      userData.foto_perfil = userData.fotoPerfil;
+      delete userData.fotoPerfil;
+    }
     const updates = [];
     const values = [];
 
@@ -180,6 +218,22 @@ export class UserRepository extends BaseRepository {
     if (userData.cedula) {
       updates.push('cedula = ?');
       values.push(userData.cedula);
+    }
+    if (userData.tipo_documento !== undefined) {
+      updates.push('tipo_documento = ?');
+      values.push(userData.tipo_documento);
+      // Si cambia el tipo de documento, actualizar o limpiar tipo_documento_otro
+      if (userData.tipo_documento === 'Otro') {
+        updates.push('tipo_documento_otro = ?');
+        values.push(userData.tipo_documento_otro || null);
+      } else {
+        updates.push('tipo_documento_otro = ?');
+        values.push(null);
+      }
+    } else if (userData.tipo_documento_otro !== undefined) {
+      // Si solo se actualiza tipo_documento_otro
+      updates.push('tipo_documento_otro = ?');
+      values.push(userData.tipo_documento_otro || null);
     }
     if (userData.correo) {
       updates.push('correo = ?');
@@ -192,6 +246,10 @@ export class UserRepository extends BaseRepository {
     if (userData.idRol) {
       updates.push('id_rol = ?');
       values.push(userData.idRol);
+    }
+    if (userData.foto_perfil !== undefined) {
+      updates.push('foto_perfil = ?');
+      values.push(userData.foto_perfil || null);
     }
 
     if (updates.length === 0) {

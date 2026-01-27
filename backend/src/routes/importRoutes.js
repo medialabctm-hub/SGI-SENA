@@ -1,30 +1,33 @@
 import express from 'express';
 import multer from 'multer';
-import { importarEquipos, importarUsuarios } from '../controller/importController.js';
+import { 
+  importarEquipos, 
+  importarUsuarios, 
+  importarAprendices, 
+  obtenerDuplicadosPendientes, 
+  procesarDuplicado, 
+  procesarDuplicadosMasivo 
+} from '../controller/importController.js';
 import { authenticate } from '../middleware/authMiddleware.js';
 import { requirePermission } from '../middleware/authorization.js';
 import { PERMISSIONS } from '../config/permissions.js';
+import { validateExcelFile } from '../middleware/fileValidation.js';
 
 const router = express.Router();
 
-// Configurar multer para manejar archivos en memoria
+// Configurar multer para manejar archivos en memoria con validación mejorada
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: {
-    fileSize: 10 * 1024 * 1024 // 10MB máximo
+    fileSize: 50 * 1024 * 1024 // 50MB máximo (mejorado desde 10MB)
   },
   fileFilter: (req, file, cb) => {
-    // Aceptar solo archivos Excel
-    const allowedMimes = [
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // .xlsx
-      'application/vnd.ms-excel', // .xls
-      'application/vnd.ms-excel.sheet.macroEnabled.12' // .xlsm
-    ];
-    
-    if (allowedMimes.includes(file.mimetype)) {
+    // Usar validación mejorada de archivos Excel
+    const validation = validateExcelFile(file);
+    if (validation.valid) {
       cb(null, true);
     } else {
-      cb(new Error('Solo se permiten archivos Excel (.xlsx, .xls)'), false);
+      cb(new Error(validation.error), false);
     }
   }
 });
@@ -43,6 +46,32 @@ router.post('/usuarios',
   requirePermission(PERMISSIONS.USERS.CREATE),
   upload.single('archivo'),
   importarUsuarios
+);
+
+// Importar aprendices desde Excel - Solo Admin
+router.post('/aprendices',
+  authenticate,
+  requirePermission(PERMISSIONS.USERS.CREATE),
+  upload.single('archivo'),
+  importarAprendices
+);
+
+// Obtener duplicados pendientes de revisión - Admin y Cuentadante
+router.get('/duplicados',
+  authenticate,
+  obtenerDuplicadosPendientes
+);
+
+// Procesar un duplicado (aprobar o rechazar) - Admin y Cuentadante
+router.post('/duplicados/procesar',
+  authenticate,
+  procesarDuplicado
+);
+
+// Procesar múltiples duplicados - Admin y Cuentadante
+router.post('/duplicados/procesar-masivo',
+  authenticate,
+  procesarDuplicadosMasivo
 );
 
 export default router;

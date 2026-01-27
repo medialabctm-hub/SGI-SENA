@@ -1,4 +1,182 @@
-/* Estilos para la página de Consultar Equipo */
+/* ============================================
+   ESTILOS PARA CONSULTAR EQUIPO
+   ============================================ */
+
+.consultar-equipo-header {
+  margin: 0;
+}
+
+.consultar-equipo-header-row {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.consultar-equipo-search-form {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.consultar-equipo-actions-row {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.consultar-equipo-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.consultar-equipo-btn svg {
+  flex-shrink: 0;
+  display: block;
+}
+
+.consultar-equipo-btn-verde {
+  background: var(--success-800);
+  color: white;
+}
+
+.consultar-equipo-btn-verde:hover:not(:disabled) {
+  background: var(--success-900);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+
+.consultar-equipo-btn-gris {
+  background: white;
+  color: var(--neutral-700);
+  border: 2px solid var(--neutral-300);
+}
+
+.consultar-equipo-btn-gris svg {
+  color: var(--neutral-700) !important;
+}
+
+.consultar-equipo-btn-gris:hover:not(:disabled) {
+  background: var(--neutral-50);
+  border-color: var(--neutral-400);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.consultar-equipo-btn-gris:hover:not(:disabled) svg {
+  color: var(--neutral-800) !important;
+}
+
+.consultar-equipo-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none !important;
+}
+
+.consultar-equipo-content {
+  margin-top: 12px;
+}
+
+.consultar-equipo-table-wrapper {
+  overflow-x: auto;
+}
+
+.consultar-equipo-table {
+  width: 100%;
+}
+
+.consultar-equipo-actions-column {
+  width: 280px;
+}
+
+.consultar-equipo-actions-column-instructor {
+  width: 120px;
+}
+
+.consultar-equipo-action-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 0.85rem;
+  padding: 8px 14px;
+  margin-right: 6px;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  border: none;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+}
+
+.consultar-equipo-action-button svg {
+  flex-shrink: 0;
+  display: block;
+  width: 14px;
+  height: 14px;
+  color: inherit;
+}
+
+/* Iconos en botones con fondo blanco/claro deben ser oscuros */
+.consultar-equipo-action-button:not(.btn-view):not(.btn-edit):not(.btn-delete) svg {
+  color: var(--neutral-700) !important;
+}
+
+.consultar-equipo-action-button:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+}
+
+.consultar-equipo-action-button:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.consultar-equipo-action-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none !important;
+}
+
+/* Estilos específicos para botones dentro de la tabla */
+.consultar-equipo-table .btn-view,
+.consultar-equipo-table .consultar-equipo-action-button.btn-view {
+  background: var(--info-600);
+  color: white;
+  border: 1px solid rgba(23, 112, 230, 0.2);
+}
+
+.consultar-equipo-table .btn-view:hover:not(:disabled),
+.consultar-equipo-table .consultar-equipo-action-button.btn-view:hover:not(:disabled) {
+  background: var(--info-700);
+  border-color: rgba(23, 112, 230, 0.3);
+}
+
+.consultar-equipo-action-icon {
+  margin-right: 0;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+.consultar-equipo-help-text {
+  color: var(--neutral-600);
+  margin-top: 6px;
+}
+
+/* ============================================
+   ESTILOS PARA MODAL DE SELECCIÓN DE COLUMNAS
+   ============================================ */
 
 .consultar-equipo-column-filter-modal {
   position: fixed;
@@ -11,142 +189,170 @@
   align-items: center;
   justify-content: center;
   z-index: 1000;
+  padding: 20px;
 }
 
 .consultar-equipo-column-filter-content {
   background: white;
-  padding: 24px;
   border-radius: 12px;
-  max-width: 500px;
-  width: 90%;
-  max-height: 80vh;
-  overflow: auto;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+  width: 100%;
+  max-width: 900px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .consultar-equipo-column-filter-header {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
+  justify-content: space-between;
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--neutral-200);
 }
 
 .consultar-equipo-column-filter-header h3 {
   margin: 0;
-  font-size: 20px;
-  font-weight: 700;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--neutral-900);
 }
 
 .consultar-equipo-column-filter-close {
-  background: none;
+  background: transparent;
   border: none;
-  font-size: 24px;
+  font-size: 28px;
+  line-height: 1;
+  color: var(--neutral-600);
   cursor: pointer;
-  color: #6b7280;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+}
+
+.consultar-equipo-column-filter-close:hover {
+  background: var(--neutral-100);
+  color: var(--neutral-900);
 }
 
 .consultar-equipo-column-filter-actions {
   display: flex;
   gap: 12px;
-  margin-bottom: 16px;
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--neutral-200);
+  flex-wrap: wrap;
 }
 
 .consultar-equipo-column-filter-btn {
-  font-size: 0.85rem;
-  padding: 6px 12px;
-  border-radius: 6px;
-  border: 1px solid #d1d5db;
-  background: #fff;
+  background: white;
+  color: var(--neutral-700);
+  border: 2px solid var(--neutral-300);
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.2s ease;
+  white-space: nowrap;
 }
 
 .consultar-equipo-column-filter-btn:hover {
-  background: #f9fafb;
+  background: var(--neutral-50);
+  border-color: var(--neutral-400);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .consultar-equipo-column-list {
-  display: grid;
-  gap: 8px;
-  max-height: 400px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  padding: 24px;
   overflow-y: auto;
+  flex: 1;
+  min-height: 0;
 }
 
 .consultar-equipo-column-item {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 12px;
+  gap: 10px;
+  padding: 12px 16px;
   border-radius: 8px;
   cursor: pointer;
-  border: 2px solid #e5e7eb;
-  transition: all 0.2s;
+  transition: all 0.2s ease;
+  background: white;
+  border: 2px solid var(--neutral-200);
+  position: relative;
+  min-width: 180px;
+  flex: 0 0 auto;
+  user-select: none;
+}
+
+.consultar-equipo-column-item:hover {
+  background: var(--neutral-50);
+  border-color: var(--neutral-300);
 }
 
 .consultar-equipo-column-item.checked {
-  background: #f0fdf4;
   border-color: var(--success-800);
-}
-
-.consultar-equipo-column-item:not(.checked):hover {
-  background: #f3f4f6;
-  border-color: #d1d5db;
+  background: var(--success-50);
 }
 
 .consultar-equipo-column-checkbox {
-  width: 18px;
-  height: 18px;
-  cursor: pointer;
-  accent-color: var(--success-800);
-  -webkit-appearance: none;
-  -moz-appearance: none;
-  appearance: none;
-  border: 2px solid #d1d5db;
-  border-radius: 4px;
-  background: #fff;
-  position: relative;
-  transition: all 0.2s;
-}
-
-.consultar-equipo-column-checkbox:checked {
-  background: var(--success-800);
-  border-color: var(--success-800);
-}
-
-.consultar-equipo-column-checkbox:checked::after {
-  content: '✓';
   position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  color: white;
-  font-size: 14px;
-  font-weight: bold;
+  opacity: 0;
+  width: 0;
+  height: 0;
+  pointer-events: none;
 }
 
 .consultar-equipo-column-label {
-  flex: 1;
+  font-size: 0.95rem;
+  color: var(--neutral-700);
   font-weight: 500;
+  flex: 1;
+  user-select: none;
 }
 
 .consultar-equipo-column-item.checked .consultar-equipo-column-label {
+  color: var(--neutral-900);
   font-weight: 600;
-  color: #111827;
-}
-
-.consultar-equipo-column-item:not(.checked) .consultar-equipo-column-label {
-  color: #6b7280;
 }
 
 .consultar-equipo-column-icon {
   flex-shrink: 0;
+  display: block;
 }
 
 .consultar-equipo-column-filter-footer {
+  padding: 20px 24px;
+  border-top: 1px solid var(--neutral-200);
   display: flex;
-  gap: 12px;
-  justify-content: flex-end;
-  padding-top: 16px;
-  border-top: 1px solid #e5e7eb;
+  justify-content: flex-start;
 }
 
+.consultar-equipo-column-filter-footer .btn {
+  background: white;
+  color: var(--neutral-700);
+  border: 2px solid var(--neutral-300);
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.consultar-equipo-column-filter-footer .btn:hover {
+  background: var(--neutral-50);
+  border-color: var(--neutral-400);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}

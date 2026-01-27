@@ -130,7 +130,7 @@ export default function RestablecerContrasena() {
         )}
         <div className="login-card">
           <div className="logo-box">
-            <div className="logo"><img src='/public/images/logoSena.png' alt="Logo SENA" /></div>
+            <div className="logo"><img src='/images/logoSena.png' alt="Logo SENA" /></div>
           </div>
           <h1 className="title">Token Inválido</h1>
           <p className="subtitle subtitle-centered">
@@ -170,7 +170,7 @@ export default function RestablecerContrasena() {
             <div className="logo"><img src='/public/images/logoSena.png' alt="Logo SENA" /></div>
           </div>
           <div className="success-container">
-            <FiCheckCircle size={64} color="#40c057" className="success-icon" />
+            <FiCheckCircle size={64} className="success-icon auth-success-icon" />
             <h1 className="title">¡Contraseña Restablecida!</h1>
             <p className="subtitle">
               Tu contraseña ha sido restablecida exitosamente.

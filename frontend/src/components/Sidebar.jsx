@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { useNavigate, useLocation } from 'react-router-dom'
+import { useLocation } from 'react-router-dom'
 import {
   FiPlus,
   FiSearch,
@@ -23,11 +23,12 @@ import {
   FiClock
 } from 'react-icons/fi'
 import { useSidebar } from '../contexts/SidebarContext'
-import '../styles/sidebar.css'
+import { useBlockedNavigate } from '../hooks/useBlockedNavigate'
+import '../styles/layout/sidebar.css'
 
 export default function Sidebar({ user }) {
   const { isOpen, closeSidebar } = useSidebar()
-  const nav = useNavigate()
+  const nav = useBlockedNavigate()
   const location = useLocation()
   const userRole = user?.nombre_rol || ''
   const isAdmin = userRole === 'Administrador'
@@ -49,11 +50,12 @@ export default function Sidebar({ user }) {
     
     // Determinar qué menú debe estar expandido basándose en la ruta
     // Solo expandir el menú correspondiente y colapsar los demás
-    if (path.startsWith('/equipos') || path.startsWith('/mis-equipos') || path.startsWith('/asignaciones')) {
+    if (path.startsWith('/equipos') || path.startsWith('/mis-equipos') || path.startsWith('/asignaciones') || path.startsWith('/ambientes')) {
       setExpandedMenus({
         equipos: true,
         incidencias: false,
         mantenimiento: false,
+        horarios: false,
         config: false
       })
     } else if (path.startsWith('/novedades') || path.startsWith('/reportes')) {
@@ -61,6 +63,7 @@ export default function Sidebar({ user }) {
         equipos: false,
         incidencias: true,
         mantenimiento: false,
+        horarios: false,
         config: false
       })
     } else if (path.startsWith('/mantenimientos')) {
@@ -79,7 +82,7 @@ export default function Sidebar({ user }) {
         horarios: true,
         config: false
       })
-    } else if (path.startsWith('/usuarios') || path.startsWith('/ambientes') || path.startsWith('/config')) {
+    } else if (path.startsWith('/usuarios') || path.startsWith('/aprendices') || path.startsWith('/config')) {
       setExpandedMenus({
         equipos: false,
         incidencias: false,
@@ -98,32 +101,37 @@ export default function Sidebar({ user }) {
   }
 
   const isActive = (path) => {
+    const currentPath = location.pathname;
+    
     if (path.includes('?')) {
       const [basePath, query] = path.split('?')
-      if (location.pathname === basePath) {
+      if (currentPath === basePath) {
         const urlParams = new URLSearchParams(location.search)
         const pathParams = new URLSearchParams(query)
         return urlParams.get('section') === pathParams.get('section')
       }
     }
-    return location.pathname === path
+    return currentPath === path
   }
 
   const menuItems = {
     equipos: [
-      { title: 'Registrar Equipo', path: '/equipos', icon: <FiPlus />, roles: ['Administrador'] },
-      { title: 'Consultar Equipo', path: '/equipos/consultar', icon: <FiSearch />, roles: ['all'] },
+      { title: 'Registrar Inventario', path: '/equipos', icon: <FiPlus />, roles: ['Administrador', 'Cuentadante'] },
+      { title: 'Consultar Inventario', path: '/equipos/consultar', icon: <FiSearch />, roles: ['all'] },
       { title: 'Mis Equipos', path: '/mis-equipos', icon: <FiPackage />, roles: ['all'] },
       { title: 'Asignar Equipo', path: '/equipos/asignar', icon: <FiUsers />, roles: ['Administrador', 'Instructor'] },
       { title: 'Verificar Inventario', path: '/equipos/verificar', icon: <FiCheckCircle />, roles: ['Instructor'] },
-      { title: 'Historial de Verificaciones', path: '/equipos/verificacion/historial', icon: <FiClock />, roles: ['all'] }
+      // { title: 'Historial de Verificaciones', path: '/equipos/verificacion/historial', icon: <FiClock />, roles: ['all'] }, // DESACTIVADO
+      // Historial de Uso - DESACTIVADO
+      { title: 'Buscar Cuentadante', path: '/equipos/cuentadantes/buscar', icon: <FiSearch />, roles: ['Administrador'] },
+      { title: 'Gestión de Ambientes', path: '/ambientes', icon: <FiMapPin />, roles: ['Administrador'] },
+      { title: 'Asignar Ambientes', path: '/ambientes/asignar', icon: <FiUserCheck />, roles: ['Administrador'] }
     ],
     incidencias: [
-      { title: 'Novedades', path: '/novedades', icon: <FiAlertCircle />, roles: ['Administrador', 'Instructor'] },
-      { title: 'Reportes', path: '/reportes', icon: <FiFileText />, roles: ['Administrador', 'Instructor'] }
+      { title: 'Novedades', path: '/novedades', icon: <FiAlertCircle />, roles: ['Administrador', 'Instructor', 'Cuentadante'] }
     ],
     mantenimiento: [
-      { title: 'Historial de Mantenimientos', path: '/mantenimientos', icon: <FiTool />, roles: ['all'] }
+      { title: 'Historial de Mantenimientos', path: '/mantenimientos', icon: <FiTool />, roles: ['Administrador', 'Cuentadante'] }
     ],
     horarios: [
       { title: 'Mis Horarios', path: '/horarios', icon: <FiCalendar />, roles: ['Instructor'] },
@@ -131,14 +139,12 @@ export default function Sidebar({ user }) {
       /*{ title: 'Consultar Responsables', path: '/horarios/responsables', icon: <FiClock />, roles: ['all'] }*/
     ],
     config: [
-      { title: 'Personal Registrado', path: '/usuarios', icon: <FiUsers />, roles: ['Administrador', 'Instructor'] },
-      { title: 'Gestión de Usuarios', path: '/config?section=users', icon: <FiUsers />, roles: ['Administrador', 'Instructor'] },
-      { title: 'Gestión de Ambientes', path: '/ambientes', icon: <FiMapPin />, roles: ['Administrador'] },
-      { title: 'Asignar Ambientes', path: '/ambientes/asignar', icon: <FiUserCheck />, roles: ['Administrador'] },
-      { title: 'Perfil', path: '/config?section=profile', icon: <FiUser />, roles: ['all'] },
+      { title: 'Usuarios', path: '/usuarios', icon: <FiUsers />, roles: ['Administrador', 'Instructor'] },
+      { title: 'Aprendices', path: '/aprendices', icon: <FiUser />, roles: ['Administrador'] },
       { title: 'Seguridad', path: '/config?section=security', icon: <FiShield />, roles: ['all'] },
       { title: 'Códigos de Seguridad', path: '/config?section=invitation-codes', icon: <FiKey />, roles: ['Administrador'] },
-      { title: 'Roles y Áreas', path: '/config?section=roles', icon: <FiSettings />, roles: ['all'] },
+      { title: 'Tipos de Equipos', path: '/config?section=tipos-equipo', icon: <FiPackage />, roles: ['Administrador'] },
+      { title: 'Roles y Áreas', path: '/config?section=roles', icon: <FiSettings />, roles: ['Administrador', 'Instructor', 'Aprendiz'] },
       { title: 'Notificaciones', path: '/config?section=notifications', icon: <FiBell />, roles: ['all'] },
       { title: 'Ajustes de la App', path: '/config?section=app', icon: <FiSettings />, roles: ['all'] }
     ]
@@ -158,7 +164,7 @@ export default function Sidebar({ user }) {
     const isExpanded = expandedMenus[key]
 
     return (
-      <div key={key} className="sidebar-section">
+      <div key={key} className={`sidebar-section ${isExpanded ? 'expanded' : ''}`}>
         <button
           className="sidebar-section-header"
           onClick={() => toggleMenu(key)}
@@ -167,35 +173,33 @@ export default function Sidebar({ user }) {
             {icon}
             <span>{title}</span>
           </div>
-          {isExpanded ? <FiChevronDown /> : <FiChevronRight />}
+          <span className="sidebar-chevron-wrapper">
+            {isExpanded ? <FiChevronDown /> : <FiChevronRight />}
+          </span>
         </button>
-        {isExpanded && (
-          <div className="sidebar-section-items">
-            {filteredItems.map((item) => (
-              <button
-                key={item.path}
-                className={`sidebar-item ${isActive(item.path) ? 'active' : ''}`}
-                onClick={() => nav(item.path)}
-              >
-                {item.icon}
-                <span>{item.title}</span>
-              </button>
-            ))}
-          </div>
-        )}
+        <div className={`sidebar-section-items ${isExpanded ? 'expanded' : ''}`}>
+          {filteredItems.map((item) => (
+            <button
+              key={item.path}
+              className={`sidebar-item ${isActive(item.path) ? 'active' : ''}`}
+              onClick={() => nav(item.path)}
+            >
+              {item.icon}
+              <span>{item.title}</span>
+            </button>
+          ))}
+        </div>
       </div>
     )
   }
 
   return (
     <>
-      {isOpen && (
-        <div 
-          className="sidebar-overlay"
-          onClick={closeSidebar}
-          aria-hidden="true"
-        />
-      )}
+      <div 
+        className={`sidebar-overlay ${isOpen ? 'active' : ''}`}
+        onClick={closeSidebar}
+        aria-hidden="true"
+      />
       <aside className={`app-sidebar ${isOpen ? 'sidebar-open' : 'sidebar-closed'}`}>
         <div className="sidebar-content">
         <button
@@ -206,7 +210,7 @@ export default function Sidebar({ user }) {
           <span>Inicio</span>
         </button>
 
-        {renderMenuSection('equipos', 'Gestión de Equipos', <FiPackage />)}
+        {renderMenuSection('equipos', 'Inventario', <FiPackage />)}
         {renderMenuSection('incidencias', 'Incidencias / Reportes', <FiAlertCircle />)}
         {renderMenuSection('mantenimiento', 'Mantenimiento', <FiTool />)}
         {renderMenuSection('horarios', 'Horarios y Clases', <FiCalendar />)}

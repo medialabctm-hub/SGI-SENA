@@ -30,10 +30,10 @@ export const crearNovedadSchema = z.object({
 });
 
 export const actualizarEstadoNovedadSchema = z.object({
-  estado: z.enum(['Pendiente', 'En Revisión', 'Resuelta', 'Rechazada'], {
-    errorMap: () => ({ message: 'Estado inválido' }),
+  estado_resolucion: z.enum(['Pendiente', 'En Proceso', 'Resuelto', 'No Resuelto'], {
+    errorMap: () => ({ message: 'Estado de resolución inválido. Debe ser: Pendiente, En Proceso, Resuelto o No Resuelto' }),
   }),
-  observaciones: z.string().max(1000).optional().nullable(),
+  observaciones_resolucion: z.string().max(1000).optional().nullable(),
 });
 
 /**
@@ -45,14 +45,17 @@ export const validate = (schema) => (req, res, next) => {
     req.body = validated;
     next();
   } catch (error) {
-    if (error instanceof z.ZodError) {
+    if (error instanceof z.ZodError && error.errors && Array.isArray(error.errors)) {
+      const details = error.errors.map((e) => ({
+        path: e.path && Array.isArray(e.path) ? e.path.join('.') : 'unknown',
+        message: e.message || 'Error de validación desconocido',
+        code: e.code || 'invalid_type',
+      }));
+      
       return res.status(400).json({
         success: false,
         error: 'Error de validación',
-        details: error.errors.map((e) => ({
-          path: e.path.join('.'),
-          message: e.message,
-        })),
+        details: details.length > 0 ? details : [{ path: 'unknown', message: 'Error de validación desconocido' }],
       });
     }
     next(error);

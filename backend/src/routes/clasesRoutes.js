@@ -10,7 +10,11 @@ import {
   actualizarClase,
   cancelarClase,
   consultarResponsablesTiempoReal,
-  sincronizarResponsabilidadesHorarios
+  sincronizarResponsabilidadesHorarios,
+  obtenerNombresClases,
+  crearNombreClase,
+  aceptarConsentimiento,
+  rechazarConsentimiento
 } from '../controller/clasesController.js';
 import { authenticate } from '../middleware/authMiddleware.js';
 import { requirePermission } from '../middleware/authorization.js';
@@ -37,6 +41,14 @@ router.get(
   '/clases',
   requirePermission(PERMISSIONS.CLASES.VIEW),
   listarClases
+);
+
+// Autocompletado: Obtener nombres únicos de clases de formación
+// IMPORTANTE: Esta ruta debe ir ANTES de /clases/:id para evitar conflictos
+router.get(
+  '/clases/nombres',
+  requirePermission(PERMISSIONS.CLASES.VIEW),
+  obtenerNombresClases
 );
 
 // Obtener una clase específica
@@ -76,6 +88,19 @@ router.post(
   cancelarClase
 );
 
+// Consentimiento para iniciar clase
+router.post(
+  '/clases/:id/consentimiento/aceptar',
+  requirePermission(PERMISSIONS.CLASES.UPDATE),
+  aceptarConsentimiento
+);
+
+router.post(
+  '/clases/:id/consentimiento/rechazar',
+  requirePermission(PERMISSIONS.CLASES.UPDATE),
+  rechazarConsentimiento
+);
+
 // Agregar participantes a una clase - Protegido con validación
 router.post(
   '/clases/:id/participantes',
@@ -104,6 +129,14 @@ router.post(
   '/clases/sincronizar-responsabilidades',
   requirePermission(PERMISSIONS.CLASES.UPDATE),
   sincronizarResponsabilidadesHorarios
+);
+
+// Autocompletado: Crear/validar nuevo nombre de clase
+router.post(
+  '/clases/nombres',
+  writeLimiter,
+  requirePermission(PERMISSIONS.CLASES.CREATE),
+  crearNombreClase
 );
 
 export default router;

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
+import '../styles/components/protectedRoute.css';
 
 export default function ProtectedRoute({ children }) {
   const [loading, setLoading] = useState(true);
@@ -50,14 +51,11 @@ export default function ProtectedRoute({ children }) {
   }
 
   if (loading) {
-    return <div style={{ 
-      display: 'flex', 
-      justifyContent: 'center', 
-      alignItems: 'center', 
-      height: '100vh',
-      fontSize: '1.2rem',
-      color: '#666'
-    }}>Cargando...</div>;
+    return (
+      <div className="protected-route-loading">
+        Cargando...
+      </div>
+    );
   }
 
   return children;

@@ -1,8 +1,8 @@
 import express from 'express'
 import { authenticate } from '../middleware/authMiddleware.js'
-import { requireAnyPermission } from '../middleware/authorization.js'
+import { requireAnyPermission, requirePermission } from '../middleware/authorization.js'
 import { PERMISSIONS } from '../config/permissions.js'
-import { crearNovedad, listarNovedades, obtenerNovedadPorId, actualizarEstadoNovedad } from '../controller/novedadesController.js'
+import { crearNovedad, listarNovedades, obtenerNovedadPorId, actualizarEstadoNovedad, obtenerTiposNovedad, obtenerEstadosNovedad } from '../controller/novedadesController.js'
 import { writeLimiter, readLimiter } from '../middleware/rateLimiter.js'
 import { validate, crearNovedadSchema, actualizarEstadoNovedadSchema } from '../validators/novedadesValidator.js'
 
@@ -32,6 +32,12 @@ router.get('/',
   listarNovedades
 )
 
+// Obtener tipos de novedad disponibles (DEBE ir antes de /:id)
+router.get('/tipos', obtenerTiposNovedad)
+
+// Obtener estados de novedad disponibles (DEBE ir antes de /:id)
+router.get('/estados', obtenerEstadosNovedad)
+
 // Obtener detalle de novedad
 router.get('/:id', 
   requireAnyPermission([
@@ -41,14 +47,11 @@ router.get('/:id',
   obtenerNovedadPorId
 )
 
-// Actualizar estado de novedad - Protegido con validación
+// Actualizar estado de novedad - Solo Administrador - Protegido con validación
 router.put('/:id/estado', 
   writeLimiter,
   validate(actualizarEstadoNovedadSchema),
-  requireAnyPermission([
-    PERMISSIONS.NOVEDADES.UPDATE,
-    PERMISSIONS.NOVEDADES.RESOLVE
-  ]),
+  requirePermission(PERMISSIONS.NOVEDADES.RESOLVE), // Solo Administrador tiene este permiso
   actualizarEstadoNovedad
 )
 

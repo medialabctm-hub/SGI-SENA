@@ -1,6 +1,7 @@
 import {
   registerUser,
   loginUser,
+  loginUserWithPlaca,
   deleteUser,
   updateUser,
   me,
@@ -11,6 +12,7 @@ import {
   solicitarRecuperacionContrasena,
   validarTokenRecuperacion,
   restablecerContrasena,
+  uploadProfilePhoto,
 } from '../controller/authController.js';
 import express from 'express';
 import { authenticate } from '../middleware/authMiddleware.js';
@@ -18,6 +20,7 @@ import { requirePermission, requireOwnership } from '../middleware/authorization
 import { PERMISSIONS } from '../config/permissions.js';
 import { validate, registerSchema, loginSchema, updateUserSchema } from '../validators/authValidator.js';
 import { authLimiter, registerLimiter, passwordResetLimiter } from '../middleware/rateLimiter.js';
+import { uploadProfileImage, handleProfileUploadError } from '../middleware/uploadProfileMiddleware.js';
 
 const router = express.Router();
 
@@ -30,6 +33,9 @@ router.post('/register', registerLimiter, validate(registerSchema), registerUser
 
 // Login de usuario (público) - Protegido con rate limiting
 router.post('/login', authLimiter, validate(loginSchema), loginUser);
+
+// Login de usuario con validación de placa (público) - Para app de escritorio
+router.post('/login-placa', authLimiter, loginUserWithPlaca);
 
 // Solicitar recuperación de contraseña (público) - Protegido con rate limiting
 router.post('/recuperar-contrasena', passwordResetLimiter, solicitarRecuperacionContrasena);
@@ -91,6 +97,15 @@ router.delete('/user/:id',
   authenticate,
   requirePermission(PERMISSIONS.USERS.DELETE),
   deleteUser
+);
+
+// Subir foto de perfil - Solo el propio usuario
+router.post('/user/:id/foto-perfil',
+  authenticate,
+  requireOwnership((req) => req.params.id),
+  uploadProfileImage.single('foto'),
+  handleProfileUploadError,
+  uploadProfilePhoto
 );
 
 export default router;

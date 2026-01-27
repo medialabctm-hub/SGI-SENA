@@ -140,7 +140,6 @@ export class NotificationObserver extends Observer {
     await this.notificationService.notifyNuevoEquipo({
       equipoId: data.codigo_equipo,
       tipoEquipo: data.tipo,
-      marca: data.marca,
       modelo: data.modelo,
       ambiente: data.ambiente,
       creadoPor: data.creadoPor,

@@ -1,21 +1,25 @@
 import React, { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import Header from '../components/Header'
 import Sidebar from '../components/Sidebar'
 import Toast from '../components/Toast'
+import CustomSelect from '../components/CustomSelect'
 import { FiTool, FiPackage, FiCalendar, FiUser, FiFileText, FiSearch, FiCheck, FiX, FiType } from 'react-icons/fi'
 import { parseApiResponse, buildErrorMessage } from '../utils/api'
-import '../styles/equipos.css'
+import '../styles/pages/equipos.css'
+import '../styles/pages/mantenimientos.css'
 
 export default function CrearMantenimiento() {
+  const navigate = useNavigate()
   const [form, setForm] = useState({
     codigo_equipo: '',
-    tipo_mantenimiento: 'Preventivo',
+    tipo_mantenimiento: '',
     fecha_mantenimiento: '',
     fecha_proximo: '',
     descripcion_trabajo: '',
     id_usuario_tecnico: '',
     observaciones: '',
-    estado_mantenimiento: 'Programado',
+    estado_mantenimiento: '',
   })
   const [toast, setToast] = useState(null)
   const [loading, setLoading] = useState(false)
@@ -26,16 +30,84 @@ export default function CrearMantenimiento() {
   const [tecnicoEncontrado, setTecnicoEncontrado] = useState(null)
   const [buscandoTecnico, setBuscandoTecnico] = useState(false)
   const [user, setUser] = useState(null)
+  const [tiposMantenimiento, setTiposMantenimiento] = useState([])
+  const [estadosMantenimiento, setEstadosMantenimiento] = useState([])
+  const [cargandoOpciones, setCargandoOpciones] = useState(true)
 
   useEffect(() => {
     try {
       const userData = localStorage.getItem('user')
       if (userData) {
-        setUser(JSON.parse(userData))
+        const userObj = JSON.parse(userData)
+        setUser(userObj)
+        // Solo Administrador y Cuentadante pueden crear mantenimientos
+        if (userObj.nombre_rol !== 'Administrador' && userObj.nombre_rol !== 'Cuentadante') {
+          navigate('/dashboard')
+        }
       }
     } catch (error) {
       console.error('Error al obtener datos del usuario:', error)
     }
+  }, [navigate])
+
+  // Cargar tipos y estados de mantenimiento desde la API
+  useEffect(() => {
+    async function cargarOpcionesMantenimiento() {
+      try {
+        setCargandoOpciones(true)
+        const token = localStorage.getItem('token')
+        
+        // Cargar tipos de mantenimiento
+        const resTipos = await fetch('/api/mantenimiento/tipos', {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+        if (resTipos.ok) {
+          const tipos = await parseApiResponse(resTipos)
+          if (Array.isArray(tipos) && tipos.length > 0) {
+            setTiposMantenimiento(tipos)
+            // Establecer el primer tipo como valor por defecto si no hay uno seleccionado
+            setForm(prev => ({
+              ...prev,
+              tipo_mantenimiento: prev.tipo_mantenimiento || tipos[0]
+            }))
+          } else {
+            setToast({ message: 'No se pudieron cargar los tipos de mantenimiento', type: 'error' })
+          }
+        } else {
+          throw new Error('Error al cargar tipos de mantenimiento')
+        }
+
+        // Cargar estados de mantenimiento
+        const resEstados = await fetch('/api/mantenimiento/estados', {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+        if (resEstados.ok) {
+          const estados = await parseApiResponse(resEstados)
+          if (Array.isArray(estados) && estados.length > 0) {
+            setEstadosMantenimiento(estados)
+            // Establecer el primer estado como valor por defecto si no hay uno seleccionado
+            setForm(prev => ({
+              ...prev,
+              estado_mantenimiento: prev.estado_mantenimiento || estados[0]
+            }))
+          } else {
+            setToast({ message: 'No se pudieron cargar los estados de mantenimiento', type: 'error' })
+          }
+        } else {
+          throw new Error('Error al cargar estados de mantenimiento')
+        }
+      } catch (err) {
+        console.error('Error al cargar opciones de mantenimiento:', err)
+        setToast({ 
+          message: 'Error al cargar las opciones de mantenimiento. Por favor, recarga la página.', 
+          type: 'error' 
+        })
+      } finally {
+        setCargandoOpciones(false)
+      }
+    }
+
+    cargarOpcionesMantenimiento()
   }, [])
 
   async function buscarEquipo() {
@@ -80,7 +152,7 @@ export default function CrearMantenimiento() {
 
   async function buscarTecnico() {
     if (!cedulaTecnico.trim()) {
-      setToast({ message: 'Ingresa una cédula', type: 'error' })
+      setToast({ message: 'Ingresa una Documento', type: 'error' })
       return
     }
 
@@ -173,13 +245,13 @@ export default function CrearMantenimiento() {
         })
         setForm({
           codigo_equipo: '',
-          tipo_mantenimiento: 'Preventivo',
+          tipo_mantenimiento: tiposMantenimiento[0] || '',
           fecha_mantenimiento: '',
           fecha_proximo: '',
           descripcion_trabajo: '',
           id_usuario_tecnico: '',
           observaciones: '',
-          estado_mantenimiento: 'Programado',
+          estado_mantenimiento: estadosMantenimiento[0] || '',
         })
         limpiarEquipo()
         limpiarTecnico()
@@ -216,12 +288,12 @@ export default function CrearMantenimiento() {
           {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
         <div className="form-equipos form-modern">
           <div className="form-header">
-            <div className="form-icon-wrapper" style={{ background: 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)' }}>
+            <div className="form-icon-wrapper crear-mantenimiento-header-icon">
               <FiTool size={28} color="#fff" />
             </div>
-            <div>
-              <h2 style={{ margin: 0, fontSize: '28px', fontWeight: 700, color: '#1a2a3a' }}>Registrar Mantenimiento</h2>
-              <p style={{ color: '#666', marginTop: 8, fontSize: '15px' }}>
+            <div className="crear-mantenimiento-header-content">
+              <h2 className="crear-mantenimiento-title">Registrar Mantenimiento</h2>
+              <p className="crear-mantenimiento-subtitle">
                 Registra mantenimientos preventivos, correctivos o actualizaciones realizadas en equipos
               </p>
             </div>
@@ -229,11 +301,16 @@ export default function CrearMantenimiento() {
 
           <div className="form-divider"></div>
 
+          {cargandoOpciones ? (
+            <div className="loading-state">
+              <p>Cargando opciones de mantenimiento...</p>
+            </div>
+          ) : (
           <form onSubmit={handleSubmit}>
             {/* Sección: Equipo */}
             <div className="form-section">
               <h3 className="form-section-title">
-                <FiPackage size={18} style={{ marginRight: 8 }} />
+                    <FiPackage size={18} className="crear-mantenimiento-section-icon" />
                 Equipo a Mantener
               </h3>
               
@@ -281,7 +358,7 @@ export default function CrearMantenimiento() {
                   </div>
                   <div className="equipo-found-info">
                     <div><strong>Código:</strong> {equipoEncontrado.codigo_inventario}</div>
-                    <div><strong>Equipo:</strong> {equipoEncontrado.tipo} {equipoEncontrado.marca} {equipoEncontrado.modelo}</div>
+                    <div><strong>Equipo:</strong> {equipoEncontrado.tipo} {equipoEncontrado.modelo}</div>
                     {equipoEncontrado.nombre_ambiente && (
                       <div><strong>Ambiente:</strong> {equipoEncontrado.nombre_ambiente}</div>
                     )}
@@ -301,49 +378,46 @@ export default function CrearMantenimiento() {
             {/* Sección: Información del Mantenimiento */}
             <div className="form-section">
               <h3 className="form-section-title">
-                <FiType size={18} style={{ marginRight: 8 }} />
+                    <FiType size={18} className="crear-mantenimiento-section-icon" />
                 Información del Mantenimiento
               </h3>
 
               <div className="form-grid">
                 <div className="form-group">
                   <label>
-                    <FiTool size={16} style={{ marginRight: 6, verticalAlign: 'middle' }} />
+                    <FiTool size={16} className="crear-mantenimiento-option-icon" />
                     Tipo de Mantenimiento *
                   </label>
-                  <select
+                  <CustomSelect
+                    name="tipo_mantenimiento"
                     value={form.tipo_mantenimiento}
                     onChange={(e) => handleChange('tipo_mantenimiento', e.target.value)}
+                    options={tiposMantenimiento}
+                    placeholder="Seleccionar tipo de mantenimiento"
                     required
-                  >
-                    <option value="Preventivo">Preventivo</option>
-                    <option value="Correctivo">Correctivo</option>
-                    <option value="Actualización">Actualización</option>
-                  </select>
+                  />
                 </div>
 
                 <div className="form-group">
                   <label>
-                    <FiCalendar size={16} style={{ marginRight: 6, verticalAlign: 'middle' }} />
+                    <FiCalendar size={16} className="crear-mantenimiento-option-icon" />
                     Estado *
                   </label>
-                  <select
+                  <CustomSelect
+                    name="estado_mantenimiento"
                     value={form.estado_mantenimiento}
                     onChange={(e) => handleChange('estado_mantenimiento', e.target.value)}
+                    options={estadosMantenimiento}
+                    placeholder="Seleccionar estado"
                     required
-                  >
-                    <option value="Programado">Programado</option>
-                    <option value="En Proceso">En Proceso</option>
-                    <option value="Completado">Completado</option>
-                    <option value="Cancelado">Cancelado</option>
-                  </select>
+                  />
                 </div>
               </div>
 
               <div className="form-grid">
                 <div className="form-group">
                   <label>
-                    <FiCalendar size={16} style={{ marginRight: 6, verticalAlign: 'middle' }} />
+                    <FiCalendar size={16} className="crear-mantenimiento-option-icon" />
                     Fecha de Mantenimiento *
                   </label>
                   <input
@@ -353,14 +427,14 @@ export default function CrearMantenimiento() {
                     min={getCurrentDateTime()}
                     required
                   />
-                  <p style={{ marginTop: '4px', fontSize: '0.8rem', color: '#666' }}>
+                  <p className="crear-mantenimiento-help-text">
                     Selecciona una fecha futura para programar el mantenimiento
                   </p>
                 </div>
 
                 <div className="form-group">
                   <label>
-                    <FiCalendar size={16} style={{ marginRight: 6, verticalAlign: 'middle' }} />
+                    <FiCalendar size={16} className="crear-mantenimiento-option-icon" />
                     Próximo Mantenimiento (Opcional)
                   </label>
                   <input
@@ -369,7 +443,7 @@ export default function CrearMantenimiento() {
                     onChange={(e) => handleChange('fecha_proximo', e.target.value)}
                     min={form.fecha_mantenimiento ? form.fecha_mantenimiento.split('T')[0] : ''}
                   />
-                  <p style={{ marginTop: '4px', fontSize: '0.8rem', color: '#666' }}>
+                  <p className="crear-mantenimiento-help-text">
                     Establece la fecha del próximo mantenimiento para que aparezca en las estadísticas del Dashboard
                   </p>
                 </div>
@@ -379,13 +453,13 @@ export default function CrearMantenimiento() {
             {/* Sección: Técnico (Opcional) */}
             <div className="form-section">
               <h3 className="form-section-title">
-                <FiUser size={18} style={{ marginRight: 8 }} />
+                    <FiUser size={18} className="crear-mantenimiento-section-icon" />
                 Técnico Responsable (Opcional)
               </h3>
               
               <div className="form-group">
                 <label>
-                  Cédula del Técnico
+                  Documento del Técnico
                 </label>
                 <div className="search-equipo-wrapper">
                   <input
@@ -398,7 +472,7 @@ export default function CrearMantenimiento() {
                         buscarTecnico()
                       }
                     }}
-                    placeholder="Ingresa la cédula del técnico"
+                    placeholder="Ingresa el Documento del técnico"
                     className="search-equipo-input"
                   />
                   <button
@@ -427,7 +501,7 @@ export default function CrearMantenimiento() {
                   </div>
                   <div className="equipo-found-info">
                     <div><strong>Nombre:</strong> {tecnicoEncontrado.nombre_usuario}</div>
-                    <div><strong>Cédula:</strong> {tecnicoEncontrado.cedula}</div>
+                    <div><strong>Documento:</strong> {tecnicoEncontrado.cedula}</div>
                     <div><strong>Rol:</strong> {tecnicoEncontrado.nombre_rol}</div>
                   </div>
                   <button
@@ -445,7 +519,7 @@ export default function CrearMantenimiento() {
             {/* Sección: Detalles */}
             <div className="form-section">
               <h3 className="form-section-title">
-                <FiFileText size={18} style={{ marginRight: 8 }} />
+                    <FiFileText size={18} className="crear-mantenimiento-section-icon" />
                 Detalles
               </h3>
 
@@ -491,6 +565,7 @@ export default function CrearMantenimiento() {
               </button>
             </div>
           </form>
+          )}
         </div>
         </main>
       </div>

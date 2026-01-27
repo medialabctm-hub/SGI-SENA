@@ -1,0 +1,140 @@
+/* ============================================
+   ESTILOS PARA HISTORIAL USO EQUIPO
+   ============================================ */
+
+.historial-uso-equipo-header {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.historial-uso-equipo-refresh-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.historial-uso-equipo-filters {
+  margin-top: 1.5rem;
+  padding: 1rem;
+  background: #f9fafb;
+  border-radius: 10px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+}
+
+.historial-uso-equipo-filter-label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.historial-uso-equipo-filter-input {
+  width: 100%;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 2px solid var(--success-800);
+}
+
+.historial-uso-equipo-filter-actions {
+  display: flex;
+  align-items: flex-end;
+}
+
+.historial-uso-equipo-filter-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.historial-uso-equipo-loading {
+  text-align: center;
+  padding: 3rem;
+  color: #6b7280;
+}
+
+.historial-uso-equipo-empty {
+  text-align: center;
+  padding: 3rem;
+  color: #6b7280;
+}
+
+.historial-uso-equipo-empty-icon {
+  margin-bottom: 1rem;
+  opacity: 0.5;
+}
+
+.historial-uso-equipo-empty-text {
+  font-size: 0.9rem;
+  margin-top: 0.5rem;
+}
+
+.historial-uso-equipo-table-wrapper {
+  margin-top: 1.5rem;
+  overflow-x: auto;
+}
+
+.historial-uso-equipo-table {
+  width: 100%;
+}
+
+.historial-uso-equipo-date-cell {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.historial-uso-equipo-date-icon-play {
+  color: var(--primary-600);
+}
+
+.historial-uso-equipo-date-icon-stop {
+  color: var(--success-600);
+}
+
+.historial-uso-equipo-date-placeholder {
+  color: #6b7280;
+  font-style: italic;
+}
+
+.historial-uso-equipo-duration-cell {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.historial-uso-equipo-duration-placeholder {
+  color: #6b7280;
+  font-style: italic;
+}
+
+.historial-uso-equipo-usuario-info {
+  font-size: 0.85rem;
+  color: #6b7280;
+}
+
+/* Badges de estado */
+.historial-uso-equipo-estado-badge {
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.historial-uso-equipo-estado-badge-en-uso {
+  background: #dbeafe;
+  color: var(--primary-700);
+}
+
+.historial-uso-equipo-estado-badge-finalizado {
+  background: #d1fae5;
+  color: var(--success-800);
+}
