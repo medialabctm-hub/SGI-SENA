@@ -4,6 +4,13 @@ import schedulerService from '../services/schedulerService.js';
 import { obtenerFechasPorRangoYDias } from './horariosController.js';
 import { getColombiaDateTimeString, toColombiaDateTimeString } from '../utils/timezone.js';
 
+/** Indica si la fecha y hora de inicio de clase ya pasaron (en zona Colombia). */
+function esFechaHoraPasada(fechaYYYYMMDD, horaInicioHHMMSS) {
+  const inicioClaseStr = `${fechaYYYYMMDD} ${horaInicioHHMMSS}`;
+  const ahoraColombia = getColombiaDateTimeString();
+  return inicioClaseStr <= ahoraColombia;
+}
+
 function normalizarHora(hora) {
   const horaStr = String(hora);
   if (horaStr.split(':').length === 2) {
@@ -42,14 +49,14 @@ export async function crearClase(req, res) {
     const userRole = req.user?.rol;
     const userId = req.user?.id;
 
-    // Si el usuario es instructor, automáticamente se asigna a sí mismo
+    // Si el usuario es instructor o cuentadante (dan clases), automáticamente se asigna a sí mismo
     let instructorId = id_instructor;
-    if (userRole === 'Instructor') {
+    if (userRole === 'Instructor' || userRole === 'Cuentadante') {
       instructorId = userId;
     }
 
-    // Si no es instructor, debe proporcionar id_instructor
-    if (userRole !== 'Instructor' && !id_instructor) {
+    // Si no es instructor ni cuentadante, debe proporcionar id_instructor
+    if (userRole !== 'Instructor' && userRole !== 'Cuentadante' && !id_instructor) {
       return res.status(400).json({ 
         error: 'Falta campo obligatorio',
         detalle: 'Se requiere: id_instructor'
@@ -65,12 +72,12 @@ export async function crearClase(req, res) {
       return res.status(404).json({ error: 'Ambiente no encontrado o inactivo' });
     }
 
-    // Validar que el instructor existe y es instructor
+    // Validar que el responsable existe y es Instructor o Cuentadante
     const [[instructor]] = await defaultDb.execute(
       `SELECT u.id_usuario, u.nombre_usuario, r.nombre_rol 
        FROM Usuarios u
        INNER JOIN Roles r ON u.id_rol = r.id_rol
-       WHERE u.id_usuario = ? AND u.estado = 'Activo' AND r.nombre_rol = 'Instructor'`,
+       WHERE u.id_usuario = ? AND u.estado = 'Activo' AND r.nombre_rol IN ('Instructor', 'Cuentadante')`,
       [instructorId]
     );
     if (!instructor) {
@@ -153,13 +160,30 @@ export async function crearClase(req, res) {
       ? `${hora_fin}:00`
       : hora_fin;
 
+    // No permitir crear clase si la fecha/hora de inicio ya pasó (clase única o cualquiera en recurrentes)
+    const mensajeHorarioPasado = 'La fecha u hora ya pasó. Por favor seleccione otro horario.';
+    if (!tieneDiasSemana && fechasAProcesar.length === 1) {
+      const fechaUnica = fechasAProcesar[0].toISOString().split('T')[0];
+      if (esFechaHoraPasada(fechaUnica, horaInicioNormalizada)) {
+        return res.status(400).json({ error: mensajeHorarioPasado });
+      }
+    }
+    if (tieneDiasSemana) {
+      const algunaPasada = fechasAProcesar.some(
+        (f) => esFechaHoraPasada(f.toISOString().split('T')[0], horaInicioNormalizada)
+      );
+      if (algunaPasada) {
+        return res.status(400).json({ error: mensajeHorarioPasado });
+      }
+    }
+
     // Procesar cada fecha
     const clasesCreadas = [];
     const erroresFechas = [];
-    
+
     for (const fechaObj of fechasAProcesar) {
       const fechaNormalizada = fechaObj.toISOString().split('T')[0];
-      
+
       try {
         // Validar conflictos de horario para esta fecha
         const [clasesConflictivas] = await defaultDb.execute(
@@ -416,7 +440,7 @@ export async function listarClases(req, res) {
     const params = [];
 
     // Si es instructor, solo puede ver sus propias clases
-    if (userRole === 'Instructor') {
+    if (userRole === 'Instructor' || userRole === 'Cuentadante') {
       query += ' AND c.id_instructor = ?';
       params.push(userId);
     } else if (id_instructor) {
@@ -458,7 +482,7 @@ export async function listarClases(req, res) {
     `;
     const countParams = [];
     
-    if (userRole === 'Instructor') {
+    if (userRole === 'Instructor' || userRole === 'Cuentadante') {
       countQuery += ' AND c.id_instructor = ?';
       countParams.push(userId);
     } else if (id_instructor) {
@@ -953,7 +977,7 @@ export async function actualizarClase(req, res) {
     }
 
     // Si es instructor, solo puede actualizar sus propias clases
-    if (userRole === 'Instructor' && clase.id_instructor !== userId) {
+    if ((userRole === 'Instructor' || userRole === 'Cuentadante') && clase.id_instructor !== userId) {
       return res.status(403).json({ 
         error: 'No autorizado',
         detalle: 'Solo puedes actualizar tus propias clases'
@@ -1261,8 +1285,8 @@ export async function cancelarClase(req, res) {
       estado_clase_actual: clase.estado_clase
     });
 
-    // Si es instructor, solo puede cancelar sus propias clases
-    if (userRole === 'Instructor' && clase.id_instructor !== userId) {
+    // Instructor o cuentadante solo pueden cancelar sus propias clases
+    if ((userRole === 'Instructor' || userRole === 'Cuentadante') && clase.id_instructor !== userId) {
       logger.warn('⚠️ CANCELAR CLASE - No autorizado', {
         id_clase: id,
         usuario: userId,

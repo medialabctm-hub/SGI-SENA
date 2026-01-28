@@ -523,18 +523,19 @@ export async function asignarAmbienteInstructor(req, res) {
       return res.status(404).json({ error: 'Ambiente no encontrado' });
     }
 
-    const [[instructor]] = await defaultDb.execute(
+    // Permitir asignar Instructor o Cuentadante al ambiente (ambos pueden dar clases)
+    const [[responsable]] = await defaultDb.execute(
       `SELECT u.id_usuario, u.nombre_usuario, r.nombre_rol
        FROM Usuarios u
        INNER JOIN Roles r ON u.id_rol = r.id_rol
-       WHERE u.id_usuario = ? AND u.estado = 'Activo' AND r.nombre_rol = 'Instructor'`,
+       WHERE u.id_usuario = ? AND u.estado = 'Activo' AND r.nombre_rol IN ('Instructor', 'Cuentadante')`,
       [id_instructor]
     );
 
-    if (!instructor) {
+    if (!responsable) {
       return res.status(404).json({
-        error: 'Instructor no encontrado',
-        detalle: 'El usuario debe ser un Instructor activo'
+        error: 'Responsable no encontrado',
+        detalle: 'El usuario debe ser un Instructor o Cuentadante activo'
       });
     }
 
@@ -940,19 +941,19 @@ export async function cambiarInstructorACuentadanteSecundario(req, res) {
       return res.status(404).json({ error: 'Ambiente no encontrado' });
     }
 
-    // Validar que el instructor existe y es instructor
+    // Validar que el usuario existe y es Instructor o Cuentadante
     const [[instructor]] = await defaultDb.execute(
       `SELECT u.id_usuario, u.nombre_usuario, r.nombre_rol
        FROM Usuarios u
        INNER JOIN Roles r ON u.id_rol = r.id_rol
-       WHERE u.id_usuario = ? AND u.estado = 'Activo' AND r.nombre_rol = 'Instructor'`,
+       WHERE u.id_usuario = ? AND u.estado = 'Activo' AND r.nombre_rol IN ('Instructor', 'Cuentadante')`,
       [id_instructor]
     );
 
     if (!instructor) {
       return res.status(404).json({
-        error: 'Instructor no encontrado',
-        detalle: 'El usuario debe ser un Instructor activo'
+        error: 'Responsable no encontrado',
+        detalle: 'El usuario debe ser un Instructor o Cuentadante activo'
       });
     }
 

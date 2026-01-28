@@ -79,16 +79,29 @@ export class EquipoRepository extends BaseRepository {
     const params = [];
     const conditions = [];
 
-    // Filtro por cuentadante
-    if (filters.cuentadanteId) {
-      conditions.push('e.id_cuentadante = ?');
-      params.push(filters.cuentadanteId);
-    }
+    // Filtro OR: equipos de ambientes asignados O donde el usuario es cuentadante (para vista "todos" del cuentadante)
+    const orFilter = filters.cuentadanteOrAmbientes;
+    if (orFilter && orFilter.cuentadanteId != null) {
+      const { ambientesIds = [], cuentadanteId } = orFilter;
+      if (ambientesIds.length > 0) {
+        conditions.push(`(e.id_ambiente IN (${ambientesIds.map(() => '?').join(',')}) OR e.id_cuentadante = ?)`);
+        params.push(...ambientesIds, cuentadanteId);
+      } else {
+        conditions.push('e.id_cuentadante = ?');
+        params.push(cuentadanteId);
+      }
+    } else {
+      // Filtro por cuentadante
+      if (filters.cuentadanteId) {
+        conditions.push('e.id_cuentadante = ?');
+        params.push(filters.cuentadanteId);
+      }
 
-    // Filtro por ambientes
-    if (filters.ambientesIds && filters.ambientesIds.length > 0) {
-      conditions.push(`e.id_ambiente IN (${filters.ambientesIds.map(() => '?').join(',')})`);
-      params.push(...filters.ambientesIds);
+      // Filtro por ambientes
+      if (filters.ambientesIds && filters.ambientesIds.length > 0) {
+        conditions.push(`e.id_ambiente IN (${filters.ambientesIds.map(() => '?').join(',')})`);
+        params.push(...filters.ambientesIds);
+      }
     }
 
     // Filtro por búsqueda de texto (placa, modelo, consecutivo, descripción)

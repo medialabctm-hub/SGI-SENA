@@ -231,68 +231,53 @@ export const ROLE_PERMISSIONS = {
   ],
 
   Cuentadante: [
-    // Usuarios - NO tiene acceso (no puede ver Usuarios ni gestionar usuarios)
-    // PERMISSIONS.USERS.VIEW, // NO incluido
-    // PERMISSIONS.USERS.VIEW_DETAIL, // NO incluido
-    // PERMISSIONS.USERS.CREATE, // NO incluido
-    // PERMISSIONS.USERS.UPDATE, // NO incluido
-    // PERMISSIONS.USERS.DELETE, // NO incluido
-    // PERMISSIONS.USERS.MANAGE_ROLES, // NO incluido
+    // Usuarios - misma consulta que Instructor (cuentadantes también dan clases)
+    PERMISSIONS.USERS.VIEW,
+    PERMISSIONS.USERS.VIEW_DETAIL,
 
-    // Equipos - solo su inventario (no todos los inventarios del sistema)
-    PERMISSIONS.EQUIPOS.VIEW_OWN, // Solo ve su inventario
-    PERMISSIONS.EQUIPOS.VIEW_DETAIL, // Puede ver detalles de sus equipos
-    PERMISSIONS.EQUIPOS.CREATE, // Puede registrar equipos en su inventario
-    PERMISSIONS.EQUIPOS.UPDATE, // Puede editar sus equipos
-    PERMISSIONS.EQUIPOS.DELETE, // Puede eliminar sus equipos
-    // PERMISSIONS.EQUIPOS.VIEW, // NO incluido - no puede ver todos los inventarios
-    // PERMISSIONS.EQUIPOS.ASSIGN, // NO incluido
-    // PERMISSIONS.EQUIPOS.ASSIGN_TO_APRENDIZ, // NO incluido
+    // Equipos - su inventario + permisos tipo Instructor (ver ambientes asignados, asignar a aprendices)
+    PERMISSIONS.EQUIPOS.VIEW_OWN,
+    PERMISSIONS.EQUIPOS.VIEW,
+    PERMISSIONS.EQUIPOS.VIEW_DETAIL,
+    PERMISSIONS.EQUIPOS.CREATE,
+    PERMISSIONS.EQUIPOS.UPDATE,
+    PERMISSIONS.EQUIPOS.DELETE,
+    PERMISSIONS.EQUIPOS.ASSIGN_TO_APRENDIZ,
 
-    // Novedades - de su inventario, no puede cambiar estado
+    // Novedades - ver todas y crear (como Instructor) + eliminar propias
+    PERMISSIONS.NOVEDADES.VIEW,
     PERMISSIONS.NOVEDADES.VIEW_OWN,
+    PERMISSIONS.NOVEDADES.CREATE,
     PERMISSIONS.NOVEDADES.CREATE_OWN,
     PERMISSIONS.NOVEDADES.DELETE,
-    // PERMISSIONS.NOVEDADES.VIEW, // NO incluido - no puede ver todas las novedades
 
-    // Mantenimiento - de su inventario
+    // Mantenimiento - ver todos y gestionar (cuentadante)
+    PERMISSIONS.MANTENIMIENTO.VIEW,
     PERMISSIONS.MANTENIMIENTO.VIEW_OWN,
     PERMISSIONS.MANTENIMIENTO.CREATE,
     PERMISSIONS.MANTENIMIENTO.UPDATE,
     PERMISSIONS.MANTENIMIENTO.DELETE,
-    // PERMISSIONS.MANTENIMIENTO.VIEW, // NO incluido - no puede ver todos los mantenimientos
 
-    // Reportes - puede crear y ver sus reportes
+    // Reportes
     PERMISSIONS.REPORTES.VIEW,
     PERMISSIONS.REPORTES.CREATE,
     PERMISSIONS.REPORTES.UPDATE,
     PERMISSIONS.REPORTES.DELETE,
     PERMISSIONS.REPORTES.EXPORT,
 
-    // Ambientes - puede ver ambientes (necesario para asignar equipos)
+    // Ambientes - ver (necesario para asignar equipos y dar clases)
     PERMISSIONS.AMBIENTES.VIEW,
-    // PERMISSIONS.AMBIENTES.CREATE, // NO incluido
-    // PERMISSIONS.AMBIENTES.UPDATE, // NO incluido
-    // PERMISSIONS.AMBIENTES.DELETE, // NO incluido
 
-    // Clases - no tiene acceso (no es instructor)
-    // PERMISSIONS.CLASES.VIEW, // NO incluido
-    // PERMISSIONS.CLASES.CREATE, // NO incluido
-    // PERMISSIONS.CLASES.UPDATE, // NO incluido
-    // PERMISSIONS.CLASES.DELETE, // NO incluido
+    // Clases - ver, crear y actualizar (cuentadantes también dan clases)
+    PERMISSIONS.CLASES.VIEW,
+    PERMISSIONS.CLASES.CREATE,
+    PERMISSIONS.CLASES.UPDATE,
 
     // Notificaciones - solo propias
     PERMISSIONS.NOTIFICACIONES.VIEW,
-    // PERMISSIONS.NOTIFICACIONES.CREATE, // NO incluido
-    // PERMISSIONS.NOTIFICACIONES.BROADCAST, // NO incluido
 
     // Sistema - puede ver su configuración
     PERMISSIONS.SYSTEM.VIEW_CONFIG,
-    // PERMISSIONS.SYSTEM.UPDATE_CONFIG, // NO incluido
-    // PERMISSIONS.SYSTEM.VIEW_AUDIT, // NO incluido
-
-    // Roles - NO tiene acceso (no puede ver roles y áreas)
-    // PERMISSIONS.ROLES.MANAGE, // NO incluido
   ],
 }
 
