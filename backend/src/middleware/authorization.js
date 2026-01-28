@@ -246,8 +246,8 @@ export function requireAssignedEquipos(getUserEquipos) {
         })
       }
 
-      // Los administradores e instructores no necesitan equipos asignados
-      if (isAdmin(req.user.rol) || req.user.rol === 'Instructor') {
+      // Administradores, instructores y cuentadantes no necesitan equipos asignados para esta validación
+      if (isAdmin(req.user.rol) || req.user.rol === 'Instructor' || req.user.rol === 'Cuentadante') {
         return next()
       }
 

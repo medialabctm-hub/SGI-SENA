@@ -6,6 +6,48 @@
   margin: 0;
 }
 
+/* Selector de vista para Cuentadante con ambientes (Mis ambientes | Mi inventario total | Todos) */
+.consultar-equipo-vista-inventario {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.consultar-equipo-vista-label {
+  font-weight: 600;
+  color: var(--neutral-700);
+  font-size: 0.9rem;
+}
+
+.consultar-equipo-vista-tabs {
+  display: flex;
+  gap: 4px;
+}
+
+.consultar-equipo-vista-tab {
+  padding: 8px 14px;
+  border-radius: 8px;
+  border: 2px solid var(--neutral-300);
+  background: white;
+  color: var(--neutral-700);
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.consultar-equipo-vista-tab:hover {
+  background: var(--neutral-50);
+  border-color: var(--neutral-400);
+}
+
+.consultar-equipo-vista-tab.active {
+  background: var(--success-800);
+  border-color: var(--success-800);
+  color: white;
+}
+
 .consultar-equipo-header-row {
   display: flex;
   gap: 12px;

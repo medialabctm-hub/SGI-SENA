@@ -119,8 +119,8 @@ export default function Sidebar({ user }) {
       { title: 'Registrar Inventario', path: '/equipos', icon: <FiPlus />, roles: ['Administrador', 'Cuentadante'] },
       { title: 'Consultar Inventario', path: '/equipos/consultar', icon: <FiSearch />, roles: ['all'] },
       { title: 'Mis Equipos', path: '/mis-equipos', icon: <FiPackage />, roles: ['all'] },
-      { title: 'Asignar Equipo', path: '/equipos/asignar', icon: <FiUsers />, roles: ['Administrador', 'Instructor'] },
-      { title: 'Verificar Inventario', path: '/equipos/verificar', icon: <FiCheckCircle />, roles: ['Instructor'] },
+      { title: 'Asignar Equipo', path: '/equipos/asignar', icon: <FiUsers />, roles: ['Administrador', 'Instructor', 'Cuentadante'] },
+      { title: 'Verificar Inventario', path: '/equipos/verificar', icon: <FiCheckCircle />, roles: ['Instructor', 'Cuentadante'] },
       // { title: 'Historial de Verificaciones', path: '/equipos/verificacion/historial', icon: <FiClock />, roles: ['all'] }, // DESACTIVADO
       // Historial de Uso - DESACTIVADO
       { title: 'Buscar Cuentadante', path: '/equipos/cuentadantes/buscar', icon: <FiSearch />, roles: ['Administrador'] },
@@ -134,12 +134,12 @@ export default function Sidebar({ user }) {
       { title: 'Historial de Mantenimientos', path: '/mantenimientos', icon: <FiTool />, roles: ['Administrador', 'Cuentadante'] }
     ],
     horarios: [
-      { title: 'Mis Horarios', path: '/horarios', icon: <FiCalendar />, roles: ['Instructor'] },
+      { title: 'Mis Horarios', path: '/horarios', icon: <FiCalendar />, roles: ['Instructor', 'Cuentadante'] },
       { title: 'Gestión de Horarios', path: '/horarios', icon: <FiCalendar />, roles: ['Administrador'] },
       /*{ title: 'Consultar Responsables', path: '/horarios/responsables', icon: <FiClock />, roles: ['all'] }*/
     ],
     config: [
-      { title: 'Usuarios', path: '/usuarios', icon: <FiUsers />, roles: ['Administrador', 'Instructor'] },
+      { title: 'Usuarios', path: '/usuarios', icon: <FiUsers />, roles: ['Administrador', 'Instructor', 'Cuentadante'] },
       { title: 'Aprendices', path: '/aprendices', icon: <FiUser />, roles: ['Administrador'] },
       { title: 'Seguridad', path: '/config?section=security', icon: <FiShield />, roles: ['all'] },
       { title: 'Códigos de Seguridad', path: '/config?section=invitation-codes', icon: <FiKey />, roles: ['Administrador'] },
