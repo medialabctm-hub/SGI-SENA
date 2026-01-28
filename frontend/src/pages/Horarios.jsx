@@ -76,8 +76,7 @@ export default function Horarios() {
     fecha: '',
     estado_clase: ''
   })
-  // Modals de confirmación eliminados temporalmente para probar automatización
-  // const [confirmDelete, setConfirmDelete] = useState({ open: false, id: null })
+  const [confirmDelete, setConfirmDelete] = useState({ open: false, id: null })
   // const [confirmIniciar, setConfirmIniciar] = useState({ open: false, id: null })
   const [showImport, setShowImport] = useState(false)
   const [importFile, setImportFile] = useState(null)
@@ -186,16 +185,26 @@ export default function Horarios() {
     }
   }
 
+  // Cargar instructores y cuentadantes (ambos pueden dar clases y aparecer en el filtro)
   async function fetchInstructores() {
     try {
       const token = localStorage.getItem('token')
-      const res = await fetch('/api/auth/users?rol=Instructor', {
-        headers: { Authorization: `Bearer ${token}` }
-      })
-      const data = await parseApiResponse(res)
-      setInstructores(data || [])
+      const [resInstructor, resCuentadante] = await Promise.all([
+        fetch('/api/auth/users?rol=Instructor', { headers: { Authorization: `Bearer ${token}` } }),
+        fetch('/api/auth/users?rol=Cuentadante', { headers: { Authorization: `Bearer ${token}` } })
+      ])
+      const dataInstructor = await parseApiResponse(resInstructor, 'No se pudo obtener instructores')
+      const dataCuentadante = await parseApiResponse(resCuentadante, 'No se pudo obtener cuentadantes')
+      const instructoresList = Array.isArray(dataInstructor) ? dataInstructor : []
+      const cuentadantesList = Array.isArray(dataCuentadante) ? dataCuentadante : []
+      const idsInstructor = new Set(instructoresList.map(u => u.id_usuario))
+      const merged = [
+        ...instructoresList.map(u => ({ ...u, nombre_rol: u.nombre_rol || 'Instructor' })),
+        ...cuentadantesList.filter(c => !idsInstructor.has(c.id_usuario)).map(u => ({ ...u, nombre_rol: u.nombre_rol || 'Cuentadante' }))
+      ]
+      setInstructores(merged)
     } catch (err) {
-      console.error('Error al obtener instructores:', err)
+      console.error('Error al obtener instructores y cuentadantes:', err)
       setInstructores([])
     }
   }
@@ -288,7 +297,7 @@ export default function Horarios() {
 
   async function handleCreate() {
     // Validar que si hay días seleccionados, debe haber rango de fechas
-    if (form.dias_semana.length > 0) {
+    if ((form.dias_semana || []).length > 0) {
       if (!form.fecha_inicio || !form.fecha_fin) {
         setToast({ 
           message: 'Si seleccionas días de la semana, debes especificar fecha de inicio y fin', 
@@ -313,7 +322,7 @@ export default function Horarios() {
     }
 
     // Validar que si hay rango de fechas, debe haber días seleccionados o fecha_clase
-    if (form.fecha_inicio && form.fecha_fin && form.dias_semana.length === 0 && !form.fecha_clase) {
+    if (form.fecha_inicio && form.fecha_fin && (form.dias_semana || []).length === 0 && !form.fecha_clase) {
       setToast({ 
         message: 'Si especificas un rango de fechas, debes seleccionar días de la semana o una fecha específica', 
         type: 'error' 
@@ -437,8 +446,7 @@ export default function Horarios() {
     }
   }
 
-  // Funciones de acciones manuales eliminadas temporalmente para probar automatización
-  /*
+  // Cancelar clase (permanente: actualiza estado a "Cancelada" en BD)
   async function handleDelete() {
     setLoading(true)
     setToast(null)
@@ -459,6 +467,8 @@ export default function Horarios() {
     }
   }
 
+  // Funciones de acciones manuales (Iniciar/Finalizar) comentadas temporalmente
+  /*
   async function handleIniciarClase(idClase) {
     // Buscar la clase en el estado para mostrar información
     const clase = clases.find(c => c.id_clase === idClase)
@@ -547,21 +557,21 @@ export default function Horarios() {
   function handleEdit(clase) {
     setEditingClase(clase)
     // Convertir fecha a formato YYYY-MM-DD para el input type="date"
-    // Evitar problemas de zona horaria
     let fechaFormateada = clase.fecha_clase
     if (fechaFormateada) {
-      // Si viene como string con hora, extraer solo la fecha
-      if (fechaFormateada.includes('T')) {
-        fechaFormateada = fechaFormateada.split('T')[0]
-      } else if (fechaFormateada.includes(' ')) {
-        fechaFormateada = fechaFormateada.split(' ')[0]
-      }
-      // Si viene como Date object, convertir a YYYY-MM-DD
-      if (fechaFormateada instanceof Date) {
+      if (typeof fechaFormateada === 'string') {
+        if (fechaFormateada.includes('T')) {
+          fechaFormateada = fechaFormateada.split('T')[0]
+        } else if (fechaFormateada.includes(' ')) {
+          fechaFormateada = fechaFormateada.split(' ')[0]
+        }
+      } else if (fechaFormateada instanceof Date) {
         const year = fechaFormateada.getFullYear()
         const month = String(fechaFormateada.getMonth() + 1).padStart(2, '0')
         const day = String(fechaFormateada.getDate()).padStart(2, '0')
         fechaFormateada = `${year}-${month}-${day}`
+      } else {
+        fechaFormateada = ''
       }
     }
     
@@ -572,8 +582,11 @@ export default function Horarios() {
       codigo_ficha: clase.codigo_ficha || '',
       descripcion: clase.descripcion || '',
       fecha_clase: fechaFormateada || '',
-      hora_inicio: clase.hora_inicio ? clase.hora_inicio.substring(0, 5) : '',
-      hora_fin: clase.hora_fin ? clase.hora_fin.substring(0, 5) : '',
+      fecha_inicio: clase.fecha_inicio || '',
+      fecha_fin: clase.fecha_fin || '',
+      hora_inicio: clase.hora_inicio ? (typeof clase.hora_inicio === 'string' ? clase.hora_inicio.substring(0, 5) : '') : '',
+      hora_fin: clase.hora_fin ? (typeof clase.hora_fin === 'string' ? clase.hora_fin.substring(0, 5) : '') : '',
+      dias_semana: Array.isArray(clase.dias_semana) ? clase.dias_semana : [],
       observaciones: clase.observaciones || ''
     })
     setShowForm(true)
@@ -598,12 +611,13 @@ export default function Horarios() {
       return
     }
 
-    setForm(prev => ({
-      ...prev,
-      dias_semana: prev.dias_semana.includes(dia)
-        ? prev.dias_semana.filter(d => d !== dia)
-        : [...prev.dias_semana, dia]
-    }))
+    setForm(prev => {
+      const dias = prev.dias_semana || []
+      return {
+        ...prev,
+        dias_semana: dias.includes(dia) ? dias.filter(d => d !== dia) : [...dias, dia]
+      }
+    })
   }
 
   // Calcular si hay rango de fechas válido
@@ -612,11 +626,12 @@ export default function Horarios() {
   
   // Calcular cantidad de clases que se crearían con los días seleccionados
   const calcularCantidadClases = () => {
-    if (!tieneRangoFechas || form.dias_semana.length === 0) return 0
+    const diasSemana = form.dias_semana || []
+    if (!tieneRangoFechas || diasSemana.length === 0) return 0
     
     const inicio = new Date(form.fecha_inicio)
     const fin = new Date(form.fecha_fin)
-    const diasSeleccionados = form.dias_semana.map(dia => {
+    const diasSeleccionados = diasSemana.map(dia => {
       const diasMap = { 'Lunes': 1, 'Martes': 2, 'Miércoles': 3, 'Jueves': 4, 'Viernes': 5, 'Sábado': 6, 'Domingo': 0 }
       return diasMap[dia] !== undefined ? diasMap[dia] : -1
     }).filter(d => d !== -1)
@@ -785,12 +800,10 @@ export default function Horarios() {
         <Header user={user} />
         {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
 
-        {/* Modals de confirmación eliminados temporalmente para probar automatización */}
-        {/*
         <ConfirmModal
           open={confirmDelete.open}
           title="Cancelar Clase"
-          message="¿Estás seguro de que deseas cancelar esta clase? Esta acción no se puede deshacer."
+          message="¿Estás seguro de que deseas cancelar esta clase? La clase quedará en estado Cancelada de forma permanente."
           confirmText="Cancelar Clase"
           cancelText="No"
           type="danger"
@@ -798,6 +811,8 @@ export default function Horarios() {
           onCancel={() => setConfirmDelete({ open: false, id: null })}
         />
 
+        {/* Modal Iniciar Clase comentado temporalmente */}
+        {/*
         {confirmIniciar.open && claseParaIniciar && (
           <ConfirmModal
             open={confirmIniciar.open}
@@ -897,7 +912,7 @@ export default function Horarios() {
             </div>
             {user?.nombre_rol === 'Administrador' && (
               <div className="horarios-filter-item">
-                <label className="horarios-filter-label">Instructor</label>
+                <label className="horarios-filter-label">Instructor o Cuentadante</label>
                 <CustomSelect
                   name="id_instructor"
                   className="horarios-filter-select"
@@ -907,10 +922,10 @@ export default function Horarios() {
                     { value: '', label: 'Todos' },
                     ...instructores.map(inst => ({
                       value: inst.id_usuario.toString(),
-                      label: inst.nombre_usuario
+                      label: inst.nombre_rol ? `${inst.nombre_usuario} (${inst.nombre_rol})` : inst.nombre_usuario
                     }))
                   ]}
-                  placeholder="Todos los instructores"
+                  placeholder="Todos"
                 />
               </div>
             )}
@@ -971,7 +986,7 @@ export default function Horarios() {
                   </div>
                   {user?.nombre_rol === 'Administrador' && (
                     <div className="horarios-form-row">
-                      <label className="horarios-form-label form-label-required">Instructor</label>
+                      <label className="horarios-form-label form-label-required">Instructor o Cuentadante</label>
                       <CustomSelect
                         name="id_instructor"
                         className="horarios-form-select form-select"
@@ -981,10 +996,10 @@ export default function Horarios() {
                           { value: '', label: 'Seleccione...' },
                           ...instructores.map(inst => ({
                             value: inst.id_usuario.toString(),
-                            label: `${inst.nombre_usuario} (${inst.cedula})`
+                            label: `${inst.nombre_usuario} (${inst.nombre_rol || 'Instructor'}, ${inst.cedula || 'Sin cédula'})`
                           }))
                         ]}
-                        placeholder="Seleccionar instructor"
+                        placeholder="Seleccionar instructor o cuentadante"
                         required
                       />
                     </div>
@@ -1141,12 +1156,12 @@ export default function Horarios() {
                     {diasSemanaOpciones.map(dia => (
                       <label 
                         key={dia.valor} 
-                        className={`horarios-dia-checkbox ${form.dias_semana.includes(dia.valor) ? 'selected' : ''} ${!tieneRangoFechas ? 'disabled' : ''}`}
+                        className={`horarios-dia-checkbox ${(form.dias_semana || []).includes(dia.valor) ? 'selected' : ''} ${!tieneRangoFechas ? 'disabled' : ''}`}
                         title={!tieneRangoFechas ? 'Selecciona fecha de inicio y fin primero' : ''}
                       >
                         <input
                           type="checkbox"
-                          checked={form.dias_semana.includes(dia.valor)}
+                          checked={(form.dias_semana || []).includes(dia.valor)}
                           onChange={() => handleToggleDia(dia.valor)}
                           disabled={!tieneRangoFechas}
                         />
@@ -1154,7 +1169,7 @@ export default function Horarios() {
                       </label>
                     ))}
                   </div>
-                  {form.dias_semana.length > 0 && tieneRangoFechas && (
+                  {(form.dias_semana || []).length > 0 && tieneRangoFechas && (
                     <div className="horarios-dias-info">
                       <FiInfo size={16} />
                       <span>
@@ -1370,7 +1385,7 @@ export default function Horarios() {
                       <td>{clase.codigo_ficha || '-'}</td>
                       <td>
                         {clase.nombre_clase || '-'}
-                        {clase.observaciones && clase.observaciones.includes('Consentimiento Rechazado') && (
+                        {clase.observaciones && typeof clase.observaciones === 'string' && clase.observaciones.includes('Consentimiento Rechazado') && (
                           <span className="horarios-consentimiento-rechazado" title="Consentimiento Rechazado">
                             ⚠️ Consentimiento Rechazado
                           </span>
@@ -1412,17 +1427,14 @@ export default function Horarios() {
                               >
                                 <FiEdit size={14} />
                               </button>
-                              {/* Botón de eliminar eliminado temporalmente */}
-                              {/*
                               <button
                                 className="btn btn-delete horarios-action-btn"
                                 onClick={() => setConfirmDelete({ open: true, id: clase.id_clase })}
                                 disabled={loading}
-                                title="Cancelar"
+                                title="Cancelar clase"
                               >
                                 <FiTrash2 size={14} />
                               </button>
-                              */}
                             </>
                           )}
                           {clase.estado_clase === 'En Curso' && (

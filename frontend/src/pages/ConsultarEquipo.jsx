@@ -24,6 +24,9 @@ export default function ConsultarEquipo() {
   const [user, setUser] = useState(null)
   const [showColumnFilter, setShowColumnFilter] = useState(false)
   const [ambientes, setAmbientes] = useState([])
+  // Vista inventario para Cuentadante con ambientes: ambientes | inventario_total | todos
+  const [vistaInventario, setVistaInventario] = useState('todos')
+  const [mostrarSelectorVistaInventario, setMostrarSelectorVistaInventario] = useState(false)
   
   const ESTADOS_FISICOS = ['Nuevo', 'Bueno', 'Regular', 'Malo', 'Dañado']
   
@@ -89,45 +92,60 @@ export default function ConsultarEquipo() {
     cargarAmbientes()
   }, [])
 
-  // Cargar todos los equipos automáticamente al montar el componente
+  // Cuentadante con ambientes: detectar si debe mostrarse el selector de vista (Mis ambientes | Mi inventario total | Todos)
   useEffect(() => {
-    // Solo cargar si el usuario está disponible
-    if (!user) return
-    
+    if (user?.nombre_rol !== 'Cuentadante') return
     let isMounted = true
-    
+    async function verificarAmbientesCuentadante() {
+      try {
+        const token = localStorage.getItem('token')
+        const res = await fetch('/api/equipos/verificacion/ambientes', {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+        const data = await parseApiResponse(res, 'No se pudo verificar ambientes')
+        if (isMounted && data?.ambientes?.length > 0) {
+          setMostrarSelectorVistaInventario(true)
+        }
+      } catch {
+        if (isMounted) setMostrarSelectorVistaInventario(false)
+      }
+    }
+    verificarAmbientesCuentadante()
+    return () => { isMounted = false }
+  }, [user])
+
+  // Construir URL de listado para Cuentadante con ambientes (vista_inventario)
+  function urlListadoEquipos() {
+    const base = '/api/equipos'
+    if (mostrarSelectorVistaInventario && vistaInventario) {
+      return `${base}?vista_inventario=${encodeURIComponent(vistaInventario)}`
+    }
+    return base
+  }
+
+  // Cargar todos los equipos automáticamente al montar y al cambiar vista (Cuentadante)
+  useEffect(() => {
+    if (!user) return
+    let isMounted = true
     async function cargarEquiposInicial() {
       setLoading(true)
       try {
         const token = localStorage.getItem('token')
-        const res = await fetch('/api/equipos', {
+        const res = await fetch(urlListadoEquipos(), {
           headers: { Authorization: `Bearer ${token}` }
         })
         const data = await parseApiResponse(res, 'No se pudo listar los equipos')
-        // El backend ahora retorna { equipos: [...], pagination: {...} }
-        // Si data tiene la propiedad equipos, usarla; si no, asumir que es un array directo
         const equiposList = data?.equipos || (Array.isArray(data) ? data : [])
-        if (isMounted) {
-          setEquipos(equiposList)
-        }
+        if (isMounted) setEquipos(equiposList)
       } catch (err) {
-        if (isMounted) {
-          setEquipos([])
-          // No mostrar error en la carga inicial, solo si el usuario hace una acción
-        }
+        if (isMounted) setEquipos([])
       } finally {
-        if (isMounted) {
-          setLoading(false)
-        }
+        if (isMounted) setLoading(false)
       }
     }
-    
     cargarEquiposInicial()
-    
-    return () => {
-      isMounted = false
-    }
-  }, [user]) // Solo ejecutar cuando el usuario se carga
+    return () => { isMounted = false }
+  }, [user, vistaInventario, mostrarSelectorVistaInventario]) // Recargar al cambiar vista o al detectar Cuentadante con ambientes
 
   async function handleBuscar(e) {
     e.preventDefault()
@@ -159,12 +177,10 @@ export default function ConsultarEquipo() {
     setLoading(true)
     try {
       const token = localStorage.getItem('token')
-      const res = await fetch('/api/equipos', {
+      const res = await fetch(urlListadoEquipos(), {
         headers: { Authorization: `Bearer ${token}` }
       })
       const data = await parseApiResponse(res, 'No se pudo listar los equipos')
-      // El backend ahora retorna { equipos: [...], pagination: {...} }
-      // Si data tiene la propiedad equipos, usarla; si no, asumir que es un array directo
       const equiposList = data?.equipos || (Array.isArray(data) ? data : [])
       setEquipos(equiposList)
     } catch (err) {
@@ -415,11 +431,10 @@ export default function ConsultarEquipo() {
       setLoading(true)
       try {
         const token = localStorage.getItem('token')
-        const res = await fetch('/api/equipos', {
+        const res = await fetch(urlListadoEquipos(), {
           headers: { Authorization: `Bearer ${token}` }
         })
         const data = await parseApiResponse(res, 'No se pudo obtener los equipos para la exportación')
-        // El backend retorna { equipos: [...], pagination: {...} }
         equiposParaExportar = data?.equipos || (Array.isArray(data) ? data : [])
       } catch (err) {
         setToast({ message: buildErrorMessage(err, 'No se pudo obtener los equipos para la exportación'), type: 'error' })
@@ -572,6 +587,34 @@ export default function ConsultarEquipo() {
           <div className="users-panel">
           <div className="users-toolbar">
             <h2 className="consultar-equipo-header">Consultar Inventario</h2>
+            {mostrarSelectorVistaInventario && (
+              <div className="consultar-equipo-vista-inventario">
+                <span className="consultar-equipo-vista-label">Vista:</span>
+                <div className="consultar-equipo-vista-tabs">
+                  <button
+                    type="button"
+                    className={`consultar-equipo-vista-tab ${vistaInventario === 'ambientes' ? 'active' : ''}`}
+                    onClick={() => setVistaInventario('ambientes')}
+                  >
+                    Mis ambientes
+                  </button>
+                  <button
+                    type="button"
+                    className={`consultar-equipo-vista-tab ${vistaInventario === 'inventario_total' ? 'active' : ''}`}
+                    onClick={() => setVistaInventario('inventario_total')}
+                  >
+                    Mi inventario total
+                  </button>
+                  <button
+                    type="button"
+                    className={`consultar-equipo-vista-tab ${vistaInventario === 'todos' ? 'active' : ''}`}
+                    onClick={() => setVistaInventario('todos')}
+                  >
+                    Todos
+                  </button>
+                </div>
+              </div>
+            )}
             <div className="consultar-equipo-header-row">
               <form onSubmit={handleBuscar} className="consultar-equipo-search-form">
                 <input

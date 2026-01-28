@@ -15,7 +15,8 @@ export default function AsignarAmbientes() {
   const [loading, setLoading] = useState(false)
   const [asignaciones, setAsignaciones] = useState([])
   const [ambientes, setAmbientes] = useState([])
-  const [instructores, setInstructores] = useState([])
+  // Instructores y cuentadantes pueden ser asignados a ambientes (ambos dan clases)
+  const [responsablesAmbiente, setResponsablesAmbiente] = useState([])
   const [toast, setToast] = useState(null)
   const [showForm, setShowForm] = useState(false)
   const [cantidadAsignaciones, setCantidadAsignaciones] = useState(0)
@@ -62,7 +63,7 @@ export default function AsignarAmbientes() {
     if (user?.nombre_rol === 'Administrador') {
       fetchAsignaciones()
       fetchAmbientes()
-      fetchInstructores()
+      fetchResponsablesAmbiente()
     }
   }, [user])
 
@@ -107,17 +108,27 @@ export default function AsignarAmbientes() {
     }
   }
 
-  async function fetchInstructores() {
+  // Cargar instructores y cuentadantes (ambos pueden ser asignados a ambientes)
+  async function fetchResponsablesAmbiente() {
     try {
       const token = localStorage.getItem('token')
-      const res = await fetch('/api/auth/users?rol=Instructor', {
-        headers: { Authorization: `Bearer ${token}` }
-      })
-      const data = await parseApiResponse(res, 'No se pudo obtener los instructores')
-      setInstructores(Array.isArray(data) ? data : [])
+      const [resInstructor, resCuentadante] = await Promise.all([
+        fetch('/api/auth/users?rol=Instructor', { headers: { Authorization: `Bearer ${token}` } }),
+        fetch('/api/auth/users?rol=Cuentadante', { headers: { Authorization: `Bearer ${token}` } })
+      ])
+      const dataInstructor = await parseApiResponse(resInstructor, 'No se pudo obtener instructores')
+      const dataCuentadante = await parseApiResponse(resCuentadante, 'No se pudo obtener cuentadantes')
+      const instructores = Array.isArray(dataInstructor) ? dataInstructor : []
+      const cuentadantes = Array.isArray(dataCuentadante) ? dataCuentadante : []
+      const idsInstructor = new Set((instructores || []).map(u => u.id_usuario))
+      const merged = [
+        ...(instructores || []).map(u => ({ ...u, nombre_rol: u.nombre_rol || 'Instructor' })),
+        ...cuentadantes.filter(c => !idsInstructor.has(c.id_usuario)).map(u => ({ ...u, nombre_rol: u.nombre_rol || 'Cuentadante' }))
+      ]
+      setResponsablesAmbiente(merged)
     } catch (err) {
-      console.error('Error al obtener instructores:', err)
-      setInstructores([])
+      console.error('Error al obtener responsables para ambientes:', err)
+      setResponsablesAmbiente([])
     }
   }
 
@@ -278,7 +289,7 @@ export default function AsignarAmbientes() {
           <ConfirmModal
             open={confirmDelete.open}
             title="Desasignar Ambiente"
-            message="¿Estás seguro de que deseas desasignar este ambiente del instructor? El instructor ya no podrá verificar el inventario de este ambiente."
+            message="¿Estás seguro de que deseas desasignar este ambiente? El responsable ya no podrá verificar el inventario de este ambiente."
             confirmText="Desasignar"
             cancelText="Cancelar"
             type="danger"
@@ -290,7 +301,7 @@ export default function AsignarAmbientes() {
             <div className="users-toolbar">
               <h2 className="asignar-ambientes-header">
                 <FiMapPin size={24} />
-                Asignar Ambientes a Instructores
+                Asignar Ambientes a Instructores o Cuentadantes
               </h2>
               <div className="asignar-ambientes-actions">
                 <button
@@ -343,7 +354,7 @@ export default function AsignarAmbientes() {
                     <div className="asignar-ambientes-form-row">
                       <label className="asignar-ambientes-form-label form-label-required">
                         <FiUser size={14} className="asignar-ambientes-form-label-icon" />
-                        Instructor
+                        Instructor o Cuentadante
                       </label>
                       <CustomSelect
                         name="id_instructor"
@@ -351,13 +362,13 @@ export default function AsignarAmbientes() {
                         value={form.id_instructor}
                         onChange={e => setForm({ ...form, id_instructor: e.target.value })}
                         options={[
-                          { value: '', label: 'Seleccione un instructor...' },
-                          ...instructores.map(inst => ({
+                          { value: '', label: 'Seleccione instructor o cuentadante...' },
+                          ...responsablesAmbiente.map(inst => ({
                             value: inst.id_usuario.toString(),
                             label: `${inst.nombre_usuario} (${inst.cedula})`
                           }))
                         ]}
-                        placeholder="Seleccionar instructor"
+                        placeholder="Seleccionar instructor o cuentadante"
                         required
                       />
                     </div>
@@ -512,7 +523,7 @@ export default function AsignarAmbientes() {
                   <FiMapPin size={48} color="#9ca3af" />
                 </div>
                 <h3>No hay asignaciones registradas</h3>
-                <p>Asigna ambientes a instructores para que puedan verificar el inventario</p>
+                <p>Asigna ambientes a instructores o cuentadantes para que puedan verificar el inventario y dar clases</p>
               </div>
             ) : (
               <div className="asignar-ambientes-content">
@@ -570,7 +581,7 @@ export default function AsignarAmbientes() {
                         <table className="consulta-table asignar-ambientes-table">
                           <thead>
                             <tr>
-                              <th>Instructor</th>
+                              <th>Responsable</th>
                               <th>Fecha</th>
                               <th>Hora Inicio</th>
                               <th>Hora Fin</th>

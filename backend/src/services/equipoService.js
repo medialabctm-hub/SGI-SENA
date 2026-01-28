@@ -61,7 +61,24 @@ export class EquipoService {
   async listarEquipos(filters = {}, pagination = {}, sorting = {}, userId = null, userRole = null) {
     // Aplicar filtros según rol
     if (userRole === 'Cuentadante') {
-      filters.cuentadanteId = userId;
+      const ambientesIds = await this.obtenerAmbientesInstructor(userId);
+      const vista = (filters.vista_inventario || 'todos').toLowerCase();
+      if (ambientesIds.length > 0) {
+        // Cuentadante con ambientes: según vista_inventario (ambientes | inventario_total | todos)
+        if (vista === 'ambientes') {
+          filters.ambientesIds = ambientesIds;
+        } else if (vista === 'inventario_total') {
+          filters.cuentadanteId = userId;
+        } else {
+          // todos (o valor por defecto): OR ambientes + cuentadante
+          filters.cuentadanteOrAmbientes = { ambientesIds, cuentadanteId: userId };
+        }
+        delete filters.vista_inventario;
+      } else {
+        // Sin ambientes asignados: solo su inventario (ignorar vista_inventario)
+        filters.cuentadanteId = userId;
+        delete filters.vista_inventario;
+      }
     } else if (userRole === 'Instructor') {
       // Los instructores solo ven equipos de sus ambientes asignados
       const ambientesIds = await this.obtenerAmbientesInstructor(userId);

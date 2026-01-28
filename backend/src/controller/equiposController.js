@@ -31,7 +31,9 @@ export async function listarEquipos(req, res) {
       fecha_hasta: req.query.fecha_hasta || null,
       valor_min: req.query.valor_min || null,
       valor_max: req.query.valor_max || null,
-      ambiente: req.query.ambiente ? (Array.isArray(req.query.ambiente) ? req.query.ambiente : [req.query.ambiente]) : null
+      ambiente: req.query.ambiente ? (Array.isArray(req.query.ambiente) ? req.query.ambiente : [req.query.ambiente]) : null,
+      // Vista inventario para Cuentadante con ambientes: ambientes | inventario_total | todos
+      vista_inventario: req.query.vista_inventario || null
     };
 
     // Convertir ambientes a IDs si es necesario
@@ -198,8 +200,19 @@ export async function obtenerEquipoPorCodigo(req, res) {
     let params = [codigo];
     
     if (userRole === 'Cuentadante') {
-      whereClause = ' AND e.id_cuentadante = ?';
-      params.push(userId);
+      // Cuentadante: si tiene ambientes asignados usa misma lógica que Instructor; si no, solo por id_cuentadante
+      const [ambientesCuentadante] = await defaultDb.execute(
+        `SELECT DISTINCT ra.id_ambiente FROM Responsabilidades_Ambiente ra
+         WHERE ra.id_usuario = ? AND ra.estado_responsabilidad = 'Activa'`,
+        [userId]
+      );
+      if (ambientesCuentadante?.length > 0) {
+        const ids = ambientesCuentadante.map(a => a.id_ambiente).join(',');
+        whereClause = ` AND e.id_ambiente IN (${ids})`;
+      } else {
+        whereClause = ' AND e.id_cuentadante = ?';
+        params.push(userId);
+      }
     } else if (userRole === 'Instructor') {
       // Los instructores solo pueden ver equipos de sus ambientes asignados
       whereClause = ` AND e.id_ambiente IN (
@@ -244,9 +257,9 @@ export async function obtenerEquipoPorCodigo(req, res) {
     if (Number.isFinite(codigoNumerico)) {
       // Reconstruir params para búsqueda por código_equipo
       const paramsId = [codigoNumerico];
-      if (userRole === 'Cuentadante') {
+      if (userRole === 'Instructor') {
         paramsId.push(userId);
-      } else if (userRole === 'Instructor') {
+      } else if (userRole === 'Cuentadante' && whereClause.includes('id_cuentadante')) {
         paramsId.push(userId);
       }
       
@@ -576,10 +589,10 @@ export async function asignarEquipo(req, res) {
       return res.status(404).json({ error: 'Usuario no encontrado o inactivo' })
     }
 
-    // Si es Instructor, solo puede habilitar a Aprendices
-    if (userRole === 'Instructor' && usuarioReceptor.nombre_rol !== 'Aprendiz') {
+    // Instructor y Cuentadante solo pueden habilitar a Aprendices
+    if ((userRole === 'Instructor' || userRole === 'Cuentadante') && usuarioReceptor.nombre_rol !== 'Aprendiz') {
       return res.status(403).json({ 
-        error: 'Los instructores solo pueden habilitar equipos a aprendices' 
+        error: 'Solo puedes habilitar equipos a aprendices' 
       })
     }
 
@@ -763,8 +776,8 @@ export async function listarAsignaciones(req, res) {
 
     let params = []
 
-    // Si es Instructor, solo ver habilitaciones de Aprendices
-    if (userRole === 'Instructor') {
+    // Instructor y Cuentadante solo ven habilitaciones de Aprendices
+    if (userRole === 'Instructor' || userRole === 'Cuentadante') {
       query += ` WHERE r.nombre_rol = 'Aprendiz' AND re.estado_responsabilidad = 'Activo'`
     } else {
       // Admin ve todas las habilitaciones activas
@@ -820,9 +833,8 @@ export async function eliminarAsignacion(req, res) {
       })
     }
 
-    // Si es Instructor, solo puede eliminar asignaciones de Aprendices o asignaciones externas
-    // Las asignaciones externas (sin id_usuario) se consideran como de aprendices
-    if (userRole === 'Instructor') {
+    // Instructor y Cuentadante solo pueden eliminar asignaciones de Aprendices o asignaciones externas
+    if (userRole === 'Instructor' || userRole === 'Cuentadante') {
       const esAprendiz = exists.usuario_rol === 'Aprendiz' || !exists.id_usuario
       if (!esAprendiz) {
         return res.status(403).json({ 
@@ -900,9 +912,8 @@ export async function actualizarAsignacionEquipo(req, res) {
       return res.status(404).json({ error: 'Asignación no encontrada o ya está inactiva' });
     }
 
-    // Si es Instructor, solo puede actualizar asignaciones de Aprendices o asignaciones externas
-    // Las asignaciones externas (sin id_usuario) se consideran como de aprendices
-    if (userRole === 'Instructor') {
+    // Instructor y Cuentadante solo pueden actualizar asignaciones de Aprendices o asignaciones externas
+    if (userRole === 'Instructor' || userRole === 'Cuentadante') {
       const esAprendiz = asignacion.usuario_rol === 'Aprendiz' || !asignacion.id_usuario
       if (!esAprendiz) {
         return res.status(403).json({ 
@@ -1104,9 +1115,10 @@ export async function obtenerEquiposAmbientesInstructor(req, res) {
     const userRole = req.user?.rol
 
     // Solo instructores pueden acceder a esta funcionalidad
-    if (userRole !== 'Instructor') {
-      return res.status(403).json({ 
-        error: 'Solo los instructores pueden verificar el inventario de sus ambientes' 
+    // Instructores y cuentadantes (ambos dan clases) pueden verificar inventario de sus ambientes
+    if (userRole !== 'Instructor' && userRole !== 'Cuentadante') {
+      return res.status(403).json({
+        error: 'Solo instructores o cuentadantes pueden verificar el inventario de sus ambientes'
       })
     }
 
@@ -1252,9 +1264,10 @@ export async function registrarVerificacionInventario(req, res) {
     }
 
     // Solo instructores pueden verificar
-    if (userRole !== 'Instructor') {
-      return res.status(403).json({ 
-        error: 'Solo los instructores pueden registrar verificaciones' 
+    // Instructores y cuentadantes pueden registrar verificaciones en sus ambientes
+    if (userRole !== 'Instructor' && userRole !== 'Cuentadante') {
+      return res.status(403).json({
+        error: 'Solo instructores o cuentadantes pueden registrar verificaciones'
       })
     }
 
@@ -1426,8 +1439,8 @@ export async function consultarHistorialVerificaciones(req, res) {
 
     const params = []
 
-    // Si es instructor, solo puede ver sus propias verificaciones
-    if (userRole === 'Instructor') {
+    // Instructor y Cuentadante solo ven sus propias verificaciones
+    if (userRole === 'Instructor' || userRole === 'Cuentadante') {
       query += ' AND vi.id_usuario = ?'
       params.push(userId)
     }
@@ -1484,7 +1497,7 @@ export async function consultarHistorialVerificaciones(req, res) {
     `;
     const countParams = [];
 
-    if (userRole === 'Instructor') {
+    if (userRole === 'Instructor' || userRole === 'Cuentadante') {
       countQuery += ' AND vi.id_usuario = ?'
       countParams.push(userId)
     }
@@ -2472,7 +2485,7 @@ export async function consultarHistorialUso(req, res) {
       }
     }
 
-    if (id_usuario && (userRole === 'Administrador' || userRole === 'Instructor')) {
+    if (id_usuario && (userRole === 'Administrador' || userRole === 'Instructor' || userRole === 'Cuentadante')) {
       const idUsuarioNum = parseInt(id_usuario, 10);
       if (!isNaN(idUsuarioNum)) {
         query += ' AND hu.id_usuario = ?';
@@ -2543,7 +2556,7 @@ export async function consultarHistorialUso(req, res) {
       }
     }
 
-    if (id_usuario && (userRole === 'Administrador' || userRole === 'Instructor')) {
+    if (id_usuario && (userRole === 'Administrador' || userRole === 'Instructor' || userRole === 'Cuentadante')) {
       const idUsuarioNum = parseInt(id_usuario, 10);
       if (!isNaN(idUsuarioNum)) {
         countQuery += ' AND hu.id_usuario = ?';

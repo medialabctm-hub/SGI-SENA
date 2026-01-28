@@ -98,12 +98,13 @@ router.get('/mis-equipos/asignados',
 
 // Listar todas las asignaciones
 // Admin: ve todas las asignaciones
-// Instructor: ve solo asignaciones de aprendices
+// Instructor y Cuentadante: ven asignaciones de aprendices (pueden asignar equipos)
 router.get('/asignaciones', 
   authenticate,
   requireAnyPermission([
     PERMISSIONS.EQUIPOS.VIEW,
-    PERMISSIONS.EQUIPOS.ASSIGN
+    PERMISSIONS.EQUIPOS.ASSIGN,
+    PERMISSIONS.EQUIPOS.ASSIGN_TO_APRENDIZ
   ]),
   listarAsignaciones
 );

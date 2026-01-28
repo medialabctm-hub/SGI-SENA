@@ -3,24 +3,27 @@
  * Todas las funciones devuelven fechas/horas en zona horaria de Colombia
  */
 
+/** Offset de Colombia respecto a UTC: -5 horas en milisegundos */
+const COLOMBIA_OFFSET_MS = -5 * 60 * 60 * 1000;
+
 /**
- * Obtiene la fecha/hora actual en zona horaria de Colombia (UTC-5)
+ * Obtiene la fecha/hora actual en zona horaria de Colombia (UTC-5).
+ * No depende del huso horario del servidor: siempre calcula desde UTC.
  * @param {Date} date - Fecha opcional (por defecto: ahora)
  * @returns {string} Fecha/hora en formato 'YYYY-MM-DD HH:mm:ss' (hora de Colombia)
  */
 export function getColombiaDateTimeString(date = new Date()) {
-  // Convertir a hora de Colombia (UTC-5)
-  const colombiaOffset = -5 * 60; // -5 horas en minutos
-  const utc = date.getTime() + (date.getTimezoneOffset() * 60000);
-  const colombiaTime = new Date(utc + (colombiaOffset * 60000));
-  
-  const year = colombiaTime.getUTCFullYear();
-  const month = String(colombiaTime.getUTCMonth() + 1).padStart(2, '0');
-  const day = String(colombiaTime.getUTCDate()).padStart(2, '0');
-  const hours = String(colombiaTime.getUTCHours()).padStart(2, '0');
-  const minutes = String(colombiaTime.getUTCMinutes()).padStart(2, '0');
-  const seconds = String(colombiaTime.getUTCSeconds()).padStart(2, '0');
-  
+  // Momento UTC menos 5h → componentes UTC del resultado = hora Colombia
+  const colombiaMs = date.getTime() + COLOMBIA_OFFSET_MS;
+  const d = new Date(colombiaMs);
+
+  const year = d.getUTCFullYear();
+  const month = String(d.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(d.getUTCDate()).padStart(2, '0');
+  const hours = String(d.getUTCHours()).padStart(2, '0');
+  const minutes = String(d.getUTCMinutes()).padStart(2, '0');
+  const seconds = String(d.getUTCSeconds()).padStart(2, '0');
+
   return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
 }
 
@@ -41,18 +44,15 @@ export function toColombiaDateTimeString(date) {
 }
 
 /**
- * Obtiene la fecha actual en zona horaria de Colombia
+ * Obtiene la fecha actual en zona horaria de Colombia (UTC-5).
  * @returns {string} Fecha en formato 'YYYY-MM-DD' (hora de Colombia)
  */
 export function getColombiaDateString(date = new Date()) {
-  const colombiaOffset = -5 * 60; // -5 horas en minutos
-  const utc = date.getTime() + (date.getTimezoneOffset() * 60000);
-  const colombiaTime = new Date(utc + (colombiaOffset * 60000));
-  
-  const year = colombiaTime.getUTCFullYear();
-  const month = String(colombiaTime.getUTCMonth() + 1).padStart(2, '0');
-  const day = String(colombiaTime.getUTCDate()).padStart(2, '0');
-  
+  const colombiaMs = date.getTime() + COLOMBIA_OFFSET_MS;
+  const d = new Date(colombiaMs);
+  const year = d.getUTCFullYear();
+  const month = String(d.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(d.getUTCDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
 }
 
