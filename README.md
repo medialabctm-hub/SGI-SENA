@@ -38,8 +38,6 @@ SGE-SENA/
 │   │   ├── App.jsx            # Componente principal
 │   │   └── main.jsx          # Punto de entrada
 │   └── package.json
-├── BD/                        # Scripts SQL de base de datos
-│   └── SGI_SENA.sql
 ├── docker-compose.yml         # Configuración Docker
 ├── Dockerfile                 # Dockerfile para producción
 └── README.md                  # Este archivo
