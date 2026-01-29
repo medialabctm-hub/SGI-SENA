@@ -36,6 +36,16 @@ print_header() {
 
 cd "$PROJECT_ROOT"
 
+# Preferir Docker Compose V2 (plugin); V1 falla en Python 3.12 por distutils
+if docker compose version &> /dev/null; then
+    COMPOSE_CMD="docker compose"
+elif command -v docker-compose &> /dev/null && docker-compose --version &> /dev/null; then
+    COMPOSE_CMD="docker-compose"
+else
+    print_error "Docker Compose no está instalado."
+    exit 1
+fi
+
 print_header "Actualización de SGI-SENA"
 
 # Verificar que hay cambios en git (opcional)
@@ -72,11 +82,7 @@ fi
 
 # Detener servicios
 print_header "Deteniendo servicios"
-if command -v docker-compose &> /dev/null; then
-    docker-compose down
-else
-    docker compose down
-fi
+$COMPOSE_CMD down
 print_success "Servicios detenidos"
 
 # Limpiar imágenes antiguas (opcional)
@@ -90,20 +96,12 @@ fi
 
 # Construir nuevas imágenes
 print_header "Construyendo nuevas imágenes"
-if command -v docker-compose &> /dev/null; then
-    docker-compose build --no-cache
-else
-    docker compose build --no-cache
-fi
+$COMPOSE_CMD build --no-cache
 print_success "Imágenes construidas"
 
 # Levantar servicios
 print_header "Iniciando servicios actualizados"
-if command -v docker-compose &> /dev/null; then
-    docker-compose up -d
-else
-    docker compose up -d
-fi
+$COMPOSE_CMD up -d
 print_success "Servicios iniciados"
 
 # Esperar a que los servicios estén listos
@@ -116,20 +114,16 @@ if curl -f -s http://localhost/health > /dev/null 2>&1; then
     print_success "Servicios respondiendo correctamente"
 else
     print_error "Los servicios no están respondiendo"
-    print_info "Revisa los logs: docker-compose logs"
+    print_info "Revisa los logs: $COMPOSE_CMD logs"
     exit 1
 fi
 
 # Mostrar estado
 print_header "Estado de Contenedores"
-if command -v docker-compose &> /dev/null; then
-    docker-compose ps
-else
-    docker compose ps
-fi
+$COMPOSE_CMD ps
 
 echo ""
 print_success "Actualización completada"
 echo ""
-print_info "Para ver logs: docker-compose logs -f"
+print_info "Para ver logs: $COMPOSE_CMD logs -f"
 echo ""

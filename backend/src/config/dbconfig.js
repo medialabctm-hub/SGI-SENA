@@ -29,8 +29,8 @@ export const dbConfig = {
      (process.env.NODE_ENV === "production" && config.db.host !== 'localhost' && config.db.host !== 'db'))
       ? { rejectUnauthorized: false }
       : false,
-  // Configuración de timeout para conexiones lentas
-  connectTimeout: 30000,
+  // Configuración de timeout para conexiones lentas (60s para evitar ETIMEDOUT tras reinicios)
+  connectTimeout: 60000,
   // Configuración de charset
   charset: "utf8mb4",
   // Optimizaciones adicionales

@@ -134,7 +134,7 @@ DB_PASSWORD=tu_password_seguro
 DB_NAME=GestionEquipo
 
 # Seguridad
-JWT_SECRET=tu_jwt_secret_seguro
+JWT_SECRET=tu_jwt_secretp_seguro
 COOKIE_SECRET=tu_cookie_secret_seguro
 
 # CORS (usar IP pública por ahora)
@@ -192,12 +192,12 @@ Debes ver 3 contenedores corriendo:
 
 ```bash
 # Todos los servicios
-docker-compose logs -f
+docker compose logs -f
 
 # Servicio específico
-docker-compose logs -f backend
-docker-compose logs -f frontend
-docker-compose logs -f db
+docker compose logs -f backend
+docker compose logs -f frontend
+docker compose logs -f db
 ```
 
 3. **Verificar acceso**:
@@ -220,22 +220,22 @@ Abre en tu navegador: `http://TU_IP_PUBLICA`
 
 ```bash
 # Ver estado de servicios
-docker-compose ps
+docker compose ps
 
 # Iniciar servicios
-docker-compose up -d
+docker compose up -d
 
 # Detener servicios
-docker-compose down
+docker compose down
 
 # Reiniciar servicios
-docker-compose restart
+docker compose restart
 
 # Ver logs en tiempo real
-docker-compose logs -f
+docker compose logs -f
 
 # Ver logs de un servicio específico
-docker-compose logs -f backend
+docker compose logs -f backend
 
 # Acceder a contenedor
 docker exec -it sge-sena-backend sh
@@ -359,8 +359,8 @@ sudo ufw status
 ### 6. Reiniciar Servicios
 
 ```bash
-docker-compose down
-docker-compose up -d
+docker compose down
+docker compose up -d
 ```
 
 ## Troubleshooting
@@ -370,7 +370,7 @@ docker-compose up -d
 1. **Verificar logs**:
 
 ```bash
-docker-compose logs
+docker compose logs
 ```
 
 2. **Verificar variables de entorno**:
@@ -391,7 +391,7 @@ sudo netstat -tulpn | grep -E '80|3000|3306'
 
 ```bash
 docker ps | grep db
-docker-compose logs db
+docker compose logs db
 ```
 
 ### Error 1033 del Túnel Cloudflare
@@ -427,7 +427,7 @@ El error 1033 generalmente ocurre cuando:
    docker ps
    
    # Si no están corriendo, iniciarlos
-   docker-compose up -d
+   docker compose up -d
    ```
 
 4. **Ver logs del túnel**:
@@ -470,7 +470,7 @@ curl http://localhost
 2. **Verificar logs de nginx**:
 
 ```bash
-docker-compose logs frontend
+docker compose logs frontend
 ```
 
 3. **Verificar firewall**:
@@ -492,7 +492,7 @@ grep CORS_ORIGIN .env
 3. **Reiniciar backend**:
 
 ```bash
-docker-compose restart backend
+docker compose restart backend
 ```
 
 ### Problemas de permisos
@@ -510,10 +510,10 @@ chmod -R 755 backend/uploads
 
 ```bash
 # Detener y eliminar contenedores
-docker-compose down
+docker compose down
 
 # Eliminar volúmenes (¡CUIDADO! Esto borra la BD)
-docker-compose down -v
+docker compose down -v
 
 # Limpiar imágenes
 docker system prune -a
@@ -548,7 +548,7 @@ openssl rand -base64 32
 3. Reinicia servicios:
 
 ```bash
-docker-compose restart backend
+docker compose restart backend
 ```
 
 **Nota**: Los usuarios tendrán que iniciar sesión nuevamente.
@@ -557,7 +557,7 @@ docker-compose restart backend
 
 Para problemas o preguntas:
 
-1. Revisa los logs: `docker-compose logs`
+1. Revisa los logs: `docker compose logs`
 2. Verifica la documentación del proyecto
 3. Consulta los issues en el repositorio
 
@@ -573,11 +573,12 @@ sudo ./deployment/setup-server.sh
 ./deployment/deploy.sh
 
 # Gestión
-docker-compose ps                    # Estado
-docker-compose logs -f               # Logs
-docker-compose restart               # Reiniciar
+docker compose ps                    # Estado
+docker compose logs -f               # Logs
+docker compose restart               # Reiniciar
 ./deployment/backup-db.sh            # Backup
 ./deployment/update.sh               # Actualizar
+./deployment/get-tunnel-url.sh       # URL del túnel Cloudflare
 ```
 
 ---

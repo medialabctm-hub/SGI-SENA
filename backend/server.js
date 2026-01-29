@@ -37,10 +37,33 @@ import imagenesAmbienteRoutes from './src/routes/imagenesAmbienteRoutes.js';
 import schedulerService from './src/services/schedulerService.js';
 import socketService from './src/services/socketService.js';
 import path from 'path';
+import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 
 const app = express();
+
+// #region agent log
+const DEBUG_LOG = '/app/.cursor/debug.log';
+const DEBUG_LOG_FALLBACK = '/app/uploads/.cursor-debug.log';
+app.use((req, res, next) => {
+  try {
+    const payload = JSON.stringify({
+      timestamp: Date.now(),
+      location: 'server.js:request',
+      message: 'request',
+      data: { method: req.method, path: req.path, host: req.get('host') },
+      sessionId: 'debug-session',
+      hypothesisId: 'H1',
+    }) + '\n';
+    if (fs.existsSync(path.dirname(DEBUG_LOG))) fs.appendFileSync(DEBUG_LOG, payload);
+    else fs.appendFileSync(DEBUG_LOG_FALLBACK, payload);
+  } catch (e) {
+    try { fs.appendFileSync(DEBUG_LOG_FALLBACK, JSON.stringify({ timestamp: Date.now(), location: 'server.js:request', message: 'log-error', data: { err: String(e.message) }, hypothesisId: 'H1' }) + '\n'); } catch (_) {}
+  }
+  next();
+});
+// #endregion
 const desiredPort = Number(config.server.PORT) || 3000;
 
 // ============================================
@@ -109,19 +132,24 @@ const corsOptions = {
     // Verificar si el origen está en la lista permitida
     if (allowedOrigins.includes(origin)) {
       callback(null, true);
-    } else {
-      // Permitir localhost SOLO en desarrollo
-      const isLocalhost = origin.startsWith('http://localhost:') || origin.startsWith('http://127.0.0.1:');
-      if (isLocalhost && process.env.NODE_ENV === 'development') {
-        // En desarrollo, permitir localhost para desarrollo local
+      return;
+    }
+    // En producción: permitir túneles Cloudflare (https://*.trycloudflare.com) sin configurar CORS_ORIGIN
+    try {
+      const originUrl = new URL(origin);
+      if (originUrl.protocol === 'https:' && originUrl.hostname.endsWith('.trycloudflare.com')) {
         callback(null, true);
-      } else if (process.env.NODE_ENV === 'development') {
-        // En desarrollo, permitir cualquier origen para facilitar pruebas
-        callback(null, true);
-      } else {
-        // En producción, rechazar orígenes no permitidos (incluyendo localhost)
-        callback(new Error('No permitido por CORS'));
+        return;
       }
+    } catch (_) { /* URL inválida, seguir con el resto de comprobaciones */ }
+    // Permitir localhost SOLO en desarrollo
+    const isLocalhost = origin.startsWith('http://localhost:') || origin.startsWith('http://127.0.0.1:');
+    if (isLocalhost && process.env.NODE_ENV === 'development') {
+      callback(null, true);
+    } else if (process.env.NODE_ENV === 'development') {
+      callback(null, true);
+    } else {
+      callback(new Error('No permitido por CORS'));
     }
   },
   credentials: true,

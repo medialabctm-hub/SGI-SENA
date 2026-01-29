@@ -15,9 +15,9 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m'
 
-# Función para obtener IP pública
+# Función para obtener IP pública (mensajes a stderr para no contaminar la salida capturada)
 get_public_ip() {
-    echo "🔍 Obteniendo IP pública..."
+    echo "🔍 Obteniendo IP pública..." >&2
     
     # Intentar múltiples servicios
     IP1=$(curl -s --max-time 5 https://api.ipify.org 2>/dev/null)
@@ -62,10 +62,10 @@ else
 fi
 echo ""
 
-# Mostrar información de puertos
+# Mostrar información de puertos (sudo necesario para ufw)
 echo "📋 Puertos configurados en firewall:"
 if command -v ufw &> /dev/null; then
-    ufw status | grep -E "80|443|22" || echo "   Firewall no configurado o sin reglas"
+    (sudo ufw status 2>/dev/null | grep -E "80|443|22") || echo "   Firewall no configurado o sin reglas (ejecuta con sudo para ver estado)"
 else
     echo "   UFW no está instalado"
 fi

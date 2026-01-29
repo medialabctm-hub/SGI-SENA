@@ -21,6 +21,9 @@
   </head>
   <body>
     <div id="root"></div>
+    <!-- #region agent log -->
+    <script>fetch('/health').catch(function(){})</script>
+    <!-- #endregion -->
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

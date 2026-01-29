@@ -73,6 +73,7 @@ class SchedulerService {
     this.isRunning = false;
     this.isExecuting = false;
     this.intervalMinutes = 1;
+    this._syncRetry = false; // Flag para reintento único ante ETIMEDOUT/ECONNREFUSED
     this.notificacionesEnviadas = new Set(); // Para evitar notificaciones duplicadas
     this.clasesIniciadas = new Set(); // Para evitar iniciar la misma clase múltiples veces en una ejecución
     this.clasesFinalizadas = new Set(); // Para evitar finalizar la misma clase múltiples veces en una ejecución
@@ -453,11 +454,22 @@ class SchedulerService {
 
       return resultado;
     } catch (error) {
+      // Reintento único ante fallos transitorios de conexión a BD (p. ej. tras reinicio de MySQL)
+      const esErrorConexion = error.code === 'ETIMEDOUT' || error.code === 'ECONNREFUSED';
+      if (!this._syncRetry && esErrorConexion) {
+        logger.warn('Error de conexión a BD en monitoreo de clases, reintentando en 3s...', { code: error.code });
+        this.isExecuting = false;
+        await new Promise((r) => setTimeout(r, 3000));
+        this._syncRetry = true;
+        return this.executeSync();
+      }
+      this._syncRetry = false;
       logger.error('Error en monitoreo de clases:', error);
       resultado.errores.push({ tipo: 'error_general', detalle: error.message });
       return resultado;
     } finally {
       this.isExecuting = false;
+      this._syncRetry = false;
     }
   }
 

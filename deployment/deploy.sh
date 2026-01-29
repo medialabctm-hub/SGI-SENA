@@ -51,7 +51,12 @@ if ! command -v docker &> /dev/null; then
     exit 1
 fi
 
-if ! command -v docker-compose &> /dev/null && ! docker compose version &> /dev/null; then
+# Preferir Docker Compose V2 (plugin); V1 falla en Python 3.12 por distutils
+if docker compose version &> /dev/null; then
+    COMPOSE_CMD="docker compose"
+elif command -v docker-compose &> /dev/null && docker-compose --version &> /dev/null; then
+    COMPOSE_CMD="docker-compose"
+else
     print_error "Docker Compose no está instalado. Ejecuta primero: ./deployment/setup-server.sh"
     exit 1
 fi
@@ -102,6 +107,29 @@ fi
 
 print_success "Variables de entorno validadas"
 
+# Restaurar COMPOSE_CMD por si .env definió C u otra variable que rompa $COMPOSE_CMD
+if docker compose version &> /dev/null; then
+  COMPOSE_CMD="docker compose"
+else
+  COMPOSE_CMD="docker-compose"
+fi
+
+# Generar config Nginx del proxy (HTTP) si existe DOMAIN o usar _ por defecto
+NGINX_CONF="$SCRIPT_DIR/nginx/conf/default.conf"
+NGINX_HTTP_TEMPLATE="$SCRIPT_DIR/nginx/default-http.conf.template"
+if [ -f "$NGINX_HTTP_TEMPLATE" ]; then
+  mkdir -p "$(dirname "$NGINX_CONF")"
+  export DOMAIN="${DOMAIN:-_}"
+  TMP_CONF=$(mktemp)
+  if envsubst '$DOMAIN' < "$NGINX_HTTP_TEMPLATE" > "$TMP_CONF" 2>/dev/null; then
+    mv "$TMP_CONF" "$NGINX_CONF"
+  else
+    sed "s/\$DOMAIN/${DOMAIN}/g" < "$NGINX_HTTP_TEMPLATE" > "$TMP_CONF"
+    mv "$TMP_CONF" "$NGINX_CONF"
+  fi
+  print_success "Config Nginx proxy generada (dominio: ${DOMAIN})"
+fi
+
 # Obtener IP pública para mostrar
 if [ -f "/tmp/sgi-sena-public-ip.txt" ]; then
     PUBLIC_IP=$(cat /tmp/sgi-sena-public-ip.txt)
@@ -111,25 +139,23 @@ fi
 
 # Detener contenedores existentes si hay
 print_info "Deteniendo contenedores existentes (si hay)..."
-docker-compose down 2>/dev/null || docker compose down 2>/dev/null || true
+$COMPOSE_CMD down 2>/dev/null || true
+
+# Workaround: crear cadena iptables si no existe (Docker con nftables en algunos sistemas)
+if ! sudo iptables -t filter -L DOCKER-ISOLATION-STAGE-2 &>/dev/null; then
+  print_info "Creando cadena iptables DOCKER-ISOLATION-STAGE-2 (workaround para nftables)..."
+  sudo iptables -t filter -N DOCKER-ISOLATION-STAGE-2 2>/dev/null || true
+fi
 
 # Construir imágenes
 print_header "Construyendo imágenes Docker"
-if command -v docker-compose &> /dev/null; then
-    docker-compose build --no-cache
-else
-    docker compose build --no-cache
-fi
+$COMPOSE_CMD build --no-cache
 
 print_success "Imágenes construidas"
 
 # Levantar servicios
 print_header "Iniciando servicios"
-if command -v docker-compose &> /dev/null; then
-    docker-compose up -d
-else
-    docker compose up -d
-fi
+$COMPOSE_CMD up -d
 
 print_success "Servicios iniciados"
 
@@ -144,11 +170,12 @@ check_service() {
     local service=$1
     local max_attempts=30
     local attempt=1
-    
+
     while [ $attempt -le $max_attempts ]; do
-        if docker ps | grep -q "$service.*Up"; then
-            # Verificar health check
-            local health=$(docker inspect --format='{{.State.Health.Status}}' "$service" 2>/dev/null || echo "none")
+        # Usar filtros de Docker; grep falla porque en "docker ps" STATUS va antes que NAMES
+        if [ -n "$(docker ps -q --filter "name=^${service}$" --filter "status=running")" ]; then
+            local health
+            health=$(docker inspect --format='{{.State.Health.Status}}' "$service" 2>/dev/null || echo "none")
             if [ "$health" = "healthy" ] || [ "$health" = "none" ]; then
                 return 0
             fi
@@ -177,6 +204,12 @@ else
     print_error "Frontend no está respondiendo correctamente"
 fi
 
+if check_service "sge-sena-proxy"; then
+    print_success "Proxy Nginx está corriendo"
+else
+    print_error "Proxy no está respondiendo correctamente"
+fi
+
 # Verificar conectividad HTTP
 print_info "Verificando conectividad HTTP..."
 sleep 5
@@ -190,23 +223,29 @@ fi
 # Mostrar información de acceso
 print_header "Información de Acceso"
 
-echo -e "Frontend: ${BLUE}http://$PUBLIC_IP${NC}"
-echo -e "API:      ${BLUE}http://$PUBLIC_IP/api${NC}"
-echo -e "Health:   ${BLUE}http://$PUBLIC_IP/health${NC}"
+if [ -n "$DOMAIN" ] && [ "$DOMAIN" != "_" ]; then
+  echo -e "HTTPS:    ${BLUE}https://$DOMAIN${NC}"
+  echo -e "HTTP:     ${BLUE}http://$DOMAIN${NC}"
+  echo ""
+  echo "Si aún no tienes SSL: ./deployment/setup-ssl.sh"
+  echo ""
+  print_info "Si pruebas desde esta misma máquina y el dominio no carga (página en blanco), el router puede no hacer NAT loopback. Añade en /etc/hosts:"
+  echo -e "  ${BLUE}127.0.0.1 $DOMAIN${NC}"
+else
+  echo -e "Frontend: ${BLUE}http://$PUBLIC_IP${NC}"
+  echo -e "API:      ${BLUE}http://$PUBLIC_IP/api${NC}"
+fi
+echo -e "Health:   ${BLUE}http://localhost/health${NC}"
 echo ""
 
 # Mostrar estado de contenedores
 print_header "Estado de Contenedores"
-if command -v docker-compose &> /dev/null; then
-    docker-compose ps
-else
-    docker compose ps
-fi
+$COMPOSE_CMD ps
 
 echo ""
 print_success "Despliegue completado"
 echo ""
-print_info "Para ver logs: docker-compose logs -f"
-print_info "Para detener: docker-compose down"
-print_info "Para reiniciar: docker-compose restart"
+print_info "Para ver logs: $COMPOSE_CMD logs -f"
+print_info "Para detener: $COMPOSE_CMD down"
+print_info "Para reiniciar: $COMPOSE_CMD restart"
 echo ""
