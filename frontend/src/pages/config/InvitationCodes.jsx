@@ -9,6 +9,7 @@ import '../../styles/invitationCodes.css';
 
 export default function InvitationCodes() {
   const [codes, setCodes] = useState([]);
+  const [rolesDisponibles, setRolesDisponibles] = useState([]);
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState(null);
   const [showForm, setShowForm] = useState(false);
@@ -22,6 +23,19 @@ export default function InvitationCodes() {
 
   useEffect(() => {
     fetchCodes();
+  }, []);
+
+  useEffect(() => {
+    async function fetchRoles() {
+      try {
+        const res = await fetch('/api/permissions/roles', { headers: getAuthHeaders() });
+        const data = await parseApiResponse(res, 'No se pudieron cargar los roles');
+        setRolesDisponibles(data.roles || []);
+      } catch {
+        setRolesDisponibles([]);
+      }
+    }
+    fetchRoles();
   }, []);
 
   async function fetchCodes() {
@@ -64,7 +78,11 @@ export default function InvitationCodes() {
       const data = await parseApiResponse(res, 'No se pudo crear el código');
       setToast({ message: 'Código creado exitosamente', type: 'success' });
       setShowForm(false);
-      setForm({ rol_destinado: 'Instructor', fecha_expiracion: '', max_usos: 1 });
+      setForm({
+        rol_destinado: rolesDisponibles.length ? rolesDisponibles[0].rol : 'Instructor',
+        fecha_expiracion: '',
+        max_usos: 1
+      });
       fetchCodes();
     } catch (err) {
       setToast({ message: buildErrorMessage(err, 'Error al crear código'), type: 'error' });
@@ -161,7 +179,7 @@ export default function InvitationCodes() {
                   name="rol_destinado"
                   value={form.rol_destinado}
                   onChange={e => setForm({ ...form, rol_destinado: e.target.value })}
-                  options={['Instructor', 'Administrador', 'Aprendiz', 'Cuentadante']}
+                  options={rolesDisponibles.map(r => r.rol)}
                   placeholder="Seleccionar rol"
                   required
                 />
@@ -197,7 +215,11 @@ export default function InvitationCodes() {
                 type="button"
                 onClick={() => {
                   setShowForm(false);
-                  setForm({ rol_destinado: 'Instructor', fecha_expiracion: '', max_usos: 1 });
+                  setForm({
+                    rol_destinado: rolesDisponibles.length ? rolesDisponibles[0].rol : 'Instructor',
+                    fecha_expiracion: '',
+                    max_usos: 1
+                  });
                 }}
               >
                 Cancelar

@@ -12,12 +12,12 @@
     "format:check": "prettier --check \"**/*.{js,jsx,json,md}\""
   },
   "dependencies": {
-    "jspdf": "^3.0.4",
+    "jspdf": "^4.1.0",
     "jspdf-autotable": "^5.0.2",
     "react": "18.2.0",
     "react-dom": "18.2.0",
     "react-icons": "^4.10.1",
-    "react-router-dom": "6.22.0",
+    "react-router-dom": "^6.30.3",
     "socket.io-client": "^4.8.3",
     "xlsx": "^0.18.5"
   },

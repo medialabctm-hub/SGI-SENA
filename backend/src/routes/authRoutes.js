@@ -2,6 +2,7 @@ import {
   registerUser,
   loginUser,
   loginUserWithPlaca,
+  listRolesPublic,
   deleteUser,
   updateUser,
   me,
@@ -45,6 +46,9 @@ router.get('/validar-token/:token', passwordResetLimiter, validarTokenRecuperaci
 
 // Restablecer contraseña con token (público) - Protegido con rate limiting
 router.post('/restablecer-contrasena', passwordResetLimiter, restablecerContrasena);
+
+// Listar roles para formulario de registro (público)
+router.get('/roles', listRolesPublic);
 
 // ============================================
 // RUTAS PROTEGIDAS (requieren autenticación)

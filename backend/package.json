@@ -16,6 +16,7 @@
     "test:coverage": "node --experimental-vm-modules node_modules/jest/bin/jest.js --coverage"
   },
   "dependencies": {
+    "@getbrevo/brevo": "^1.0.0",
     "axios": "^1.13.2",
     "bcrypt": "^6.0.0",
     "cookie-parser": "^1.4.7",
@@ -30,7 +31,6 @@
     "morgan": "^1.10.1",
     "multer": "^2.0.2",
     "mysql2": "^3.15.3",
-    "@getbrevo/brevo": "^1.0.0",
     "nodemailer": "^7.0.10",
     "pdfkit": "^0.17.2",
     "socket.io": "^4.8.1",
@@ -43,7 +43,7 @@
     "@eslint/eslintrc": "^3.3.1",
     "@eslint/js": "^9.39.1",
     "eslint": "^8.57.1",
-    "eslint-config-airbnb": "^19.0.4",
+    "eslint-config-airbnb": "^5.0.0",
     "eslint-config-airbnb-base": "^15.0.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-import": "^2.32.0",

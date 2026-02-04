@@ -1,5 +1,7 @@
 # Sistema de Control de Acceso Basado en Roles (RBAC)
 
+**Última actualización:** Enero 2026
+
 ## 📋 Tabla de Contenidos
 1. [Descripción General](#descripción-general)
 2. [Roles y Permisos](#roles-y-permisos)
@@ -39,8 +41,10 @@ Este sistema implementa un **Control de Acceso Basado en Roles (RBAC)** escalabl
 | Mantenimiento | Ver, programar, editar, eliminar |
 | Reportes | Ver, crear, exportar |
 | Ambientes | Ver, crear, editar, eliminar |
+| Clases | Ver, crear, actualizar, eliminar |
 | Notificaciones | Ver, crear, broadcast |
 | Sistema | Ver config, actualizar, auditoría |
+| Roles | Gestionar roles y permisos (`roles:manage`) |
 
 #### 2. **Instructor**
 **Acceso de lectura amplio + creación limitada**
@@ -53,6 +57,7 @@ Este sistema implementa un **Control de Acceso Basado en Roles (RBAC)** escalabl
 | Mantenimiento | Ver historial |
 | Reportes | Ver, crear, exportar |
 | Ambientes | Ver |
+| Clases | Ver, crear, actualizar (sus clases) |
 | Notificaciones | Ver propias |
 
 **Casos de uso principales:**
@@ -67,14 +72,36 @@ Este sistema implementa un **Control de Acceso Basado en Roles (RBAC)** escalabl
 - NO puede crear, editar ni eliminar usuarios
 - NO puede ver estadísticas del dashboard (solo Admin)
 
-#### 3. **Aprendiz**
+#### 3. **Cuentadante**
+**Gestión de su inventario y ambientes asignados; puede asignar equipos a aprendices**
+
+| Módulo | Permisos |
+|--------|----------|
+| Usuarios | Ver listado, ver detalle (NO crear, editar ni eliminar) |
+| Equipos | Ver todos, ver detalle, crear, editar, eliminar (su inventario), asignar a aprendices |
+| Novedades | Ver todas, crear, eliminar propias |
+| Mantenimiento | Ver, crear, editar, eliminar |
+| Reportes | Ver, crear, actualizar, eliminar, exportar |
+| Ambientes | Ver |
+| Clases | Ver, crear, actualizar |
+| Notificaciones | Ver propias |
+| Sistema | Ver configuración |
+
+**Casos de uso principales:**
+- Gestionar equipos de sus ambientes asignados
+- Asignar equipos a aprendices (como Instructor)
+- Programar y gestionar mantenimientos
+- Registrar y resolver novedades de su inventario
+- Ver estadísticas del dashboard
+
+#### 4. **Aprendiz**
 **Acceso limitado solo a recursos propios**
 
 | Módulo | Permisos |
 |--------|----------|
-| Usuarios | Ver solo su perfil |
-| Equipos | Ver solo equipos asignados |
-| Novedades | Ver y crear solo en equipos propios |
+| Usuarios | Ver solo su perfil (vía ruta de perfil) |
+| Equipos | Ver solo equipos asignados (`equipos:view_own`) |
+| Novedades | Ver y crear solo en equipos propios (`novedades:view_own`, `novedades:create_own`) |
 | Mantenimiento | Ver solo de equipos propios |
 | Reportes | Ver y crear |
 | Notificaciones | Ver propias |
@@ -94,17 +121,19 @@ Este sistema implementa un **Control de Acceso Basado en Roles (RBAC)** escalabl
 ```
 backend/src/
 ├── config/
-│   └── permissions.js          # Definición de permisos por módulo y rol
+│   └── permissions.js          # Definición de permisos (PERMISSIONS, ROLE_PERMISSIONS, helpers)
 ├── middleware/
-│   ├── authMiddleware.js       # Autenticación JWT + información de usuario
-│   └── authorization.js        # Middlewares de autorización RBAC
-├── routes/
-│   ├── authRoutes.js          # Rutas protegidas con permisos
-│   ├── equiposRoutes.js       # Rutas protegidas con permisos
-│   └── notificationsRoutes.js # Rutas protegidas con permisos
+│   ├── authMiddleware.js       # Autenticación JWT; adjunta req.user (id, nombre, cedula, correo, id_rol, rol)
+│   └── authorization.js       # requireRole, requirePermission, requireAnyPermission,
+│                               # requireOwnership, requireAssignedEquipos, requirePermissionAndOwnership
+├── routes/                     # Rutas protegidas con permisos (auth, equipos, ambientes, clases,
+│                               # reportes, novedades, mantenimiento, notificaciones, aprendices,
+│                               # estadisticas, horarios, import, invitationCode, permissions, etc.)
 └── controller/
-    └── ...                     # Validación adicional en controladores
+    └── ...                     # Validación adicional de negocio cuando aplica
 ```
+
+La validación de permisos usa `hasPermissionFromDB` (consulta la tabla `Rol_Permisos` si existe, con fallback a `ROLE_PERMISSIONS` en `permissions.js`).
 
 ### Flujo de Autorización
 
@@ -129,12 +158,12 @@ router.get('/endpoint', authenticate, controller)
 **Adjunta a `req.user`:**
 ```javascript
 {
-  id: 123,
-  nombre: "Juan Pérez",
+  id: 123,              // id_usuario
+  nombre: "Juan Pérez", // nombre_usuario
   cedula: "123456789",
   correo: "juan@example.com",
   id_rol: 1,
-  rol: "Administrador" // Nombre del rol
+  rol: "Administrador"  // nombre_rol: 'Administrador' | 'Instructor' | 'Cuentadante' | 'Aprendiz'
 }
 ```
 
@@ -158,7 +187,7 @@ router.get('/staff-area',
 ```
 
 ### 3. **requirePermission(permission)**
-Requiere que el usuario tenga un permiso específico.
+Requiere que el usuario tenga un permiso específico. Internamente usa `hasPermissionFromDB` (consulta la tabla `Rol_Permisos` si existe, con fallback a `ROLE_PERMISSIONS` en `permissions.js`).
 
 ```javascript
 import { PERMISSIONS } from '../config/permissions.js'
@@ -171,7 +200,7 @@ router.post('/equipos',
 ```
 
 ### 4. **requireAnyPermission(permissions[])**
-Requiere que el usuario tenga al menos uno de los permisos.
+Requiere que el usuario tenga al menos uno de los permisos. También usa `hasPermissionFromDB` por cada permiso.
 
 ```javascript
 router.get('/equipos', 
@@ -196,13 +225,24 @@ router.put('/user/:id',
 ```
 
 ### 6. **requireAssignedEquipos(getEquipos)**
-Verifica que el usuario tenga equipos asignados (para aprendices).
+Verifica que el usuario tenga equipos asignados (para aprendices). Admin, Instructor y Cuentadante pasan sin validar.
 
 ```javascript
-router.get('/mis-novedades', 
+router.get('/mis-equipos', 
   authenticate,
-  requireAssignedEquipos(getUserEquipos),
+  requireAssignedEquipos(async (req) => await getEquiposByUserId(req.user.id)),
   controller
+)
+```
+
+### 7. **requirePermissionAndOwnership(permission, getResourceOwnerId)**
+Requiere un permiso Y que el recurso pertenezca al usuario (p. ej. editar perfil propio).
+
+```javascript
+router.put('/perfil/:id', 
+  authenticate,
+  requirePermissionAndOwnership(PERMISSIONS.USERS.UPDATE, (req) => req.params.id),
+  actualizarPerfil
 )
 ```
 
@@ -217,23 +257,26 @@ El frontend implementa restricciones visuales basadas en el rol del usuario aute
 #### **Dashboard** (`frontend/src/pages/Dashboard.jsx`)
 
 ```javascript
-// Se obtiene el rol del usuario desde localStorage
+// Se obtiene el rol del usuario desde localStorage (objeto user del login)
 const userRole = user?.nombre_rol || ''
 const isAdmin = userRole === 'Administrador'
+const isInstructor = userRole === 'Instructor'
+const isCuentadante = userRole === 'Cuentadante'
+
+// Estadísticas: Admin, Instructor y Cuentadante
+const shouldShowStats = isAdmin || isInstructor || isCuentadante
 
 // Restricciones:
-// 1. Card "Registrar Equipo" - Solo visible para Administrador
-{isAdmin && (
-  <Card title="Registrar Equipo" to="/equipos" />
-)}
+// 1. Card "Registrar Equipo" / Equipos - Visible para Administrador y Cuentadante (según permisos backend)
+{isAdmin && <Card title="Registrar Equipo" to="/equipos" />}
 
-// 2. Card "Usuarios" - Solo Admin e Instructor
-{(isAdmin || isInstructor) && (
+// 2. Card "Usuarios" - Admin, Instructor y Cuentadante (todos tienen VIEW)
+{(isAdmin || isInstructor || isCuentadante) && (
   <Card title="Usuarios" to="/usuarios" />
 )}
 
-// 3. Estadísticas - Solo Administrador
-{isAdmin && (
+// 3. Estadísticas - Admin, Instructor y Cuentadante
+{shouldShowStats && (
   <div className="stats-card">
     <h3>Estadísticas Rápidas</h3>
     {/* ... */}
@@ -247,13 +290,13 @@ const isAdmin = userRole === 'Administrador'
 <nav className="header-nav">
   <button onClick={() => go('/dashboard')}>Inicio</button>
   
-  {/* Equipos: Solo Administrador */}
-  {isAdmin && (
+  {/* Equipos: Administrador y Cuentadante (gestión de inventario) */}
+  {(isAdmin || isCuentadante) && (
     <button onClick={() => go('/equipos')}>Equipos</button>
   )}
   
-  {/* Usuarios: Admin e Instructor */}
-  {(isAdmin || isInstructor) && (
+  {/* Usuarios: Admin, Instructor y Cuentadante (ver listado/detalle) */}
+  {(isAdmin || isInstructor || isCuentadante) && (
     <button onClick={() => go('/usuarios')}>Usuarios</button>
   )}
   
@@ -264,7 +307,7 @@ const isAdmin = userRole === 'Administrador'
 #### **Gestión de Usuarios** (`frontend/src/pages/Usuarios.jsx`)
 
 ```javascript
-// Instructor puede VER usuarios pero NO editar ni eliminar
+// Instructor y Cuentadante pueden VER usuarios pero NO editar ni eliminar (solo Admin tiene USERS.UPDATE/DELETE)
 <td className="users-actions">
   <button onClick={() => openView(u)}>Ver</button>
   
@@ -280,15 +323,16 @@ const isAdmin = userRole === 'Administrador'
 
 ### Resumen de Restricciones por Rol
 
-| Funcionalidad | Admin | Instructor | Aprendiz |
-|---------------|-------|------------|----------|
-| Ver Dashboard | ✅ | ✅ | ✅ |
-| Ver Estadísticas | ✅ | ❌ | ❌ |
-| Registrar Equipo (botón) | ✅ | ❌ | ❌ |
-| Consultar Equipos | ✅ | ✅ | ✅ (solo asignados) |
-| Ver Usuarios (nav) | ✅ | ✅ | ❌ |
-| Editar/Eliminar Usuarios | ✅ | ❌ | ❌ |
-| Configuración | ✅ | ✅ | ✅ |
+| Funcionalidad | Admin | Instructor | Cuentadante | Aprendiz |
+|---------------|-------|------------|-------------|----------|
+| Ver Dashboard | ✅ | ✅ | ✅ | ✅ |
+| Ver Estadísticas | ✅ | ✅ | ✅ | ❌ |
+| Registrar/Editar Equipos | ✅ | ❌ | ✅ (su inventario) | ❌ |
+| Consultar Equipos | ✅ | ✅ | ✅ | ✅ (solo asignados) |
+| Ver Usuarios (nav) | ✅ | ✅ | ✅ | ❌ |
+| Editar/Eliminar Usuarios | ✅ | ❌ | ❌ | ❌ |
+| Gestionar Mantenimientos | ✅ | ❌ | ✅ | ❌ |
+| Configuración | ✅ | ✅ | ✅ | ✅ |
 
 > **Nota Importante:** Estas restricciones del frontend son **solo para mejorar la experiencia de usuario**. La seguridad real se implementa en el backend mediante middlewares de autorización. Nunca confíes solo en restricciones del frontend para seguridad.
 
@@ -529,7 +573,8 @@ router.get('/inventario/audit',
    // ❌ Evitar
    if (user.rol === 'Administrador') { ... }
    
-   // ✅ Mejor
+   // ✅ Mejor: usar helpers de permissions.js
+   import { hasPermission } from '../config/permissions.js'
    if (hasPermission(user.rol, PERMISSIONS.USERS.DELETE)) { ... }
    ```
 

@@ -1,16 +1,20 @@
 # Guía de Estándares de Código - SGE-SENA
 
+**Última actualización:** Enero 2026
+
 Esta guía establece los estándares de código que deben seguirse en el proyecto SGE-SENA.
 
 ## ⚠️ PRINCIPIOS FUNDAMENTALES
 
-**IMPORTANTE**: Antes de continuar, lee [CORE_PRINCIPLES.md](../CORE_PRINCIPLES.md) que establece los **3 principios fundamentales** que deben aplicarse en TODAS las tareas de desarrollo:
+**IMPORTANTE**: Antes de continuar, lee [CORE_PRINCIPLES.md](CORE_PRINCIPLES.md) que establece los **3 principios fundamentales** que deben aplicarse en TODAS las tareas de desarrollo:
 
 1. **Separación de Responsabilidades en Capas**
 2. **Inyección de Dependencias**
 3. **Funciones Pequeñas y Específicas**
 
 Estos principios son **OBLIGATORIOS** y tienen prioridad sobre cualquier otra regla.
+
+A continuación se detalla la **estructura de carpetas** y, después, solo **estilo y convenciones de código**.
 
 ## 1. Estructura del Proyecto
 
@@ -21,11 +25,17 @@ backend/
 │   ├── config/          # Configuraciones
 │   ├── controller/      # Controladores (solo orquestación)
 │   ├── services/        # Lógica de negocio
+│   ├── repositories/    # Capa de acceso a datos
 │   ├── routes/          # Definición de rutas
-│   ├── middleware/      # Middlewares personalizados
-│   ├── validators/      # Validadores con Zod
-│   ├── utils/           # Utilidades (errores, logger, etc.)
-│   └── models/          # Modelos de datos (si se implementan)
+│   ├── middleware/     # Middlewares personalizados
+│   ├── validators/     # Validadores con Zod
+│   ├── utils/           # Utilidades (errores, logger, sqlQueries, etc.)
+│   ├── di/              # Inyección de dependencias
+│   ├── factories/       # Factories para servicios
+│   ├── builders/        # Builders para entidades
+│   ├── facades/         # Facades
+│   ├── strategies/      # Patrón Strategy
+│   └── observers/       # Patrón Observer
 ├── server.js            # Punto de entrada
 └── package.json
 ```
@@ -186,9 +196,7 @@ router.post('/users', authenticate, validate(createUserSchema), createUser);
 ```
 
 ### Controladores
-- ✅ Solo orquestación, sin lógica de negocio
-- ✅ Delega a servicios
-- ✅ Maneja respuestas HTTP
+- Ver responsabilidades y ejemplos en [CORE_PRINCIPLES.md](CORE_PRINCIPLES.md).
 
 ```javascript
 // ✅ Correcto
@@ -204,9 +212,7 @@ export const getUser = async (req, res, next) => {
 
 ## 9. Servicios
 
-- ✅ Contienen la lógica de negocio
-- ✅ No dependen de Express (req, res)
-- ✅ Lanzan errores personalizados
+- Ver responsabilidades y ejemplos en [CORE_PRINCIPLES.md](CORE_PRINCIPLES.md).
 
 ```javascript
 // ✅ Correcto
@@ -285,14 +291,7 @@ docs: actualizar README
 
 ## 15. Organización General
 
-```
-Controllers → Services → Models → Utils
-```
-
-- **Controllers**: Orquestación HTTP
-- **Services**: Lógica de negocio
-- **Models**: Acceso a datos (si se implementan)
-- **Utils**: Utilidades compartidas
+Se sigue la estructura de capas y los principios de [CORE_PRINCIPLES.md](CORE_PRINCIPLES.md). Esta guía se centra en **estilo y convenciones de código** (naming, imports, rutas, validación, middlewares, etc.).
 
 ## Scripts Disponibles
 
@@ -325,3 +324,7 @@ El proyecto utiliza `eslint-config-airbnb` (frontend) y `eslint-config-airbnb-ba
 - **Await en loops**: Se permite con advertencia cuando sea necesario
 - **Múltiples clases por archivo**: Permitido hasta 10 clases (útil para archivos de errores, estrategias, etc.)
 
+### Instalación y scripts
+
+- **Frontend:** Al instalar dependencias (`npm install`) usar `npm install --legacy-peer-deps`. `eslint-config-airbnb@19` declara peer dependency de ESLint ^7 o ^8; si el proyecto usa ESLint 9, npm puede reportar conflicto; `--legacy-peer-deps` permite la instalación y el lint funciona correctamente.
+- **Backend:** Se usa **flat config** (`eslint.config.js`). El script de lint debe ser `eslint .` (sin `--ext .js`), ya que la opción `--ext` no aplica en flat config. Los scripts `lint` y `lint:fix` del `package.json` del backend están definidos así.

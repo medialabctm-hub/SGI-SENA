@@ -1,5 +1,7 @@
 # Principios Fundamentales del Proyecto
 
+**Última actualización:** Enero 2026
+
 Estos son los **3 principios fundamentales** que deben aplicarse en **TODAS** las tareas de desarrollo de ahora en adelante.
 
 ## 1. Separación de Responsabilidades en Capas

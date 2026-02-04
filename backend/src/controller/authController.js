@@ -1,5 +1,6 @@
 import { ServiceFactory } from '../factories/ServiceFactory.js';
 import { logger } from '../utils/logger.js';
+import defaultDb from '../config/dbconfig.js';
 
 /**
  * Controlador de autenticación - Solo orquestación, sin lógica de negocio
@@ -13,6 +14,23 @@ import { logger } from '../utils/logger.js';
  * - Llamar a los servicios apropiados
  * - Formatear y enviar respuestas HTTP
  */
+
+/**
+ * Listar nombres de roles (público, para formulario de registro).
+ * Devuelve solo roles activos ordenados por nombre_rol.
+ */
+export const listRolesPublic = async (req, res, next) => {
+  try {
+    const [rows] = await defaultDb.execute(
+      "SELECT nombre_rol FROM Roles WHERE estado = 'Activo' ORDER BY nombre_rol"
+    );
+    const roles = rows.map((r) => ({ nombre_rol: r.nombre_rol }));
+    return res.json({ roles });
+  } catch (error) {
+    logger.error('Error en listRolesPublic', { error: error.message });
+    return next(error);
+  }
+};
 
 /**
  * Registro de usuario
