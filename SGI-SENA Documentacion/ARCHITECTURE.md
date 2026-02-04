@@ -1,13 +1,17 @@
 # Arquitectura del Proyecto - Principios SOLID y Patrones de Diseño
 
+**Última actualización:** Enero 2026
+
 Este documento describe la arquitectura del proyecto, los principios SOLID aplicados y los patrones de diseño implementados.
+
+**Los principios operativos obligatorios** (separación de capas, inyección de dependencias, funciones pequeñas) están en [CORE_PRINCIPLES.md](CORE_PRINCIPLES.md).
 
 ## Estructura de Capas
 
 ```
 backend/src/
 ├── config/          # Configuración del sistema
-├── controllers/     # Capa de presentación (HTTP)
+├── controller/      # Capa de presentación (HTTP)
 ├── services/        # Capa de lógica de negocio
 ├── repositories/    # Capa de acceso a datos
 ├── middleware/      # Middlewares de Express
@@ -26,22 +30,17 @@ backend/src/
 
 ### 1. Single Responsibility Principle (SRP)
 
-**Cada clase tiene una única razón para cambiar:**
-
-- **Repositories**: Solo se encargan del acceso a datos
-- **Services**: Solo contienen lógica de negocio
-- **Controllers**: Solo manejan requests/responses HTTP
-- **Validators**: Solo validan datos de entrada
+Cada clase tiene una única razón para cambiar; las reglas operativas por capa (Controller → Service → Repository) están en [CORE_PRINCIPLES.md](CORE_PRINCIPLES.md). En resumen: Repositories = acceso a datos; Services = lógica de negocio; Controllers = HTTP; Validators = datos de entrada.
 
 **Ejemplo:**
 ```javascript
-// ✅ Correcto: UserRepository solo maneja acceso a datos
+//  Correcto: UserRepository solo maneja acceso a datos
 export class UserRepository extends BaseRepository {
   async findById(userId) { /* ... */ }
   async create(userData) { /* ... */ }
 }
 
-// ✅ Correcto: AuthService solo maneja lógica de autenticación
+//  Correcto: AuthService solo maneja lógica de autenticación
 export class AuthService {
   async registerUser(userData) { /* ... */ }
   async loginUser(cedula, contrasena) { /* ... */ }
@@ -58,7 +57,7 @@ export class AuthService {
 
 **Ejemplo:**
 ```javascript
-// ✅ Se pueden agregar nuevas estrategias sin modificar ValidationContext
+//  Se pueden agregar nuevas estrategias sin modificar ValidationContext
 export class EmailValidationStrategy extends ValidationStrategy {
   validate(value) { /* ... */ }
 }
@@ -77,7 +76,7 @@ export class PasswordValidationStrategy extends ValidationStrategy {
 
 **Ejemplo:**
 ```javascript
-// ✅ Cualquier repositorio puede ser usado donde se espera BaseRepository
+//  Cualquier repositorio puede ser usado donde se espera BaseRepository
 const userRepo = new UserRepository(db);
 const roleRepo = new RoleRepository(db);
 
@@ -95,7 +94,7 @@ await roleRepo.execute(query, params);
 
 **Ejemplo:**
 ```javascript
-// ✅ Servicios específicos en lugar de un servicio grande
+//  Servicios específicos en lugar de un servicio grande
 export class PasswordService {
   async hash(password) { /* ... */ }
   async compare(password, hash) { /* ... */ }
@@ -116,7 +115,7 @@ export class JwtService {
 
 **Ejemplo:**
 ```javascript
-// ✅ AuthService depende de interfaces, no de implementaciones concretas
+//  AuthService depende de interfaces, no de implementaciones concretas
 export class AuthService {
   constructor(userRepository, roleRepository, passwordService, jwtService, logger) {
     // Dependencias inyectadas, no instanciadas directamente
@@ -343,9 +342,9 @@ Para agregar nuevas funcionalidades:
 
 Esta arquitectura proporciona:
 
-- ✅ **Mantenibilidad**: Código organizado y fácil de entender
-- ✅ **Testabilidad**: Componentes desacoplados y fáciles de testear
-- ✅ **Escalabilidad**: Fácil agregar nuevas funcionalidades
-- ✅ **Flexibilidad**: Cambiar implementaciones sin afectar otras partes
-- ✅ **Reutilización**: Componentes reutilizables en diferentes contextos
+-  **Mantenibilidad**: Código organizado y fácil de entender
+-  **Testabilidad**: Componentes desacoplados y fáciles de testear
+-  **Escalabilidad**: Fácil agregar nuevas funcionalidades
+-  **Flexibilidad**: Cambiar implementaciones sin afectar otras partes
+-  **Reutilización**: Componentes reutilizables en diferentes contextos
 

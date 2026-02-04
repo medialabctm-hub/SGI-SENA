@@ -35,6 +35,7 @@ export default function Usuarios() {
   const [confirm, setConfirm] = useState({ open: false, id: null });
   const [currentUser, setCurrentUser] = useState(null);
   const [showImport, setShowImport] = useState(false);
+  const [rolesDisponibles, setRolesDisponibles] = useState([]);
   
   const { subscribe } = useSocket();
 
@@ -106,6 +107,19 @@ export default function Usuarios() {
 
   useEffect(() => {
     fetchUsers();
+  }, []);
+
+  useEffect(() => {
+    async function fetchRoles() {
+      try {
+        const res = await fetch('/api/permissions/roles', { headers: getAuthHeaders() });
+        const data = await parseApiResponse(res, 'No se pudieron cargar los roles');
+        setRolesDisponibles(data.roles || []);
+      } catch {
+        setRolesDisponibles([]);
+      }
+    }
+    fetchRoles();
   }, []);
 
   // Suscribirse a actualizaciones en tiempo real de usuarios
@@ -581,7 +595,7 @@ export default function Usuarios() {
                       onChange={(e) =>
                         setForm((prev) => ({ ...prev, rol: e.target.value }))
                       }
-                      options={['Administrador', 'Instructor', 'Aprendiz']}
+                      options={rolesDisponibles.map((r) => r.rol)}
                       placeholder="Seleccionar rol"
                     />
                   </div>

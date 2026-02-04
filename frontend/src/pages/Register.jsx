@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { FiMail, FiLock, FiEye, FiEyeOff, FiUser, FiCreditCard, FiPhone } from 'react-icons/fi'
 import { validarRegistro, validarContraseña, validarEmail, validarTelefono, validarCaracteresEspeciales, validarEspaciosInicioFinalNombre } from '../utils/validaciones';
@@ -22,9 +22,23 @@ export default function Register() {
   const [mostrarConfirmPassword, setMostrarConfirmPassword] = useState(false)
   const [rol, setRol] = useState('Aprendiz')
   const [codigoInvitacion, setCodigoInvitacion] = useState('')
+  const [rolesDisponibles, setRolesDisponibles] = useState([])
   const [errores, setErrores] = useState({})
   const navigate = useNavigate()
   const [toast, setToast] = useState(null)
+
+  useEffect(() => {
+    async function fetchRoles() {
+      try {
+        const res = await fetch('/api/auth/roles')
+        const data = await parseApiResponse(res, 'No se pudieron cargar los roles')
+        setRolesDisponibles(data.roles || [])
+      } catch {
+        setRolesDisponibles([])
+      }
+    }
+    fetchRoles()
+  }, [])
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -76,7 +90,7 @@ export default function Register() {
           telefono,
           contrasena: password,
           rol,
-          codigo_invitacion: (rol === 'Instructor' || rol === 'Administrador' || rol === 'Cuentadante') ? codigoInvitacion.trim() : null
+          codigo_invitacion: rol !== 'Aprendiz' ? codigoInvitacion.trim() : null
         })
       })
       const data = await parseApiResponse(res, 'No se pudo completar el registro')
@@ -208,18 +222,18 @@ export default function Register() {
                   setCodigoInvitacion('');
                 }
               }}
-              options={['Aprendiz', 'Instructor', 'Administrador', 'Cuentadante']}
+              options={rolesDisponibles.map(r => r.nombre_rol)}
               placeholder="Seleccionar rol"
               className="auth-select-input"
             />
           </label>
-          {(rol === 'Instructor' || rol === 'Administrador' || rol === 'Cuentadante') && (
+          {rol !== 'Aprendiz' && rol && (
             <>
               <label className="input">
                 <span className="icon"><FiLock /></span>
                 <input
                   type="text"
-                  placeholder={`Código de Seguridad (requerido para ${rol === 'Instructor' ? 'Instructores' : rol === 'Administrador' ? 'Administradores' : 'Cuentadantes'})`}
+                  placeholder={`Código de Seguridad (requerido para ${rol})`}
                   value={codigoInvitacion}
                   onChange={e => setCodigoInvitacion(e.target.value)}
                   className="auth-select-uppercase"

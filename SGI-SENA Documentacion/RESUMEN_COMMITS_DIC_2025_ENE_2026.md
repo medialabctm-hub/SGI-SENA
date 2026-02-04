@@ -1,6 +1,7 @@
 # Resumen de Commits: Diciembre 2025 - Enero 2026
 
-**Período analizado:** 4 de diciembre de 2025 - 16 de enero de 2026
+**Período analizado:** 4 de diciembre de 2025 - 16 de enero de 2026  
+**Última actualización del documento:** Enero 2026
 
 ---
 

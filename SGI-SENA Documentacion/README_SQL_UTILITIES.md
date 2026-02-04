@@ -1,8 +1,11 @@
 # Módulo de Utilidades SQL Compartidas
 
+**Ubicación:** `backend/src/utils/sqlQueries.js`  
+**Última actualización:** Enero 2026
+
 ## ¿Qué es y por qué existe?
 
-Este módulo (`sqlQueries.js`) centraliza queries SQL comunes que se repiten en múltiples controladores del proyecto. 
+Este módulo (`backend/src/utils/sqlQueries.js`) centraliza queries SQL comunes que se repiten en múltiples controladores del proyecto. 
 
 ### Problema que resuelve:
 
@@ -53,7 +56,7 @@ Obtiene un usuario activo por su ID.
 - `db`: Instancia de la base de datos
 - `userId`: ID del usuario (número)
 
-**Retorna:** Objeto con datos del usuario o `null` si no existe
+**Retorna:** Objeto con datos del usuario (id_usuario, nombre_usuario, cedula, tipo_documento, tipo_documento_otro, correo, telefono, nombre_rol, id_rol, foto_perfil) o `null` si no existe
 
 **Ejemplo:**
 ```javascript
@@ -122,6 +125,45 @@ Cuenta el número de usuarios activos.
 Cuenta el número total de equipos.
 
 **Retorna:** Número total de equipos
+
+### `verificarDisponibilidadEquipo(db, codigoEquipo)`
+Verifica si un equipo está disponible para asignación (estado operativo y físico).
+
+**Parámetros:**
+- `db`: Instancia de la base de datos
+- `codigoEquipo`: Código del equipo
+
+**Retorna:** Objeto `{ disponible, razon, estado_operativo, estado_fisico }`. Bloquea si está Dañado, En Mantenimiento o Dado de Baja.
+
+### `deshabilitarAsignacionesActivas(db, codigoEquipo, deshabilitadoPor, razon?)`
+Deshabilita todas las asignaciones activas de un equipo (p. ej. cuando el equipo pasa a estado crítico).
+
+**Parámetros:**
+- `db`: Instancia de la base de datos
+- `codigoEquipo`: Código del equipo
+- `deshabilitadoPor`: ID del usuario que realiza la acción
+- `razon`: Opcional; mensaje de deshabilitación (default: 'Equipo deshabilitado por cambio de estado')
+
+**Retorna:** Objeto `{ deshabilitadas, usuarios_afectados }`
+
+### `obtenerAmbientesValidosAprendiz(db, idAprendiz)`
+Obtiene los IDs de ambientes válidos para un aprendiz según sus clases activas y ficha.
+
+**Parámetros:**
+- `db`: Instancia de la base de datos
+- `idAprendiz`: ID del usuario aprendiz
+
+**Retorna:** Array de IDs de ambientes
+
+### `verificarAmbienteEquipoAprendiz(db, codigoEquipo, idAprendiz)`
+Verifica si un equipo puede ser asignado a un aprendiz (que el ambiente del equipo esté entre los ambientes válidos del aprendiz).
+
+**Parámetros:**
+- `db`: Instancia de la base de datos
+- `codigoEquipo`: Código del equipo
+- `idAprendiz`: ID del usuario aprendiz
+
+**Retorna:** Objeto `{ valido, razon, ambiente_equipo, ambientes_validos, nombre_ambiente_equipo? }`
 
 ## Ejemplo de refactorización
 
