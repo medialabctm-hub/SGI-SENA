@@ -3113,6 +3113,13 @@ export async function registrarUsoEquipoExterno(req, res) {
         const fichaNormalizada = typeof ficha === 'string' && ficha.trim().length > 0 ? ficha.trim() : null;
         let documentoOficial = documentoNormalizado;
 
+        logger.debug('Procesando usuario en asignación múltiple', {
+          documento: documentoNormalizado || 'N/A',
+          ficha: fichaNormalizada,
+          tiene_dias_semana: Array.isArray(dias_semana) && dias_semana.length > 0,
+          dias_semana_cantidad: Array.isArray(dias_semana) ? dias_semana.length : 0
+        });
+
         if (!documentoNormalizado) {
           const errObj = { documento: 'N/A', error: 'El documento del usuario es obligatorio' };
           if (fichaNormalizada) errObj.ficha = fichaNormalizada;
@@ -3125,6 +3132,11 @@ export async function registrarUsoEquipoExterno(req, res) {
         if (dias_semana && Array.isArray(dias_semana) && dias_semana.length > 0) {
           diasSemanaJson = JSON.stringify(dias_semana);
         }
+        logger.debug('diasSemanaJson calculado para usuario', {
+          documento: documentoNormalizado,
+          diasSemanaJson_es_null: diasSemanaJson === null,
+          diasSemanaJson_length: diasSemanaJson ? diasSemanaJson.length : 0
+        });
         let horaInicioTime = null;
         let horaFinTime = null;
         if (hora_inicio) {
@@ -3145,6 +3157,7 @@ export async function registrarUsoEquipoExterno(req, res) {
         }
 
         try {
+          logger.info('Asignación múltiple: paso 1 - Buscando usuario por documento', { documento: documentoNormalizado });
           // Buscar usuario por documento
           const [[usuarioRow]] = await connection.execute(
             `SELECT u.id_usuario, u.nombre_usuario, u.cedula, u.tipo_documento, u.tipo_documento_otro,
@@ -3156,8 +3169,14 @@ export async function registrarUsoEquipoExterno(req, res) {
             [documentoNormalizado]
           );
           const usuario = usuarioRow || null;
+          logger.info('Asignación múltiple: paso 2 - Usuario en BD', {
+            documento: documentoNormalizado,
+            encontrado: !!usuario,
+            id_usuario: usuario?.id_usuario
+          });
 
           if (!usuario) {
+            logger.info('Asignación múltiple: paso 3 - Buscando en Aprendices', { documento: documentoNormalizado });
             // Si no existe en Usuarios, intentar buscar en la tabla Aprendices (importados)
             const [[aprendizRow]] = await connection.execute(
               `SELECT id_aprendiz, ficha, nombre, documento, jornada, fecha_creacion
@@ -3166,6 +3185,10 @@ export async function registrarUsoEquipoExterno(req, res) {
             )
 
             if (aprendizRow) {
+              logger.info('Asignación múltiple: paso 4 - Rama aprendiz, verificando asignación existente', {
+                documento: documentoNormalizado,
+                id_aprendiz: aprendizRow.id_aprendiz
+              });
               // Si existe un aprendiz importado, crear una asignación externa
               // en Responsables_Equipo con id_usuario = NULL y crear un
               // registro en Historial_Uso_Equipos para que aparezca en la UI.
@@ -3207,6 +3230,11 @@ export async function registrarUsoEquipoExterno(req, res) {
                 valoresResp.push(aprendizDocumento)
                 placeholdersResp.push('?')
               }
+              logger.debug('Rama aprendiz: preparando INSERT Responsables_Equipo', {
+                documento: aprendizDocumento,
+                tieneDiasSemana,
+                diasSemanaJson_es_null: diasSemanaJson === null
+              });
               if (tieneDiasSemana && diasSemanaJson) {
                 camposResp.push('dias_semana')
                 valoresResp.push(diasSemanaJson)
@@ -3224,10 +3252,17 @@ export async function registrarUsoEquipoExterno(req, res) {
               }
 
               // Ejecutar inserción
+              logger.info('Asignación múltiple: paso 5 - INSERT Responsables_Equipo (aprendiz)', {
+                documento: aprendizDocumento,
+                campos: camposResp.length
+              });
               const [resultAsignacionAprendiz] = await connection.execute(
                 `INSERT INTO Responsables_Equipo (${camposResp.join(', ')}) VALUES (${placeholdersResp.join(', ')})`,
                 valoresResp
               )
+              logger.info('Asignación múltiple: paso 5 OK - INSERT Responsables_Equipo aprendiz realizado', {
+                id_responsable: resultAsignacionAprendiz.insertId
+              });
 
               // Insertar historial de uso para que aparezca en el historial del equipo
               let resultHistAprendiz
@@ -3289,6 +3324,10 @@ export async function registrarUsoEquipoExterno(req, res) {
           const nombreUsuario = usuario.nombre_usuario || null;
           documentoOficial = usuarioDetalle.documento || documentoOficial;
 
+          logger.info('Asignación múltiple: paso 6 - Rama usuario existente, buscando asignación activa', {
+            documento: documentoOficial,
+            id_usuario: usuario.id_usuario
+          });
           // Verificar si ya existe una asignación activa para este equipo y usuario
           const [[asignacionExistente]] = await connection.execute(
             `SELECT id_responsable FROM Responsables_Equipo 
@@ -3297,11 +3336,12 @@ export async function registrarUsoEquipoExterno(req, res) {
             [equipo.codigo_equipo, usuario.id_usuario]
           );
 
-          // Preparar datos de horarios
-          let diasSemanaJson = null;
-          if (dias_semana && Array.isArray(dias_semana) && dias_semana.length > 0) {
-            diasSemanaJson = JSON.stringify(dias_semana);
-          }
+          // Usar diasSemanaJson ya calculado al inicio de la iteración (evitar redeclaración que causa TDZ)
+          logger.debug('Rama usuario existente: usando diasSemanaJson', {
+            documento: documentoOficial,
+            id_usuario: usuario.id_usuario,
+            diasSemanaJson_es_null: diasSemanaJson === null
+          });
 
           // Convertir horas de string a TIME (formato HH:MM:SS)
           let horaInicioTime = null;
@@ -3322,6 +3362,12 @@ export async function registrarUsoEquipoExterno(req, res) {
               horaFinTime = hora_fin;
             }
           }
+          logger.info('Asignación múltiple: paso 7 - Horarios calculados, validando conflictos', {
+            documento: documentoOficial,
+            tiene_dias_semana: !!diasSemanaJson,
+            hora_inicio: horaInicioTime,
+            hora_fin: horaFinTime
+          });
 
           // Validar conflictos de horario: no puede haber dos usuarios con el mismo equipo
           if (diasSemanaJson && horaInicioTime && horaFinTime) {
@@ -3364,7 +3410,12 @@ export async function registrarUsoEquipoExterno(req, res) {
               horaInicioTime, horaFinTime
             );
 
+            logger.info('Asignación múltiple: paso 8 - Ejecutando consulta de conflictos de horario', { documento: documentoOficial });
             const [conflictos] = await connection.execute(conflictQuery, conflictParams);
+            logger.info('Asignación múltiple: paso 8 OK - Consulta conflictos realizada', {
+              documento: documentoOficial,
+              conflictos_encontrados: conflictos.length
+            });
 
             if (conflictos.length > 0) {
               const conflicto = conflictos[0];
@@ -3422,6 +3473,10 @@ export async function registrarUsoEquipoExterno(req, res) {
           const observaciones = observacionesPartes.join(', ');
 
           if (!asignacionExistente) {
+            logger.info('Asignación múltiple: paso 9 - INSERT nueva asignación Responsables_Equipo', {
+              documento: documentoOficial,
+              id_usuario: usuario.id_usuario
+            });
             let campos = ['codigo_equipo', 'id_usuario', 'tipo_responsabilidad', 'observaciones', 'fecha_asignacion'];
             let valores = [equipo.codigo_equipo, usuario.id_usuario, 'Principal', observaciones];
             let placeholders = ['?', '?', '?', '?', 'NOW()'];
@@ -3462,6 +3517,10 @@ export async function registrarUsoEquipoExterno(req, res) {
                VALUES (${placeholders.join(', ')})`,
               valores
             );
+            logger.info('Asignación múltiple: paso 9 OK - INSERT Responsables_Equipo realizado', {
+              id_responsable: resultAsignacion.insertId,
+              documento: documentoOficial
+            });
 
             logger.info('Equipo asignado al usuario desde página externa', {
               id_responsable: resultAsignacion.insertId,
@@ -3472,6 +3531,10 @@ export async function registrarUsoEquipoExterno(req, res) {
               documento: documentoOficial
             });
           } else {
+            logger.info('Asignación múltiple: paso 10 - UPDATE asignación existente Responsables_Equipo', {
+              documento: documentoOficial,
+              id_responsable: asignacionExistente.id_responsable
+            });
             let updates = [];
             let valoresUpdate = [];
 
@@ -3511,6 +3574,10 @@ export async function registrarUsoEquipoExterno(req, res) {
                  WHERE id_responsable = ?`,
                 valoresUpdate
               );
+              logger.info('Asignación múltiple: paso 10 OK - UPDATE Responsables_Equipo realizado', {
+                id_responsable: asignacionExistente.id_responsable,
+                filas_afectadas: updateResult.affectedRows
+              });
 
               logger.info('Asignación actualizada desde página externa', {
                 id_responsable: asignacionExistente.id_responsable,
@@ -3531,12 +3598,20 @@ export async function registrarUsoEquipoExterno(req, res) {
             }
           }
 
+          logger.info('Asignación múltiple: paso 11 - Buscando sesión activa en Historial_Uso_Equipos', {
+            documento: documentoOficial,
+            id_usuario: usuario.id_usuario
+          });
           const [[sesionActiva]] = await connection.execute(
             `SELECT id_historial FROM Historial_Uso_Equipos 
              WHERE codigo_equipo = ? AND id_usuario = ? AND estado = 'En Uso' 
              ORDER BY fecha_hora_inicio DESC LIMIT 1`,
             [equipo.codigo_equipo, usuario.id_usuario]
           );
+          logger.info('Asignación múltiple: paso 11 OK - Sesión activa consultada', {
+            documento: documentoOficial,
+            tiene_sesion_activa: !!sesionActiva
+          });
 
           if (sesionActiva) {
             logger.info('Sesión activa existente - actualizando asignación con nuevos datos', {
@@ -3573,6 +3648,11 @@ export async function registrarUsoEquipoExterno(req, res) {
           const fechaInicio = new Date();
           let resultHistorial;
 
+          logger.info('Asignación múltiple: paso 12 - INSERT Historial_Uso_Equipos (nueva sesión)', {
+            documento: documentoOficial,
+            id_usuario: usuario.id_usuario,
+            tieneNombreUsuarioHistorial
+          });
           try {
             if (tieneNombreUsuarioHistorial) {
               [resultHistorial] = await connection.execute(
@@ -3589,6 +3669,10 @@ export async function registrarUsoEquipoExterno(req, res) {
                 [equipo.codigo_equipo, usuario.id_usuario, fechaInicio, observacionesHistorial]
               );
             }
+            logger.info('Asignación múltiple: paso 12 OK - INSERT Historial_Uso_Equipos realizado', {
+              id_historial: resultHistorial.insertId,
+              documento: documentoOficial
+            });
 
             logger.info('Historial de uso creado exitosamente', {
               id_historial: resultHistorial.insertId,
@@ -3596,9 +3680,10 @@ export async function registrarUsoEquipoExterno(req, res) {
               id_usuario: usuario.id_usuario
             });
           } catch (historialError) {
-            logger.error('Error al crear historial de uso', {
+            logger.error('Asignación múltiple: FALLO en paso 12 - INSERT Historial_Uso_Equipos', {
               error: historialError.message,
               stack: historialError.stack,
+              documento: documentoOficial,
               codigo_equipo: equipo.codigo_equipo,
               id_usuario: usuario.id_usuario
             });
@@ -3631,6 +3716,10 @@ export async function registrarUsoEquipoExterno(req, res) {
           if (fichaNormalizada) historialObj.ficha = fichaNormalizada;
           resultados.push(historialObj);
 
+          logger.info('Asignación múltiple: paso 13 OK - Usuario procesado correctamente (sin sesión previa)', {
+            documento: documentoOficial,
+            id_historial: resultHistorial.insertId
+          });
           logger.info('Uso de equipo registrado para usuario', {
             id_historial: resultHistorial.insertId,
             codigo_equipo: equipo.codigo_equipo,
@@ -3641,16 +3730,18 @@ export async function registrarUsoEquipoExterno(req, res) {
           });
 
         } catch (usuarioError) {
-          logger.error('Error al procesar usuario', {
-            error: usuarioError.message,
-            stack: usuarioError.stack,
+          logger.error('Asignación múltiple: Error al procesar usuario (revisar último "paso X" arriba para ubicar fallo)', {
+            error_name: usuarioError?.name,
+            error_message: usuarioError?.message,
+            stack: usuarioError?.stack,
             documento: documentoOficial,
-            ficha: fichaNormalizada
+            ficha: fichaNormalizada,
+            codigo_equipo: equipo?.codigo_equipo
           });
           errores.push({
             documento: documentoOficial || 'N/A',
             ficha: fichaNormalizada || 'N/A',
-            error: usuarioError.message || 'Error al procesar usuario'
+            error: usuarioError?.message || 'Error al procesar usuario'
           });
         }
       }
