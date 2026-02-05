@@ -51,6 +51,7 @@
   0% {
     transform: rotate(0deg);
   }
+
   100% {
     transform: rotate(360deg);
   }
@@ -298,3 +299,12 @@
   }
 }
 
+/* Sobrescribir el ancho fijo heredado de .form-equipos */
+.tipos-equipo-header .btn-verde {
+  width: auto;
+  /* Permitir que el botón crezca según su contenido */
+  min-width: 160px;
+  /* Mantener un mínimo si se desea consistencia */
+  white-space: nowrap;
+  /* Asegurar que el texto siempre esté en una línea */
+}

@@ -156,7 +156,7 @@
 }
 
 .importar-equipos-submit-button:hover:not(:disabled) {
-  background: linear-gradient(135deg, var(--success-800) 0%, var(--success-900) 100%);
+  background: var(--success-800);
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
 }

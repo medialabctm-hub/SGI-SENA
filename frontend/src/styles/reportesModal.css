@@ -71,7 +71,7 @@
   width: 100%;
   padding: 8px;
   border-radius: 6px;
-  border: 1.5px solid var(--success-200);
+  border: 1.5px solid var(--success-700);
   font-size: 0.95rem;
 }
 
@@ -241,4 +241,3 @@
     padding: 10px 12px;
   }
 }
-

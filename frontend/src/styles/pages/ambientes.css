@@ -354,7 +354,7 @@
 }
 
 .stat-disponibles .stat-icon {
-  background: linear-gradient(135deg, var(--success-800) 0%, var(--success-900) 100%);
+  background: var(--success-800);
   color: white;
 }
 
@@ -610,7 +610,7 @@
   position: absolute;
   top: 12px;
   right: 12px;
-  background: linear-gradient(135deg, var(--success-800) 0%, var(--success-900) 100%);
+  background: var(--success-800);
   color: white;
   padding: 6px 12px;
   border-radius: 20px;
@@ -966,7 +966,7 @@
   gap: 1rem;
 }
 
-.ambiente-section-header > div:first-child {
+.ambiente-section-header>div:first-child {
   flex: 1;
 }
 
@@ -1255,4 +1255,3 @@
     width: 100%;
   }
 }
-

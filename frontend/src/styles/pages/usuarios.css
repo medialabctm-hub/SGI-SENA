@@ -145,7 +145,7 @@
 }
 
 .users-actions .btn-verde:hover {
-  background: linear-gradient(135deg, var(--success-800) 0%, var(--success-900) 100%);
+  background: var(--success-800);
   transform: translateY(-2px);
   box-shadow: 0 6px 20px rgba(16, 185, 129, 0.35);
   border-color: transparent;
@@ -207,7 +207,7 @@
 }
 
 .users-table .btn-verde:hover {
-  background: linear-gradient(135deg, var(--success-800) 0%, var(--success-900) 100%);
+  background: var(--success-800);
   color: white;
   transform: translateY(-2px);
   box-shadow: 0 6px 16px rgba(16, 185, 129, 0.35);
@@ -241,7 +241,7 @@
 }
 
 .users-table .btn-edit {
-  background: linear-gradient(135deg, var(--success-800) 0%, var(--success-900) 100%);
+  background: var(--success-800);
   color: white;
   border: 1px solid rgba(1, 175, 0, 0.12);
   box-shadow: 0 4px 12px rgba(1, 175, 0, 0.2);
@@ -434,7 +434,7 @@
 }
 
 .btn-import-users:hover {
-  background: linear-gradient(135deg, var(--success-800) 0%, var(--success-900) 100%);
+  background: var(--success-800);
   transform: translateY(-2px);
   box-shadow: 0 6px 16px rgba(16, 185, 129, 0.35);
 }
@@ -470,7 +470,7 @@
   font-size: 0.9rem;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  border-bottom: 2px solid var(--success-200);
+  border-bottom: 2px solid var(--success-700);
   white-space: nowrap;
 }
 
@@ -625,4 +625,3 @@
     font-size: 1.05rem;
   }
 }
-

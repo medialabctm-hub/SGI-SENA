@@ -5,7 +5,7 @@
 :root {
   --muted: #777;
   --card-shadow: 0 6px 18px rgba(17, 17, 17, 0.06);
-  
+
   /* Neutral */
   --neutral-50: #f2f1f0;
   --neutral-100: #e6e4e2;
@@ -45,7 +45,7 @@
   /* Success */
   --success-50: #f0fdf4;
   --success-100: #dcfce7;
-  --success-200: #bbf7d0;
+  --success-700: #bbf7d0;
   --success-300: #86efac;
   --success-400: #4ade80;
   --success-500: #22c55e;
@@ -81,4 +81,3 @@
   /* otros */
   --purple-700: #6e06b3;
 }
-

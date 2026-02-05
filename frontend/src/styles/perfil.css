@@ -85,7 +85,7 @@
   border-radius: 50%;
   overflow: hidden;
   border: 6px solid white;
-  background: linear-gradient(135deg, var(--success-800) 0%, var(--success-900) 100%);
+  background: var(--success-800);
   cursor: pointer;
   transition: all 0.3s ease;
   margin-bottom: 24px;

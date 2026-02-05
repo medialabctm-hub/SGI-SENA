@@ -273,7 +273,7 @@
   padding: 0;
   border-radius: 12px;
   overflow: hidden;
-  box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
 }
 
 .consulta-table-wrap {
@@ -554,14 +554,16 @@
 }
 
 /* Make text inside cards slightly softer than pure black for better visual harmony */
-.form-equipos{
-  color: var(--neutral-800); /* slightly muted dark */
+.form-equipos {
+  color: var(--neutral-800);
+  /* slightly muted dark */
 }
 
-.form-equipos h3{
-  color: var(--neutral-900); /* use black for headings */
-  font-size:1.05rem;
-  margin-bottom:0.6rem;
+.form-equipos h3 {
+  color: var(--neutral-900);
+  /* use black for headings */
+  font-size: 1.05rem;
+  margin-bottom: 0.6rem;
 }
 
 .form-equipos .form-grid {
@@ -678,7 +680,7 @@
 
 @media (min-width: 900px) {
   .page.simple-page.config-page .form-equipos {
-    margin-left: auto; 
+    margin-left: auto;
     margin-right: auto;
     /* Removido transform para centrar correctamente */
     transition: transform 0.12s ease;
@@ -686,56 +688,110 @@
 }
 
 @media (min-width: 900px) {
-  .page.simple-page.config-page > div > div > h2 {
+  .page.simple-page.config-page>div>div>h2 {
     text-align: center;
     transform: translateX(-120px);
     transition: transform 0.12s ease;
-    margin-top: 6px; 
+    margin-top: 6px;
   }
 }
 
 /* Users list improvements */
-.users-table{
-  width:100%;
-  border-collapse:collapse;
-  margin-top:8px;
+.users-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 8px;
 }
-.users-table thead th{
-  text-align:left;
-  padding:12px 10px;
-  background:var(--neutral-50);
-  color:var(--neutral-800);
-  font-weight:700;
-  border-bottom:1px solid var(--neutral-200);
-}
-.users-table tbody td{
-  padding:12px 10px;
-  vertical-align:middle;
-  border-bottom:1px solid var(--neutral-100);
-}
-.users-table tbody tr:hover{ background:var(--success-800) }
 
-.users-actions button{ margin-right:8px }
+.users-table thead th {
+  text-align: left;
+  padding: 12px 10px;
+  background: var(--neutral-50);
+  color: var(--neutral-800);
+  font-weight: 700;
+  border-bottom: 1px solid var(--neutral-700);
+}
+
+.users-table tbody td {
+  padding: 12px 10px;
+  vertical-align: middle;
+  border-bottom: 1px solid var(--neutral-100);
+}
+
+.users-table tbody tr:hover {
+  background: var(--success-800)
+}
+
+.users-actions button {
+  margin-right: 8px
+}
 
 /* Make modal form look like page cards */
-.modal-sheet .form-equipos{ box-shadow:none; padding:18px; border-radius:10px }
+.modal-sheet .form-equipos {
+  box-shadow: none;
+  padding: 18px;
+  border-radius: 10px
+}
 
 /* Small responsive tweak: make action buttons compact */
-.users-table .btn{ padding:6px 10px; border-radius:8px }
-.users-table .btn-verde{ padding:6px 10px }
+.users-table .btn {
+  padding: 6px 10px;
+  border-radius: 8px
+}
+
+.users-table .btn-verde {
+  padding: 6px 10px
+}
 
 /* Users panel and toolbar */
-.users-panel{ background:transparent; padding:12px 0 }
-.users-toolbar{ display:flex; justify-content:space-between; align-items:center; gap:12px }
-.search-input{ padding:8px 12px; border-radius:10px; border:1px solid var(--success-800); min-width:320px; background: white; transition: box-shadow 0.15s, border-color 0.15s; }
+.users-panel {
+  background: transparent;
+  padding: 12px 0
+}
 
-.users-empty{ text-align:center; padding:36px; background:var(--neutral-50); border-radius:12px; box-shadow:var(--card-shadow); }
-.users-empty strong{ font-size:1.05rem }
+.users-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px
+}
 
-@media(max-width:720px){
-  .search-input{ min-width:120px }
-  .users-toolbar{ flex-direction:column; align-items:stretch; gap:8px }
-  .users-actions{ display:flex; gap:6px }
+.search-input {
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--success-800);
+  min-width: 320px;
+  background: white;
+  transition: box-shadow 0.15s, border-color 0.15s;
+}
+
+.users-empty {
+  text-align: center;
+  padding: 36px;
+  background: var(--neutral-50);
+  border-radius: 12px;
+  box-shadow: var(--card-shadow);
+}
+
+.users-empty strong {
+  font-size: 1.05rem
+}
+
+@media(max-width:720px) {
+  .search-input {
+    min-width: 120px
+  }
+
+  .users-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px
+  }
+
+  .users-actions {
+    display: flex;
+    gap: 6px
+  }
 }
 
 /* Responsive mejorado para consultar equipos */
@@ -755,7 +811,7 @@
     margin-bottom: 8px;
   }
 
-  .users-toolbar > div {
+  .users-toolbar>div {
     display: flex;
     flex-direction: column;
     gap: 8px;
@@ -782,14 +838,14 @@
     font-size: 0.9rem;
   }
 
-  .users-toolbar > div > div {
+  .users-toolbar>div>div {
     display: flex;
     flex-direction: column;
     gap: 8px;
     width: 100%;
   }
 
-  .users-toolbar > div > div .btn {
+  .users-toolbar>div>div .btn {
     width: 100%;
   }
 
@@ -911,11 +967,12 @@
 }
 
 /* Estilos específicos para toolbar de consultar equipos */
-.users-toolbar > div {
+.users-toolbar>div {
   flex-wrap: wrap;
 }
 
 @media (max-width: 768px) {
+
   /* Forzar responsive en toolbar */
   .users-toolbar {
     flex-direction: column !important;
@@ -923,7 +980,7 @@
     gap: 12px !important;
   }
 
-  .users-toolbar > div {
+  .users-toolbar>div {
     flex-direction: column !important;
     width: 100% !important;
     gap: 8px !important;
@@ -944,13 +1001,13 @@
     width: 100% !important;
   }
 
-  .users-toolbar > div > div {
+  .users-toolbar>div>div {
     flex-direction: column !important;
     width: 100% !important;
     gap: 8px !important;
   }
 
-  .users-toolbar > div > div button {
+  .users-toolbar>div>div button {
     width: 100% !important;
   }
 
@@ -1009,29 +1066,49 @@
 
 /* --- Additional visual polish for Usuarios page --- */
 /* Card wrapper for users list to make it look neat */
-.users-panel{
-  background:white;
-  border-radius:12px;
-  padding:18px 18px 22px 18px;
-  box-shadow: 0 6px 18px rgba(15,23,42,0.06);
+.users-panel {
+  background: white;
+  border-radius: 12px;
+  padding: 18px 18px 22px 18px;
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
 }
 
 /* Toolbar refinements */
-.users-toolbar{ display:flex; justify-content:space-between; align-items:center; gap:12px }
-.users-toolbar h2{ margin:0; font-size:1.25rem; color:var(--neutral-800) }
-.users-toolbar .actions{ display:flex; gap:12px; align-items:center }
+.users-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px
+}
+
+.users-toolbar h2 {
+  margin: 0;
+  font-size: 1.25rem;
+  color: var(--neutral-800)
+}
+
+.users-toolbar .actions {
+  display: flex;
+  gap: 12px;
+  align-items: center
+}
 
 /* Search input upgraded */
-.search-input{
-  padding:10px 14px;
-  border-radius:10px;
-  border:1px solid var(--success-800);
-  min-width:320px;
+.search-input {
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--success-800);
+  min-width: 320px;
   background: white;
-  box-shadow: 0 2px 6px rgba(2,6,23,0.04);
+  box-shadow: 0 2px 6px rgba(2, 6, 23, 0.04);
   transition: box-shadow 0.15s, border-color 0.15s;
 }
-.search-input:focus{ box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1); border-color: var(--success-900); outline:none }
+
+.search-input:focus {
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+  border-color: var(--success-900);
+  outline: none
+}
 
 /* Estilos mejorados para botones en users-toolbar */
 .users-toolbar .btn {
@@ -1086,7 +1163,7 @@
 }
 
 .users-toolbar .btn:not(.btn-verde) {
-      border: 2px solid var(--success-800);
+  border: 2px solid var(--success-800);
   color: var(--neutral-700);
   border: 1px solid var(--success-800);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
@@ -1118,14 +1195,18 @@
 }
 
 /* Table cell tweaks */
-.users-table tbody td{
-  padding:14px 12px;
-  vertical-align:middle;
-  border-bottom:1px solid var(--neutral-100);
+.users-table tbody td {
+  padding: 14px 12px;
+  vertical-align: middle;
+  border-bottom: 1px solid var(--neutral-100);
   color: var(--neutral-800);
-  font-size:0.97rem;
+  font-size: 0.97rem;
 }
-.users-table tbody tr:hover{ background: var(--neutral-200); transform: translateZ(0); }
+
+.users-table tbody tr:hover {
+  background: var(--neutral-200);
+  transform: translateZ(0);
+}
 
 /* Buttons - Estilo mejorado */
 .users-table .btn {
@@ -1134,7 +1215,7 @@
   font-size: 0.9rem;
   font-weight: 600;
   border: 1px solid var(--success-800);
-      border: 2px solid var(--success-800);
+  border: 2px solid var(--success-800);
   color: var(--neutral-700);
   cursor: pointer;
   transition: all 0.2s ease;
@@ -1217,7 +1298,7 @@
 }
 
 .users-table .btn-edit {
-  background: var(--success-800);
+  background: var(--success-700);
   color: white;
   border: 1px solid rgba(1, 175, 0, 0.12);
   box-shadow: 0 4px 12px rgba(1, 175, 0, 0.2);
@@ -1258,14 +1339,17 @@
 }
 
 /* Action buttons group: inline layout with consistent sizing and spacing */
-.users-actions{
+.users-actions {
   display: flex;
   gap: 8px;
   align-items: center;
-  flex-wrap: nowrap; /* keep all action buttons in a single row */
-  overflow-x: auto; /* allow horizontal scroll if container is too narrow */
+  flex-wrap: nowrap;
+  /* keep all action buttons in a single row */
+  overflow-x: auto;
+  /* allow horizontal scroll if container is too narrow */
   -webkit-overflow-scrolling: touch;
 }
+
 .users-actions .btn {
   margin-right: 0;
   padding: 10px 16px;
@@ -1284,7 +1368,7 @@
   position: relative;
   overflow: hidden;
   border: 1px solid var(--success-800);
-      border: 2px solid var(--success-800);
+  border: 2px solid var(--success-800);
   color: var(--neutral-700);
 }
 
@@ -1332,14 +1416,29 @@
 }
 
 /* small pill for Equipos count */
-.equip-count{ display:inline-block; background:var(--success-800); color:white; padding:4px 8px; border-radius:999px; font-weight:600; font-size:0.9rem }
+.equip-count {
+  display: inline-block;
+  background: var(--success-800);
+  color: white;
+  padding: 4px 8px;
+  border-radius: 999px;
+  font-weight: 600;
+  font-size: 0.9rem
+}
 
 /* Modal adjustments (slightly larger sheet) */
-.modal-sheet{ padding:12px }
+.modal-sheet {
+  padding: 12px
+}
 
-@media(max-width:720px){
-  .users-panel{ padding:12px }
-  .users-toolbar h2{ font-size:1.05rem }
+@media(max-width:720px) {
+  .users-panel {
+    padding: 12px
+  }
+
+  .users-toolbar h2 {
+    font-size: 1.05rem
+  }
 }
 
 /* End additional polish */
@@ -1604,7 +1703,9 @@
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .loading-state p {
@@ -1855,6 +1956,7 @@
   from {
     opacity: 0;
   }
+
   to {
     opacity: 1;
   }
@@ -1865,6 +1967,7 @@
     opacity: 0;
     transform: translateY(20px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);

@@ -68,18 +68,20 @@
   flex-wrap: wrap;
 }
 
+/* Alineado con buttons.css: base .btn */
 .consultar-equipo-btn {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 10px 16px;
-  border-radius: 8px;
-  font-size: 0.9rem;
+  padding: 12px 20px;
+  border-radius: 10px;
+  font-size: 0.95rem;
   font-weight: 600;
-  border: none;
+  border: 2px solid transparent;
   cursor: pointer;
   transition: all 0.2s ease;
   white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
 .consultar-equipo-btn svg {
@@ -87,37 +89,48 @@
   display: block;
 }
 
+/* Alineado con .btn-verde en buttons.css */
 .consultar-equipo-btn-verde {
   background: var(--success-800);
   color: white;
 }
 
 .consultar-equipo-btn-verde:hover:not(:disabled) {
-  background: var(--success-900);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+  background: white;
+  color: var(--success-800);
+  border-color: var(--success-800);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(16, 185, 129, 0.35);
 }
 
+.consultar-equipo-btn-verde:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.25);
+}
+
+/* Alineado con .btn-secondary en buttons.css */
 .consultar-equipo-btn-gris {
-  background: white;
-  color: var(--neutral-700);
-  border: 2px solid var(--neutral-300);
+  background: var(--neutral-600);
+  color: white;
 }
 
 .consultar-equipo-btn-gris svg {
-  color: var(--neutral-700) !important;
+  color: white !important;
 }
 
 .consultar-equipo-btn-gris:hover:not(:disabled) {
-  background: var(--neutral-50);
-  border-color: var(--neutral-400);
-  transform: translateY(-1px);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  background: white;
+  color: var(--neutral-600);
+  border-color: var(--neutral-600);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
 }
 
 .consultar-equipo-btn-gris:hover:not(:disabled) svg {
-  color: var(--neutral-800) !important;
+  color: var(--neutral-600) !important;
 }
+
+
 
 .consultar-equipo-btn:disabled {
   opacity: 0.6;

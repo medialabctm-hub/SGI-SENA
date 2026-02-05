@@ -137,25 +137,35 @@
   accent-color: var(--success-900);
 }
 
+/* Alineado con .btn y .btn-verde en buttons.css; solo layout específico del form */
 .form-equipos .btn-verde {
   background: var(--success-800);
   color: white;
-  border: none;
-  border-radius: 8px;
-  padding: 0.875rem 1.5rem;
-  font-size: 1.05rem;
+  border: 2px solid transparent;
+  border-radius: 10px;
+  padding: 12px 20px;
+  font-size: 0.95rem;
   font-weight: 600;
   cursor: pointer;
   margin-top: 1rem;
   width: 160px;
-  transition: background 0.2s;
+  transition: all 0.2s ease;
   min-height: 48px;
   letter-spacing: 0.02em;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
-.form-equipos .btn-verde:hover {
-  background: var(--success-900);
-  color: white;
+.form-equipos .btn-verde:hover:not(:disabled) {
+  background: white;
+  color: var(--success-800);
+  border-color: var(--success-800);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(16, 185, 129, 0.35);
+}
+
+.form-equipos .btn-verde:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.25);
 }
 
 .error-text {
@@ -191,7 +201,7 @@
 }
 
 @media (min-width: 900px) {
-  .page.simple-page.config-page > div > div > h2 {
+  .page.simple-page.config-page>div>div>h2 {
     text-align: center;
     transform: translateX(-120px);
     transition: transform 0.12s ease;
@@ -294,7 +304,7 @@
 }
 
 .consulta-form .btn.primary:hover:not(:disabled) {
-  background: linear-gradient(135deg, var(--success-800) 0%, var(--success-900) 100%);
+  background: var(--success-800);
   color: white;
   transform: translateY(-2px);
   box-shadow: 0 6px 20px rgba(16, 185, 129, 0.35);
@@ -884,7 +894,7 @@
 }
 
 .btn-primary.btn-modern:hover:not(:disabled) {
-  background: linear-gradient(135deg, var(--success-800) 0%, var(--success-900) 100%);
+  background: var(--success-800);
   color: white;
   transform: translateY(-2px);
   box-shadow: 0 6px 20px rgba(16, 185, 129, 0.35);
@@ -1150,4 +1160,3 @@
     padding-bottom: 1rem;
   }
 }
-

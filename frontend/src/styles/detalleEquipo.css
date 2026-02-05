@@ -821,7 +821,7 @@
     grid-template-columns: 1fr;
     gap: 16px;
   }
-  
+
   .detalle-equipo-header {
     flex-direction: column;
     align-items: flex-start;
@@ -975,7 +975,7 @@
   position: absolute;
   top: 8px;
   right: 8px;
-  background: linear-gradient(135deg, var(--success-800) 0%, var(--success-900) 100%);
+  background: var(--success-800);
   color: white;
   padding: 4px 8px;
   border-radius: 12px;
@@ -1230,7 +1230,7 @@ body.lightbox-open .app-sidebar {
 }
 
 .detalle-equipo-lightbox-badge {
-  background: linear-gradient(135deg, var(--success-800) 0%, var(--success-900) 100%);
+  background: var(--success-800);
   color: white;
   padding: 6px 12px;
   border-radius: 20px;
@@ -1277,6 +1277,7 @@ body.lightbox-open .app-sidebar {
   from {
     opacity: 0;
   }
+
   to {
     opacity: 1;
   }
@@ -1287,6 +1288,7 @@ body.lightbox-open .app-sidebar {
     transform: translateY(20px);
     opacity: 0;
   }
+
   to {
     transform: translateY(0);
     opacity: 1;
@@ -1973,4 +1975,3 @@ body.lightbox-open .app-sidebar {
 .detalle-equipo-responsable-action-btn-delete-inline:hover {
   background: #dc2626;
 }
-

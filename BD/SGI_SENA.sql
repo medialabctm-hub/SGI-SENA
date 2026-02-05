@@ -607,14 +607,20 @@ CREATE TABLE pedidos_externos (
   ficha VARCHAR(255) NOT NULL COMMENT 'Ficha asociada al pedido',
   estado VARCHAR(255) NOT NULL COMMENT 'Estado del pedido',
   fecha_recepcion DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Fecha y hora de recepción del webhook',
+  jornada ENUM('Mañana', 'Tarde', 'Noche') NULL COMMENT 'Jornada del pedido (formulario externo SGI-SENA_DATA)',
+  dias_semana JSON NULL COMMENT 'Días de la semana: array de strings ej. ["Lunes","Martes"] (formulario externo)',
+  hora_inicio TIME NULL COMMENT 'Hora de inicio asociada al pedido (formulario externo)',
+  hora_fin TIME NULL COMMENT 'Hora de fin asociada al pedido (formulario externo)',
   FOREIGN KEY (id_ambiente) REFERENCES Ambientes(id_ambiente) ON DELETE RESTRICT,
   INDEX idx_usuario (usuario),
   INDEX idx_ambiente (id_ambiente),
   INDEX idx_ficha (ficha),
   INDEX idx_estado (estado),
-  INDEX idx_fecha_recepcion (fecha_recepcion DESC)
+  INDEX idx_fecha_recepcion (fecha_recepcion DESC),
+  INDEX idx_jornada (jornada),
+  INDEX idx_horarios (hora_inicio, hora_fin)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-COMMENT = 'Tabla para almacenar pedidos recibidos de sistemas externos';
+COMMENT = 'Tabla para almacenar pedidos recibidos de sistemas externos (SGI-SENA_DATA)';
 
 -- ============================================
 -- TABLA DE HISTORIAL DE USO DE EQUIPOS
@@ -1529,3 +1535,15 @@ ANALYZE TABLE Usuarios;
 ANALYZE TABLE Participantes_Clase;
 ANALYZE TABLE Ambientes;
 ANALYZE TABLE Estado_Equipo;
+
+-- ============================================
+-- MIGRACIÓN OPCIONAL: pedidos_externos (jornada, dias_semana, hora)
+-- Ejecutar solo si la tabla pedidos_externos ya existía sin estas columnas:
+-- ============================================
+-- ALTER TABLE pedidos_externos
+--   ADD COLUMN jornada ENUM('Mañana', 'Tarde', 'Noche') NULL COMMENT 'Jornada del pedido (formulario externo SGI-SENA_DATA)' AFTER fecha_recepcion,
+--   ADD COLUMN dias_semana JSON NULL COMMENT 'Días de la semana: array ej. ["Lunes","Martes"]' AFTER jornada,
+--   ADD COLUMN hora_inicio TIME NULL COMMENT 'Hora de inicio (formulario externo)' AFTER dias_semana,
+--   ADD COLUMN hora_fin TIME NULL COMMENT 'Hora de fin (formulario externo)' AFTER hora_inicio,
+--   ADD INDEX idx_jornada (jornada),
+--   ADD INDEX idx_horarios (hora_inicio, hora_fin);

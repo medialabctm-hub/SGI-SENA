@@ -324,7 +324,5 @@ El proyecto utiliza `eslint-config-airbnb` (frontend) y `eslint-config-airbnb-ba
 - **Await en loops**: Se permite con advertencia cuando sea necesario
 - **Múltiples clases por archivo**: Permitido hasta 10 clases (útil para archivos de errores, estrategias, etc.)
 
-### Instalación y scripts
-
-- **Frontend:** Al instalar dependencias (`npm install`) usar `npm install --legacy-peer-deps`. `eslint-config-airbnb@19` declara peer dependency de ESLint ^7 o ^8; si el proyecto usa ESLint 9, npm puede reportar conflicto; `--legacy-peer-deps` permite la instalación y el lint funciona correctamente.
+### Instalación y scripts- **Frontend:** Al instalar dependencias (`npm install`) usar `npm install --legacy-peer-deps`. `eslint-config-airbnb@19` declara peer dependency de ESLint ^7 o ^8; si el proyecto usa ESLint 9, npm puede reportar conflicto; `--legacy-peer-deps` permite la instalación y el lint funciona correctamente.
 - **Backend:** Se usa **flat config** (`eslint.config.js`). El script de lint debe ser `eslint .` (sin `--ext .js`), ya que la opción `--ext` no aplica en flat config. Los scripts `lint` y `lint:fix` del `package.json` del backend están definidos así.

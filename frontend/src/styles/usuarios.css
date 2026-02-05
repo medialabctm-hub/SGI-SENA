@@ -47,7 +47,7 @@
   background: var(--neutral-50);
   color: var(--neutral-800);
   font-weight: 700;
-  border-bottom: 1px solid var(--neutral-200);
+  border-bottom: 1px solid var(--neutral-700);
 }
 
 .users-table tbody td {
@@ -102,7 +102,7 @@
   position: relative;
   overflow: hidden;
   border: 1px solid var(--success-800);
-      border: 2px solid var(--success-800);
+  border: 2px solid var(--success-800);
   color: var(--neutral-700);
 }
 
@@ -142,7 +142,7 @@
 }
 
 .users-actions .btn-verde:hover {
-  background: linear-gradient(135deg, var(--success-800) 0%, var(--success-900) 100%);
+  background: var(--success-800);
   transform: translateY(-2px);
   box-shadow: 0 6px 20px rgba(16, 185, 129, 0.35);
   border-color: transparent;
@@ -155,7 +155,7 @@
   font-size: 0.9rem;
   font-weight: 600;
   border: 1px solid var(--success-800);
-      border: 2px solid var(--success-800);
+  border: 2px solid var(--success-800);
   color: var(--neutral-700);
   cursor: pointer;
   transition: all 0.2s ease;
@@ -205,7 +205,7 @@
 }
 
 .users-table .btn-verde:hover {
-  background: linear-gradient(135deg, var(--success-800) 0%, var(--success-900) 100%);
+  background: var(--success-800);
   color: white;
   transform: translateY(-2px);
   box-shadow: 0 6px 16px rgba(16, 185, 129, 0.35);
@@ -239,7 +239,7 @@
 }
 
 .users-table .btn-edit {
-  background: linear-gradient(135deg, var(--success-800) 0%, var(--success-900) 100%);
+  background: var(--success-800);
   color: white;
   border: 1px solid rgba(1, 175, 0, 0.12);
   box-shadow: 0 4px 12px rgba(1, 175, 0, 0.2);
@@ -432,7 +432,7 @@
 }
 
 .btn-import-users:hover {
-  background: linear-gradient(135deg, var(--success-800) 0%, var(--success-900) 100%);
+  background: var(--success-800);
   transform: translateY(-2px);
   box-shadow: 0 6px 16px rgba(16, 185, 129, 0.35);
 }
@@ -468,7 +468,7 @@
   font-size: 0.9rem;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  border-bottom: 2px solid var(--success-200);
+  border-bottom: 2px solid var(--success-700);
   white-space: nowrap;
 }
 
@@ -550,7 +550,7 @@
 }
 
 .users-table .btn-edit:hover:not(:disabled) {
-  background: linear-gradient(135deg, var(--success-800) 0%, var(--success-900) 100%);
+  background: var(--success-800);
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
 }
@@ -717,7 +717,7 @@
 }
 
 .modal-form-actions .btn-verde:hover:not(:disabled) {
-  background: linear-gradient(135deg, var(--success-800) 0%, var(--success-900) 100%);
+  background: var(--success-800);
   transform: translateY(-2px);
   box-shadow: 0 6px 16px rgba(16, 185, 129, 0.35);
 }
@@ -755,6 +755,7 @@
   from {
     opacity: 0;
   }
+
   to {
     opacity: 1;
   }
@@ -765,6 +766,7 @@
     opacity: 0;
     transform: translateY(20px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -846,4 +848,3 @@
     font-size: 1.05rem;
   }
 }
-

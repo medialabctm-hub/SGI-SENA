@@ -7,7 +7,7 @@
    ============================================ */
 
 .asignar-equipo-header-icon {
-  background: linear-gradient(135deg, var(--success-800) 0%, var(--success-900) 100%);
+  background: var(--success-800);
 }
 
 .asignar-equipo-header-content {
@@ -434,7 +434,7 @@
     width: 100%;
   }
 
-  .asignar-ambientes-actions > * {
+  .asignar-ambientes-actions>* {
     width: 100%;
   }
 }
