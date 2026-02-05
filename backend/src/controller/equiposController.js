@@ -3297,7 +3297,31 @@ export async function registrarUsoEquipoExterno(req, res) {
             [equipo.codigo_equipo, usuario.id_usuario]
           );
 
-          // Reutilizar diasSemanaJson, horaInicioTime, horaFinTime calculados al inicio del bucle
+          // Preparar datos de horarios
+          let diasSemanaJson = null;
+          if (dias_semana && Array.isArray(dias_semana) && dias_semana.length > 0) {
+            diasSemanaJson = JSON.stringify(dias_semana);
+          }
+
+          // Convertir horas de string a TIME (formato HH:MM:SS)
+          let horaInicioTime = null;
+          let horaFinTime = null;
+          if (hora_inicio) {
+            const horaInicioParts = hora_inicio.split(':');
+            if (horaInicioParts.length === 2) {
+              horaInicioTime = `${horaInicioParts[0].padStart(2, '0')}:${horaInicioParts[1].padStart(2, '0')}:00`;
+            } else {
+              horaInicioTime = hora_inicio;
+            }
+          }
+          if (hora_fin) {
+            const horaFinParts = hora_fin.split(':');
+            if (horaFinParts.length === 2) {
+              horaFinTime = `${horaFinParts[0].padStart(2, '0')}:${horaFinParts[1].padStart(2, '0')}:00`;
+            } else {
+              horaFinTime = hora_fin;
+            }
+          }
 
           // Validar conflictos de horario: no puede haber dos usuarios con el mismo equipo
           if (diasSemanaJson && horaInicioTime && horaFinTime) {
