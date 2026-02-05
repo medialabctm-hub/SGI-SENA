@@ -876,33 +876,29 @@ export default function DetalleEquipo() {
                             <strong>Fecha asignación:</strong> {formatDate(responsable.fecha_asignacion)}
                           </div>
                         </div>
-                        {(responsable.dias_semana || responsable.hora_inicio || responsable.hora_fin) && (
-                          <div className="detalle-equipo-responsable-horario-box">
-                            <div className="detalle-equipo-responsable-horario-title">
-                              Horario de Uso:
+                        <div className="detalle-equipo-responsable-horario-box">
+                          <div className="detalle-equipo-responsable-horario-title">
+                            Horario de Uso:
+                          </div>
+                          <div className="detalle-equipo-responsable-horario-grid">
+                            <div>
+                              <strong>Días:</strong>{' '}
+                              {responsable.dias_semana && Array.isArray(responsable.dias_semana) && responsable.dias_semana.length > 0
+                                ? responsable.dias_semana.join(', ')
+                                : '-'}
                             </div>
-                            <div className="detalle-equipo-responsable-horario-grid">
-                              {responsable.dias_semana && Array.isArray(responsable.dias_semana) && responsable.dias_semana.length > 0 && (
-                                <div>
-                                  <strong>Días:</strong> {responsable.dias_semana.join(', ')}
-                                </div>
-                              )}
-                              {(responsable.hora_inicio || responsable.hora_fin) && (
-                                <div>
-                                  <strong>Horario:</strong> {
-                                    responsable.hora_inicio && responsable.hora_fin
-                                      ? `${responsable.hora_inicio.substring(0, 5)} - ${responsable.hora_fin.substring(0, 5)}`
-                                      : responsable.hora_inicio
-                                        ? `Desde ${responsable.hora_inicio.substring(0, 5)}`
-                                        : responsable.hora_fin
-                                          ? `Hasta ${responsable.hora_fin.substring(0, 5)}`
-                                          : '-'
-                                  }
-                                </div>
-                              )}
+                            <div>
+                              <strong>Horario:</strong>{' '}
+                              {responsable.hora_inicio && responsable.hora_fin
+                                ? `${responsable.hora_inicio.substring(0, 5)} - ${responsable.hora_fin.substring(0, 5)}`
+                                : responsable.hora_inicio
+                                  ? `Desde ${responsable.hora_inicio.substring(0, 5)}`
+                                  : responsable.hora_fin
+                                    ? `Hasta ${responsable.hora_fin.substring(0, 5)}`
+                                    : '-'}
                             </div>
                           </div>
-                        )}
+                        </div>
                         {responsable.observaciones && (
                           <div className="detalle-equipo-responsable-observaciones-box">
                             <strong>Observaciones:</strong> {responsable.observaciones}

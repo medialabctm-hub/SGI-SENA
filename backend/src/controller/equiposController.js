@@ -3120,6 +3120,30 @@ export async function registrarUsoEquipoExterno(req, res) {
           continue;
         }
 
+        // Calcular días y horas para uso en rama Aprendiz y Usuario (registro externo)
+        let diasSemanaJson = null;
+        if (dias_semana && Array.isArray(dias_semana) && dias_semana.length > 0) {
+          diasSemanaJson = JSON.stringify(dias_semana);
+        }
+        let horaInicioTime = null;
+        let horaFinTime = null;
+        if (hora_inicio) {
+          const horaInicioParts = hora_inicio.split(':');
+          if (horaInicioParts.length === 2) {
+            horaInicioTime = `${horaInicioParts[0].padStart(2, '0')}:${horaInicioParts[1].padStart(2, '0')}:00`;
+          } else {
+            horaInicioTime = hora_inicio;
+          }
+        }
+        if (hora_fin) {
+          const horaFinParts = hora_fin.split(':');
+          if (horaFinParts.length === 2) {
+            horaFinTime = `${horaFinParts[0].padStart(2, '0')}:${horaFinParts[1].padStart(2, '0')}:00`;
+          } else {
+            horaFinTime = hora_fin;
+          }
+        }
+
         try {
           // Buscar usuario por documento
           const [[usuarioRow]] = await connection.execute(
@@ -3149,6 +3173,20 @@ export async function registrarUsoEquipoExterno(req, res) {
               const aprendizDocumento = aprendizRow.documento || documentoNormalizado
               const fichaAprendiz = aprendizRow.ficha || null
 
+              // Evitar duplicados: no permitir la misma persona asignada dos veces al mismo equipo
+              const [[asignacionAprendizExistente]] = await connection.execute(
+                `SELECT id_responsable FROM Responsables_Equipo
+                 WHERE codigo_equipo = ? AND id_usuario IS NULL AND documento_externo = ? AND estado_responsabilidad = 'Activo'
+                 LIMIT 1`,
+                [equipo.codigo_equipo, aprendizDocumento]
+              );
+              if (asignacionAprendizExistente) {
+                const errObj = { documento: aprendizDocumento, error: 'Esta persona ya está asignada a este equipo' };
+                if (fichaAprendiz) errObj.ficha = fichaAprendiz;
+                errores.push(errObj);
+                continue;
+              }
+
               // Insertar en Responsables_Equipo usando las mismas columnas condicionales
               const camposResp = ['codigo_equipo', 'id_usuario', 'tipo_responsabilidad', 'observaciones', 'fecha_asignacion']
               const valoresResp = [equipo.codigo_equipo, 'Principal', `Aprendiz: ${aprendizNombre || aprendizDocumento}`]
@@ -3167,6 +3205,21 @@ export async function registrarUsoEquipoExterno(req, res) {
               if (tieneDocumentoExterno && aprendizDocumento) {
                 camposResp.push('documento_externo')
                 valoresResp.push(aprendizDocumento)
+                placeholdersResp.push('?')
+              }
+              if (tieneDiasSemana && diasSemanaJson) {
+                camposResp.push('dias_semana')
+                valoresResp.push(diasSemanaJson)
+                placeholdersResp.push('?')
+              }
+              if (tieneHoraInicio && horaInicioTime) {
+                camposResp.push('hora_inicio')
+                valoresResp.push(horaInicioTime)
+                placeholdersResp.push('?')
+              }
+              if (tieneHoraFin && horaFinTime) {
+                camposResp.push('hora_fin')
+                valoresResp.push(horaFinTime)
                 placeholdersResp.push('?')
               }
 
