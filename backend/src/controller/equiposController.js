@@ -3343,25 +3343,7 @@ export async function registrarUsoEquipoExterno(req, res) {
             diasSemanaJson_es_null: diasSemanaJson === null
           });
 
-          // Convertir horas de string a TIME (formato HH:MM:SS)
-          let horaInicioTime = null;
-          let horaFinTime = null;
-          if (hora_inicio) {
-            const horaInicioParts = hora_inicio.split(':');
-            if (horaInicioParts.length === 2) {
-              horaInicioTime = `${horaInicioParts[0].padStart(2, '0')}:${horaInicioParts[1].padStart(2, '0')}:00`;
-            } else {
-              horaInicioTime = hora_inicio;
-            }
-          }
-          if (hora_fin) {
-            const horaFinParts = hora_fin.split(':');
-            if (horaFinParts.length === 2) {
-              horaFinTime = `${horaFinParts[0].padStart(2, '0')}:${horaFinParts[1].padStart(2, '0')}:00`;
-            } else {
-              horaFinTime = hora_fin;
-            }
-          }
+          // Usar horaInicioTime y horaFinTime ya calculados al inicio de la iteración (evitar redeclaración que causa TDZ)
           logger.info('Asignación múltiple: paso 7 - Horarios calculados, validando conflictos', {
             documento: documentoOficial,
             tiene_dias_semana: !!diasSemanaJson,
