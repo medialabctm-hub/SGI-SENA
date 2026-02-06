@@ -221,6 +221,7 @@ CREATE TABLE Elementos (
   atributos TEXT,
   valor_ingreso DECIMAL(10,2),
   cuentadante_principal VARCHAR(255) NULL COMMENT 'Cuentadante principal permanente',
+  verificado_ambiente TINYINT(1) DEFAULT 0 COMMENT '1 = equipo ya fue verificado en ambiente (primera verificación externa); no se vuelve a cambiar',
   FOREIGN KEY (id_categoria) REFERENCES Categorias_Equipo(id_categoria),
   FOREIGN KEY (id_ambiente) REFERENCES Ambientes(id_ambiente) ON DELETE RESTRICT,
   FOREIGN KEY (id_cuentadante) REFERENCES Usuarios(id_usuario) ON DELETE SET NULL,
@@ -232,7 +233,8 @@ CREATE TABLE Elementos (
   INDEX idx_cuentadante (id_cuentadante),
   INDEX idx_categoria (id_categoria),
   INDEX idx_estado_fisico (estado_fisico),
-  INDEX idx_r_centro_consecutivo (r_centro, consecutivo)
+  INDEX idx_r_centro_consecutivo (r_centro, consecutivo),
+  INDEX idx_verificado_ambiente (verificado_ambiente)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
 COMMENT = 'Tabla principal de equipos y componentes tecnológicos';
 
@@ -300,7 +302,7 @@ COMMENT = 'Estado operativo actual de cada equipo';
 CREATE TABLE Responsables_Equipo (
   id_responsable INT PRIMARY KEY AUTO_INCREMENT,
   codigo_equipo INT NOT NULL,
-  id_usuario INT NULL COMMENT 'NULL si es registro externo',
+  id_usuario INT NULL COMMENT 'NULL si es asignación desde verificación externa (usuario externo/aprendiz)',
   fecha_asignacion DATETIME DEFAULT NOW(),
   fecha_desvinculacion DATETIME,
   estado_responsabilidad ENUM('Activo', 'Finalizado') DEFAULT 'Activo',
@@ -308,8 +310,8 @@ CREATE TABLE Responsables_Equipo (
   observaciones TEXT,
   asignado_por INT,
   -- Campos para registros externos
-  ficha VARCHAR(50) NULL COMMENT 'Número de ficha del aprendiz (registro externo)',
-  nombre_externo VARCHAR(200) NULL COMMENT 'Nombre completo del usuario (registro externo)',
+  ficha VARCHAR(50) NULL COMMENT 'Número de ficha del aprendiz (asignación desde verificación externa)',
+  nombre_externo VARCHAR(200) NULL COMMENT 'Nombre completo del usuario (asignación desde verificación externa)',
   documento_externo VARCHAR(50) NULL COMMENT 'Documento del responsable externo',
   dias_semana JSON NULL COMMENT 'Array de días de la semana para horarios',
   hora_inicio TIME NULL COMMENT 'Hora de inicio del horario',
@@ -1547,3 +1549,12 @@ ANALYZE TABLE Estado_Equipo;
 --   ADD COLUMN hora_fin TIME NULL COMMENT 'Hora de fin (formulario externo)' AFTER hora_inicio,
 --   ADD INDEX idx_jornada (jornada),
 --   ADD INDEX idx_horarios (hora_inicio, hora_fin);
+
+-- ============================================
+-- Migración: agregar verificado_ambiente a Elementos (entornos ya desplegados)
+-- Ejecutar si la tabla Elementos no tiene la columna verificado_ambiente.
+-- ============================================
+-- ALTER TABLE Elementos ADD COLUMN verificado_ambiente TINYINT(1) DEFAULT 0
+--   COMMENT '1 = verificado en primera verificación de ambiente/aprendices'
+--   AFTER cuentadante_principal;
+-- ALTER TABLE Elementos ADD INDEX idx_verificado_ambiente (verificado_ambiente);

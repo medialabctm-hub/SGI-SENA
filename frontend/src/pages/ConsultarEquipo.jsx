@@ -40,6 +40,7 @@ export default function ConsultarEquipo() {
     { key: 'fecha_adquisicion', label: 'Fecha Adquisición', default: true },
     { key: 'costo', label: 'Valor Ingreso', default: true },
     { key: 'nombre_ambiente', label: 'Ambiente', default: true },
+    { key: 'status_verificacion', label: 'Estado verificación', default: true },
     { key: 'descripcion', label: 'Descripción', default: true },
     { key: 'specs_completas', label: 'Atributos', default: true },
   ]
@@ -772,6 +773,7 @@ export default function ConsultarEquipo() {
                       {visibleColumns.includes('fecha_adquisicion') && <th>Fecha Adquisición</th>}
                       {visibleColumns.includes('costo') && <th>Valor Ingreso</th>}
                       {visibleColumns.includes('nombre_ambiente') && <th>Ambiente</th>}
+                      {visibleColumns.includes('status_verificacion') && <th>Estado verificación</th>}
                       {visibleColumns.includes('descripcion') && <th>Descripción</th>}
                       {visibleColumns.includes('specs_completas') && <th>Atributos</th>}
                       <th className={user?.nombre_rol === 'Administrador' ? 'consultar-equipo-actions-column' : 'consultar-equipo-actions-column-instructor'}>Acciones</th>
@@ -850,6 +852,13 @@ export default function ConsultarEquipo() {
                                 className="cell-input"
                               />
                             ) : (eq.nombre_ambiente || '-')}
+                          </td>
+                        )}
+                        {visibleColumns.includes('status_verificacion') && (
+                          <td>
+                            <span className={eq.status_verificacion === 'Verificado' ? 'consultar-equipo-badge-verificado' : 'consultar-equipo-badge-no-verificado'}>
+                              {eq.status_verificacion || 'No verificado'}
+                            </span>
                           </td>
                         )}
                         {visibleColumns.includes('descripcion') && (

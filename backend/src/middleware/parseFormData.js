@@ -134,7 +134,7 @@ export const parseFormData = (req, res, next) => {
       });
     }
 
-    // Sanitizar: aceptar únicamente los campos esperados para el registro externo
+    // Sanitizar: aceptar únicamente los campos esperados para la verificación de ambiente y asignación de aprendices
     // Campos permitidos: placa, ambiente, usuarios (array) o documento en nivel raíz
     const sanitized = {};
 

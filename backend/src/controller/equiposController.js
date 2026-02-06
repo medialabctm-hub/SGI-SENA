@@ -189,7 +189,8 @@ export async function obtenerEquipoPorCodigo(req, res) {
               ORDER BY fecha_mantenimiento DESC LIMIT 1) as estado_mantenimiento_activo,
              (SELECT tipo_mantenimiento FROM Mantenimiento 
               WHERE codigo_equipo = e.codigo_equipo AND estado_mantenimiento = 'En Proceso' 
-              ORDER BY fecha_mantenimiento DESC LIMIT 1) as tipo_mantenimiento_activo
+              ORDER BY fecha_mantenimiento DESC LIMIT 1) as tipo_mantenimiento_activo,
+             CASE WHEN COALESCE(e.verificado_ambiente, 0) = 1 THEN 'Verificado' ELSE 'No verificado' END AS status_verificacion
       FROM Elementos e
       LEFT JOIN Ambientes a ON a.id_ambiente = e.id_ambiente
       LEFT JOIN Estado_Equipo ee ON e.codigo_equipo = ee.codigo_equipo
@@ -2764,16 +2765,16 @@ export async function obtenerSesionesActivas(req, res) {
 }
 
 /**
- * Registrar uso de equipo desde página externa (público)
- * Recibe: documento, placa, ambiente, imagenes (opcional)
- * No requiere autenticación, pero valida que el usuario y equipo existan
- * 
+ * Verificación de que el equipo está en un ambiente y registro de qué aprendices y qué días usarán el equipo (endpoint público).
+ * Recibe: placa, ambiente, usuarios (documento, ficha, dias_semana, hora_inicio, hora_fin), imágenes (opcional).
+ * No requiere autenticación; valida que el equipo exista y esté disponible.
+ *
  * Acciones:
- * 1. Busca el usuario por documento en la base de datos y obtiene todos sus datos
- * 2. Actualiza el ambiente del equipo en el inventario (tabla Elementos)
- * 3. Asigna el equipo al usuario en Responsables_Equipo con los datos oficiales del sistema (no desde la página externa)
- * 4. Registra el uso en Historial_Uso_Equipos
- * 5. Si hay imágenes, las guarda en Imagenes_Equipo asociadas al equipo
+ * 1. Valida equipo por placa y su disponibilidad.
+ * 2. Actualiza el ambiente del equipo en el inventario (tabla Elementos) si se indica ambiente.
+ * 3. Por cada usuario: busca en Usuarios o Aprendices y asigna en Responsables_Equipo con datos oficiales del sistema.
+ * 4. Registra el uso en Historial_Uso_Equipos.
+ * 5. Si hay imágenes, las guarda en Imagenes_Equipo. En la primera verificación exitosa marca verificado_ambiente = 1 en Elementos.
  */
 export async function registrarUsoEquipoExterno(req, res) {
   const uploadedFiles = []; // Para limpiar archivos en caso de error
@@ -2783,7 +2784,7 @@ export async function registrarUsoEquipoExterno(req, res) {
     const files = req.files || (req.file ? [req.file] : []);
 
     // Log de los datos recibidos para debugging
-    logger.info('Datos recibidos en registro externo', {
+    logger.info('Datos recibidos: verificación de ambiente y asignación de aprendices/días de uso', {
       placa: placa?.substring(0, 20),
       ambiente: ambiente,
       cantidad_usuarios: usuarios?.length || 0,
@@ -2845,7 +2846,7 @@ export async function registrarUsoEquipoExterno(req, res) {
         
         for (const file of files) {
           if (!file || !file.filename) {
-            logger.warn('Archivo inválido en registro externo', { file });
+            logger.warn('Archivo inválido en verificación de ambiente', { file });
             continue;
           }
 
@@ -2872,7 +2873,7 @@ export async function registrarUsoEquipoExterno(req, res) {
           // Guardar en la base de datos
           const rutaImagen = getImagePath(nuevoFilename);
           const tipoImagen = 'Detalle'; // Por defecto
-          const descripcion = `Imagen subida desde registro externo - Placa: ${placa}`;
+          const descripcion = `Imagen subida en verificación de ambiente - Placa: ${placa}`;
 
           const [resultImagen] = await defaultDb.execute(
             `INSERT INTO Imagenes_Equipo 
@@ -2891,7 +2892,7 @@ export async function registrarUsoEquipoExterno(req, res) {
             es_principal: false,
           });
 
-          logger.info('Imagen guardada desde registro externo', {
+          logger.info('Imagen guardada en verificación de ambiente', {
             id_imagen: resultImagen.insertId,
             codigo_equipo: codigoEquipo,
             placa: placa,
@@ -2899,7 +2900,7 @@ export async function registrarUsoEquipoExterno(req, res) {
           });
         }
       } catch (imagenError) {
-        logger.error('Error al procesar imágenes en registro externo', {
+        logger.error('Error al procesar imágenes en verificación de ambiente', {
           error: imagenError.message,
           stack: imagenError.stack,
           codigo_equipo: codigoEquipo
@@ -3127,7 +3128,7 @@ export async function registrarUsoEquipoExterno(req, res) {
           continue;
         }
 
-        // Calcular días y horas para uso en rama Aprendiz y Usuario (registro externo)
+        // Calcular días y horas para uso en rama Aprendiz y Usuario (verificación de ambiente y asignación de aprendices)
         let diasSemanaJson = null;
         if (dias_semana && Array.isArray(dias_semana) && dias_semana.length > 0) {
           diasSemanaJson = JSON.stringify(dias_semana);
@@ -3296,7 +3297,7 @@ export async function registrarUsoEquipoExterno(req, res) {
               if (fichaAprendiz) resultAprendiz.ficha = fichaAprendiz;
               resultados.push(resultAprendiz);
 
-              logger.info('Registro externo: aprendiz importado asignado temporalmente al equipo', {
+              logger.info('Verificación ambiente: aprendiz importado asignado temporalmente al equipo', {
                 id_aprendiz: aprendizRow.id_aprendiz,
                 id_responsable: resultAsignacionAprendiz.insertId,
                 id_historial: resultHistAprendiz?.insertId,
@@ -3739,8 +3740,8 @@ export async function registrarUsoEquipoExterno(req, res) {
         connection.release();
         return res.status(400).json({
           success: false,
-          error: 'No se pudo procesar ningún usuario',
-          message: 'Todos los usuarios tuvieron errores',
+          error: 'No se pudo procesar ningún usuario en la verificación de ambiente',
+          message: 'Ningún usuario pudo ser asignado; revisar documentos y errores.',
           errores: errores
         });
       }
@@ -3752,10 +3753,24 @@ export async function registrarUsoEquipoExterno(req, res) {
         errores_count: errores.length
       });
 
+      // Si al menos un usuario se procesó, marcar equipo como verificado (primera verificación; no se vuelve a cambiar)
+      if (resultados.length > 0) {
+        const [[colVerificado]] = await connection.execute(
+          `SELECT COUNT(*) AS cnt FROM INFORMATION_SCHEMA.COLUMNS 
+           WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'Elementos' AND COLUMN_NAME = 'verificado_ambiente'`
+        );
+        if (colVerificado && colVerificado.cnt > 0) {
+          await connection.execute(
+            `UPDATE Elementos SET verificado_ambiente = 1 WHERE codigo_equipo = ? AND (verificado_ambiente IS NULL OR verificado_ambiente = 0)`,
+            [equipo.codigo_equipo]
+          );
+        }
+      }
+
       // Confirmar transacción
       await connection.commit();
 
-      logger.info('Registro de múltiples usuarios completado', {
+      logger.info('Verificación de ambiente y asignación de aprendices completada', {
         codigo_equipo: equipo.codigo_equipo,
         placa: equipo.placa,
         usuarios_procesados: resultados.length,
@@ -3768,7 +3783,7 @@ export async function registrarUsoEquipoExterno(req, res) {
       return res.status(201).json({
         success: true,
         message: resultados.length > 0 
-          ? `${resultados.length} usuario(s) registrado(s) correctamente${errores.length > 0 ? `, ${errores.length} con errores` : ''}${imagenesSubidas.length > 0 ? `, ${imagenesSubidas.length} imagen(es) guardada(s)` : ''}`
+          ? `${resultados.length} Equipo verificado ${errores.length > 0 ? `, ${errores.length} con errores` : ''}${imagenesSubidas.length > 0 ? `, ${imagenesSubidas.length} y asignado correctamente` : ''}`
           : 'Procesamiento completado con errores',
         data: {
           codigo_equipo: equipo.codigo_equipo,
@@ -3799,14 +3814,14 @@ export async function registrarUsoEquipoExterno(req, res) {
       });
     }
     
-    logger.error('Error al registrar uso de equipo externo', { 
+    logger.error('Error en verificación de ambiente / asignación de uso de equipo', { 
       error: err.message, 
       stack: err.stack,
       body: req.body 
     });
     return res.status(500).json({
       success: false,
-      error: 'Error al registrar el uso del equipo',
+      error: 'Error en la verificación de ambiente o asignación de uso',
       message: 'Ocurrió un error interno. Por favor intenta nuevamente más tarde.',
       detalle: process.env.NODE_ENV === 'development' ? err.message : undefined
     });

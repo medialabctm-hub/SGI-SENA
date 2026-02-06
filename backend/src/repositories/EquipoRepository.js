@@ -69,7 +69,8 @@ export class EquipoRepository extends BaseRepository {
              COALESCE(ee.estado_operativo, 'Disponible') AS estado_operativo,
              ee.detalles AS detalles_estado,
              ee.fecha_actualizacion AS fecha_actualizacion_estado,
-             c.nombre_categoria
+             c.nombre_categoria,
+             CASE WHEN COALESCE(e.verificado_ambiente, 0) = 1 THEN 'Verificado' ELSE 'No verificado' END AS status_verificacion
       FROM Elementos e
       LEFT JOIN Ambientes a ON a.id_ambiente = e.id_ambiente
       LEFT JOIN Estado_Equipo ee ON e.codigo_equipo = ee.codigo_equipo

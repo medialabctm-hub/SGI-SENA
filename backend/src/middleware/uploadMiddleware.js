@@ -104,7 +104,7 @@ export const deleteImageFile = (filename) => {
   return false;
 };
 
-// Configuración de Multer para endpoint público (registro externo)
+// Configuración de Multer para endpoint público (verificación de ambiente / asignación aprendices)
 // Usa un nombre temporal y luego se renombra en el controlador con el codigo_equipo
 const storagePublico = multer.diskStorage({
   destination: (req, file, cb) => {
