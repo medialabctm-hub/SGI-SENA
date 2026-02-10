@@ -318,3 +318,42 @@
   font-weight: 600;
 }
 
+
+/* Responsive */
+@media (max-width: 768px) {
+  .config-page-title {
+    font-size: 1.75rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .config-profile-container,
+  .config-security-container {
+    padding: 1.5rem;
+  }
+
+  .config-profile-header {
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+
+  .config-profile-actions {
+    width: 100%;
+    flex-direction: column;
+  }
+
+  .config-profile-actions button {
+    width: 100%;
+  }
+
+  .security-submit {
+    flex-direction: column;
+  }
+
+  .security-submit button {
+    width: 100%;
+  }
+
+  .app-settings-form {
+    max-width: 100%;
+  }
+}

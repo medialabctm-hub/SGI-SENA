@@ -96,8 +96,8 @@ export default function Perfil() {
       return;
     }
 
-    if (file.size > 2 * 1024 * 1024) {
-      setToast({ message: 'El archivo es demasiado grande. Tamaño máximo: 2MB', type: 'error' });
+    if (file.size > 10 * 1024 * 1024) {
+      setToast({ message: 'El archivo es demasiado grande. Tamaño máximo: 10MB', type: 'error' });
       return;
     }
 

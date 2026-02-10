@@ -412,6 +412,11 @@
 
   .mantenimientos-modal-footer {
     padding: 1rem 1.5rem;
+    flex-direction: column;
+  }
+
+  .mantenimientos-modal-footer-button {
+    width: 100%;
   }
 
   .mantenimientos-modal-edit-row {
@@ -421,6 +426,22 @@
 
   .mantenimientos-modal-edit-button-small {
     align-self: flex-start;
+  }
+
+  .mantenimientos-modal-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .mantenimientos-tabs {
+    flex-wrap: wrap;
+  }
+
+  .mantenimientos-tab {
+    flex: 1;
+    justify-content: center;
+    padding: 0.75rem 0.5rem;
+    text-align: center;
+    font-size: 0.9rem;
   }
 }
 

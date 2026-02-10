@@ -394,8 +394,8 @@
 
 .profile-photo-container {
   position: relative;
-  width: 160px;
-  height: 160px;
+  width: 220px;
+  height: 220px;
   border-radius: 50%;
   overflow: hidden;
   border: 5px solid white;
@@ -424,7 +424,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 56px;
+  font-size: 72px;
   font-weight: 700;
   color: white;
   text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
@@ -451,8 +451,8 @@
 .profile-photo-upload-btn {
   background: white;
   border: none;
-  width: 48px;
-  height: 48px;
+  width: 56px;
+  height: 56px;
   border-radius: 50%;
   color: #111827;
   cursor: pointer;
@@ -649,12 +649,12 @@
   }
 
   .profile-photo-container {
-    width: 140px;
-    height: 140px;
+    width: 180px;
+    height: 180px;
   }
 
   .profile-photo-placeholder {
-    font-size: 48px;
+    font-size: 56px;
   }
 
   .profile-form {

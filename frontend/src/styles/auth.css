@@ -388,4 +388,9 @@
   .links {
     font-size: 13px;
   }
+
+  .btn {
+    width: 100%;
+    justify-content: center;
+  }
 }

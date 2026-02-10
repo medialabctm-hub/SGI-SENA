@@ -154,5 +154,8 @@
     width: 100%;
     justify-content: center;
   }
-}
 
+  .reportes-modal-info-grid {
+    grid-template-columns: 1fr;
+  }
+}

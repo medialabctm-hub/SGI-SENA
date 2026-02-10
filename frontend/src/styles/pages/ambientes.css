@@ -1189,6 +1189,23 @@
     min-width: 120px;
     max-width: 160px;
   }
+
+  /* Responsive updates */
+  .form-grid-columns {
+    grid-template-columns: 1fr;
+    gap: 15px;
+  }
+
+  .ambientes-page .users-table-wrapper {
+    overflow-x: auto;
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  .ambientes-page .users-table {
+    min-width: 800px;
+    /* Ensure table doesn't squash too much */
+  }
 }
 
 @media (max-width: 480px) {
