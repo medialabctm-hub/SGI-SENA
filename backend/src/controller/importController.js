@@ -289,6 +289,13 @@ export async function importarEquipos(req, res) {
         detalle: 'No se pudo determinar el cuentadante para la importación. Por favor, intente nuevamente.'
       });
     }
+
+    // Nombre del cuentadante para llenar cuentadante_principal en cada equipo importado
+    const [[rowCuentadante]] = await defaultDb.execute(
+      'SELECT nombre_usuario FROM Usuarios WHERE id_usuario = ? LIMIT 1',
+      [cuentadanteFinal]
+    );
+    const nombreCuentadantePrincipal = rowCuentadante?.nombre_usuario ?? null;
     
     // Generar ID único para esta importación
     const idImportacion = `import_${Date.now()}_${userId}`;
@@ -541,17 +548,18 @@ export async function importarEquipos(req, res) {
         // Esto garantiza que todos los equipos importados tengan un cuentadante asignado
         const id_cuentadante = cuentadanteFinal;
 
-        // Insertar equipo usando nombres exactos de campos
+        // Insertar equipo usando nombres exactos de campos (incluye cuentadante_principal)
         const query = `INSERT INTO Elementos
-          (id_categoria, id_ambiente, id_cuentadante, tipo, modelo, descripcion, 
+          (id_categoria, id_ambiente, id_cuentadante, cuentadante_principal, tipo, modelo, descripcion, 
            fecha_adquisicion, valor_ingreso, estado_fisico, registrado_por,
            r_centro, consecutivo, placa, atributos)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
 
         const [insertResult] = await defaultDb.execute(query, [
           categoriaId,
           ambienteId,
           id_cuentadante,
+          nombreCuentadantePrincipal,
           tipo,
           modelo,
           descripcion || null,
@@ -782,16 +790,27 @@ export async function procesarDuplicado(req, res) {
         idCuentadante = id_cuentadante;
       }
 
+      // Nombre del cuentadante para cuentadante_principal
+      let nombreCuentadantePrincipal = null;
+      if (idCuentadante) {
+        const [[rowCuent]] = await defaultDb.execute(
+          'SELECT nombre_usuario FROM Usuarios WHERE id_usuario = ? LIMIT 1',
+          [idCuentadante]
+        );
+        nombreCuentadantePrincipal = rowCuent?.nombre_usuario ?? null;
+      }
+
       const query = `INSERT INTO Elementos
-        (id_categoria, id_ambiente, id_cuentadante, tipo, modelo, descripcion, 
+        (id_categoria, id_ambiente, id_cuentadante, cuentadante_principal, tipo, modelo, descripcion, 
          fecha_adquisicion, valor_ingreso, estado_fisico, registrado_por,
          r_centro, consecutivo, placa, atributos)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
       
       await defaultDb.execute(query, [
         datosExcel.categoria_id,
         datosExcel.ambiente_id,
         idCuentadante,
+        nombreCuentadantePrincipal,
         datosExcel.tipo,
         datosExcel.modelo,
         datosExcel.descripcion || null,
@@ -914,6 +933,16 @@ export async function procesarDuplicadosMasivo(req, res) {
       idCuentadante = id_cuentadante;
     }
 
+    // Nombre del cuentadante para cuentadante_principal en cada equipo aprobado
+    let nombreCuentadantePrincipalMasivo = null;
+    if (idCuentadante) {
+      const [[rowCuent]] = await defaultDb.execute(
+        'SELECT nombre_usuario FROM Usuarios WHERE id_usuario = ? LIMIT 1',
+        [idCuentadante]
+      );
+      nombreCuentadantePrincipalMasivo = rowCuent?.nombre_usuario ?? null;
+    }
+
     for (const decision of decisiones) {
       const { id_duplicado, accion } = decision;
 
@@ -947,17 +976,18 @@ export async function procesarDuplicadosMasivo(req, res) {
           : duplicado.datos_excel;
 
         if (accion === 'aprobar') {
-          // Insertar el equipo
+          // Insertar el equipo (con cuentadante_principal)
           const query = `INSERT INTO Elementos
-            (id_categoria, id_ambiente, id_cuentadante, tipo, modelo, descripcion, 
+            (id_categoria, id_ambiente, id_cuentadante, cuentadante_principal, tipo, modelo, descripcion, 
              fecha_adquisicion, valor_ingreso, estado_fisico, registrado_por,
              r_centro, consecutivo, placa, atributos)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
 
           await defaultDb.execute(query, [
             datosExcel.categoria_id,
             datosExcel.ambiente_id,
             idCuentadante,
+            nombreCuentadantePrincipalMasivo,
             datosExcel.tipo,
             datosExcel.modelo,
             datosExcel.descripcion || null,

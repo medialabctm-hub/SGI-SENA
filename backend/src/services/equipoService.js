@@ -235,12 +235,23 @@ export class EquipoService {
       idTipo = rowTipo.id_tipo;
     }
 
+    // Resolver nombre del cuentadante para cuentadante_principal
+    let cuentadantePrincipal = null;
+    if (finalCuentadanteId) {
+      const [[rowCuentadante]] = await this.equipoRepository.db.execute(
+        'SELECT nombre_usuario FROM Usuarios WHERE id_usuario = ? LIMIT 1',
+        [finalCuentadanteId]
+      );
+      cuentadantePrincipal = rowCuentadante?.nombre_usuario ?? null;
+    }
+
     // Crear equipo
     const equipoDataToInsert = {
       idCategoria: categoriaData.id_categoria,
       idTipo,
       idAmbiente: ambienteId,
       idCuentadante: finalCuentadanteId,
+      cuentadantePrincipal,
       tipo,
       modelo,
       descripcion: descripcionFinal,

@@ -38,19 +38,22 @@ export default function ConsultarEquipo() {
     { key: 'consecutivo', label: 'Consecutivo', default: true },
     { key: 'estado_fisico', label: 'Estado Físico', default: true },
     { key: 'fecha_adquisicion', label: 'Fecha Adquisición', default: true },
-    { key: 'costo', label: 'Valor Ingreso', default: true },
+    { key: 'valor_ingreso', label: 'Valor Ingreso', default: true },
     { key: 'nombre_ambiente', label: 'Ambiente', default: true },
     { key: 'status_verificacion', label: 'Estado verificación', default: true },
     { key: 'descripcion', label: 'Descripción', default: true },
     { key: 'specs_completas', label: 'Atributos', default: true },
   ]
 
-  // Estado para columnas visibles (inicializado con las columnas por defecto)
+  // Estado para columnas visibles (migrar 'costo' -> 'valor_ingreso' para misma columna que al agregar)
   const [visibleColumns, setVisibleColumns] = useState(() => {
     const saved = localStorage.getItem('equipos_visible_columns')
     if (saved) {
       try {
-        return JSON.parse(saved)
+        const parsed = JSON.parse(saved)
+        return Array.isArray(parsed)
+          ? parsed.map(k => (k === 'costo' ? 'valor_ingreso' : k))
+          : allColumns.filter(col => col.default).map(col => col.key)
       } catch {
         return allColumns.filter(col => col.default).map(col => col.key)
       }
@@ -197,7 +200,8 @@ export default function ConsultarEquipo() {
     setDraft({
       ...eq,
       fecha_adquisicion: eq.fecha_adquisicion ? String(eq.fecha_adquisicion).slice(0,10) : '',
-      id_ambiente: eq.id_ambiente || null
+      id_ambiente: eq.id_ambiente || null,
+      valor_ingreso: eq.valor_ingreso ?? eq.costo ?? null
     })
   }
 
@@ -264,10 +268,7 @@ export default function ConsultarEquipo() {
         payload.fecha_adquisicion = String(draft.fecha_adquisicion).trim() || null;
       }
       
-      // Números
-      if (draft.costo !== undefined) {
-        payload.costo = cleanNumber(draft.costo);
-      }
+      // Valor del equipo: solo valor_ingreso (misma columna que al agregar)
       if (draft.valor_ingreso !== undefined) {
         payload.valor_ingreso = cleanNumber(draft.valor_ingreso);
       }
@@ -462,7 +463,7 @@ export default function ConsultarEquipo() {
           'Consecutivo': eq.consecutivo || '-',
           'Estado Físico': eq.estado_fisico || '-',
           'Fecha Adquisición': eq.fecha_adquisicion ? formatDate(eq.fecha_adquisicion) : '-',
-          'Valor Ingreso': eq.costo ? formatCurrency(eq.costo) : '-',
+          'Valor Ingreso': (eq.valor_ingreso ?? eq.costo) ? formatCurrency(eq.valor_ingreso ?? eq.costo) : '-',
           'Ambiente': eq.nombre_ambiente || '-',
           'Descripción': eq.descripcion || '-',
           'Atributos': eq.specs_completas || '-'
@@ -771,7 +772,7 @@ export default function ConsultarEquipo() {
                       {visibleColumns.includes('consecutivo') && <th>Consecutivo</th>}
                       {visibleColumns.includes('estado_fisico') && <th>Estado Físico</th>}
                       {visibleColumns.includes('fecha_adquisicion') && <th>Fecha Adquisición</th>}
-                      {visibleColumns.includes('costo') && <th>Valor Ingreso</th>}
+                      {visibleColumns.includes('valor_ingreso') && <th>Valor Ingreso</th>}
                       {visibleColumns.includes('nombre_ambiente') && <th>Ambiente</th>}
                       {visibleColumns.includes('status_verificacion') && <th>Estado verificación</th>}
                       {visibleColumns.includes('descripcion') && <th>Descripción</th>}
@@ -827,11 +828,11 @@ export default function ConsultarEquipo() {
                             ) : formatDate(eq.fecha_adquisicion)}
                           </td>
                         )}
-                        {visibleColumns.includes('costo') && (
+                        {visibleColumns.includes('valor_ingreso') && (
                           <td>
                             {editingCodigo === eq.codigo_equipo ? (
-                              <input type="number" value={draft.costo ?? ''} onChange={e=>onDraft('costo', e.target.value === '' ? null : Number(e.target.value))} className="cell-input" />
-                            ) : formatCurrency(eq.costo)}
+                              <input type="number" value={draft.valor_ingreso ?? ''} onChange={e=>onDraft('valor_ingreso', e.target.value === '' ? null : Number(e.target.value))} className="cell-input" />
+                            ) : formatCurrency(eq.valor_ingreso ?? eq.costo)}
                           </td>
                         )}
                         {visibleColumns.includes('nombre_ambiente') && (

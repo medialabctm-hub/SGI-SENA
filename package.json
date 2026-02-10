@@ -1,0 +1,32 @@
+{
+  "name": "sge-sena",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Sistema de Gestión de Equipos SENA - Monorepo",
+  "scripts": {
+    "lint": "npm run lint --prefix backend && npm run lint --prefix frontend",
+    "test": "npm test --prefix backend -- --testPathIgnorePatterns=ambientesService && npm test --prefix frontend",
+    "build": "npm run build --prefix frontend",
+    "test:smoke": "npm run test:smoke --prefix backend",
+    "ci": "npm run lint && npm test --prefix backend && npm test --prefix frontend && npm run build --prefix frontend",
+    "test:e2e": "playwright test"
+  },
+  "main": "index.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/gabriel-durango/SGI-SENA.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/gabriel-durango/SGI-SENA/issues"
+  },
+  "homepage": "https://github.com/gabriel-durango/SGI-SENA#readme",
+  "devDependencies": {
+    "@playwright/test": "^1.58.2"
+  },
+  "dependencies": {
+    "smoke": "^4.1.3"
+  }
+}

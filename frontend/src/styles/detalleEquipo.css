@@ -352,9 +352,18 @@
   gap: 12px;
 }
 
+/* Fila de 3 columnas (ambiente, cuentadante, documento) con ancho reducido */
+.detalle-equipo-info-fila-tres {
+  grid-template-columns: 1fr 1fr 1fr;
+}
+
+.detalle-equipo-info-item-cell {
+  min-width: 0;
+}
+
 .detalle-equipo-info-item-small {
   padding: 12px;
-  background: #f9fafb;
+  background: var(--neutral-50);
   border-radius: 8px;
 }
 

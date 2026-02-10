@@ -569,7 +569,7 @@ export default function DetalleEquipo() {
                 </div>
                 <div className="detalle-equipo-info-inner-grid">
                   <div className="detalle-equipo-info-item-with-icon">
-                    <FiPackage size={18} color="var(--neutral-500)" />
+                    <FiPackage size={18} color="var(--success-800)" />
                     <div className="detalle-equipo-info-item-content">
                       <div className="detalle-equipo-info-label">CÓDIGO DE INVENTARIO</div>
                       <div className="detalle-equipo-info-value-large">{equipo.codigo_inventario || '-'}</div>
@@ -589,10 +589,6 @@ export default function DetalleEquipo() {
 
                   <div className="detalle-equipo-info-item-grid">
                     <div className="detalle-equipo-info-item-small">
-                      <div className="detalle-equipo-info-label">NÚMERO DE SERIE</div>
-                      <div className="detalle-equipo-info-value">{equipo.numero_serie || '-'}</div>
-                    </div>
-                    <div className="detalle-equipo-info-item-small">
                       <div className="detalle-equipo-info-label">CONSECUTIVO</div>
                       <div className="detalle-equipo-info-value">{equipo.consecutivo || '-'}</div>
                     </div>
@@ -605,14 +601,14 @@ export default function DetalleEquipo() {
 
                   <div className="detalle-equipo-info-item-grid">
                     <div className="detalle-equipo-info-item-with-icon">
-                      <FiCalendar size={18} color="var(--neutral-500)" />
+                      <FiCalendar size={18} color="var(--success-800)" />
                       <div className="detalle-equipo-info-item-content">
                         <div className="detalle-equipo-info-label">FECHA ADQUISICIÓN</div>
                         <div className="detalle-equipo-info-value">{formatDate(equipo.fecha_adquisicion)}</div>
                       </div>
                     </div>
                     <div className="detalle-equipo-info-item-with-icon">
-                      <FiDollarSign size={18} color="var(--neutral-500)" />
+                      <FiDollarSign size={18} color="var(--success-800)" />
                       <div className="detalle-equipo-info-item-content">
                         <div className="detalle-equipo-info-label">COSTO</div>
                         <div className="detalle-equipo-info-value-bold">{formatCurrency(equipo.costo)}</div>
@@ -620,12 +616,32 @@ export default function DetalleEquipo() {
                     </div>
                   </div>
 
-                  <div className="detalle-equipo-info-item-with-icon">
-                    <FiMapPin size={18} color="var(--neutral-500)" />
-                    <div className="detalle-equipo-info-item-content">
-                      <div className="detalle-equipo-info-label">AMBIENTE</div>
-                      <div className="detalle-equipo-info-value">
-                        {equipo.nombre_ambiente || '-'} {equipo.codigo_ambiente && `(${equipo.codigo_ambiente})`}
+                  <div className="detalle-equipo-info-item-grid detalle-equipo-info-fila-tres">
+                    <div className="detalle-equipo-info-item-with-icon detalle-equipo-info-item-cell">
+                      <FiMapPin size={18} color="var(--success-800)" />
+                      <div className="detalle-equipo-info-item-content">
+                        <div className="detalle-equipo-info-label">AMBIENTE</div>
+                        <div className="detalle-equipo-info-value">
+                          {equipo.nombre_ambiente || '-'} {equipo.codigo_ambiente && `(${equipo.codigo_ambiente})`}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="detalle-equipo-info-item-with-icon detalle-equipo-info-item-cell">
+                      <FiUser size={18} color="var(--success-800)" />
+                      <div className="detalle-equipo-info-item-content">
+                        <div className="detalle-equipo-info-label">CUENTADANTE</div>
+                        <div className="detalle-equipo-info-value">
+                          {equipo.cuentadante_principal || '-'}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="detalle-equipo-info-item-with-icon detalle-equipo-info-item-cell">
+                      <FiUser size={18} color="var(--success-800)" />
+                      <div className="detalle-equipo-info-item-content">
+                        <div className="detalle-equipo-info-label">DOC. CUENTADANTE</div>
+                        <div className="detalle-equipo-info-value">
+                          {equipo.cuentadante_cedula || '-'}
+                        </div>
                       </div>
                     </div>
                   </div>

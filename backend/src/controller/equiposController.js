@@ -178,8 +178,10 @@ export async function obtenerEquipoPorCodigo(req, res) {
 
     const queryBase = `
       SELECT e.codigo_equipo, e.placa AS codigo_inventario, e.tipo, e.modelo, e.consecutivo, e.descripcion,
-             e.fecha_adquisicion, e.valor_ingreso AS costo, e.estado_fisico,
+             e.fecha_adquisicion, e.valor_ingreso, e.valor_ingreso AS costo, e.estado_fisico,
              e.specs_completas, e.id_cuentadante,
+             COALESCE(e.cuentadante_principal, u_cuentadante.nombre_usuario) AS cuentadante_principal,
+             u_cuentadante.cedula AS cuentadante_cedula,
              a.id_ambiente, a.nombre_ambiente, a.codigo_ambiente,
              COALESCE(ee.estado_operativo, 'Disponible') AS estado_operativo,
              ee.detalles AS detalles_estado,
@@ -194,6 +196,7 @@ export async function obtenerEquipoPorCodigo(req, res) {
       FROM Elementos e
       LEFT JOIN Ambientes a ON a.id_ambiente = e.id_ambiente
       LEFT JOIN Estado_Equipo ee ON e.codigo_equipo = ee.codigo_equipo
+      LEFT JOIN Usuarios u_cuentadante ON e.id_cuentadante = u_cuentadante.id_usuario
     `;
 
     // Construir cláusula WHERE según el rol
@@ -457,9 +460,10 @@ export async function actualizarEquipo(req, res) {
       ambienteId = amb?.id_ambiente || null;
     }
 
+    // Solo valor_ingreso para el valor del equipo (no costo) y así mantener una sola columna en BD
     const allowed = [
       'tipo', 'modelo', 'descripcion', 'fecha_adquisicion',
-      'costo', 'valor_ingreso', 'estado_fisico', 'specs_completas',
+      'valor_ingreso', 'estado_fisico', 'specs_completas',
       'consecutivo', 'placa', 'r_centro'
     ];
 
@@ -1878,6 +1882,9 @@ export async function buscarCuentadantePorDocumento(req, res) {
     // Obtener inventario del cuentadante
     // OPTIMIZACIÓN: Separar consultas para evitar GROUP BY costoso con múltiples JOINs
     // Primero obtener equipos básicos
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/4fca1e6c-7d65-41f5-87f3-c0784e21a846',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'equiposController.js:inventario',message:'Antes consulta inventario',data:{id_cuentadante:cuentadante.id_usuario},timestamp:Date.now(),hypothesisId:'B'})}).catch(()=>{});
+    // #endregion
     const [inventario] = await defaultDb.execute(
       `SELECT 
         e.codigo_equipo,
@@ -1905,10 +1912,12 @@ export async function buscarCuentadantePorDocumento(req, res) {
     if (inventario.length > 0) {
       const codigosEquipos = inventario.map(e => e.codigo_equipo);
       const placeholders = codigosEquipos.map(() => '?').join(',');
-      
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/4fca1e6c-7d65-41f5-87f3-c0784e21a846',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'equiposController.js:conteos',message:'Antes consulta conteos',data:{numEquipos:codigosEquipos.length},timestamp:Date.now(),hypothesisId:'A'})}).catch(()=>{});
+      // #endregion
       const [conteos] = await defaultDb.execute(
         `SELECT 
-          codigo_equipo,
+          e.codigo_equipo,
           COUNT(DISTINCT n.id_novedad) AS total_novedades,
           COUNT(DISTINCT m.id_mantenimiento) AS total_mantenimientos
          FROM Elementos e
@@ -1935,6 +1944,9 @@ export async function buscarCuentadantePorDocumento(req, res) {
     }
 
     // Obtener estadísticas del inventario
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/4fca1e6c-7d65-41f5-87f3-c0784e21a846',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'equiposController.js:estadisticas',message:'Antes consulta estadisticas',data:{},timestamp:Date.now(),hypothesisId:'D'})}).catch(()=>{});
+    // #endregion
     const [[estadisticas]] = await defaultDb.execute(
       `SELECT 
         COUNT(*) AS total_equipos,
@@ -1970,6 +1982,9 @@ export async function buscarCuentadantePorDocumento(req, res) {
       }
     })
   } catch (err) {
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/4fca1e6c-7d65-41f5-87f3-c0784e21a846',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'equiposController.js:catch buscarCuentadante',message:'Error capturado',data:{errorMessage:err.message},timestamp:Date.now(),hypothesisId:'A'})}).catch(()=>{});
+    // #endregion
     logger.error('Error al buscar cuentadante por documento', { error: err.message, stack: err.stack })
     return res.status(500).json({
       error: 'Error al buscar cuentadante',
