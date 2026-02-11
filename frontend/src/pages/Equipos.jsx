@@ -312,7 +312,7 @@ export default function Equipos() {
                 className={`form-tab ${activeTab === 'importar' ? 'active' : ''}`}
               >
                 <FiUpload size={18} />
-                Importar Equipos
+                Importar Inventario
               </button>
             </div>
 

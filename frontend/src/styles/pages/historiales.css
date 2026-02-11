@@ -290,7 +290,7 @@
   font-size: 0.9rem;
   padding: 8px 12px;
   border-radius: 6px;
-  background: var(--success-50);
+  background: var(--success-700);
 }
 
 .historial-verificaciones-refresh-btn {

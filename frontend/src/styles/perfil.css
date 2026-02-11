@@ -562,7 +562,7 @@
 .profile-photo-file-name.has-file {
   color: #111827;
   background: #f0fdf4;
-  border-color: var(--success-300);
+  border-color: var(--success-700);
   font-weight: 500;
 }
 

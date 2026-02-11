@@ -60,14 +60,14 @@
   padding: 2rem;
   border: 2px dashed var(--success-800);
   border-radius: 12px;
-  background: var(--success-50);
+  background: var(--success-700);
   cursor: pointer;
   transition: all 0.2s ease;
   text-align: center;
 }
 
 .importar-equipos-file-label:hover {
-  background: var(--success-100);
+  background: var(--success-700);
   border-color: var(--success-900);
 }
 
@@ -118,7 +118,7 @@
 
 .importar-equipos-cuentadante-found {
   padding: 1rem;
-  background: var(--success-100);
+  background: var(--success-700);
   border: 2px solid var(--success-800);
   border-radius: 8px;
   margin-top: 1rem;
@@ -322,7 +322,7 @@
 }
 
 .importar-equipos-file-container {
-  border: 2px dashed var(--success-300);
+  border: 2px dashed var(--success-700);
   border-radius: 8px;
   padding: 1.5rem;
   text-align: center;
@@ -331,7 +331,7 @@
 }
 
 .importar-equipos-file-container.has-file {
-  background: var(--success-50);
+  background: var(--success-100);
   border-color: var(--success-500);
 }
 

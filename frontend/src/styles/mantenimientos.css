@@ -227,7 +227,7 @@
 }
 
 .mantenimientos-modal-select:hover {
-  border-color: var(--success-300);
+  border-color: var(--success-700);
 }
 
 .mantenimientos-modal-input {
@@ -247,7 +247,7 @@
 }
 
 .mantenimientos-modal-input:hover {
-  border-color: var(--success-300);
+  border-color: var(--success-700);
 }
 
 .mantenimientos-modal-actions-row {
@@ -290,7 +290,7 @@
   border-radius: 8px;
   font-weight: 500;
   transition: all 0.2s;
-  background: var(--success-50);
+  background: var(--success-700);
   color: var(--success-700);
   border: 1.5px solid var(--success-700);
   cursor: pointer;
@@ -298,8 +298,8 @@
 }
 
 .mantenimientos-modal-edit-button-small:hover {
-  background: var(--success-100);
-  border-color: var(--success-300);
+  background: var(--success-700);
+  border-color: var(--success-700);
   transform: translateY(-1px);
   box-shadow: 0 2px 8px rgba(34, 197, 94, 0.15);
 }
@@ -352,7 +352,7 @@
 
 .mantenimientos-estado-badge.completado {
   color: var(--success-700);
-  background: var(--success-50);
+  background: var(--success-700);
 }
 
 .mantenimientos-estado-badge.cancelado {

@@ -493,7 +493,7 @@
 
 .responsable-tipo {
   font-size: 12px;
-  background: var(--success-100);
+  background: var(--success-700);
   color: var(--success-800);
   padding: 4px 10px;
   border-radius: 6px;
@@ -954,7 +954,7 @@
 }
 
 .responsable-badge-principal {
-  background: var(--success-100);
+  background: var(--success-700);
   color: var(--success-800);
 }
 
@@ -1137,13 +1137,13 @@
 }
 
 .ambientes-page .instructor-select-item:hover {
-  border-color: var(--success-300);
-  background: var(--success-50);
+  border-color: var(--success-700);
+  background: var(--success-800);
 }
 
 .ambientes-page .instructor-select-item.selected {
-  border-color: var(--success-800);
-  background: var(--success-100);
+  border-color: var(--success-700);
+  background: var(--success-800);
 }
 
 .ambientes-page .instructor-select-item.is-cuentadante {

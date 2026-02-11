@@ -89,7 +89,7 @@
 
 /* Celda destacada */
 .table-cell-highlight {
-  background: var(--success-100);
+  background: var(--success-700);
   font-weight: 600;
   color: var(--success-900);
 }

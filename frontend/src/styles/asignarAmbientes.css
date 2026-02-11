@@ -107,7 +107,7 @@
 }
 
 .asignar-ambientes-dia-checkbox:hover {
-  background: var(--success-50);
+  background: var(--success-700);
 }
 
 .asignar-ambientes-dia-checkbox input[type="checkbox"] {
@@ -118,8 +118,8 @@
 }
 
 .asignar-ambientes-dia-checkbox.selected {
-  background: var(--success-100);
-  border-color: var(--success-900);
+  background: var(--success-700);
+  border-color: var(--success-800);
 }
 
 /* Información de cantidad */

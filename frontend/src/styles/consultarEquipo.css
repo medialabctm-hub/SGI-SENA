@@ -357,7 +357,7 @@
 
 .consultar-equipo-column-item.checked {
   border-color: var(--success-800);
-  background: var(--success-50);
+  background: var(--success-700);
 }
 
 .consultar-equipo-column-checkbox {

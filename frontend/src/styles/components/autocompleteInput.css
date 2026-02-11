@@ -108,7 +108,7 @@
 
 .autocomplete-option:hover,
 .autocomplete-option.highlighted {
-  background: var(--success-50);
+  background: var(--success-700);
   color: var(--success-900);
 }
 

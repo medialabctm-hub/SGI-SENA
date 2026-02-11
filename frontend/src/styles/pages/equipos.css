@@ -330,7 +330,7 @@
 
 .consulta-form .btn:not(.primary):hover:not(:disabled) {
   background: linear-gradient(180deg, var(--neutral-50) 0%, white 100%);
-  border-color: var(--success-400);
+  border-color: var(--success-700);
   color: var(--success-800);
   transform: translateY(-2px);
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.1);
@@ -920,7 +920,7 @@
 
 .btn-secondary.btn-modern:hover {
   background: linear-gradient(180deg, var(--neutral-50) 0%, white 100%);
-  border-color: var(--success-400);
+  border-color: var(--success-700);
   color: var(--success-800);
   transform: translateY(-2px);
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.1);

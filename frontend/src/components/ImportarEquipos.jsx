@@ -147,7 +147,7 @@ export default function ImportarEquipos({ onImportComplete, onEstadoDuplicadosCh
 
     // Validar que hay equipos importados para asignar el cuentadante
     if (!equiposImportadosIds || equiposImportadosIds.length === 0) {
-      setError('No hay equipos importados en esta sesión. Debe importar equipos primero antes de asignar el cuentadante.')
+      setError('No hay elementos importados en esta sesión. Debe importar elementos primero antes de asignar el cuentadante.')
       return
     }
 
@@ -175,7 +175,7 @@ export default function ImportarEquipos({ onImportComplete, onEstadoDuplicadosCh
       // Mostrar mensaje de éxito
       setInfoModal({
         open: true,
-        message: `Cuentadante principal "${data.cuentadante_principal}" asignado correctamente a ${data.equipos_actualizados} equipo(s) importado(s) en esta sesión`,
+        message: `Cuentadante principal "${data.cuentadante_principal}" asignado correctamente a ${data.equipos_actualizados} elemento(s) importado(s) en esta sesión`,
         title: 'Éxito'
       })
       // Limpiar IDs después de asignar (opcional, para evitar reasignaciones accidentales)
@@ -218,7 +218,7 @@ export default function ImportarEquipos({ onImportComplete, onEstadoDuplicadosCh
     // Validar que si es Administrador, debe haber buscado y encontrado un cuentadante
     if (user?.nombre_rol === 'Administrador') {
       if (!cuentadanteEncontrado || !cuentadanteEncontrado.id_usuario) {
-        setError('Debe buscar y seleccionar un cuentadante antes de importar los equipos. Use el botón "Buscar" en la sección "Cuentadante Principal del Inventario".')
+        setError('Debe buscar y seleccionar un cuentadante antes de importar los elementos. Use el botón "Buscar" en la sección "Cuentadante Principal del Inventario".')
         return
       }
     }
@@ -252,10 +252,10 @@ export default function ImportarEquipos({ onImportComplete, onEstadoDuplicadosCh
         data = await res.json().catch(() => ({}))
       } else if (res.ok) {
         // 200: éxito completo
-        data = await parseApiResponse(res, 'Error al importar equipos')
+        data = await parseApiResponse(res, 'Error al importar elementos')
       } else {
         // 400 u otro error
-        throw await parseApiResponse(res, 'Error al importar equipos').catch(() => {
+        throw await parseApiResponse(res, 'Error al importar elementos').catch(() => {
           throw new Error('Error al procesar la respuesta del servidor')
         })
       }
@@ -281,7 +281,7 @@ export default function ImportarEquipos({ onImportComplete, onEstadoDuplicadosCh
         // Mostrar modal de éxito si la importación fue exitosa (success: true o status 200/207) y no hay duplicados
         const esExitoso = data.success === true || res.status === 200 || res.status === 207
         if (esExitoso && resultados && resultados.exitosos > 0 && (!resultados.duplicados || resultados.duplicados === 0)) {
-          const mensaje = data.message || `Se importaron correctamente ${resultados.exitosos} equipo(s)`
+          const mensaje = data.message || `Se importaron correctamente ${resultados.exitosos} elemento(s)`
           const porcentaje = data.porcentaje_exito ? ` (${data.porcentaje_exito}% de éxito)` : ''
           const mensajeCompleto = resultados.fallidos > 0 
             ? `${mensaje}${porcentaje}. Se encontraron ${resultados.fallidos} error(es) que se muestran a continuación.`
@@ -333,7 +333,7 @@ export default function ImportarEquipos({ onImportComplete, onEstadoDuplicadosCh
       '126050',          // valor_ingreso
       '920510',          // r_centro
       'MARCA:TP-LINK',   // atributos
-      'Neutral'          // ambiente (o dejar vacío para usar Neutral por defecto)
+      'Sin Asignar'          // ambiente (o dejar vacío para usar Neutral por defecto)
     ]
 
     // Crear workbook y worksheet
@@ -348,10 +348,10 @@ export default function ImportarEquipos({ onImportComplete, onEstadoDuplicadosCh
     ws['!cols'] = colWidths
     
     // Agregar worksheet al workbook
-    XLSX.utils.book_append_sheet(wb, ws, 'Equipos')
+    XLSX.utils.book_append_sheet(wb, ws, 'Elementos')
     
     // Generar archivo Excel
-    XLSX.writeFile(wb, 'plantilla_equipos.xlsx')
+    XLSX.writeFile(wb, 'plantilla_elementos.xlsx')
   }
 
   return (
@@ -359,10 +359,10 @@ export default function ImportarEquipos({ onImportComplete, onEstadoDuplicadosCh
       <div className="importar-equipos-header">
         <h3 className="importar-equipos-title">
           <FiUpload size={24} />
-          Importación Masiva de Equipos
+          Importación Masiva de Inventario
         </h3>
         <p className="importar-equipos-subtitle">
-          Sube un archivo Excel con los equipos a importar. El archivo debe contener las columnas requeridas.
+          Sube un archivo Excel con los elementos a importar. El archivo debe contener las columnas requeridas.
         </p>
       </div>
 
@@ -414,7 +414,7 @@ export default function ImportarEquipos({ onImportComplete, onEstadoDuplicadosCh
           disabled={!archivo || loading}
         >
           {loading && <div className="loading-spinner importar-equipos-loading-spinner-small"></div>}
-          {loading ? 'Importando...' : 'Importar Equipos'}
+          {loading ? 'Importando...' : 'Importar Elementos'}
         </button>
       </form>
 
@@ -427,7 +427,7 @@ export default function ImportarEquipos({ onImportComplete, onEstadoDuplicadosCh
           </h4>
           <p className="importar-equipos-cuentadante-description">
             El cuentadante principal es la persona responsable permanente del inventario. 
-            <strong> Debe buscar y seleccionar el cuentadante ANTES de importar los equipos.</strong> 
+            <strong> Debe buscar y seleccionar el cuentadante ANTES de importar los elementos.</strong> 
             Ingrese el <strong>Documento</strong> del cuentadante y haga clic en "Buscar".
           </p>
           <div className="importar-equipos-cuentadante-form">
@@ -475,11 +475,11 @@ export default function ImportarEquipos({ onImportComplete, onEstadoDuplicadosCh
               className="importar-equipos-cuentadante-save-button"
               onClick={handleSaveCuentadante}
               disabled={!cuentadanteEncontrado || savingCuentadante || loadingCuentadante}
-              title="Asignar cuentadante a equipos importados previamente (solo si no se asignó durante la importación)"
+              title="Asignar cuentadante a elementos importados previamente (solo si no se asignó durante la importación)"
             >
               {savingCuentadante && <div className="loading-spinner importar-equipos-loading-spinner-tiny"></div>}
               <FiSave size={16} />
-              {savingCuentadante ? 'Guardando...' : 'Asignar a Equipos Importados'}
+              {savingCuentadante ? 'Guardando...' : 'Asignar a Elementos Importados'}
             </button>
           </div>
           {cuentadanteActual && (
