@@ -147,8 +147,8 @@
   font-size: 0.95rem;
   font-weight: 600;
   cursor: pointer;
-  margin-top: 1rem;
-  width: 160px;
+  width: 210px;
+  height: 48px;
   transition: all 0.2s ease;
   min-height: 48px;
   letter-spacing: 0.02em;
@@ -269,7 +269,7 @@
   font-size: 15px;
   font-weight: 600;
   border-radius: 10px;
-  border: none;
+  border: 2px solid transparent;
   cursor: pointer;
   transition: all 0.2s ease;
   white-space: nowrap;
@@ -277,7 +277,7 @@
   align-items: center;
   justify-content: center;
   gap: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
   position: relative;
   overflow: hidden;
 }
@@ -298,21 +298,23 @@
 }
 
 .consulta-form .btn.primary {
-  background: linear-gradient(135deg, var(--success-700) 0%, var(--success-800) 100%);
+  background: var(--success-800);
   color: white;
-  box-shadow: 0 4px 16px rgba(16, 185, 129, 0.25);
+  border: 2px solid transparent;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
 .consulta-form .btn.primary:hover:not(:disabled) {
-  background: var(--success-800);
-  color: white;
+  background: white;
+  color: var(--success-800);
+  border-color: var(--success-800);
   transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(16, 185, 129, 0.35);
+  box-shadow: 0 6px 16px rgba(16, 185, 129, 0.35);
 }
 
 .consulta-form .btn.primary:active:not(:disabled) {
   transform: translateY(0);
-  box-shadow: 0 2px 10px rgba(16, 185, 129, 0.25);
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.25);
 }
 
 .consulta-form .btn.primary:disabled {
@@ -479,8 +481,8 @@
   padding: 8px 14px;
   font-size: 13px;
   font-weight: 600;
-  border-radius: 6px;
-  border: none;
+  border-radius: 10px;
+  border: 2px solid transparent;
   cursor: pointer;
   transition: all 0.2s ease;
   display: inline-flex;
@@ -488,30 +490,43 @@
   justify-content: center;
   gap: 6px;
   white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
 .row-actions .btn.primary {
   background: var(--success-800);
   color: white;
-  box-shadow: 0 2px 6px rgba(59, 139, 255, 0.3);
 }
 
-.row-actions .btn.primary:hover {
-  color: white;
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(59, 139, 255, 0.4);
+.row-actions .btn.primary:hover:not(:disabled) {
+  background: white;
+  color: var(--success-800);
+  border-color: var(--success-800);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(16, 185, 129, 0.35);
+}
+
+.row-actions .btn.primary:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.25);
 }
 
 .row-actions .btn.danger {
-  background: var(--error-700);
+  background: var(--error-500);
   color: white;
-  box-shadow: 0 2px 6px rgba(166, 29, 42, 0.3);
 }
 
-.row-actions .btn.danger:hover {
-  background: var(--error-800);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(133, 23, 34, 0.4);
+.row-actions .btn.danger:hover:not(:disabled) {
+  background: white;
+  color: var(--error-500);
+  border-color: var(--error-500);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(239, 68, 68, 0.35);
+}
+
+.row-actions .btn.danger:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.25);
 }
 
 .row-actions .btn:not(.primary):not(.danger) {
@@ -649,18 +664,27 @@
   padding: 0.6rem 1.25rem;
   background: var(--success-800);
   color: white;
-  border: none;
-  border-radius: 6px;
+  border: 2px solid transparent;
+  border-radius: 10px;
   font-size: 0.95rem;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
   white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
 .btn-search-equipo:hover:not(:disabled) {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(28, 185, 129, 0.3);
+  background: white;
+  color: var(--success-800);
+  border-color: var(--success-800);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(16, 185, 129, 0.35);
+}
+
+.btn-search-equipo:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.25);
 }
 
 .btn-search-equipo:disabled {
@@ -861,7 +885,7 @@
   font-weight: 600;
   border-radius: 10px;
   transition: all 0.2s ease;
-  border: none;
+  border: 2px solid transparent;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
@@ -869,7 +893,7 @@
   gap: 8px;
   position: relative;
   overflow: hidden;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
 .btn-modern::before {
@@ -887,22 +911,23 @@
   left: 100%;
 }
 
+/* Diseño nuevo: hover invertido (fondo blanco + borde de color) */
 .btn-primary.btn-modern {
-  background: linear-gradient(135deg, var(--success-700) 0%, var(--success-800) 100%);
+  background: var(--success-800);
   color: white;
-  box-shadow: 0 4px 16px rgba(16, 185, 129, 0.25);
 }
 
 .btn-primary.btn-modern:hover:not(:disabled) {
-  background: var(--success-800);
-  color: white;
+  background: white;
+  color: var(--success-800);
+  border-color: var(--success-800);
   transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(16, 185, 129, 0.35);
+  box-shadow: 0 6px 16px rgba(16, 185, 129, 0.35);
 }
 
 .btn-primary.btn-modern:active:not(:disabled) {
   transform: translateY(0);
-  box-shadow: 0 2px 10px rgba(16, 185, 129, 0.25);
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.25);
 }
 
 .btn-primary.btn-modern:disabled {
@@ -912,23 +937,23 @@
 }
 
 .btn-secondary.btn-modern {
-  border: 2px solid var(--success-800);
-  color: var(--neutral-700);
-  border: 1px solid var(--success-800);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  background: var(--neutral-600);
+  color: white;
+  border: 2px solid transparent;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
-.btn-secondary.btn-modern:hover {
-  background: linear-gradient(180deg, var(--neutral-50) 0%, white 100%);
-  border-color: var(--success-700);
-  color: var(--success-800);
+.btn-secondary.btn-modern:hover:not(:disabled) {
+  background: white;
+  color: var(--neutral-600);
+  border-color: var(--neutral-600);
   transform: translateY(-2px);
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 6px 16px rgba(75, 85, 99, 0.35);
 }
 
-.btn-secondary.btn-modern:active {
+.btn-secondary.btn-modern:active:not(:disabled) {
   transform: translateY(0);
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 2px 8px rgba(75, 85, 99, 0.25);
 }
 
 /* Estados vacíos y carga */

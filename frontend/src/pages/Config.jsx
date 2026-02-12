@@ -7,7 +7,6 @@ import NotificationsModal from '../components/NotificationsModal'
 import Security from './config/Security'
 import RolesAreas from './config/RolesAreas'
 import Notifications from './config/Notifications'
-import AppSettings from './config/AppSettings'
 import InvitationCodes from './config/InvitationCodes'
 import TiposEquipo from './config/TiposEquipo'
 import { useNavigate } from 'react-router-dom'
@@ -30,6 +29,8 @@ export default function Config() {
       setSearchParams({ section: 'security' })
     } else if (section === 'profile') {
       nav('/perfil')
+    } else if (section === 'app') {
+      setSearchParams({ section: 'security' })
     }
   }, [searchParams, setSearchParams, nav])
 
@@ -102,7 +103,6 @@ export default function Config() {
           {selected === 'invitation-codes' && <InvitationCodes />}
           {selected === 'roles' && <RolesAreas />}
           {selected === 'notifications' && <Notifications />}
-          {selected === 'app' && <AppSettings />}
           {selected === 'tipos-equipo' && <TiposEquipo />}
         </main>
       </div>

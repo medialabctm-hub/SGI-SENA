@@ -42,6 +42,8 @@ const app = express();
 
 app.set('trust proxy', 1);
 
+const normalizeOrigin = (o) => (o || '').trim().replace(/\/+$/, '') || o;
+
 const getAllowedOrigins = () => {
   const origins = [];
   if (config.cors.origin) {
@@ -51,16 +53,17 @@ const getAllowedOrigins = () => {
     origins.push('http://localhost:5173');
   }
   const externalDomain = 'https://sgi-senadata.up.railway.app';
-  if (!origins.includes(externalDomain)) origins.push(externalDomain);
+  if (!origins.some((o) => normalizeOrigin(o) === externalDomain)) origins.push(externalDomain);
   return origins;
 };
 
 const corsOptions = {
   origin: (origin, callback) => {
     if (!origin) return callback(null, true);
+    const normalized = normalizeOrigin(origin);
     const allowedOrigins = getAllowedOrigins();
-    if (allowedOrigins.includes(origin)) return callback(null, true);
-    const isLocalhost = origin.startsWith('http://localhost:') || origin.startsWith('http://127.0.0.1:');
+    if (allowedOrigins.some((o) => normalizeOrigin(o) === normalized)) return callback(null, true);
+    const isLocalhost = normalized.startsWith('http://localhost:') || normalized.startsWith('http://127.0.0.1:');
     if (isLocalhost && process.env.NODE_ENV === 'development') return callback(null, true);
     if (process.env.NODE_ENV === 'development') return callback(null, true);
     callback(new Error('No permitido por CORS'));

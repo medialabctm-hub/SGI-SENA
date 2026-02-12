@@ -83,8 +83,7 @@
 .config-profile-save-btn,
 .config-profile-cancel-btn,
 .config-security-submit,
-.config-users-button,
-.app-settings-save {
+.config-users-button {
   /* Los estilos base vienen de buttons.css */
 }
 
@@ -115,88 +114,6 @@
 
 .config-placeholder-content {
   color: #666;
-}
-
-/* ============================================
-   APP SETTINGS
-   ============================================ */
-
-.app-settings-container {
-  max-width: 900px;
-}
-
-.app-settings-loading {
-  text-align: center;
-  padding: 2rem;
-}
-
-.app-settings-loading-text {
-  margin-top: 1rem;
-  color: #666;
-}
-
-.app-settings-header {
-  margin-bottom: 1.5rem;
-}
-
-.app-settings-title {
-  margin: 0;
-  font-size: 1.5rem;
-  color: var(--neutral-800);
-}
-
-.app-settings-description {
-  margin: 0.5rem 0 0 0;
-  color: #666;
-  font-size: 0.9rem;
-}
-
-.app-settings-form {
-  display: grid;
-  gap: 1.5rem;
-  max-width: 600px;
-}
-
-.app-settings-select {
-  display: block;
-  margin-top: 6px;
-  width: 100%;
-  padding: 0.5rem;
-}
-
-/* Asegurar que los selects usen estilos globales */
-.app-settings-select {
-  /* Los estilos base vienen de forms.css */
-}
-
-/* Prevenir doble borde en CustomSelect dentro de app-settings */
-.app-settings-form .custom-select-wrapper {
-  border: none !important;
-  padding: 0 !important;
-  background: transparent !important;
-}
-
-.app-settings-form .custom-select {
-  border: 2px solid var(--success-800) !important;
-}
-
-.app-settings-form .custom-select:hover {
-  border-color: var(--success-900) !important;
-}
-
-.app-settings-form .custom-select-open {
-  border-color: var(--success-900) !important;
-}
-
-.app-settings-help {
-  color: #666;
-  font-size: 0.85rem;
-  margin-top: 4px;
-  display: block;
-}
-
-.app-settings-save {
-  margin-top: 0.5rem;
 }
 
 /* ============================================
@@ -351,9 +268,5 @@
 
   .security-submit button {
     width: 100%;
-  }
-
-  .app-settings-form {
-    max-width: 100%;
   }
 }

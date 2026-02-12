@@ -1,10 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import {
-  FiBell,
-  FiLogOut,
-  FiUser,
-  FiMenu,
-} from 'react-icons/fi';
+import {FiBell, FiLogOut, FiUser, FiMenu,} from 'react-icons/fi';
 import { Link } from "react-router-dom";
 import { useNavigate } from 'react-router-dom';
 import logo from '/public/images/logoSena.png';
