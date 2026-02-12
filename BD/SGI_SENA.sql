@@ -476,6 +476,26 @@ CREATE TABLE Novedades (
 COMMENT = 'Registro de novedades reportadas sobre equipos';
 
 -- ============================================
+-- TABLA DE REPORTES
+-- ============================================
+CREATE TABLE Reportes (
+  id_reporte INT PRIMARY KEY AUTO_INCREMENT,
+  tipo_reporte ENUM('General', 'Equipos', 'Mantenimiento', 'Novedades', 'Uso', 'Otro') NOT NULL,
+  titulo VARCHAR(200) NOT NULL,
+  descripcion TEXT,
+  codigo_equipo INT NULL,
+  generado_por INT NULL,
+  fecha_generacion DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (codigo_equipo) REFERENCES Elementos(codigo_equipo) ON DELETE SET NULL,
+  FOREIGN KEY (generado_por) REFERENCES Usuarios(id_usuario) ON DELETE SET NULL,
+  INDEX idx_tipo_reporte (tipo_reporte),
+  INDEX idx_codigo_equipo (codigo_equipo),
+  INDEX idx_generado_por (generado_por),
+  INDEX idx_fecha_generacion (fecha_generacion DESC)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+COMMENT = 'Reportes generados por usuarios y reportes automáticos (ej. mantenimiento)';
+
+-- ============================================
 -- TABLA DE HISTORIAL (Reemplazo Rastreo)
 -- ============================================
 CREATE TABLE Historial_Equipos (

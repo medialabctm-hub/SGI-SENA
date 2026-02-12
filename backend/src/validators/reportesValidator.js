@@ -4,13 +4,11 @@ import { z } from 'zod';
  * Validadores para las rutas de reportes
  */
 
+// Debe coincidir con el ENUM de la tabla Reportes en BD (SGI_SENA.sql)
 const tiposReporteValidos = [
   'General',
   'Equipos',
   'Mantenimiento',
-  'Novedad',
-  'Consulta',
-  'Solicitud',
   'Novedades',
   'Uso',
   'Otro'
