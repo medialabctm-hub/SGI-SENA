@@ -563,7 +563,7 @@ export class AuthService {
       emailService.reinitialize();
     }
     
-    const urlRecuperacion = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/restablecer-contrasena?token=${token}`;
+    const urlRecuperacion = `${process.env.FRONTEND_URL || 'https://sgi-sena.up.railway.app/'}/restablecer-contrasena?token=${token}`;
     
     const resultadoCorreo = await emailService.enviarCorreoRecuperacion(
       usuario.correo,

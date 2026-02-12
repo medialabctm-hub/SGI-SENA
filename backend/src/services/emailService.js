@@ -519,7 +519,7 @@ SENA - Sistema de Gestión de Equipos
             padding: 20px;
           }
           .header {
-            background: linear-gradient(135deg, #40c057 0%, #51cf66 100%);
+            background: #01af00;
             color: white;
             padding: 20px;
             text-align: center;
@@ -533,7 +533,7 @@ SENA - Sistema de Gestión de Equipos
           .button {
             display: inline-block;
             padding: 12px 30px;
-            background: #40c057;
+            background: #01af00;
             color: white;
             text-decoration: none;
             border-radius: 6px;
@@ -542,7 +542,6 @@ SENA - Sistema de Gestión de Equipos
           }
           .warning {
             background: #fff3cd;
-            border-left: 4px solid #ffc107;
             padding: 15px;
             margin: 20px 0;
             border-radius: 4px;
@@ -611,8 +610,8 @@ ${urlRecuperacion}
 Si no solicitaste este cambio, por favor contacta al administrador del sistema.
 
 ---
-Este es un correo automático, por favor no responder.
-SENA - Sistema de Gestión de Equipos
+<h2>Este es un correo automático, por favor no responder.</h2>
+SGI - SENA
     `;
 
     return await this.sendEmail(to, subject, htmlContent, textContent);
