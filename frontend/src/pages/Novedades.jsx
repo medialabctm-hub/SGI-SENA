@@ -1025,68 +1025,145 @@ export default function Novedades() {
                         </div>
                       </div>
                     ) : (
-                      <div className="reportes-detail-content">
-                        <div className="reportes-detail-header">
-                          <h3>Detalle del Reporte</h3>
+                      <div className="reportes-detail-content novedades-modal-content">
+                        <div className="novedades-modal-header">
+                          <div className="novedades-modal-title-wrapper">
+                            <FiFileText size={24} className="novedades-modal-title-icon" />
+                            <h3 className="novedades-modal-title">Detalle del Reporte</h3>
+                          </div>
                           <button
                             onClick={() => {
                               setSelectedReporte(null)
                               setReportesTab('ver')
                             }}
-                            className="btn-secondary btn-modern"
+                            className="novedades-modal-close"
+                            aria-label="Cerrar"
                           >
-                            <FiX size={16} />
-                            Cerrar
+                            <FiX size={20} />
                           </button>
                         </div>
-                        <div className="reportes-modal-info-grid">
-                          <div><strong>ID:</strong> {selectedReporte.id_reporte}</div>
-                          <div>
-                            <strong>Tipo:</strong> 
-                            <span className={`reportes-tipo-badge reportes-tipo-badge-${selectedReporte.tipo_reporte.toLowerCase()}`}>
-                              {selectedReporte.tipo_reporte}
-                            </span>
-                          </div>
-                          <div><strong>Título:</strong> {selectedReporte.titulo}</div>
-                          {selectedReporte.equipo_tipo && (
-                            <div>
-                              <strong>Equipo:</strong> {selectedReporte.equipo_tipo} {selectedReporte.equipo_marca} {selectedReporte.equipo_modelo}
+
+                        <div className="novedades-modal-body">
+                          {/* Información principal */}
+                          <div className="novedades-modal-section">
+                            <div className="novedades-modal-field">
+                              <div className="novedades-modal-field-label">
+                                <FiHash size={16} />
+                                <span>ID</span>
+                              </div>
+                              <div className="novedades-modal-field-value">
+                                #{selectedReporte.id_reporte}
+                              </div>
                             </div>
-                          )}
-                          <div>
-                            <strong>Descripción:</strong>
-                            <div className="reportes-modal-description-box">
-                              {selectedReporte.descripcion}
+
+                            <div className="novedades-modal-field">
+                              <div className="novedades-modal-field-label">
+                                <FiType size={16} />
+                                <span>Tipo</span>
+                              </div>
+                              <div className="novedades-modal-field-value">
+                                <span className={`reportes-tipo-badge reportes-tipo-badge-${selectedReporte.tipo_reporte.toLowerCase()}`}>
+                                  {selectedReporte.tipo_reporte}
+                                </span>
+                              </div>
                             </div>
-                          </div>
-                          <div><strong>Generado por:</strong> {selectedReporte.generado_por_nombre}</div>
-                          <div><strong>Fecha de generación:</strong> {formatDate(selectedReporte.fecha_generacion)}</div>
-                          <div className="reportes-detail-actions">
-                            <button
-                              onClick={() => generarPDFReporte(selectedReporte)}
-                              className="btn-primary btn-modern"
-                            >
-                              <FiDownload size={16} />
-                              Descargar PDF
-                            </button>
-                            {isAdmin && (
-                              <>
-                                <button
-                                  onClick={() => startEditReporte(selectedReporte)}
-                                  className="btn btn-modern"
-                                >
-                                  <FiEdit size={16} />
-                                  Editar
-                                </button>
-                                <button
-                                  onClick={() => confirmDeleteReporte(selectedReporte.id_reporte)}
-                                  className="btn danger btn-modern"
-                                >
-                                  <FiTrash2 size={16} />
-                                  Eliminar
-                                </button>
-                              </>
+
+                            <div className="novedades-modal-field">
+                              <div className="novedades-modal-field-label">
+                                <FiFileText size={16} />
+                                <span>Título</span>
+                              </div>
+                              <div className="novedades-modal-field-value">
+                                {selectedReporte.titulo}
+                              </div>
+                            </div>
+
+                            {selectedReporte.equipo_tipo && (
+                              <div className="novedades-modal-field">
+                                <div className="novedades-modal-field-label">
+                                  <FiPackage size={16} />
+                                  <span>Equipo</span>
+                                </div>
+                                <div className="novedades-modal-field-value">
+                                  {selectedReporte.equipo_tipo} {selectedReporte.equipo_marca} {selectedReporte.equipo_modelo}
+                                </div>
+                              </div>
                             )}
+                          </div>
+
+                          {/* Descripción */}
+                          <div className="novedades-modal-section">
+                            <div className="novedades-modal-field novedades-modal-field-full">
+                              <div className="novedades-modal-field-label">
+                                <FiFileText size={16} />
+                                <span>Descripción</span>
+                              </div>
+                              <div className="novedades-descripcion-box">
+                                {selectedReporte.descripcion}
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Generado por y fecha */}
+                          <div className="novedades-modal-section">
+                            <div className="novedades-modal-field">
+                              <div className="novedades-modal-field-label">
+                                <FiUser size={16} />
+                                <span>Generado por</span>
+                              </div>
+                              <div className="novedades-modal-field-value">
+                                {selectedReporte.generado_por_nombre}
+                              </div>
+                            </div>
+
+                            <div className="novedades-modal-field">
+                              <div className="novedades-modal-field-label">
+                                <FiCalendar size={16} />
+                                <span>Fecha de generación</span>
+                              </div>
+                              <div className="novedades-modal-field-value">
+                                {formatDate(selectedReporte.fecha_generacion)}
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Acciones */}
+                          <div className="novedades-modal-section">
+                            <div className="novedades-modal-field novedades-modal-field-full">
+                              <div className="novedades-estado-header">
+                                <div className="novedades-modal-field-label">
+                                  <FiInfo size={16} />
+                                  <span>Acciones</span>
+                                </div>
+                              </div>
+                              <div className="novedades-editar-buttons">
+                                <button
+                                  onClick={() => generarPDFReporte(selectedReporte)}
+                                  className="btn btn-verde novedades-editar-btn"
+                                >
+                                  <FiDownload size={14} />
+                                  Descargar PDF
+                                </button>
+                                {isAdmin && (
+                                  <>
+                                    <button
+                                      onClick={() => startEditReporte(selectedReporte)}
+                                      className="btn novedades-ver-btn"
+                                    >
+                                      <FiEdit size={14} />
+                                      Editar
+                                    </button>
+                                    <button
+                                      onClick={() => confirmDeleteReporte(selectedReporte.id_reporte)}
+                                      className="btn danger novedades-ver-btn"
+                                    >
+                                      <FiTrash2 size={14} />
+                                      Eliminar
+                                    </button>
+                                  </>
+                                )}
+                              </div>
+                            </div>
                           </div>
                         </div>
                       </div>

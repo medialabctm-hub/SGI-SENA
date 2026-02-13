@@ -14,6 +14,14 @@ const tiposReporteValidos = [
   'Otro'
 ];
 
+// Normaliza tipo_reporte: trim y coincidencia insensible a mayúsculas (p. ej. app Flutter envía "general" -> "General")
+function normalizarTipoReporte(val) {
+  if (val == null || typeof val !== 'string') return val;
+  const trimmed = val.trim();
+  const found = tiposReporteValidos.find((t) => t.toLowerCase() === trimmed.toLowerCase());
+  return found ?? trimmed;
+}
+
 export const crearReporteSchema = z.object({
   // codigo_equipo es opcional (puede ser reporte general o específico de equipo). "" se normaliza a undefined.
   codigo_equipo: z.preprocess(
@@ -23,11 +31,14 @@ export const crearReporteSchema = z.object({
       z.number().int().positive()
     ]).optional()
   ),
-  tipo_reporte: z.enum(tiposReporteValidos, {
-    errorMap: () => ({ 
-      message: `Tipo de reporte inválido. Tipos válidos: ${tiposReporteValidos.join(', ')}` 
-    }),
-  }),
+  tipo_reporte: z.preprocess(
+    normalizarTipoReporte,
+    z.enum(tiposReporteValidos, {
+      errorMap: () => ({
+        message: `Tipo de reporte inválido. Tipos válidos: ${tiposReporteValidos.join(', ')}`
+      }),
+    })
+  ),
   titulo: z.string()
     .min(5, 'El título debe tener al menos 5 caracteres')
     .max(200, 'El título no puede exceder 200 caracteres'),
@@ -49,6 +60,16 @@ export const actualizarReporteSchema = z.object({
 /**
  * Middleware de validación genérico
  */
+// Normaliza body para APIs que envían camelCase (p. ej. Flutter): tipoReporte -> tipo_reporte
+function normalizarBodyReportes(body) {
+  if (!body || typeof body !== 'object') return body;
+  const normalized = { ...body };
+  if (normalized.tipo_reporte === undefined && normalized.tipoReporte !== undefined) {
+    normalized.tipo_reporte = normalized.tipoReporte;
+  }
+  return normalized;
+}
+
 export const validate = (schema) => (req, res, next) => {
   // #region agent log
   try {
@@ -56,7 +77,8 @@ export const validate = (schema) => (req, res, next) => {
   } catch (_) {}
   // #endregion
   try {
-    const validated = schema.parse(req.body);
+    const body = normalizarBodyReportes(req.body);
+    const validated = schema.parse(body);
     req.body = validated;
     next();
   } catch (error) {
