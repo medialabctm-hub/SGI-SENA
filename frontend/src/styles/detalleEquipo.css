@@ -708,6 +708,27 @@
   color: #6b7280;
 }
 
+.detalle-equipo-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.detalle-equipo-modal-input {
+  width: 100%;
+  padding: 12px;
+  border-radius: 8px;
+  border: 2px solid #e5e7eb;
+  background: #fff;
+  font-size: 15px;
+  transition: all 0.2s;
+}
+
+.detalle-equipo-modal-input:focus {
+  border-color: var(--success-800);
+  outline: none;
+}
+
 .detalle-equipo-modal-select {
   width: 100%;
   padding: 12px;

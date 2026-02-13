@@ -1,7 +1,7 @@
 import express from 'express';
 import { registrarEquipo, obtenerEquipoPorCodigo, listarEquipos, actualizarEquipo, eliminarEquipo, asignarEquipo, obtenerMisEquipos, listarAsignaciones, eliminarAsignacion, actualizarAsignacionEquipo, obtenerEquiposAmbientesInstructor, registrarVerificacionInventario, consultarHistorialVerificaciones, obtenerHistorialEquipo, actualizarCuentadantePrincipal, obtenerCuentadantePrincipal, buscarCuentadantePorDocumento, listarCategorias, crearCategoria, actualizarCategoria, eliminarCategoria, registrarInicioUso, registrarFinUso, consultarHistorialUso, obtenerHistorialEquipoUso, obtenerSesionesActivas, registrarUsoEquipoExterno } from '../controller/equiposController.js';
-import { authenticate } from '../middleware/authMiddleware.js';
-import { requirePermission, requireAnyPermission } from '../middleware/authorization.js';
+import { authenticate, optionalAuthenticate } from '../middleware/authMiddleware.js';
+import { requirePermission, requireAnyPermission, requireAnyPermissionIfAuthenticated } from '../middleware/authorization.js';
 import { PERMISSIONS } from '../config/permissions.js';
 import { writeLimiter, readLimiter, strictLimiter, webhookLimiter, searchLimiter } from '../middleware/rateLimiter.js';
 import { validate, registrarEquipoSchema, actualizarEquipoSchema, asignarEquipoSchema, verificarInventarioSchema, crearCategoriaSchema, actualizarCategoriaSchema, registrarUsoEquipoSchema, actualizarUsoEquipoSchema, registrarUsoEquipoExternoSchema, actualizarAsignacionEquipoSchema } from '../validators/equiposValidator.js';
@@ -19,12 +19,15 @@ const router = express.Router();
 // Endpoint para recibir datos de páginas externas: documento, placa, imagenes (opcional)
 // El nombre se obtiene automáticamente buscando el usuario por documento en la BD
 // Las imágenes se guardan en Imagenes_Equipo asociadas al equipo identificado por la placa
+// Registro externo: público sin token; con token exige permiso ASSIGN o ASSIGN_TO_APRENDIZ (web/app).
 router.post('/uso/registro-externo', 
-  corsPublic, // Permitir cualquier origen para este endpoint público
+  corsPublic,
   webhookLimiter,
-  uploadEquipoImagePublico.array('imagenes', 10), // Aceptar hasta 10 imágenes
+  uploadEquipoImagePublico.array('imagenes', 10),
   handleUploadError,
-  parseFormData, // Parsear datos de multipart/form-data antes de validar
+  parseFormData,
+  optionalAuthenticate,
+  requireAnyPermissionIfAuthenticated([PERMISSIONS.EQUIPOS.ASSIGN, PERMISSIONS.EQUIPOS.ASSIGN_TO_APRENDIZ]),
   validate(registrarUsoEquipoExternoSchema),
   registrarUsoEquipoExterno
 );
@@ -246,6 +249,7 @@ router.post('/verificacion',
 // RUTAS DE HISTORIAL DE USO DE EQUIPOS
 // ============================================
 
+// Registrar uso de equipo por un aprendiz (web y app móvil; Instructor/Admin/Cuentadante)
 // Registrar inicio de sesión en un equipo (desde app Flutter)
 // Todos los usuarios autenticados pueden registrar su propio inicio de sesión
 router.post('/uso/inicio', 

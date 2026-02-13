@@ -769,17 +769,17 @@ export default function Ambientes() {
                 </div>
               </div>
 
-              {/* Sección de Instructores usando el nuevo endpoint */}
+              {/* Instructores y cuentadantes que usan este ambiente de manera recurrente (más de 2 veces consecutivas el mismo día) */}
               {viewAmbiente && (
-                <div className="ambiente-responsables">
+                <div className="ambiente-responsables ambiente-uso-recurrente">
                   <div className="ambiente-section-header">
                     <div>
                       <h4 className="ambiente-section-title">
                         <FiUsers size={20} />
-                        Instructores y Responsables Asignados
+                        Instructores y cuentadantes que usan este ambiente de manera recurrente
                       </h4>
                       <p className="ambiente-section-subtitle">
-                        Lista de instructores y cuentadantes secundarios asignados a este ambiente
+                        Se muestran quienes usan este ambiente más de 2 veces consecutivas el mismo día de la semana (ej. varios martes seguidos)
                       </p>
                     </div>
                     {isAdmin && instructores.length > 0 && (
@@ -793,81 +793,53 @@ export default function Ambientes() {
                       </button>
                     )}
                   </div>
-                  
-                  {loadingInstructores ? (
-                    <div className="loading-state">
-                      <p>Cargando instructores...</p>
-                    </div>
-                  ) : instructores.length > 0 ? (
+
+                  {viewAmbiente.uso_consecutivo_instructores?.length > 0 ? (
                     <div className="responsables-list">
-                      {instructores.map((instructor) => {
-                        const idInstructor = instructor.id_usuario || instructor.id_instructor
-                        const nombreInstructor = instructor.nombre_usuario || instructor.nombre_instructor
-                        const esCuentadante = instructor.es_cuentadante_secundario === true || instructor.rol === 'SECUNDARIO'
-                        const puedeCambiar = isAdmin || currentUser?.nombre_rol === 'Cuentadante'
-                        
-                        return (
-                          <div key={idInstructor} className="responsable-item">
-                            <div className="responsable-info">
-                              <div className="responsable-header">
-                                <strong>{nombreInstructor}</strong>
-                                {esCuentadante ? (
-                                  <span className="responsable-badge responsable-badge-secundario">
-                                    Cuentadante Secundario
-                                  </span>
-                                ) : (
-                                  <span className="responsable-badge responsable-badge-principal">
-                                    Instructor
-                                  </span>
-                                )}
-                              </div>
-                              <div className="responsable-meta">
-                                <span className="responsable-rol">
-                                  <FiUser size={14} />
-                                  {instructor.nombre_rol || 'Instructor'}
-                                </span>
-                                {instructor.cedula && (
-                                  <span className="responsable-fecha">
-                                    Cédula: {instructor.cedula}
-                                  </span>
-                                )}
-                              </div>
+                      {viewAmbiente.uso_consecutivo_instructores.map((item, idx) => (
+                        <div key={item.id_usuario ?? idx} className="responsable-item">
+                          <div className="responsable-info">
+                            <div className="responsable-header">
+                              <strong>{item.nombre_usuario ?? item.nombre_instructor}</strong>
+                              <span className="responsable-badge responsable-badge-recurrente">
+                                Uso recurrente
+                              </span>
                             </div>
-                            <div className="responsable-details">
-                              {instructor.total_ambientes > 0 && (
-                                <span className="responsable-clase">
-                                  <FiMapPin size={14} />
-                                  {instructor.total_ambientes} ambiente(s) asignado(s)
+                            <div className="responsable-meta">
+                              <span className="responsable-rol">
+                                <FiUser size={14} />
+                                {item.nombre_rol ?? 'Instructor'}
+                              </span>
+                              {item.cedula && (
+                                <span className="responsable-fecha">
+                                  Cédula: {item.cedula}
                                 </span>
-                              )}
-                              {puedeCambiar && !esCuentadante && (
-                                <button
-                                  className="btn btn-sm btn-verde"
-                                  onClick={() => handleCambiarCuentadanteSecundario(idInstructor)}
-                                  disabled={loading}
-                                  title="Cambiar a cuentadante secundario"
-                                >
-                                  <FiEdit2 size={12} />
-                                  Hacer Cuentadante
-                                </button>
                               )}
                             </div>
                           </div>
-                        )
-                      })}
+                          {item.uso_recurrente && (
+                            <div className="responsable-details">
+                              <span className="responsable-clase responsable-uso-recurrente-detail">
+                                <FiCalendar size={14} />
+                                {item.uso_recurrente.cantidad_dias} veces consecutivas ({item.uso_recurrente.dia_semana})
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      ))}
                     </div>
                   ) : (
                     <div className="ambiente-no-images">
                       <FiUsers size={48} />
-                      <p>No hay instructores asignados a este ambiente</p>
+                      <p>No hay instructores ni cuentadantes que usen este ambiente de manera recurrente</p>
                     </div>
                   )}
-                  
+
                   {isAdmin && (
                     <div className="ambiente-responsables-note">
                       <FiInfo size={16} />
                       <span>
-                        Los instructores con ambientes asignados pueden ser designados como cuentadantes secundarios. 
+                        Los instructores con ambientes asignados pueden ser designados como cuentadantes secundarios.
                         Solo el cuentadante principal o un Administrador puede realizar este cambio.
                       </span>
                     </div>

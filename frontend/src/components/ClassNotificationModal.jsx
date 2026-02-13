@@ -121,7 +121,8 @@ function ClassNotificationModal({ notification, onClose, onMarkAsRead }) {
     }
   }
 
-  if (!notification || !notification.metadata || !notification.metadata.acciones) {
+  // Requiere metadata; acciones son opcionales (clase_proxima_inicio es solo informativa)
+  if (!notification || !notification.metadata) {
     return null
   }
 
@@ -130,26 +131,29 @@ function ClassNotificationModal({ notification, onClose, onMarkAsRead }) {
     return null
   }
 
-  // Si la clase ya no está en "Programada", no mostrar el modal
-  if (estadoClase && estadoClase !== 'Programada') {
-    return null
+  const tipoNotificacion = notification.metadata.tipo || ''
+  const esInformativa = tipoNotificacion === 'clase_proxima_inicio'
+
+  // Para consentimiento: solo mostrar si la clase sigue "Programada"
+  if (!esInformativa) {
+    if (estadoClase && estadoClase !== 'Programada') {
+      return null
+    }
   }
 
   // Filtrar acciones de consentimiento si la clase ya no está en "Programada"
   let acciones = notification.metadata.acciones || []
-  if (estadoClase && estadoClase !== 'Programada') {
-    acciones = acciones.filter(accion => 
-      accion.tipo !== 'aceptar_consentimiento' && 
+  if (!esInformativa && estadoClase && estadoClase !== 'Programada') {
+    acciones = acciones.filter(accion =>
+      accion.tipo !== 'aceptar_consentimiento' &&
       accion.tipo !== 'rechazar_consentimiento'
     )
   }
 
-  // Si no hay acciones válidas, no mostrar el modal
-  if (acciones.length === 0) {
+  // Consentimiento sin acciones válidas no se muestra; informativa sí (solo botón Cerrar)
+  if (!esInformativa && acciones.length === 0) {
     return null
   }
-
-  const tipoNotificacion = notification.metadata.tipo || ''
 
   return (
     <>
@@ -181,40 +185,50 @@ function ClassNotificationModal({ notification, onClose, onMarkAsRead }) {
           <p className="class-notification-message">{notification.cuerpo}</p>
 
           <div className="class-notification-actions">
-            {acciones.map((accion, idx) => {
-              const estaProcesando = procesandoAccion === accion.tipo
-              const esIniciar = accion.tipo === 'iniciar_clase'
-              const esFinalizar = accion.tipo === 'finalizar_clase'
-              const esCancelar = accion.tipo === 'cancelar_clase'
-              const esAceptar = accion.tipo === 'aceptar_consentimiento'
-              const esRechazar = accion.tipo === 'rechazar_consentimiento'
+            {esInformativa ? (
+              <button
+                type="button"
+                className="class-notification-action-btn btn-default"
+                onClick={onClose}
+              >
+                Entendido
+              </button>
+            ) : (
+              acciones.map((accion, idx) => {
+                const estaProcesando = procesandoAccion === accion.tipo
+                const esIniciar = accion.tipo === 'iniciar_clase'
+                const esFinalizar = accion.tipo === 'finalizar_clase'
+                const esCancelar = accion.tipo === 'cancelar_clase'
+                const esAceptar = accion.tipo === 'aceptar_consentimiento'
+                const esRechazar = accion.tipo === 'rechazar_consentimiento'
 
-              return (
-                <button
-                  key={idx}
-                  type="button"
-                  className={`class-notification-action-btn ${
-                    esIniciar || esAceptar ? 'btn-iniciar' : 
-                    esFinalizar ? 'btn-finalizar' : 
-                    esCancelar || esRechazar ? 'btn-cancelar' : 
-                    'btn-default'
-                  }`}
-                  onClick={() => handleAccion(accion)}
-                  disabled={estaProcesando}
-                >
-                  {estaProcesando ? (
-                    <div className="loading-spinner class-notification-spinner"></div>
-                  ) : (
-                    <>
-                      {(esIniciar || esAceptar) && <FiPlay size={18} />}
-                      {esFinalizar && <FiSquare size={18} />}
-                      {(esCancelar || esRechazar) && <FiX size={18} />}
-                      {accion.label}
-                    </>
-                  )}
-                </button>
-              )
-            })}
+                return (
+                  <button
+                    key={idx}
+                    type="button"
+                    className={`class-notification-action-btn ${
+                      esIniciar || esAceptar ? 'btn-iniciar' :
+                      esFinalizar ? 'btn-finalizar' :
+                      esCancelar || esRechazar ? 'btn-cancelar' :
+                      'btn-default'
+                    }`}
+                    onClick={() => handleAccion(accion)}
+                    disabled={estaProcesando}
+                  >
+                    {estaProcesando ? (
+                      <div className="loading-spinner class-notification-spinner"></div>
+                    ) : (
+                      <>
+                        {(esIniciar || esAceptar) && <FiPlay size={18} />}
+                        {esFinalizar && <FiSquare size={18} />}
+                        {(esCancelar || esRechazar) && <FiX size={18} />}
+                        {accion.label}
+                      </>
+                    )}
+                  </button>
+                )
+              })
+            )}
           </div>
         </div>
       </div>

@@ -262,12 +262,28 @@ export const actualizarAsignacionEquipoSchema = z.object({
 const usuarioExternoSchema = z.object({
   ficha: z.string().min(1, 'La ficha es obligatoria').max(50, 'La ficha no puede exceder 50 caracteres').optional().nullable(),
   documento: z.string().min(5, 'El documento de identificación debe tener al menos 5 caracteres').max(20, 'El documento no puede exceder 20 caracteres'),
-  // CAMPOS DESACTIVADOS - No se reciben desde página externa
-  // dias_semana, diasSemana, hora_inicio, horaInicio, hora_fin, horaFin
+  dias_semana: z.array(z.union([
+    z.enum(diasSemanaEnum),
+    z.enum(diasSemanaEnumLower)
+  ])).optional().nullable().transform((val) => val ? normalizarDiasSemana(val) : null),
+  diasSemana: z.array(z.union([
+    z.enum(diasSemanaEnum),
+    z.enum(diasSemanaEnumLower)
+  ])).optional().nullable().transform((val) => val ? normalizarDiasSemana(val) : null),
+  hora_inicio: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9](:00)?$/, 'Formato de hora inválido (HH:MM o HH:MM:SS)').optional().nullable(),
+  horaInicio: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9](:00)?$/, 'Formato de hora inválido').optional().nullable(),
+  hora_fin: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9](:00)?$/, 'Formato de hora inválido').optional().nullable(),
+  horaFin: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9](:00)?$/, 'Formato de hora inválido').optional().nullable(),
 }).transform((data) => {
+  const dias = data.dias_semana ?? data.diasSemana ?? null;
+  const horaInicio = data.hora_inicio ?? data.horaInicio ?? null;
+  const horaFin = data.hora_fin ?? data.horaFin ?? null;
   return {
     ficha: data.ficha ? data.ficha.trim() : null,
     documento: data.documento.trim(),
+    dias_semana: dias,
+    hora_inicio: horaInicio,
+    hora_fin: horaFin,
   };
 });
 
@@ -295,13 +311,13 @@ const schemaFormatoAntiguo = z.object({
   };
 });
 
-// Schema para formato nuevo (array de usuarios)
+// Schema para formato nuevo (array de usuarios). Ambiente opcional para uso desde web/app con auth.
 const schemaFormatoNuevo = z.object({
   placa: z.string().min(1, 'La placa del equipo es obligatoria').max(100, 'La placa no puede exceder 100 caracteres'),
   ambiente: z.union([
-    z.string().min(1, 'El código del ambiente es obligatorio').max(50, 'El código del ambiente no puede exceder 50 caracteres'),
-    z.number().int().positive('El código del ambiente debe ser un número positivo')
-  ]).transform(val => String(val)),
+    z.string().min(1).max(50),
+    z.number().int().positive()
+  ]).transform(val => String(val)).optional().nullable(),
   usuarios: z.union([
     z.array(usuarioExternoSchema).min(1, 'Debe haber al menos un usuario').max(50, 'No se pueden registrar más de 50 usuarios a la vez'),
     z.string().transform((val) => {

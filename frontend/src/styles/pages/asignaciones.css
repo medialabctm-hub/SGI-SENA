@@ -1,4 +1,4 @@
-﻿/* ============================================
+/* ============================================
    ESTILOS PARA ASIGNACIONES
    ============================================ */
 
@@ -305,32 +305,49 @@
   margin-bottom: 1rem;
 }
 
+/* Mismo estilo que "Seleccionar columnas" (consultarEquipo) */
 .asignar-ambientes-dia-checkbox {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 10px;
-  border: 2px solid var(--success-800);
+  gap: 10px;
+  padding: 12px 16px;
   border-radius: 8px;
   cursor: pointer;
   transition: all 0.2s ease;
   background: white;
+  border: 2px solid var(--neutral-200);
+  position: relative;
+  user-select: none;
 }
 
 .asignar-ambientes-dia-checkbox:hover {
-  background: var(--success-700);
+  background: var(--neutral-50);
+  border-color: var(--neutral-300);
 }
 
 .asignar-ambientes-dia-checkbox input[type="checkbox"] {
-  width: 18px;
-  height: 18px;
-  accent-color: var(--success-800);
-  cursor: pointer;
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+  pointer-events: none;
 }
 
 .asignar-ambientes-dia-checkbox.selected {
-  background: var(--success-700);
-  border-color: var(--success-900);
+  border-color: var(--success-800);
+  background: var(--success-200);
+}
+
+.asignar-ambientes-dia-checkbox span {
+  font-size: 0.95rem;
+  color: var(--neutral-700);
+  font-weight: 500;
+  flex: 1;
+}
+
+.asignar-ambientes-dia-checkbox.selected span {
+  color: var(--neutral-900);
+  font-weight: 600;
 }
 
 /* Información de cantidad */

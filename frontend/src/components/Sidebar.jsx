@@ -124,7 +124,7 @@ export default function Sidebar({ user }) {
       // { title: 'Historial de Verificaciones', path: '/equipos/verificacion/historial', icon: <FiClock />, roles: ['all'] }, // DESACTIVADO
       // Historial de Uso - DESACTIVADO
       { title: 'Buscar Cuentadante', path: '/equipos/cuentadantes/buscar', icon: <FiSearch />, roles: ['Administrador'] },
-      { title: 'Gestión de Ambientes', path: '/ambientes', icon: <FiMapPin />, roles: ['Administrador'] },
+      { title: 'Gestión de Ambientes', path: '/ambientes', icon: <FiMapPin />, roles: ['Administrador', 'Cuentadante'] },
       { title: 'Asignar Ambientes', path: '/ambientes/asignar', icon: <FiUserCheck />, roles: ['Administrador'] }
     ],
     incidencias: [

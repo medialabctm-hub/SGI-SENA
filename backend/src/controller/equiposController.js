@@ -279,6 +279,9 @@ export async function obtenerEquipoPorCodigo(req, res) {
     }
 
     if (!equipoData) {
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/4fca1e6c-7d65-41f5-87f3-c0784e21a846', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'equiposController.js:obtenerEquipoPorCodigo', message: '404 equipo no encontrado', data: { codigoParam: codigo, userRole }, timestamp: Date.now(), hypothesisId: 'H1' }) }).catch(() => {});
+    // #endregion
     return res.status(404).json({ error: 'Equipo no encontrado' });
     }
 
@@ -337,8 +340,6 @@ export async function obtenerEquipoPorCodigo(req, res) {
     const responsablesConDias = responsables.map(resp => {
       // Parsear dias_semana si existe
       if (resp.dias_semana) {
-        let documentoOficial = documentoNormalizado;
-
         try {
           // Si es string, parsearlo; si ya es array, dejarlo como está
           if (typeof resp.dias_semana === 'string') {
@@ -2793,7 +2794,8 @@ export async function obtenerSesionesActivas(req, res) {
  */
 export async function registrarUsoEquipoExterno(req, res) {
   const uploadedFiles = []; // Para limpiar archivos en caso de error
-  
+  const asignadoPor = req.user?.id ?? null; // Cuando hay auth (web/app), quién registró el uso
+
   try {
     const { placa, ambiente, usuarios } = req.body;
     const files = req.files || (req.file ? [req.file] : []);
@@ -2832,22 +2834,21 @@ export async function registrarUsoEquipoExterno(req, res) {
     const codigoEquipo = equipo.codigo_equipo;
 
     // Verificar disponibilidad del equipo (estado_operativo y estado_fisico)
-    const disponibilidad = await verificarDisponibilidadEquipo(defaultDb, codigoEquipo)
-    
-    if (!disponibilidad.disponible) {
-      // Eliminar archivos subidos si el equipo no está disponible
+    const disponibilidad = await verificarDisponibilidadEquipo(defaultDb, codigoEquipo);
+    const bloqueadoPorDanadoConFisicoBueno = !disponibilidad.disponible
+      && disponibilidad.razon === 'Equipo dañado, no disponible para asignación'
+      && disponibilidad.estado_fisico === 'Bueno';
+    if (!bloqueadoPorDanadoConFisicoBueno && !disponibilidad.disponible) {
       if (files && files.length > 0) {
-        files.forEach((file) => {
-          deleteImageFile(file.filename);
-        });
+        files.forEach((file) => deleteImageFile(file.filename));
       }
-      return res.status(409).json({ 
+      return res.status(409).json({
         success: false,
         error: disponibilidad.razon,
         message: `El equipo con placa "${placa}" no está disponible para uso. Estado: ${disponibilidad.estado_operativo || 'N/A'}`,
         estado_operativo: disponibilidad.estado_operativo,
         estado_fisico: disponibilidad.estado_fisico
-      })
+      });
     }
     
     // Procesar imágenes si se enviaron
@@ -3111,6 +3112,28 @@ export async function registrarUsoEquipoExterno(req, res) {
         logger.warn('No se pudo ajustar id_usuario a NULL (puede existir restricción). Se intentará continuar.', { error: eNull?.message });
       }
 
+      // Asegurar que Historial_Uso_Equipos.id_usuario permita NULL (aprendices sin usuario en Usuarios)
+      try {
+        const [[colIdUsuarioHist]] = await connection.execute(
+          `SELECT IS_NULLABLE FROM INFORMATION_SCHEMA.COLUMNS 
+           WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'Historial_Uso_Equipos' AND COLUMN_NAME = 'id_usuario'`
+        );
+        if (colIdUsuarioHist && colIdUsuarioHist.IS_NULLABLE === 'NO') {
+          await connection.execute(
+            `ALTER TABLE Historial_Uso_Equipos MODIFY id_usuario INT NULL`
+          );
+          logger.info('Columna id_usuario en Historial_Uso_Equipos ajustada a NULL para registros externos');
+        }
+      } catch (eNullHist) {
+        logger.warn('No se pudo ajustar id_usuario a NULL en Historial_Uso_Equipos', { error: eNullHist?.message });
+      }
+
+      const [[colAsignadoPor]] = await connection.execute(
+        `SELECT COUNT(*) AS cnt FROM INFORMATION_SCHEMA.COLUMNS 
+         WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'Responsables_Equipo' AND COLUMN_NAME = 'asignado_por'`
+      );
+      const tieneAsignadoPor = colAsignadoPor?.cnt > 0;
+
       const tieneFicha = colFicha.cnt > 0;
       const tieneNombreExterno = colNombreExterno.cnt > 0;
       const tieneDocumentoExterno = colDocumentoExterno.cnt > 0;
@@ -3264,6 +3287,11 @@ export async function registrarUsoEquipoExterno(req, res) {
               if (tieneHoraFin && horaFinTime) {
                 camposResp.push('hora_fin')
                 valoresResp.push(horaFinTime)
+                placeholdersResp.push('?')
+              }
+              if (tieneAsignadoPor && asignadoPor) {
+                camposResp.push('asignado_por')
+                valoresResp.push(asignadoPor)
                 placeholdersResp.push('?')
               }
 
