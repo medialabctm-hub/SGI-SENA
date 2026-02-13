@@ -15,13 +15,14 @@ const tiposReporteValidos = [
 ];
 
 export const crearReporteSchema = z.object({
-  // codigo_equipo es opcional (puede ser reporte general o específico de equipo)
-  codigo_equipo: z.union([
-    z.string().min(1),
-    z.number().int().positive(),
-    z.null(),
-    z.undefined()
-  ]).optional().nullable(),
+  // codigo_equipo es opcional (puede ser reporte general o específico de equipo). "" se normaliza a undefined.
+  codigo_equipo: z.preprocess(
+    (val) => (val === '' || val === null ? undefined : val),
+    z.union([
+      z.string().min(1),
+      z.number().int().positive()
+    ]).optional()
+  ),
   tipo_reporte: z.enum(tiposReporteValidos, {
     errorMap: () => ({ 
       message: `Tipo de reporte inválido. Tipos válidos: ${tiposReporteValidos.join(', ')}` 
@@ -49,6 +50,11 @@ export const actualizarReporteSchema = z.object({
  * Middleware de validación genérico
  */
 export const validate = (schema) => (req, res, next) => {
+  // #region agent log
+  try {
+    fetch('http://127.0.0.1:7242/ingest/4fca1e6c-7d65-41f5-87f3-c0784e21a846',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'reportesValidator.js:validate',message:'body antes de parse',data:{codigo_equipo:req.body?.codigo_equipo,codigo_equipo_type:typeof req.body?.codigo_equipo,codigo_equipo_length:typeof req.body?.codigo_equipo==='string'?req.body.codigo_equipo.length:null},timestamp:Date.now(),hypothesisId:'H1'})}).catch(()=>{});
+  } catch (_) {}
+  // #endregion
   try {
     const validated = schema.parse(req.body);
     req.body = validated;
