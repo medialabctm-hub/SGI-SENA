@@ -88,6 +88,9 @@ export const actualizarEquipoSchema = z.object({
     z.null()
   ]).optional().nullable(),
   estado_fisico: z.enum(['Nuevo', 'Bueno', 'Regular', 'Malo', 'Dañado']).optional().nullable(),
+  estado_operativo: z.enum(['Disponible', 'En Uso', 'En Mantenimiento', 'Dañado', 'Dado de Baja'], {
+    errorMap: () => ({ message: 'Estado operativo inválido' }),
+  }).optional().nullable(),
   specs_completas: z.string().optional().nullable(),
   id_ambiente: z.union([
     z.number().int().positive(),
@@ -137,6 +140,13 @@ export const verificarInventarioSchema = z.object({
     errorMap: () => ({ message: 'Estado de verificación inválido. Debe ser: Verificado, Con Novedad o No Verificado' }),
   }),
   observaciones: z.string().max(1000).optional().nullable(),
+});
+
+export const solicitudAutorizacionMovimientoSchema = z.object({
+  codigo_equipo: z.union([z.number().int().positive(), z.string().transform(v => (v ? parseInt(v, 10) : 0))]),
+  id_ambiente_destino: z.union([z.number().int().positive(), z.string().transform(v => (v ? parseInt(v, 10) : 0))]),
+  motivo: z.string().min(1, 'El motivo es obligatorio').max(2000),
+  id_autorizador: z.union([z.number().int().positive(), z.string().transform(v => (v ? parseInt(v, 10) : 0))]),
 });
 
 export const crearCategoriaSchema = z.object({

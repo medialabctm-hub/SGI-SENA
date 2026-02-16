@@ -509,15 +509,52 @@ CREATE TABLE Historial_Equipos (
   estado_nuevo VARCHAR(50),
   fecha_evento DATETIME DEFAULT NOW(),
   registrado_por INT,
+  id_autorizado_por INT NULL COMMENT 'Usuario que autorizó el movimiento (cuando el equipo estaba verificado)',
+  motivo_autorizacion TEXT NULL COMMENT 'Motivo de la autorización para mover equipo verificado',
   FOREIGN KEY (codigo_equipo) REFERENCES Elementos(codigo_equipo) ON DELETE CASCADE,
   FOREIGN KEY (id_ambiente_anterior) REFERENCES Ambientes(id_ambiente) ON DELETE SET NULL,
   FOREIGN KEY (id_ambiente_nuevo) REFERENCES Ambientes(id_ambiente) ON DELETE SET NULL,
   FOREIGN KEY (registrado_por) REFERENCES Usuarios(id_usuario),
+  FOREIGN KEY (id_autorizado_por) REFERENCES Usuarios(id_usuario) ON DELETE SET NULL,
   INDEX idx_historial_fecha (codigo_equipo, fecha_evento DESC),
   INDEX idx_tipo (tipo_evento),
   INDEX idx_fecha_evento (fecha_evento DESC)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
 COMMENT = 'Registro histórico de eventos de equipos';
+
+-- ============================================
+-- SOLICITUDES DE AUTORIZACIÓN PARA MOVER EQUIPO VERIFICADO
+-- Flujo: solicitar → autorizador aprueba/rechaza → uso único al ejecutar el movimiento
+-- ============================================
+CREATE TABLE Solicitudes_Autorizacion_Movimiento (
+  id_solicitud INT PRIMARY KEY AUTO_INCREMENT,
+  codigo_equipo INT NOT NULL,
+  id_ambiente_origen INT NOT NULL,
+  id_ambiente_destino INT NOT NULL,
+  motivo TEXT NOT NULL COMMENT 'Motivo para realizar la acción (obligatorio)',
+  id_solicitante INT NOT NULL,
+  id_autorizador INT NOT NULL,
+  estado ENUM('Pendiente', 'Aprobada', 'Rechazada') NOT NULL DEFAULT 'Pendiente',
+  fecha_solicitud DATETIME NOT NULL DEFAULT NOW(),
+  fecha_resolucion DATETIME NULL,
+  id_resolucion_por INT NULL,
+  observacion_rechazo TEXT NULL,
+  fecha_uso DATETIME NULL COMMENT 'Cuando se usó esta autorización para ejecutar el movimiento (un solo uso)',
+  id_usado_por INT NULL,
+  id_historial_movimiento INT NULL COMMENT 'FK a Historial_Equipos cuando se usó',
+  FOREIGN KEY (codigo_equipo) REFERENCES Elementos(codigo_equipo) ON DELETE CASCADE,
+  FOREIGN KEY (id_ambiente_origen) REFERENCES Ambientes(id_ambiente) ON DELETE RESTRICT,
+  FOREIGN KEY (id_ambiente_destino) REFERENCES Ambientes(id_ambiente) ON DELETE RESTRICT,
+  FOREIGN KEY (id_solicitante) REFERENCES Usuarios(id_usuario) ON DELETE CASCADE,
+  FOREIGN KEY (id_autorizador) REFERENCES Usuarios(id_usuario) ON DELETE CASCADE,
+  FOREIGN KEY (id_resolucion_por) REFERENCES Usuarios(id_usuario) ON DELETE SET NULL,
+  FOREIGN KEY (id_usado_por) REFERENCES Usuarios(id_usuario) ON DELETE SET NULL,
+  FOREIGN KEY (id_historial_movimiento) REFERENCES Historial_Equipos(id_historial) ON DELETE SET NULL,
+  INDEX idx_autorizador_estado (id_autorizador, estado),
+  INDEX idx_equipo_estado_uso (codigo_equipo, estado, fecha_uso),
+  INDEX idx_solicitante (id_solicitante)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+COMMENT = 'Solicitudes de autorización para mover equipo verificado; un solo uso por autorización';
 
 -- ============================================
 -- TABLA DE AUDITORÍA
@@ -1578,3 +1615,12 @@ ANALYZE TABLE Estado_Equipo;
 --   COMMENT '1 = verificado en primera verificación de ambiente/aprendices'
 --   AFTER cuentadante_principal;
 -- ALTER TABLE Elementos ADD INDEX idx_verificado_ambiente (verificado_ambiente);
+
+-- ============================================
+-- Migración: autorización en historial de movimientos (entornos ya desplegados)
+-- Ejecutar si Historial_Equipos no tiene id_autorizado_por ni motivo_autorizacion.
+-- ============================================
+-- ALTER TABLE Historial_Equipos
+--   ADD COLUMN id_autorizado_por INT NULL COMMENT 'Usuario que autorizó el movimiento (equipo verificado)' AFTER registrado_por,
+--   ADD COLUMN motivo_autorizacion TEXT NULL COMMENT 'Motivo de la autorización' AFTER id_autorizado_por,
+--   ADD CONSTRAINT fk_historial_autorizado FOREIGN KEY (id_autorizado_por) REFERENCES Usuarios(id_usuario) ON DELETE SET NULL;

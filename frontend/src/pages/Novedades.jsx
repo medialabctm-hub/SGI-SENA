@@ -5,7 +5,7 @@ import Toast from '../components/Toast'
 import ConfirmModal from '../components/ConfirmModal'
 import CustomSelect from '../components/CustomSelect'
 import { FiAlertCircle, FiEye, FiCheckCircle, FiXCircle, FiEdit, FiPackage, FiFileText, FiSearch, FiCheck, FiX, FiList, FiType, FiTrash2, FiDownload, FiHash, FiUser, FiCalendar, FiClock, FiInfo } from 'react-icons/fi'
-import { parseApiResponse, buildErrorMessage } from '../utils/api'
+import { parseApiResponse, buildErrorMessage, descargarPDFNovedadRoboPerdida } from '../utils/api'
 import { useSocket } from '../contexts/SocketContext'
 import jsPDF from 'jspdf'
 import '../styles/pages/equipos.css'
@@ -271,9 +271,11 @@ export default function Novedades() {
       const data = await res.json()
 
       if (res.ok) {
-        setToast({ 
-          message: data.message || 'Novedad registrada correctamente', 
-          type: 'success' 
+        const tipoNovedad = form.tipo_novedad || ''
+        const esRoboOPerdida = tipoNovedad === 'Pérdida' || tipoNovedad === 'Robo'
+        setToast({
+          message: data.message || 'Novedad registrada correctamente',
+          type: 'success'
         })
         setForm({
           codigo_equipo: '',
@@ -281,9 +283,17 @@ export default function Novedades() {
           descripcion: '',
         })
         limpiarEquipo()
-        // Cambiar a la pestaña de ver y actualizar lista
         setActiveTab('ver')
         await fetchNovedades()
+        if (data.id && esRoboOPerdida) {
+          try {
+            await descargarPDFNovedadRoboPerdida(data.id)
+            setToast({ message: 'Novedad registrada. Se descargó el acta en PDF.', type: 'success' })
+          } catch (e) {
+            console.error('Error al descargar PDF acta:', e)
+            setToast({ message: buildErrorMessage(e, 'Acta disponible en detalle de la novedad.'), type: 'warning' })
+          }
+        }
       } else {
         setToast({ 
           message: data.error || 'Error al registrar la novedad', 
@@ -791,13 +801,33 @@ export default function Novedades() {
                             <td>{formatDate(novedad.fecha_novedad)}</td>
                             <td>{getEstadoBadge(novedad.estado_resolucion)}</td>
                             <td>
-                              <button
-                                className="btn novedades-ver-btn"
-                                onClick={() => setSelectedNovedad(novedad)}
-                              >
-                                <FiEye size={14} className="novedades-icon-inline-small" />
-                                Ver
-                              </button>
+                              <div className="novedades-acciones-cell">
+                                <button
+                                  className="btn novedades-ver-btn"
+                                  onClick={() => setSelectedNovedad(novedad)}
+                                >
+                                  <FiEye size={14} className="novedades-icon-inline-small" />
+                                  Ver
+                                </button>
+                                {(novedad.tipo_novedad === 'Pérdida' || novedad.tipo_novedad === 'Robo') && (
+                                  <button
+                                    type="button"
+                                    className="btn novedades-ver-btn"
+                                    title="Descargar acta en PDF"
+                                    onClick={async () => {
+                                      try {
+                                        await descargarPDFNovedadRoboPerdida(novedad.id_novedad)
+                                        setToast({ message: 'Acta en PDF descargada correctamente', type: 'success' })
+                                      } catch (e) {
+                                        setToast({ message: buildErrorMessage(e, 'No se pudo descargar el PDF'), type: 'error' })
+                                      }
+                                    }}
+                                  >
+                                    <FiDownload size={14} className="novedades-icon-inline-small" />
+                                    PDF
+                                  </button>
+                                )}
+                              </div>
                             </td>
                           </tr>
                         ))}
@@ -1524,6 +1554,24 @@ export default function Novedades() {
                           >
                             <FiEdit size={14} />
                             Cambiar Estado
+                          </button>
+                        )}
+                        {(selectedNovedad.tipo_novedad === 'Pérdida' || selectedNovedad.tipo_novedad === 'Robo') && (
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              try {
+                                await descargarPDFNovedadRoboPerdida(selectedNovedad.id_novedad)
+                                setToast({ message: 'Acta en PDF descargada correctamente', type: 'success' })
+                              } catch (e) {
+                                setToast({ message: buildErrorMessage(e, 'No se pudo descargar el PDF'), type: 'error' })
+                              }
+                            }}
+                            className="btn novedades-ver-btn"
+                            title="Descargar acta en PDF"
+                          >
+                            <FiDownload size={14} />
+                            Descargar PDF
                           </button>
                         )}
                       </div>

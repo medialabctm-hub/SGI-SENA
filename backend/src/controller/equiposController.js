@@ -450,6 +450,7 @@ export async function actualizarEquipo(req, res) {
     }
 
     const body = req.body || {};
+    const userId = req.user?.id;
 
     // Resolver id_ambiente si viene 'ambiente' en texto o codigo
     let ambienteId = body.id_ambiente ?? null;
@@ -459,6 +460,60 @@ export async function actualizarEquipo(req, res) {
         [body.ambiente, body.ambiente, body.ambiente]
       );
       ambienteId = amb?.id_ambiente || null;
+    }
+
+    // Si se está cambiando el ambiente: equipo verificado requiere una solicitud de autorización aprobada (uso único)
+    let idSolicitudAutorizacion = body.id_solicitud_autorizacion != null ? Number(body.id_solicitud_autorizacion) : null;
+    if (ambienteId != null) {
+      const [[equipoActual]] = await defaultDb.execute(
+        'SELECT id_ambiente, COALESCE(verificado_ambiente, 0) AS verificado_ambiente FROM Elementos WHERE codigo_equipo = ?',
+        [codigoEquipo]
+      );
+      if (!equipoActual) {
+        return res.status(404).json({ error: 'Equipo no encontrado' });
+      }
+      const ambienteCambia = Number(equipoActual.id_ambiente) !== Number(ambienteId);
+      if (ambienteCambia && equipoActual.verificado_ambiente === 1) {
+        if (!idSolicitudAutorizacion || idSolicitudAutorizacion <= 0) {
+          return res.status(403).json({
+            error: 'Equipo verificado en ambiente',
+            detalle: 'Para mover un equipo verificado debe usar una autorización aprobada. Cree una solicitud de autorización y espere a que el autorizador la apruebe, luego seleccione esa autorización al guardar.'
+          });
+        }
+        const [[solicitud]] = await defaultDb.execute(
+          `SELECT id_solicitud, codigo_equipo, id_ambiente_origen, id_ambiente_destino, id_autorizador, motivo, estado, fecha_uso
+           FROM Solicitudes_Autorizacion_Movimiento WHERE id_solicitud = ?`,
+          [idSolicitudAutorizacion]
+        );
+        if (!solicitud) {
+          return res.status(404).json({ error: 'Solicitud de autorización no encontrada' });
+        }
+        if (solicitud.estado !== 'Aprobada') {
+          return res.status(403).json({
+            error: 'La autorización no está aprobada',
+            detalle: 'Solo puede usar una solicitud en estado Aprobada.'
+          });
+        }
+        if (solicitud.fecha_uso != null) {
+          return res.status(403).json({
+            error: 'Autorización ya utilizada',
+            detalle: 'Cada autorización tiene un solo uso. Debe crear una nueva solicitud.'
+          });
+        }
+        if (Number(solicitud.codigo_equipo) !== codigoEquipo) {
+          return res.status(403).json({ error: 'La autorización no corresponde a este equipo' });
+        }
+        if (Number(solicitud.id_ambiente_destino) !== Number(ambienteId)) {
+          return res.status(403).json({
+            error: 'La autorización no aplica para el ambiente destino seleccionado'
+          });
+        }
+        if (Number(solicitud.id_ambiente_origen) !== Number(equipoActual.id_ambiente)) {
+          return res.status(403).json({
+            error: 'El ambiente actual del equipo no coincide con la autorización'
+          });
+        }
+      }
     }
 
     // Solo valor_ingreso para el valor del equipo (no costo) y así mantener una sola columna en BD
@@ -485,16 +540,74 @@ export async function actualizarEquipo(req, res) {
     if (ambienteId) {
       sets.push('id_ambiente = ?');
       params.push(ambienteId);
+      // Registrar quién realizó el cambio (para el trigger de historial)
+      if (userId) {
+        sets.push('registrado_por = ?');
+        params.push(userId);
+      }
     }
 
-    if (sets.length === 0) {
+    const estadoOperativo = body.estado_operativo != null && body.estado_operativo !== ''
+      ? String(body.estado_operativo).trim()
+      : null;
+    const tieneEstadoOperativo = estadoOperativo && ['Disponible', 'En Uso', 'En Mantenimiento', 'Dañado', 'Dado de Baja'].includes(estadoOperativo);
+
+    if (sets.length === 0 && !tieneEstadoOperativo) {
       return res.status(400).json({ error: 'Sin cambios para actualizar' });
     }
 
-    const query = `UPDATE Elementos SET ${sets.join(', ')} WHERE codigo_equipo = ?`;
-    params.push(codigoEquipo);
-    const [result] = await defaultDb.execute(query, params);
-    if (result.affectedRows === 0) return res.status(404).json({ error: 'Equipo no encontrado' });
+    let affectedRows = 0;
+    if (sets.length > 0) {
+      const query = `UPDATE Elementos SET ${sets.join(', ')} WHERE codigo_equipo = ?`;
+      const queryParams = [...params, codigoEquipo];
+      const [result] = await defaultDb.execute(query, queryParams);
+      if (result.affectedRows === 0) return res.status(404).json({ error: 'Equipo no encontrado' });
+      affectedRows = result.affectedRows;
+    } else {
+      // Solo se actualiza estado operativo: verificar que el equipo exista
+      const [[existe]] = await defaultDb.execute('SELECT 1 FROM Elementos WHERE codigo_equipo = ?', [codigoEquipo]);
+      if (!existe) return res.status(404).json({ error: 'Equipo no encontrado' });
+    }
+
+    // Actualizar estado operativo en Estado_Equipo si se envió
+    if (tieneEstadoOperativo) {
+      await defaultDb.execute(
+        `INSERT INTO Estado_Equipo (codigo_equipo, estado_operativo, fecha_actualizacion, actualizado_por)
+         VALUES (?, ?, NOW(), ?)
+         ON DUPLICATE KEY UPDATE estado_operativo = VALUES(estado_operativo), fecha_actualizacion = NOW(), actualizado_por = VALUES(actualizado_por)`,
+        [codigoEquipo, estadoOperativo, userId || null]
+      );
+      affectedRows = Math.max(affectedRows, 1);
+    }
+
+    // Si fue movimiento usando solicitud de autorización: marcar solicitud como usada y enlazar historial
+    if (ambienteId && idSolicitudAutorizacion && affectedRows > 0) {
+      const [[ultimoHistorial]] = await defaultDb.execute(
+        `SELECT id_historial FROM Historial_Equipos
+         WHERE codigo_equipo = ? AND tipo_evento = 'Movimiento Ambiente'
+         ORDER BY fecha_evento DESC LIMIT 1`,
+        [codigoEquipo]
+      );
+      if (ultimoHistorial) {
+        const idHistorial = ultimoHistorial.id_historial;
+        const [[sol]] = await defaultDb.execute(
+          'SELECT id_autorizador, motivo FROM Solicitudes_Autorizacion_Movimiento WHERE id_solicitud = ?',
+          [idSolicitudAutorizacion]
+        );
+        if (sol) {
+          await defaultDb.execute(
+            `UPDATE Solicitudes_Autorizacion_Movimiento
+             SET fecha_uso = NOW(), id_usado_por = ?, id_historial_movimiento = ?
+             WHERE id_solicitud = ?`,
+            [userId, idHistorial, idSolicitudAutorizacion]
+          );
+          await defaultDb.execute(
+            'UPDATE Historial_Equipos SET id_autorizado_por = ?, motivo_autorizacion = ? WHERE id_historial = ?',
+            [sol.id_autorizador, sol.motivo, idHistorial]
+          );
+        }
+      }
+    }
 
     // Emitir evento WebSocket para actualización en tiempo real
     try {
@@ -508,7 +621,7 @@ export async function actualizarEquipo(req, res) {
       logger.warn('Error al emitir evento Socket.io', { error: socketErr.message });
     }
 
-    return res.json({ ok: true, updated: result.affectedRows });
+    return res.json({ ok: true, updated: affectedRows });
   } catch (err) {
     return res.status(500).json({ error: 'Error al actualizar equipo', detalle: err.message });
   }
@@ -1553,6 +1666,74 @@ export async function consultarHistorialVerificaciones(req, res) {
     logger.error('Error al consultar historial de verificaciones', { error: err.message, stack: err.stack })
     return res.status(500).json({
       error: 'Error al consultar historial',
+      details: err.message
+    })
+  }
+}
+
+/**
+ * Obtener historial de movimientos de ambiente de un equipo
+ * Incluye quién autorizó cuando el equipo estaba verificado
+ */
+export async function obtenerHistorialMovimientos(req, res) {
+  try {
+    const { codigo } = req.params
+    let codigoEquipo = null
+    const codigoNumerico = Number.parseInt(codigo, 10)
+    if (Number.isFinite(codigoNumerico)) {
+      codigoEquipo = codigoNumerico
+    } else {
+      const [[row]] = await defaultDb.execute(
+        'SELECT codigo_equipo FROM Elementos WHERE r_centro = ? LIMIT 1',
+        [codigo]
+      )
+      codigoEquipo = row?.codigo_equipo ?? null
+    }
+    if (!codigoEquipo) {
+      return res.status(404).json({ error: 'Equipo no encontrado' })
+    }
+
+    const [movimientos] = await defaultDb.execute(
+      `SELECT
+        h.id_historial,
+        h.codigo_equipo,
+        h.tipo_evento,
+        h.descripcion,
+        h.id_ambiente_anterior,
+        h.id_ambiente_nuevo,
+        h.fecha_evento,
+        h.registrado_por,
+        h.id_autorizado_por,
+        h.motivo_autorizacion,
+        a1.nombre_ambiente AS ambiente_anterior,
+        a2.nombre_ambiente AS ambiente_nuevo,
+        u_reg.nombre_usuario AS registrado_por_nombre,
+        u_aut.nombre_usuario AS autorizado_por_nombre
+       FROM Historial_Equipos h
+       LEFT JOIN Ambientes a1 ON h.id_ambiente_anterior = a1.id_ambiente
+       LEFT JOIN Ambientes a2 ON h.id_ambiente_nuevo = a2.id_ambiente
+       LEFT JOIN Usuarios u_reg ON h.registrado_por = u_reg.id_usuario
+       LEFT JOIN Usuarios u_aut ON h.id_autorizado_por = u_aut.id_usuario
+       WHERE h.codigo_equipo = ? AND h.tipo_evento = 'Movimiento Ambiente'
+       ORDER BY h.fecha_evento DESC`,
+      [codigoEquipo]
+    )
+
+    const [[equipo]] = await defaultDb.execute(
+      `SELECT codigo_equipo, placa AS codigo_inventario, tipo, modelo, consecutivo
+       FROM Elementos WHERE codigo_equipo = ?`,
+      [codigoEquipo]
+    )
+
+    return res.json({
+      equipo,
+      movimientos,
+      total: movimientos.length
+    })
+  } catch (err) {
+    logger.error('Error al obtener historial de movimientos', { error: err.message, stack: err.stack })
+    return res.status(500).json({
+      error: 'Error al obtener historial de movimientos',
       details: err.message
     })
   }

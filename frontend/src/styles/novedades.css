@@ -131,6 +131,13 @@
   margin-top: 1rem;
 }
 
+.novedades-acciones-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
 /* Modal de detalle */
 .novedades-modal-overlay {
   position: fixed;

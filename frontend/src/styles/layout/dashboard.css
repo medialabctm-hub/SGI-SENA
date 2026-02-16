@@ -12,6 +12,60 @@
   margin-bottom: 18px;
 }
 
+.dashboard-alert {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 20px;
+  border-radius: 14px;
+  margin-bottom: 18px;
+  border: 2px solid;
+}
+
+.dashboard-alert-autorizaciones {
+  background: #fef3c7;
+  border-color: #f59e0b;
+  color: #92400e;
+}
+
+.dashboard-alert-icon {
+  font-size: 28px;
+  flex-shrink: 0;
+  color: #d97706;
+}
+
+.dashboard-alert-content {
+  flex: 1;
+}
+
+.dashboard-alert-content strong {
+  display: block;
+  font-size: 1rem;
+  margin-bottom: 4px;
+}
+
+.dashboard-alert-content p {
+  margin: 0;
+  font-size: 0.9rem;
+  opacity: 0.95;
+}
+
+.dashboard-alert-action {
+  padding: 10px 18px;
+  background: #d97706;
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.dashboard-alert-action:hover {
+  background: #b45309;
+}
+
 .cards-grid {
   display: grid;
   grid-template-columns: repeat(1, 1fr);

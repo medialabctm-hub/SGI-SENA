@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { FiChevronDown } from 'react-icons/fi'
 import '../styles/components/customSelect.css'
 
@@ -69,6 +70,7 @@ export default function CustomSelect({
 }) {
   const [isOpen, setIsOpen] = useState(false)
   const [focusedIndex, setFocusedIndex] = useState(-1)
+  const [dropdownPosition, setDropdownPosition] = useState(null)
   const selectRef = useRef(null)
   const dropdownRef = useRef(null)
 
@@ -82,6 +84,42 @@ export default function CustomSelect({
 
   // Encontrar la opción seleccionada
   const selectedOption = normalizedOptions.find(opt => opt.value === value)
+
+  // Calcular posición del dropdown al abrir (para Portal con position: fixed)
+  useEffect(() => {
+    if (!isOpen || disabled || !selectRef.current) {
+      setDropdownPosition(null)
+      return
+    }
+    const updatePosition = () => {
+      if (!selectRef.current) return
+      const rect = selectRef.current.getBoundingClientRect()
+      setDropdownPosition({
+        top: rect.bottom + 4,
+        left: rect.left,
+        width: Math.max(rect.width, 180)
+      })
+    }
+    updatePosition()
+    // Pequeño delay por si el layout no ha pintado
+    const t = requestAnimationFrame(updatePosition)
+    return () => cancelAnimationFrame(t)
+  }, [isOpen, disabled])
+
+  // Cerrar al hacer scroll o resize para evitar dropdown desfasado
+  useEffect(() => {
+    if (!isOpen) return
+    const handleScrollOrResize = () => {
+      setIsOpen(false)
+      setFocusedIndex(-1)
+    }
+    window.addEventListener('scroll', handleScrollOrResize, true)
+    window.addEventListener('resize', handleScrollOrResize)
+    return () => {
+      window.removeEventListener('scroll', handleScrollOrResize, true)
+      window.removeEventListener('resize', handleScrollOrResize)
+    }
+  }, [isOpen])
 
   // Cerrar dropdown al hacer click fuera
   useEffect(() => {
@@ -218,12 +256,19 @@ export default function CustomSelect({
         />
       </div>
 
-      {isOpen && !disabled && (
+      {isOpen && !disabled && dropdownPosition && createPortal(
         <div
           ref={dropdownRef}
-          className="custom-select-dropdown"
+          className="custom-select-dropdown custom-select-dropdown-portal"
           role="listbox"
           id={`${selectId}-listbox`}
+          style={{
+            position: 'fixed',
+            top: dropdownPosition.top,
+            left: dropdownPosition.left,
+            width: dropdownPosition.width,
+            minWidth: dropdownPosition.width
+          }}
         >
           {normalizedOptions.length === 0 ? (
             <div className="custom-select-option custom-select-option-empty">
@@ -250,7 +295,8 @@ export default function CustomSelect({
               )
             })
           )}
-        </div>
+        </div>,
+        document.body
       )}
 
       {error && (

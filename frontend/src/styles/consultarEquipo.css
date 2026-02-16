@@ -432,3 +432,38 @@
   background: var(--neutral-100, #f3f4f6);
   color: var(--neutral-600, #4b5563);
 }
+
+/* Bloque de autorización al cambiar ambiente de equipo verificado */
+.consultar-equipo-ambiente-edit {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.consultar-equipo-autorizacion {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+  padding: 8px;
+  background: var(--neutral-50, #f9fafb);
+  border-radius: 8px;
+  border: 1px solid var(--neutral-200, #e5e7eb);
+}
+
+.consultar-equipo-autorizacion-label {
+  font-size: 0.8rem;
+  color: var(--neutral-600, #4b5563);
+  font-weight: 500;
+}
+
+.consultar-equipo-autorizacion-sin-disponibles {
+  font-size: 0.85rem;
+  color: var(--neutral-600, #4b5563);
+  margin: 4px 0 0 0;
+}
+
+.consultar-equipo-autorizacion-sin-disponibles a {
+  color: var(--success-800);
+  text-decoration: underline;
+}

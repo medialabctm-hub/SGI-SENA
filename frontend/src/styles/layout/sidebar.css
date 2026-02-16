@@ -109,6 +109,24 @@
   border-left: 4px solid var(--success-800);
 }
 
+.sidebar-item .sidebar-badge {
+  margin-left: auto;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.sidebar-badge-pendientes {
+  background: var(--error-500, #ef4444);
+  color: white;
+}
+
 .sidebar-home {
   margin-bottom: 8px;
   font-weight: 600;

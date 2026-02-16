@@ -1,10 +1,11 @@
 import express from 'express';
-import { registrarEquipo, obtenerEquipoPorCodigo, listarEquipos, actualizarEquipo, eliminarEquipo, asignarEquipo, obtenerMisEquipos, listarAsignaciones, eliminarAsignacion, actualizarAsignacionEquipo, obtenerEquiposAmbientesInstructor, registrarVerificacionInventario, consultarHistorialVerificaciones, obtenerHistorialEquipo, actualizarCuentadantePrincipal, obtenerCuentadantePrincipal, buscarCuentadantePorDocumento, listarCategorias, crearCategoria, actualizarCategoria, eliminarCategoria, registrarInicioUso, registrarFinUso, consultarHistorialUso, obtenerHistorialEquipoUso, obtenerSesionesActivas, registrarUsoEquipoExterno } from '../controller/equiposController.js';
+import { registrarEquipo, obtenerEquipoPorCodigo, listarEquipos, actualizarEquipo, eliminarEquipo, asignarEquipo, obtenerMisEquipos, listarAsignaciones, eliminarAsignacion, actualizarAsignacionEquipo, obtenerEquiposAmbientesInstructor, registrarVerificacionInventario, consultarHistorialVerificaciones, obtenerHistorialEquipo, obtenerHistorialMovimientos, actualizarCuentadantePrincipal, obtenerCuentadantePrincipal, buscarCuentadantePorDocumento, listarCategorias, crearCategoria, actualizarCategoria, eliminarCategoria, registrarInicioUso, registrarFinUso, consultarHistorialUso, obtenerHistorialEquipoUso, obtenerSesionesActivas, registrarUsoEquipoExterno } from '../controller/equiposController.js';
+import { crearSolicitud, listarPendientesParaAutorizador, contarPendientesParaAutorizador, listarHistorialAutorizador, listarMisSolicitudes, aprobarSolicitud, rechazarSolicitud, listarDisponiblesParaMovimiento } from '../controller/autorizacionMovimientoController.js';
 import { authenticate, optionalAuthenticate } from '../middleware/authMiddleware.js';
 import { requirePermission, requireAnyPermission, requireAnyPermissionIfAuthenticated } from '../middleware/authorization.js';
 import { PERMISSIONS } from '../config/permissions.js';
 import { writeLimiter, readLimiter, strictLimiter, webhookLimiter, searchLimiter } from '../middleware/rateLimiter.js';
-import { validate, registrarEquipoSchema, actualizarEquipoSchema, asignarEquipoSchema, verificarInventarioSchema, crearCategoriaSchema, actualizarCategoriaSchema, registrarUsoEquipoSchema, actualizarUsoEquipoSchema, registrarUsoEquipoExternoSchema, actualizarAsignacionEquipoSchema } from '../validators/equiposValidator.js';
+import { validate, registrarEquipoSchema, actualizarEquipoSchema, asignarEquipoSchema, verificarInventarioSchema, solicitudAutorizacionMovimientoSchema, crearCategoriaSchema, actualizarCategoriaSchema, registrarUsoEquipoSchema, actualizarUsoEquipoSchema, registrarUsoEquipoExternoSchema, actualizarAsignacionEquipoSchema } from '../validators/equiposValidator.js';
 import { uploadEquipoImagePublico, handleUploadError } from '../middleware/uploadMiddleware.js';
 import { parseFormData } from '../middleware/parseFormData.js';
 import { corsPublic } from '../middleware/corsPublicMiddleware.js';
@@ -138,6 +139,53 @@ router.get('/cuentadantes/buscar/:documento',
   buscarCuentadantePorDocumento
 );
 
+// ============================================
+// SOLICITUDES DE AUTORIZACIÓN PARA MOVER EQUIPO VERIFICADO
+// ============================================
+router.post('/autorizacion-movimiento',
+  authenticate,
+  writeLimiter,
+  validate(solicitudAutorizacionMovimientoSchema),
+  requireAnyPermission([PERMISSIONS.EQUIPOS.VIEW, PERMISSIONS.EQUIPOS.UPDATE]),
+  crearSolicitud
+);
+router.get('/autorizacion-movimiento/pendientes/count',
+  authenticate,
+  readLimiter,
+  contarPendientesParaAutorizador
+);
+router.get('/autorizacion-movimiento/pendientes',
+  authenticate,
+  readLimiter,
+  listarPendientesParaAutorizador
+);
+router.get('/autorizacion-movimiento/historial',
+  authenticate,
+  readLimiter,
+  listarHistorialAutorizador
+);
+router.get('/autorizacion-movimiento/mis-solicitudes',
+  authenticate,
+  readLimiter,
+  listarMisSolicitudes
+);
+router.get('/autorizacion-movimiento/disponibles',
+  authenticate,
+  readLimiter,
+  requireAnyPermission([PERMISSIONS.EQUIPOS.VIEW, PERMISSIONS.EQUIPOS.UPDATE]),
+  listarDisponiblesParaMovimiento
+);
+router.put('/autorizacion-movimiento/:id/aprobar',
+  authenticate,
+  writeLimiter,
+  aprobarSolicitud
+);
+router.put('/autorizacion-movimiento/:id/rechazar',
+  authenticate,
+  writeLimiter,
+  rechazarSolicitud
+);
+
 // Obtener historial de verificaciones de un equipo específico
 // IMPORTANTE: Esta ruta debe ir ANTES de /:codigo para evitar conflictos
 router.get('/:codigo/historial-verificaciones', 
@@ -147,6 +195,16 @@ router.get('/:codigo/historial-verificaciones',
     PERMISSIONS.EQUIPOS.VIEW_OWN
   ]),
   obtenerHistorialEquipo
+);
+
+// Obtener historial de movimientos de ambiente de un equipo
+router.get('/:codigo/historial-movimientos',
+  authenticate,
+  requireAnyPermission([
+    PERMISSIONS.EQUIPOS.VIEW,
+    PERMISSIONS.EQUIPOS.VIEW_OWN
+  ]),
+  obtenerHistorialMovimientos
 );
 
 // Consultar equipo por código

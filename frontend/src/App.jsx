@@ -1,4 +1,4 @@
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import CambiarContrasena from './pages/CambiarContrasena';
@@ -25,6 +25,8 @@ import VerificarInventario from './pages/VerificarInventario';
 import Horarios from './pages/Horarios';
 import HistorialVerificaciones from './pages/HistorialVerificaciones';
 import HistorialVerificacionesGeneral from './pages/HistorialVerificacionesGeneral';
+import HistorialMovimientos from './pages/HistorialMovimientos';
+import AutorizacionesMovimiento from './pages/AutorizacionesMovimiento';
 // PÁGINAS DESACTIVADAS
 // import HistorialUsoEquipos from './pages/HistorialUsoEquipos';
 // import HistorialUsoEquipo from './pages/HistorialUsoEquipo';
@@ -278,6 +280,24 @@ export default function App() {
           </ProtectedRoute>
         }
       />
+      <Route
+        path="/equipos/historial-movimientos/:codigo"
+        element={
+          <ProtectedRoute>
+            <HistorialMovimientos />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/equipos/autorizaciones"
+        element={
+          <ProtectedRoute>
+            <AutorizacionesMovimiento />
+          </ProtectedRoute>
+        }
+      />
+      <Route path="/equipos/solicitar-autorizacion" element={<Navigate to="/equipos/autorizaciones#solicitar" replace />} />
+      <Route path="/equipos/autorizaciones-pendientes" element={<Navigate to="/equipos/autorizaciones#pendientes" replace />} />
       <Route
         path="/equipos/detalle/:codigoEquipo"
         element={

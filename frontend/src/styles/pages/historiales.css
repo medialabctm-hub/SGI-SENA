@@ -286,11 +286,9 @@
 
 .historial-verificaciones-subtitle {
   margin: 8px 0 0 0;
-  border: 1px solid var(--success-700);
   font-size: 0.9rem;
   padding: 8px 12px;
   border-radius: 6px;
-  background: var(--success-700);
 }
 
 .historial-verificaciones-refresh-btn {
@@ -626,5 +624,286 @@
 .historial-verificaciones-general-estado-badge-no-verificado {
   background: #f3f4f6;
   color: #6b7280;
+}
+
+/* Historial movimientos de ambiente */
+.historial-movimientos-autorizado {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--success-800);
+}
+
+/* Formulario solicitar autorización movimiento */
+.solicitud-autorizacion-form {
+  display: inline;
+  max-width: 560px;
+  margin-top: 1rem;
+}
+.solicitud-autorizacion-form .form-group {
+  margin-bottom: 1rem;
+}
+.solicitud-autorizacion-form .form-group label {
+  display: block;
+  margin-bottom: 0.35rem;
+  font-weight: 600;
+  color: var(--neutral-700);
+}
+.solicitud-autorizacion-form .required {
+  color: var(--error-700);
+}
+
+.solicitud-autorizacion-form .form-error {
+  display: block;
+  margin-top: 4px;
+  font-size: 0.85rem;
+  color: var(--error-700);
+}
+
+.solicitud-autorizacion-form .input-error {
+  border-color: var(--error-600) !important;
+}
+
+.solicitud-equipo-seleccionado {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  background: var(--neutral-50, #f9fafb);
+  border: 2px solid var(--success-800);
+  border-radius: 8px;
+}
+
+.solicitud-equipo-seleccionado span {
+  flex: 1;
+  font-size: 0.95rem;
+}
+
+.solicitud-equipo-limpiar {
+  background: none;
+  border: none;
+  color: var(--neutral-500);
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.solicitud-equipo-limpiar:hover {
+  color: var(--error-600);
+}
+
+.solicitud-resultados-placa {
+  list-style: none;
+  margin: 4px 0 0 0;
+  padding: 0;
+  border: 2px solid var(--neutral-200, #e5e7eb);
+  border-radius: 8px;
+  background: white;
+  max-height: 220px;
+  overflow-y: auto;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+}
+
+.solicitud-resultados-placa li {
+  margin: 0;
+  padding: 0;
+  border-bottom: 1px solid var(--neutral-100);
+}
+
+.solicitud-resultados-placa li:last-child {
+  border-bottom: none;
+}
+
+.solicitud-resultado-btn {
+  width: 100%;
+  text-align: left;
+  padding: 10px 12px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--neutral-800);
+}
+
+.solicitud-resultado-btn:hover {
+  background: var(--success-50, #ecfdf5);
+}
+
+.solicitud-resultado-vacio {
+  padding: 12px;
+  color: var(--neutral-600);
+  font-size: 0.9rem;
+}
+
+/* Pestañas y historial de autorizaciones */
+.solicitudes-autorizacion-tabs {
+  display: flex;
+  gap: 8px;
+  margin: 1rem 0 1rem 0;
+}
+
+.solicitudes-autorizacion-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  border: 2px solid var(--neutral-300);
+  border-radius: 10px;
+  background: white;
+  font-size: 0.95rem;
+  font-weight: 500;
+  cursor: pointer;
+  color: var(--neutral-700);
+  transition: all 0.2s ease;
+}
+
+.solicitudes-autorizacion-tab:hover {
+  border-color: var(--success-700);
+  background: var(--neutral-50);
+}
+
+.solicitudes-autorizacion-tab.active {
+  background: var(--success-800);
+  border-color: var(--success-800);
+  color: white;
+}
+
+.solicitudes-tab-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: 11px;
+  background: var(--error-500);
+  color: white;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.solicitudes-autorizacion-tab.active .solicitudes-tab-badge {
+  background: rgba(255,255,255,0.9);
+  color: var(--success-800);
+}
+
+.solicitudes-historial-filtro {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 1rem;
+}
+
+.solicitudes-historial-filtro label {
+  font-weight: 600;
+  color: var(--neutral-700);
+}
+
+.solicitudes-historial-select {
+  max-width: 280px;
+}
+
+.solicitudes-estado-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.solicitudes-estado-badge.aprobada {
+  background: #d1fae5;
+  color: #166534;
+}
+
+.solicitudes-estado-badge.rechazada {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+/* Vista autorizaciones: mismo patrón que Novedades (contenedor + pestañas) */
+.autorizaciones-form-container {
+  max-width: 1200px;
+}
+
+.autorizaciones-icon-wrapper {
+  background: var(--success-800);
+}
+
+.autorizaciones-icon-wrapper svg {
+  color: #fff !important;
+}
+
+.autorizaciones-header-content {
+  flex: 1;
+}
+
+.autorizaciones-title {
+  margin: 0;
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--neutral-800);
+}
+
+.autorizaciones-subtitle {
+  color: var(--muted);
+  margin-top: 8px;
+  font-size: 15px;
+}
+
+.autorizaciones-tabs {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 1.5rem;
+  border-bottom: 2px solid var(--neutral-200);
+  padding-bottom: 0;
+}
+
+.autorizaciones-tab {
+  padding: 0.75rem 1.5rem;
+  border: none;
+  background: transparent;
+  color: var(--neutral-700);
+  font-weight: 400;
+  font-size: 1rem;
+  cursor: pointer;
+  border-bottom: 3px solid transparent;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.autorizaciones-tab.active {
+  color: var(--success-800);
+  font-weight: 600;
+  border-bottom-color: var(--success-800);
+}
+
+.autorizaciones-tab:hover {
+  color: var(--success-800);
+}
+
+.autorizaciones-icon-inline {
+  display: inline-flex;
+  align-items: center;
+  margin-right: 8px;
+}
+
+.autorizaciones-gestion-toolbar {
+  margin-bottom: 1rem;
+}
+
+.autorizaciones-gestion-desc {
+  color: var(--muted);
+  font-size: 0.95rem;
+  margin: 0 0 1rem 0;
 }
 

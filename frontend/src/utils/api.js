@@ -236,3 +236,26 @@ export const getAuthHeaders = () => {
     ? { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
     : { 'Content-Type': 'application/json' };
 };
+
+/**
+ * Descarga el PDF de acta de novedad por robo/pérdida.
+ * @param {number} idNovedad - ID de la novedad (tipo Pérdida o Robo)
+ * @returns {Promise<void>} Resuelve al completar la descarga o rechaza si falla
+ */
+export async function descargarPDFNovedadRoboPerdida(idNovedad) {
+  const token = localStorage.getItem('token');
+  const res = await fetch(`/api/novedades/${idNovedad}/pdf`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data?.error || 'No se pudo generar el PDF');
+  }
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `Acta_Novedad_${idNovedad}.pdf`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
