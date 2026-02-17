@@ -7,6 +7,7 @@ import { FiArrowLeft, FiMapPin, FiRefreshCw, FiUser, FiUserCheck } from 'react-i
 import { parseApiResponse, buildErrorMessage } from '../utils/api'
 import '../styles/pages/equipos.css'
 import '../styles/pages/historiales.css'
+import { LoadingScreen } from './LoadingDemo'
 
 export default function HistorialMovimientos() {
   const { codigo } = useParams()
@@ -109,7 +110,7 @@ export default function HistorialMovimientos() {
 
             {loading && movimientos.length === 0 ? (
               <div className="historial-verificaciones-loading">
-                Cargando historial...
+                <LoadingScreen message="Cargando historial" />
               </div>
             ) : movimientos.length === 0 ? (
               <div className="historial-verificaciones-empty">

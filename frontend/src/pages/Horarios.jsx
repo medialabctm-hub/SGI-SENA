@@ -30,6 +30,7 @@ import { parseApiResponse, buildErrorMessage } from '../utils/api'
 import { useSocket } from '../contexts/SocketContext'
 import '../styles/pages/equipos.css'
 import '../styles/pages/horarios.css'
+import { LoadingScreen } from './LoadingDemo'
 
 export default function Horarios() {
   const [user, setUser] = useState(null)
@@ -891,65 +892,67 @@ export default function Horarios() {
             </div>
           </div>
 
-          {/* Filtros */}
-          <div className="horarios-filters-container">
-            <div className="horarios-filter-item">
-              <label className="horarios-filter-label">Ambiente</label>
-              <CustomSelect
-                name="id_ambiente"
-                className="horarios-filter-select"
-                value={filtros.id_ambiente}
-                onChange={e => setFiltros({ ...filtros, id_ambiente: e.target.value })}
-                options={[
-                  { value: '', label: 'Todos' },
-                  ...ambientes.map(amb => ({
-                    value: amb.id_ambiente.toString(),
-                    label: `${amb.codigo_ambiente} - ${amb.nombre_ambiente}`
-                  }))
-                ]}
-                placeholder="Todos los ambientes"
-              />
-            </div>
-            {user?.nombre_rol === 'Administrador' && (
+          {/* Filtros: ocultos cuando el formulario Nueva Clase está abierto */}
+          {!showForm && (
+            <div className="horarios-filters-container">
               <div className="horarios-filter-item">
-                <label className="horarios-filter-label">Instructor o Cuentadante</label>
+                <label className="horarios-filter-label">Ambiente</label>
                 <CustomSelect
-                  name="id_instructor"
+                  name="id_ambiente"
                   className="horarios-filter-select"
-                  value={filtros.id_instructor}
-                  onChange={e => setFiltros({ ...filtros, id_instructor: e.target.value })}
+                  value={filtros.id_ambiente}
+                  onChange={e => setFiltros({ ...filtros, id_ambiente: e.target.value })}
                   options={[
                     { value: '', label: 'Todos' },
-                    ...instructores.map(inst => ({
-                      value: inst.id_usuario.toString(),
-                      label: inst.nombre_rol ? `${inst.nombre_usuario} (${inst.nombre_rol})` : inst.nombre_usuario
+                    ...ambientes.map(amb => ({
+                      value: amb.id_ambiente.toString(),
+                      label: `${amb.codigo_ambiente} - ${amb.nombre_ambiente}`
                     }))
                   ]}
-                  placeholder="Todos"
+                  placeholder="Todos los ambientes"
                 />
               </div>
-            )}
-            <div className="horarios-filter-item">
-              <label className="horarios-filter-label">Fecha</label>
-              <input
-                type="date"
-                className="horarios-filter-input"
-                value={filtros.fecha}
-                onChange={e => setFiltros({ ...filtros, fecha: e.target.value })}
-              />
+              {user?.nombre_rol === 'Administrador' && (
+                <div className="horarios-filter-item">
+                  <label className="horarios-filter-label">Instructor o Cuentadante</label>
+                  <CustomSelect
+                    name="id_instructor"
+                    className="horarios-filter-select"
+                    value={filtros.id_instructor}
+                    onChange={e => setFiltros({ ...filtros, id_instructor: e.target.value })}
+                    options={[
+                      { value: '', label: 'Todos' },
+                      ...instructores.map(inst => ({
+                        value: inst.id_usuario.toString(),
+                        label: inst.nombre_rol ? `${inst.nombre_usuario} (${inst.nombre_rol})` : inst.nombre_usuario
+                      }))
+                    ]}
+                    placeholder="Todos"
+                  />
+                </div>
+              )}
+              <div className="horarios-filter-item">
+                <label className="horarios-filter-label">Fecha</label>
+                <input
+                  type="date"
+                  className="horarios-filter-input"
+                  value={filtros.fecha}
+                  onChange={e => setFiltros({ ...filtros, fecha: e.target.value })}
+                />
+              </div>
+              <div className="horarios-filter-item">
+                <label className="horarios-filter-label">Estado</label>
+                <CustomSelect
+                  name="estado_clase"
+                  className="horarios-filter-select"
+                  value={filtros.estado_clase}
+                  onChange={e => setFiltros({ ...filtros, estado_clase: e.target.value })}
+                  options={['', 'Programada', 'En Curso', 'Finalizada', 'Cancelada']}
+                  placeholder="Todos los estados"
+                />
+              </div>
             </div>
-            <div className="horarios-filter-item">
-              <label className="horarios-filter-label">Estado</label>
-              <CustomSelect
-                name="estado_clase"
-                className="horarios-filter-select"
-                value={filtros.estado_clase}
-                onChange={e => setFiltros({ ...filtros, estado_clase: e.target.value })}
-                options={['', 'Programada', 'En Curso', 'Finalizada', 'Cancelada']}
-                placeholder="Todos los estados"
-              />
-            </div>
-          </div>
+          )}
 
           {/* Formulario */}
           {showForm && (
@@ -1347,7 +1350,7 @@ export default function Horarios() {
           {/* Tabla de Clases */}
           {loading && clases.length === 0 ? (
             <div className="horarios-loading">
-              Cargando clases...
+              <LoadingScreen message="Cargando clases" />
             </div>
           ) : clases.length === 0 ? (
             <div className="horarios-empty">

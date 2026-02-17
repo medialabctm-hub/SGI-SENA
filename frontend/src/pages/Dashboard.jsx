@@ -7,6 +7,7 @@ import { FiPlus, FiAlertCircle, FiPackage, FiCheckCircle, FiDollarSign, FiTrendi
 import { parseApiResponse, buildErrorMessage, handleError } from '../utils/api'
 import { useSocket } from '../contexts/SocketContext'
 import '../styles/layout/dashboard.css'
+import { LoadingScreen } from './LoadingDemo'
 
 export default function Dashboard() {
   const [user, setUser] = useState(null)
@@ -218,8 +219,7 @@ export default function Dashboard() {
               </div>
               {loading ? (
                 <div className="stats-loading">
-                  <div className="loading-spinner"></div>
-                  <p>Cargando estadísticas...</p>
+                  <LoadingScreen message="Cargando estadísticas" />
                 </div>
               ) : stats ? (
                 <>

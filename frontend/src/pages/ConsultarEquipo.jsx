@@ -11,6 +11,7 @@ import * as XLSX from 'xlsx'
 import '../styles/pages/equipos.css'
 import '../styles/consultarEquipo.css'
 import '../styles/consultarEquipoBadges.css'
+import { LoadingScreen } from './LoadingDemo'
 
 export default function ConsultarEquipo() {
   const navigate = useNavigate()
@@ -820,7 +821,7 @@ export default function ConsultarEquipo() {
 
           <div className="consultar-equipo-content">
             {loading ? (
-              <div>Cargando equipos...</div>
+              <LoadingScreen message="Cargando equipos" />
             ) : equipos.length > 0 ? (
               <div className="consultar-equipo-table-wrapper">
                 <table className="users-table consultar-equipo-table">

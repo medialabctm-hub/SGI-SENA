@@ -12,6 +12,7 @@ import '../styles/pages/equipos.css'
 import '../styles/novedades.css'
 import '../styles/pages/reportes.css'
 import '../styles/components/modals.css'
+import { LoadingScreen } from './LoadingDemo'
 
 export default function Novedades() {
   const [activeTab, setActiveTab] = useState('ver') // 'ver', 'crear', o 'reportes'
@@ -755,8 +756,7 @@ export default function Novedades() {
               <>
                 {loading ? (
                   <div className="loading-state">
-                    <div className="loading-spinner"></div>
-                    <p>Cargando novedades...</p>
+                    <LoadingScreen message="Cargando novedades" />
                   </div>
                 ) : novedades.length === 0 ? (
                   <div className="empty-state">
@@ -812,7 +812,7 @@ export default function Novedades() {
                                 {(novedad.tipo_novedad === 'Pérdida' || novedad.tipo_novedad === 'Robo') && (
                                   <button
                                     type="button"
-                                    className="btn novedades-ver-btn"
+                                    className="btn novedades-pdf-btn"
                                     title="Descargar acta en PDF"
                                     onClick={async () => {
                                       try {
@@ -1345,8 +1345,7 @@ export default function Novedades() {
                     </form>
                 ) : loadingReportes ? (
                   <div className="loading-state">
-                    <div className="loading-spinner"></div>
-                    <p>Cargando reportes...</p>
+                    <LoadingScreen message="Cargando reportes" />
                   </div>
                 ) : reportes.length === 0 ? (
                   <div className="empty-state">
@@ -1406,7 +1405,7 @@ export default function Novedades() {
                                   Ver
                                 </button>
                                 <button
-                                  className="btn novedades-ver-btn"
+                                  className="btn novedades-pdf-btn"
                                   onClick={() => generarPDFReporte(reporte)}
                                   title="Descargar PDF"
                                 >
@@ -1567,7 +1566,7 @@ export default function Novedades() {
                                 setToast({ message: buildErrorMessage(e, 'No se pudo descargar el PDF'), type: 'error' })
                               }
                             }}
-                            className="btn novedades-ver-btn"
+                            className="btn novedades-pdf-btn"
                             title="Descargar acta en PDF"
                           >
                             <FiDownload size={14} />

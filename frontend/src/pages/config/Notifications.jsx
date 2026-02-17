@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import Toast from '../../components/Toast'
 import { parseApiResponse, buildErrorMessage, getAuthHeaders } from '../../utils/api'
 import '../../styles/notifications.css'
+import { LoadingScreen } from '../LoadingDemo'
 
 export default function Notifications() {
   const [email, setEmail] = useState(true)
@@ -75,8 +76,7 @@ export default function Notifications() {
     return (
       <div className="form-equipos notifications-container">
         <div className="notifications-loading">
-          <div className="loading-spinner"></div>
-          <p className="notifications-loading-text">Cargando preferencias...</p>
+          <LoadingScreen message="Cargando preferencias" />
         </div>
       </div>
     )

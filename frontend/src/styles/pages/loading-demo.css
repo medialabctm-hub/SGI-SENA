@@ -1,0 +1,87 @@
+/* ============================================
+   Loading Demo - SGI-SENA
+   ============================================ */
+
+.loading-demo-page {
+  min-height: 100vh;
+  background: #ffffff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  position: relative;
+}
+
+.loading-demo-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2rem;
+}
+
+/* Contenedor: fila de barras */
+.loading-demo-loader {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 8px;
+  height: 72px;
+}
+
+/* Cada barra: crece y decrece con delay escalonado (ola) */
+.loading-demo-bar {
+  width: 10px;
+  height: 56px;
+  border-radius: 8px;
+  background: linear-gradient(
+    to top,
+    var(--success-700) 100%
+  );
+  animation: loading-demo-bar-pulse 1.5s ease-in-out infinite;
+  animation-delay: calc(var(--i) * 0.08s);
+  transform-origin: bottom center;
+}
+
+@keyframes loading-demo-bar-pulse {
+  0%, 100% {
+    transform: scaleY(0.2);
+    opacity: 0.75;
+  }
+  50% {
+    transform: scaleY(1);
+    opacity: 1;
+  }
+}
+
+/* Texto "Cargando..." */
+.loading-demo-text {
+  color: var(--neutral-600);
+  font-size: 1rem;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  margin: 0;
+}
+
+.loading-demo-dots::after {
+  content: '';
+  animation: loading-demo-dots 1.7s steps(4, end) infinite;
+}
+
+/* Marca SGE-SENA */
+.loading-demo-brand {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--success-800);
+  letter-spacing: 0.12em;
+  margin: 0;
+  text-transform: uppercase;
+}
+
+
+@keyframes loading-demo-dots {
+  0%, 20% { content: ''; }
+  40% { content: '.'; }
+  60% { content: '..'; }
+  80%, 100% { content: '...'; }
+}

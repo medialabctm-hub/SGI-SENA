@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
+import { LoadingScreen } from '../pages/LoadingDemo';
 import '../styles/components/protectedRoute.css';
 
 export default function ProtectedRoute({ children }) {
@@ -51,11 +52,7 @@ export default function ProtectedRoute({ children }) {
   }
 
   if (loading) {
-    return (
-      <div className="protected-route-loading">
-        Cargando...
-      </div>
-    );
+    return <LoadingScreen fullPage />;
   }
 
   return children;

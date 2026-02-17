@@ -79,7 +79,7 @@
 
 .novedades-estado-badge.resuelto {
   color: var(--success-600);
-  background: var(--success-700);
+  background: var(--success-400);
 }
 
 .novedades-estado-badge.no-resuelto {
@@ -110,7 +110,19 @@
   display: flex;
   align-items: center;
   gap: 4px;
-  /* Los estilos base vienen de .btn en buttons.css */
+  background-color: var(--info-600);
+  color: var(--neutral-50);
+  /* Estilo distinto al PDF: Ver = info (azul), PDF = success (verde) */
+}
+
+.novedades-pdf-btn {
+  padding: 6px 12px;
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background-color: var(--success-700);
+  color: var(--neutral-50);
 }
 
 .novedades-icon-inline {

@@ -20,6 +20,7 @@ import Mantenimientos from './pages/Mantenimientos';
 import PaginaNoEncontrada from './pages/PaginaNoEncontrada.jsx';
 import Asignaciones from './pages/Asignaciones';
 import Ambientes from './pages/Ambientes';
+import DetalleAmbiente from './pages/DetalleAmbiente';
 import AsignarAmbientes from './pages/AsignarAmbientes';
 import VerificarInventario from './pages/VerificarInventario';
 import Horarios from './pages/Horarios';
@@ -27,6 +28,7 @@ import HistorialVerificaciones from './pages/HistorialVerificaciones';
 import HistorialVerificacionesGeneral from './pages/HistorialVerificacionesGeneral';
 import HistorialMovimientos from './pages/HistorialMovimientos';
 import AutorizacionesMovimiento from './pages/AutorizacionesMovimiento';
+import LoadingDemo from './pages/LoadingDemo';
 // PÁGINAS DESACTIVADAS
 // import HistorialUsoEquipos from './pages/HistorialUsoEquipos';
 // import HistorialUsoEquipo from './pages/HistorialUsoEquipo';
@@ -239,6 +241,14 @@ export default function App() {
         }
       />
       <Route
+        path="/ambientes/:id"
+        element={
+          <ProtectedRoute>
+            <DetalleAmbiente />
+          </ProtectedRoute>
+        }
+      />
+      <Route
         path="/horarios"
         element={
           <ProtectedRoute>
@@ -314,6 +324,8 @@ export default function App() {
           </ProtectedRoute>
         }
       />
+      {/* Demo aislada: animación de carga (sin auth) */}
+      <Route path="/loading-demo" element={<LoadingDemo />} />
       {/* Ruta 404 */}
       <Route element={<PaginaNoEncontrada />} path="*" />
         </Routes>

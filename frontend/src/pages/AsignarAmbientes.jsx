@@ -9,6 +9,7 @@ import { parseApiResponse, buildErrorMessage } from '../utils/api'
 import '../styles/pages/equipos.css'
 import '../styles/pages/verificaciones.css'
 import '../styles/pages/asignaciones.css'
+import { LoadingScreen } from './LoadingDemo'
 
 export default function AsignarAmbientes() {
   const [user, setUser] = useState(null)
@@ -514,8 +515,7 @@ export default function AsignarAmbientes() {
 
             {loading && asignaciones.length === 0 ? (
               <div className="asignar-ambientes-loading">
-                <div className="loading-spinner asignar-ambientes-loading-spinner"></div>
-                <p>Cargando asignaciones...</p>
+                <LoadingScreen message="Cargando asignaciones" />
               </div>
             ) : asignaciones.length === 0 ? (
               <div className="empty-state">

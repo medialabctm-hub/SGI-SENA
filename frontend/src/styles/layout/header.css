@@ -112,7 +112,7 @@
 
 .app-title .name {
   font-weight: 700;
-  color: var(--success-800);
+  color: rgba(1, 175, 0, 1);
   font-size: 18px;
 }
 

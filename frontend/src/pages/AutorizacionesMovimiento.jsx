@@ -20,6 +20,7 @@ import {
 import '../styles/pages/equipos.css'
 import '../styles/pages/historiales.css'
 import '../styles/components/modals.css'
+import { LoadingScreen } from './LoadingDemo'
 
 const TAB_PENDIENTES = 'pendientes'
 const TAB_HISTORIAL = 'historial'
@@ -272,7 +273,7 @@ export default function AutorizacionesMovimiento() {
                 <FiClipboard size={28} color="#fff" />
               </div>
               <div className="form-header-content autorizaciones-header-content">
-                <h2 className="autorizaciones-title">Autorizaciones de movimiento</h2>
+                <h2 className="autorizaciones-title">Autorizaciones de Movimiento</h2>
                 <p className="autorizaciones-subtitle">
                   Solicite autorización para mover un equipo verificado a otro ambiente, o gestione las solicitudes pendientes (Administrador/Cuentadante).
                 </p>
@@ -434,8 +435,7 @@ export default function AutorizacionesMovimiento() {
                     </p>
                     {loadingGestion && solicitudes.length === 0 ? (
                       <div className="loading-state">
-                        <div className="loading-spinner" />
-                        <p>Cargando...</p>
+                        <LoadingScreen />
                       </div>
                     ) : solicitudes.length === 0 ? (
                       <div className="empty-state">
@@ -496,8 +496,7 @@ export default function AutorizacionesMovimiento() {
                     </div>
                     {loadingGestion && historial.length === 0 ? (
                       <div className="loading-state">
-                        <div className="loading-spinner" />
-                        <p>Cargando...</p>
+                        <LoadingScreen />
                       </div>
                     ) : historial.length === 0 ? (
                       <div className="empty-state">

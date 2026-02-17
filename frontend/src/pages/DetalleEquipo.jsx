@@ -11,6 +11,7 @@ import { FiArrowLeft, FiUpload, FiTrash2, FiStar, FiImage, FiX, FiInfo, FiPackag
 import '../styles/pages/equipos.css';
 import '../styles/detalleEquipo.css';
 import '../styles/pages/ambientes.css';
+import { LoadingScreen } from './LoadingDemo';
 
 export default function DetalleEquipo() {
   const { codigoEquipo } = useParams();
@@ -397,7 +398,7 @@ export default function DetalleEquipo() {
         <div className="dashboard-layout">
           <Sidebar user={user} />
           <main className="dashboard-main">
-            <div className="detalle-equipo-loading">Cargando equipo...</div>
+            <LoadingScreen message="Cargando equipo" />
           </main>
         </div>
       </div>

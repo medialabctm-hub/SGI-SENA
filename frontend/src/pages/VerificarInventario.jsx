@@ -10,6 +10,7 @@ import { useNavigate } from 'react-router-dom'
 import { useSocket } from '../contexts/SocketContext'
 import '../styles/pages/equipos.css'
 import '../styles/pages/verificaciones.css'
+import { LoadingScreen } from './LoadingDemo'
 
 export default function VerificarInventario() {
   const [user, setUser] = useState(null)
@@ -380,8 +381,7 @@ export default function VerificarInventario() {
 
             {loading && ambientes.length === 0 ? (
               <div className="verificar-inventario-loading">
-                <div className="loading-spinner verificar-inventario-loading-spinner"></div>
-                <p>Cargando equipos...</p>
+                <LoadingScreen message="Cargando equipos" />
               </div>
             ) : ambientes.length === 0 ? (
               <div className="empty-state">

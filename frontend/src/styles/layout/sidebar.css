@@ -97,16 +97,20 @@
   flex-shrink: 0;
 }
 
+.sidebar-item.active svg {
+  color: var(--neutral-50);
+}
+
 .sidebar-item:hover {
   background: rgba(1, 175, 0, 0.08);
   color: var(--success-800);
 }
 
 .sidebar-item.active {
-  background: linear-gradient(90deg, rgba(1, 175, 0, 0.12), rgba(1, 175, 0, 0.04));
-  color: var(--success-800);
+  background: var(--success-700);
+  color: var(--neutral-50);
   font-weight: 600;
-  border-left: 4px solid var(--success-800);
+  /*border: 1px solid var(--success-800);*/
 }
 
 .sidebar-item .sidebar-badge {

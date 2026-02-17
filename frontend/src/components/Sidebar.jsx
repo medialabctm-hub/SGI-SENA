@@ -136,7 +136,7 @@ export default function Sidebar({ user }) {
       { title: 'Mis Equipos', path: '/mis-equipos', icon: <FiPackage />, roles: ['all'] },
       { title: 'Asignar Equipo', path: '/equipos/asignar', icon: <FiUsers />, roles: ['Administrador', 'Instructor', 'Cuentadante'] },
       { title: 'Verificar Inventario', path: '/equipos/verificar', icon: <FiCheckCircle />, roles: ['Instructor', 'Cuentadante'] },
-      { title: 'Autorizaciones de movimiento', path: '/equipos/autorizaciones', icon: <FiClipboard />, roles: ['Administrador', 'Instructor', 'Cuentadante'] },
+      { title: 'Autorizaciones', path: '/equipos/autorizaciones', icon: <FiClipboard />, roles: ['Administrador', 'Instructor', 'Cuentadante'] },
       { title: 'Buscar Cuentadante', path: '/equipos/cuentadantes/buscar', icon: <FiSearch />, roles: ['Administrador'] },
       { title: 'Gestión de Ambientes', path: '/ambientes', icon: <FiMapPin />, roles: ['Administrador', 'Cuentadante'] },
       { title: 'Asignar Ambientes', path: '/ambientes/asignar', icon: <FiUserCheck />, roles: ['Administrador'] }

@@ -10,6 +10,7 @@ import { parseApiResponse, buildErrorMessage } from '../utils/api'
 import { useSocket } from '../contexts/SocketContext'
 import '../styles/pages/equipos.css'
 import '../styles/pages/mantenimientos.css'
+import { LoadingScreen } from './LoadingDemo'
 
 export default function Mantenimientos() {
   const navigate = useNavigate()
@@ -586,8 +587,7 @@ export default function Mantenimientos() {
             <>
               {loading ? (
             <div className="loading-state">
-              <div className="loading-spinner"></div>
-              <p>Cargando mantenimientos...</p>
+              <LoadingScreen message="Cargando mantenimientos" />
             </div>
           ) : mantenimientos.length === 0 ? (
             <div className="empty-state">
@@ -674,7 +674,7 @@ export default function Mantenimientos() {
             <>
               {cargandoOpciones ? (
                 <div className="loading-state">
-                  <p>Cargando opciones de mantenimiento...</p>
+                  <LoadingScreen message="Cargando opciones de mantenimiento" />
                 </div>
               ) : (
                 <form onSubmit={handleSubmitCrear}>
