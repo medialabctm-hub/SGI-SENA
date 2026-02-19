@@ -2,38 +2,40 @@ import { useEffect } from 'react'
 import { useDuplicados } from '../contexts/DuplicadosContext'
 
 /**
- * Componente que bloquea la navegación cuando hay duplicados pendientes.
+ * Bloquea la navegación cuando hay duplicados pendientes o una importación en curso.
  * Intercepta pushState/replaceState y el botón atrás/adelante.
+ * Durante importación solo se impide el cambio de ruta; el modal de duplicados se muestra solo por duplicados.
  */
 export default function NavigationBlocker() {
-  const { tieneDuplicadosPendientes, mostrarModalBloqueo } = useDuplicados()
+  const { tieneDuplicadosPendientes, importacionEnCurso, mostrarModalBloqueo } = useDuplicados()
+  const debeBloquear = tieneDuplicadosPendientes || importacionEnCurso
 
   useEffect(() => {
-    if (!tieneDuplicadosPendientes) return
+    if (!debeBloquear) return
 
     const rutaActual = window.location.pathname + window.location.search + window.location.hash
 
     const handlePopState = (event) => {
-      if (!tieneDuplicadosPendientes) return
+      if (!debeBloquear) return
       event?.preventDefault?.()
       window.history.pushState(null, '', rutaActual)
-      mostrarModalBloqueo()
+      if (tieneDuplicadosPendientes) mostrarModalBloqueo()
     }
 
     const originalPushState = window.history.pushState
     const originalReplaceState = window.history.replaceState
 
     window.history.pushState = function (state, title, url) {
-      if (tieneDuplicadosPendientes && url && url !== rutaActual) {
-        mostrarModalBloqueo()
+      if (debeBloquear && url && url !== rutaActual) {
+        if (tieneDuplicadosPendientes) mostrarModalBloqueo()
         return
       }
       return originalPushState.apply(this, arguments)
     }
 
     window.history.replaceState = function (state, title, url) {
-      if (tieneDuplicadosPendientes && url && url !== rutaActual) {
-        mostrarModalBloqueo()
+      if (debeBloquear && url && url !== rutaActual) {
+        if (tieneDuplicadosPendientes) mostrarModalBloqueo()
         return
       }
       return originalReplaceState.apply(this, arguments)
@@ -46,7 +48,7 @@ export default function NavigationBlocker() {
       window.history.pushState = originalPushState
       window.history.replaceState = originalReplaceState
     }
-  }, [tieneDuplicadosPendientes, mostrarModalBloqueo])
+  }, [debeBloquear, tieneDuplicadosPendientes, mostrarModalBloqueo])
 
   return null
 }

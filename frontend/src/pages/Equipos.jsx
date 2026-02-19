@@ -179,7 +179,7 @@ export default function Equipos() {
         setForm(prev => ({ ...prev, id_cuentadante: '' }))
       }
     } catch (err) {
-      handleError(err, (msg) => setErrores(prev => ({ ...prev, cuentadante: msg })), 'Error al buscar el cuentadante')
+      handleError(err, (errObj) => setErrores(prev => ({ ...prev, cuentadante: typeof errObj === 'string' ? errObj : errObj?.message ?? 'Error al buscar el cuentadante' })), 'Error al buscar el cuentadante')
       setCuentadanteEncontrado(null)
       setForm(prev => ({ ...prev, id_cuentadante: '' }))
     } finally {

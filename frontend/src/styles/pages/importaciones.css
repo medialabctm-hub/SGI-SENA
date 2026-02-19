@@ -1,4 +1,4 @@
-﻿/* ============================================
+/* ============================================
    ESTILOS PARA IMPORTACIONES
    ============================================ */
 
@@ -579,17 +579,199 @@
 }
 
 /* ============================================
+   MODAL DE CARGA - IMPORTACIÓN EQUIPOS
+   ============================================ */
+
+.importacion-loading-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 999999;
+  animation: importacionLoadingFadeIn 0.2s ease-out;
+}
+
+@keyframes importacionLoadingFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.importacion-loading-modal {
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  padding: 2rem 2.5rem;
+  max-width: 380px;
+  width: 90%;
+  text-align: center;
+  animation: importacionLoadingSlideIn 0.3s ease-out;
+}
+
+@keyframes importacionLoadingSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.importacion-loading-animation {
+  margin-bottom: 1.25rem;
+}
+
+.importacion-loading-gato {
+  width: 130px;
+  height: 102px;
+  margin: 0 auto;
+  display: block;
+  animation: importacionGatoFloat 1.8s ease-in-out infinite;
+}
+
+.importacion-loading-doc {
+  animation: importacionDocMove 1.2s ease-in-out infinite;
+  transform-origin: 102px 69px;
+}
+
+.importacion-loading-cola {
+  animation: importacionGatoCola 1.4s ease-in-out infinite;
+  transform-origin: 28px 55px;
+}
+
+.importacion-loading-oreja {
+  transform-origin: 50% 100%;
+  animation: importacionGatoOreja 2s ease-in-out infinite;
+}
+
+.importacion-loading-gato-ojo {
+  animation: importacionGatoParpadeo 2.5s ease-in-out infinite;
+}
+
+.importacion-loading-gato-bigote {
+  animation: importacionGatoBigote 1.5s ease-in-out infinite;
+}
+
+@keyframes importacionGatoFloat {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+@keyframes importacionDocMove {
+  0%,
+  100% {
+    transform: rotate(-3deg);
+  }
+  50% {
+    transform: rotate(2deg);
+  }
+}
+
+@keyframes importacionGatoParpadeo {
+  0%,
+  45%,
+  55%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.2;
+  }
+}
+
+@keyframes importacionGatoBigote {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+
+@keyframes importacionGatoCola {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  50% {
+    transform: rotate(-8deg);
+  }
+}
+
+@keyframes importacionGatoOreja {
+  0%,
+  90%,
+  100% {
+    transform: scale(1);
+  }
+  93%,
+  97% {
+    transform: scale(1.05);
+  }
+}
+
+.importacion-loading-text {
+  margin: 0 0 0.5rem 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--neutral-800);
+}
+
+.importacion-loading-percent {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--success-800);
+  margin-bottom: 1rem;
+  line-height: 1;
+}
+
+.importacion-loading-bar {
+  height: 8px;
+  background: var(--neutral-200);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.importacion-loading-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--success-700), var(--success-800));
+  border-radius: 4px;
+  transition: width 0.25s ease-out;
+}
+
+/* ============================================
    IMPORTAR USUARIOS
    ============================================ */
 
 .importar-usuarios-description {
   color: #666;
   margin-bottom: 1rem;
+  margin-left: 25px;
   font-size: 0.9rem;
+  width: 1100px;
 }
 
 .importar-usuarios-download-section {
   margin-bottom: 1rem;
+  margin-left: 25px;
+  width: 213px;
 }
 
 .importar-usuarios-download-btn {
@@ -623,6 +805,8 @@
   font-weight: 600;
   color: #1a2a3a;
   font-size: 0.9rem;
+  width: 170px;
+  margin-left: 520px;
 }
 
 .importar-usuarios-file-dropzone {
@@ -632,6 +816,8 @@
   text-align: center;
   background: #f5f5f5;
   transition: all 0.2s;
+  margin-left: 25px;
+  max-width: 1145px;
 }
 
 .importar-usuarios-file-dropzone.has-file {
@@ -648,6 +834,9 @@
   flex-direction: column;
   align-items: center;
   gap: 0.5rem;
+  width: 200px;
+  margin-left: 455px;
+  margin-right: 455px;
 }
 
 .importar-usuarios-file-name {
@@ -676,6 +865,7 @@
   display: flex;
   justify-content: center;
   margin-top: 1rem;
+  margin-bottom: 8px;
 }
 
 .importar-usuarios-submit-btn {
