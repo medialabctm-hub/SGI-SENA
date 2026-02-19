@@ -292,11 +292,15 @@ const diaSemanaFlexible = z.string().min(1).transform((s) => {
   return n;
 });
 
+// Convierte array que puede tener elementos "Lunes,Martes" en array de días sueltos para validar
+const aplanarDiasSemana = (arr) =>
+  (arr || []).flatMap((s) => String(s).split(',').map((x) => x.trim()).filter(Boolean));
+
 const usuarioExternoSchema = z.object({
   ficha: z.string().min(1, 'La ficha es obligatoria').max(50, 'La ficha no puede exceder 50 caracteres').optional().nullable(),
   documento: z.string().min(5, 'El documento de identificación debe tener al menos 5 caracteres').max(20, 'El documento no puede exceder 20 caracteres'),
   dias_semana: z.union([
-    z.array(diaSemanaFlexible).transform((val) => (val && val.length ? normalizarDiasSemana(val) : null)),
+    z.array(z.string().min(1)).transform(aplanarDiasSemana).pipe(z.array(diaSemanaFlexible).transform((val) => (val && val.length ? normalizarDiasSemana(val) : null))),
     z.string().transform((s) => {
       const trimmed = (s && String(s).trim()) || '';
       if (!trimmed) return null;
@@ -305,7 +309,7 @@ const usuarioExternoSchema = z.object({
     })
   ]).optional().nullable(),
   diasSemana: z.union([
-    z.array(diaSemanaFlexible).transform((val) => (val && val.length ? normalizarDiasSemana(val) : null)),
+    z.array(z.string().min(1)).transform(aplanarDiasSemana).pipe(z.array(diaSemanaFlexible).transform((val) => (val && val.length ? normalizarDiasSemana(val) : null))),
     z.string().transform((s) => {
       const trimmed = (s && String(s).trim()) || '';
       if (!trimmed) return null;

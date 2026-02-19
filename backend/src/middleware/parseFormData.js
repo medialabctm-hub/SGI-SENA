@@ -78,8 +78,8 @@ export const parseFormData = (req, res, next) => {
               diasSemana: diasSemanaStr,
               error: e.message
             });
-            // Si es un string simple, intentar como array de un elemento
-            usuario.dias_semana = [diasSemanaStr];
+            // Si no es JSON, puede ser "Lunes,Martes" o "Lunes"; dividir por coma
+            usuario.dias_semana = diasSemanaStr.split(',').map((s) => s.trim()).filter(Boolean);
           }
         } else {
           usuario.dias_semana = diasSemanaStr;
@@ -106,14 +106,14 @@ export const parseFormData = (req, res, next) => {
           if (typeof diasSemanaStr === 'string') {
             try {
               parsedUsuario.dias_semana = JSON.parse(diasSemanaStr);
-            } catch (e) {
-              logger.warn('Error al parsear diasSemana en usuario', {
-                diasSemana: diasSemanaStr,
-                error: e.message
-              });
-              // Si es un string simple, intentar como array de un elemento
-              parsedUsuario.dias_semana = [diasSemanaStr];
-            }
+          } catch (e) {
+            logger.warn('Error al parsear diasSemana en usuario', {
+              diasSemana: diasSemanaStr,
+              error: e.message
+            });
+            // Si no es JSON, puede ser "Lunes,Martes"; dividir por coma
+            parsedUsuario.dias_semana = diasSemanaStr.split(',').map((s) => s.trim()).filter(Boolean);
+          }
           } else {
             parsedUsuario.dias_semana = diasSemanaStr;
           }
