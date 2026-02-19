@@ -47,7 +47,8 @@ export class EquipoRepository extends BaseRepository {
    */
   async findAll(filters = {}, pagination = {}, sorting = {}) {
     const page = Math.max(1, parseInt(pagination.page) || 1);
-    const limit = Math.min(100, Math.max(1, parseInt(pagination.limit) || 50));
+    // Máximo 5000 por página para permitir carga completa en app móvil (o paginación incremental)
+    const limit = Math.min(5000, Math.max(1, parseInt(pagination.limit) || 50));
     const offset = (page - 1) * limit;
     
     const sortField = sorting.field || 'codigo_equipo';
@@ -239,7 +240,7 @@ export class EquipoRepository extends BaseRepository {
     
     // Sanitizar valores para prevenir SQL injection (ya son números enteros validados)
     // Asegurar que sean enteros positivos
-    const safeLimit = Math.max(1, Math.min(100, Math.floor(validLimit)));
+    const safeLimit = Math.max(1, Math.min(5000, Math.floor(validLimit)));
     const safeOffset = Math.max(0, Math.floor(validOffset));
     
     query += ` LIMIT ${safeLimit} OFFSET ${safeOffset}`;

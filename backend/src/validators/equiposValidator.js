@@ -210,14 +210,30 @@ export const actualizarUsoEquipoSchema = z.object({
 const diasSemanaEnum = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
 const diasSemanaEnumLower = ['lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado', 'domingo'];
 
-// Función para normalizar días de la semana
+// Mapa de variantes sin tilde / lowercase a valor canónico (para formularios que envían "Miercoles", "Sabado", etc.)
+const diaNormalizadoMap = {
+  lunes: 'Lunes', martes: 'Martes', miercoles: 'Miércoles', miércoles: 'Miércoles',
+  jueves: 'Jueves', viernes: 'Viernes', sabado: 'Sábado', sábado: 'Sábado', domingo: 'Domingo',
+};
+
+/** Normaliza un solo día (string) al valor canónico del enum. Acepta con/sin tildes y cualquier capitalización. */
+function normalizarUnDia(val) {
+  if (val == null || typeof val !== 'string') return null;
+  const s = val.trim();
+  if (!s) return null;
+  const key = s.toLowerCase().normalize('NFD').replace(/\u0307/g, '').replace(/\u0301/g, ''); // sin tildes
+  return diaNormalizadoMap[key] ?? (diasSemanaEnum.includes(s) ? s : (diasSemanaEnumLower.includes(s.toLowerCase()) ? diasSemanaEnum[diasSemanaEnumLower.indexOf(s.toLowerCase())] : null));
+}
+
+// Función para normalizar array de días de la semana (acepta strings con espacios, mayúsculas, con/sin tildes)
 const normalizarDiasSemana = (dias) => {
   if (!dias || !Array.isArray(dias)) return null;
-  return dias.map(dia => {
-    const diaLower = dia.toLowerCase();
-    const index = diasSemanaEnumLower.indexOf(diaLower);
-    return index >= 0 ? diasSemanaEnum[index] : dia;
-  });
+  const out = [];
+  for (const d of dias) {
+    const normalized = normalizarUnDia(typeof d === 'string' ? d : String(d));
+    if (normalized && !out.includes(normalized)) out.push(normalized);
+  }
+  return out.length ? out : null;
 };
 
 /**
@@ -269,17 +285,34 @@ export const actualizarAsignacionEquipoSchema = z.object({
  * El nombre se obtiene automáticamente buscando el usuario por documento en la base de datos
  */
 
+// Schema flexible para un día: acepta "Lunes", "lunes", "Miercoles", "miércoles", etc. y normaliza al canónico
+const diaSemanaFlexible = z.string().min(1).transform((s) => {
+  const n = normalizarUnDia(s);
+  if (!n) throw new Error('Día de la semana inválido. Use: Lunes, Martes, Miércoles, Jueves, Viernes, Sábado, Domingo.');
+  return n;
+});
+
 const usuarioExternoSchema = z.object({
   ficha: z.string().min(1, 'La ficha es obligatoria').max(50, 'La ficha no puede exceder 50 caracteres').optional().nullable(),
   documento: z.string().min(5, 'El documento de identificación debe tener al menos 5 caracteres').max(20, 'El documento no puede exceder 20 caracteres'),
-  dias_semana: z.array(z.union([
-    z.enum(diasSemanaEnum),
-    z.enum(diasSemanaEnumLower)
-  ])).optional().nullable().transform((val) => val ? normalizarDiasSemana(val) : null),
-  diasSemana: z.array(z.union([
-    z.enum(diasSemanaEnum),
-    z.enum(diasSemanaEnumLower)
-  ])).optional().nullable().transform((val) => val ? normalizarDiasSemana(val) : null),
+  dias_semana: z.union([
+    z.array(diaSemanaFlexible).transform((val) => (val && val.length ? normalizarDiasSemana(val) : null)),
+    z.string().transform((s) => {
+      const trimmed = (s && String(s).trim()) || '';
+      if (!trimmed) return null;
+      const parsed = trimmed.includes(',') ? trimmed.split(',').map((x) => x.trim()) : [trimmed];
+      return normalizarDiasSemana(parsed);
+    })
+  ]).optional().nullable(),
+  diasSemana: z.union([
+    z.array(diaSemanaFlexible).transform((val) => (val && val.length ? normalizarDiasSemana(val) : null)),
+    z.string().transform((s) => {
+      const trimmed = (s && String(s).trim()) || '';
+      if (!trimmed) return null;
+      const parsed = trimmed.includes(',') ? trimmed.split(',').map((x) => x.trim()) : [trimmed];
+      return normalizarDiasSemana(parsed);
+    })
+  ]).optional().nullable(),
   hora_inicio: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9](:00)?$/, 'Formato de hora inválido (HH:MM o HH:MM:SS)').optional().nullable(),
   horaInicio: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9](:00)?$/, 'Formato de hora inválido').optional().nullable(),
   hora_fin: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9](:00)?$/, 'Formato de hora inválido').optional().nullable(),
@@ -345,10 +378,10 @@ const schemaFormatoNuevo = z.object({
   ]),
 });
 
-// Schema que acepta ambos formatos
+// Schema que acepta ambos formatos. Se prueba primero el formato nuevo (usuarios array) para evitar fallar por documento faltante en raíz.
 export const registrarUsoEquipoExternoSchema = z.union([
-  schemaFormatoAntiguo,
-  schemaFormatoNuevo
+  schemaFormatoNuevo,
+  schemaFormatoAntiguo
 ]).transform((data) => {
   // Asegurar que siempre tengamos el formato nuevo
   if (data.usuarios && Array.isArray(data.usuarios)) {

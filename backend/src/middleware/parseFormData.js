@@ -61,9 +61,10 @@ export const parseFormData = (req, res, next) => {
 
     // Si no hay usuarios pero hay campos de usuario en el nivel raíz (formato antiguo)
     // Convertir a formato nuevo
-    if (!parsedBody.usuarios && (parsedBody.documento)) {
+    const documentoRaiz = (parsedBody.documento ?? parsedBody.cedula ?? parsedBody.doc ?? '').toString().trim();
+    if (!parsedBody.usuarios && documentoRaiz) {
       const usuario = {
-        documento: parsedBody.documento || '',
+        documento: documentoRaiz,
       };
 
       // Parsear diasSemana si viene como string
@@ -144,8 +145,9 @@ export const parseFormData = (req, res, next) => {
     // Si ya venía un array de usuarios válido, usarlo (cada usuario debe tener documento y opcional campos de horario)
     if (parsedBody.usuarios && Array.isArray(parsedBody.usuarios)) {
       sanitized.usuarios = parsedBody.usuarios.map(u => {
+        const doc = (u.documento ?? u.cedula ?? u.doc ?? '').toString().trim();
         const usuarioSanitizado = {
-          documento: u.documento ? String(u.documento).trim() : undefined,
+          documento: doc || undefined,
           dias_semana: u.dias_semana || null,
           hora_inicio: u.hora_inicio || null,
           hora_fin: u.hora_fin || null
@@ -156,9 +158,9 @@ export const parseFormData = (req, res, next) => {
         }
         return usuarioSanitizado;
       });
-    } else if (parsedBody.documento) {
+    } else if (documentoRaiz) {
       // Formato antiguo / simple: documento (y opcional ficha) en nivel raíz
-      const usuarioRoot = { documento: String(parsedBody.documento).trim() };
+      const usuarioRoot = { documento: documentoRaiz };
       if (parsedBody.ficha && String(parsedBody.ficha).trim().length > 0) {
         usuarioRoot.ficha = String(parsedBody.ficha).trim();
       }
