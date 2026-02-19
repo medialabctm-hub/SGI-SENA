@@ -106,18 +106,24 @@ export default function CustomSelect({
     return () => cancelAnimationFrame(t)
   }, [isOpen, disabled])
 
-  // Cerrar al hacer scroll o resize para evitar dropdown desfasado
+  // Cerrar al hacer scroll (de la página) o resize para evitar dropdown desfasado.
+  // No cerrar si el scroll ocurre dentro del propio dropdown (lista de opciones).
   useEffect(() => {
     if (!isOpen) return
-    const handleScrollOrResize = () => {
+    const handleScroll = (e) => {
+      if (dropdownRef.current && dropdownRef.current.contains(e.target)) return
       setIsOpen(false)
       setFocusedIndex(-1)
     }
-    window.addEventListener('scroll', handleScrollOrResize, true)
-    window.addEventListener('resize', handleScrollOrResize)
+    const handleResize = () => {
+      setIsOpen(false)
+      setFocusedIndex(-1)
+    }
+    window.addEventListener('scroll', handleScroll, true)
+    window.addEventListener('resize', handleResize)
     return () => {
-      window.removeEventListener('scroll', handleScrollOrResize, true)
-      window.removeEventListener('resize', handleScrollOrResize)
+      window.removeEventListener('scroll', handleScroll, true)
+      window.removeEventListener('resize', handleResize)
     }
   }, [isOpen])
 
