@@ -513,18 +513,6 @@ export default function ImportarEquipos({ onImportComplete, onEstadoDuplicadosCh
                 </div>
               </div>
             )}
-            
-            <button
-              type="button"
-              className="importar-equipos-cuentadante-save-button"
-              onClick={handleSaveCuentadante}
-              disabled={!cuentadanteEncontrado || savingCuentadante || loadingCuentadante}
-              title="Asignar cuentadante a elementos importados previamente (solo si no se asignó durante la importación)"
-            >
-              {savingCuentadante && <div className="loading-spinner importar-equipos-loading-spinner-tiny"></div>}
-              <FiSave size={16} />
-              {savingCuentadante ? 'Guardando...' : 'Asignar a Elementos Importados'}
-            </button>
           </div>
           {cuentadanteActual && (
             <p className="importar-equipos-cuentadante-current">

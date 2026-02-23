@@ -118,8 +118,7 @@
 
 .importar-equipos-cuentadante-found {
   padding: 1rem;
-  background: var(--success-700);
-  border: 2px solid var(--success-800);
+  border: 1px solid var(--success-800);
   border-radius: 8px;
   margin-top: 1rem;
 }
@@ -221,10 +220,8 @@
 }
 
 .importar-equipos-error {
-  padding: 1rem;
-  background: var(--error-100);
+  padding: 0.2rem;
   color: var(--error-700);
-  border-radius: 8px;
   margin-bottom: 1rem;
   display: flex;
   align-items: center;
@@ -234,7 +231,6 @@
 .importar-equipos-cuentadante-section-warning {
   margin-top: 2rem;
   padding: 1.5rem;
-  background: var(--warning-50);
   border-radius: 8px;
   border: 1px solid var(--warning-600);
 }
@@ -295,7 +291,7 @@
 }
 
 .importar-equipos-cuentadante-search-button:disabled {
-  background: var(--info-500);
+  background: var(--success-700);
   cursor: not-allowed;
   opacity: 0.7;
   transform: none;
@@ -381,7 +377,7 @@
 
 .importar-equipos-cuentadante-save-button {
   padding: 0.75rem 1.5rem;
-  background: var(--warning-600);
+  background: var(--warning-400);
   color: var(--neutral-900);
   border: none;
   border-radius: 6px;
@@ -444,9 +440,8 @@
 .importar-equipos-resultado-stat-fallidos {
   text-align: center;
   padding: 1rem;
-  background: var(--error-100);
   border-radius: 8px;
-  border: 1px solid var(--error-200);
+  border: 1px solid var(--neutral-200);
 }
 
 .importar-equipos-resultado-stat-fallidos-number {

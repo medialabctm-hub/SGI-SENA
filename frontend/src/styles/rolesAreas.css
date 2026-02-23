@@ -142,7 +142,6 @@
 }
 
 .role-status-badge.active {
-  background: var(--success-700);
   color: var(--success-800);
 }
 

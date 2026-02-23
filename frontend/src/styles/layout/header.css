@@ -1,6 +1,5 @@
 /* Header - Nuevo estilo banner blanco */
 .app-header-wrapper {
-  background: linear-gradient(135deg, #f0f9f4 0%, #e8f5ea 25%, #f0f9f4 50%, #e8f5ea 75%, #f0f9f4 100%);
   background-size: 200% 200%;
   animation: gradientShift 15s ease infinite;
   padding: 20px;

@@ -227,13 +227,11 @@
 }
 
 .tipos-equipo-badge.equipo {
-  background: #e3f2fd;
   color: var(--info-600);
 }
 
 .tipos-equipo-badge.componente {
-  background: #fff3e0;
-  color: #f57c00;
+    color: #f57c00;
 }
 
 .tipos-equipo-actions {
