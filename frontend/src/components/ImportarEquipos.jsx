@@ -82,7 +82,7 @@ export default function ImportarEquipos({ onImportComplete, onEstadoDuplicadosCh
       })
       const data = await parseApiResponse(res, 'Error al obtener cuentadante principal')
       setCuentadanteActual(data.cuentadante_principal || '')
-      // Mostrar la Documento si está disponible, sino el nombre
+      // Mostrar el Documento si está disponible, sino el nombre
       setCuentadantePrincipal(data.cuentadante_cedula || data.cuentadante_principal || '')
     } catch (err) {
       console.error('Error al obtener cuentadante principal:', err)
@@ -93,7 +93,7 @@ export default function ImportarEquipos({ onImportComplete, onEstadoDuplicadosCh
 
   const buscarCuentadante = async () => {
     if (!cuentadantePrincipal.trim()) {
-      setError('Ingresa la Documento del cuentadante')
+      setError('Ingresa el Documento del cuentadante')
       return
     }
 
@@ -133,7 +133,7 @@ export default function ImportarEquipos({ onImportComplete, onEstadoDuplicadosCh
 
   const handleSaveCuentadante = async () => {
     if (!cuentadantePrincipal.trim()) {
-      setError('La Documento del cuentadante es obligatoria')
+      setError('el Documento del cuentadante es obligatoria')
       return
     }
 

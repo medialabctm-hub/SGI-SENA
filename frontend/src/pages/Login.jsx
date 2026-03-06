@@ -20,7 +20,7 @@ export default function Login() {
     // Validación mínima
     const nuevosErrores = {};
     if (!cedula) {
-      nuevosErrores.cedula_usuario = 'La Documento es obligatoria';
+      nuevosErrores.cedula_usuario = 'El Documento es obligatorio';
     }
     if (!contrasena) {
       nuevosErrores.contraseña_usuario = 'La contraseña es obligatoria';

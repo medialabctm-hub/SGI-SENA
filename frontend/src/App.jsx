@@ -25,6 +25,7 @@ import VerificarInventario from './pages/VerificarInventario';
 import Horarios from './pages/Horarios';
 import HistorialVerificaciones from './pages/HistorialVerificaciones';
 import HistorialVerificacionesGeneral from './pages/HistorialVerificacionesGeneral';
+import TerminosCondiciones from './pages/TerminosCondiciones';
 // PÁGINAS DESACTIVADAS
 // import HistorialUsoEquipos from './pages/HistorialUsoEquipos';
 // import HistorialUsoEquipo from './pages/HistorialUsoEquipo';
@@ -58,6 +59,10 @@ export default function App() {
             <Register />
           </RedirectIfAuth>
         }
+      />
+      <Route
+        path="/terminos-condiciones"
+        element={<TerminosCondiciones />}
       />
       <Route
         path="/olvidar-contrasena"

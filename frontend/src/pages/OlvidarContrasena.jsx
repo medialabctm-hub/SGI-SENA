@@ -22,7 +22,7 @@ export default function OlvidarContrasena() {
     // Validaciones
     const nuevosErrores = {};
     if (!cedula) {
-      nuevosErrores.cedula = 'La Documento es obligatoria';
+      nuevosErrores.cedula = 'El Documento es obligatorio';
     }
     if (!correo) {
       nuevosErrores.correo = 'El correo es obligatorio';

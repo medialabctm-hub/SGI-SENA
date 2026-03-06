@@ -485,7 +485,7 @@ export default function AsignarEquipo() {
                         buscarUsuario()
                       }
                     }}
-                    placeholder="Ingresa la Documento del usuario"
+                    placeholder="Ingresa el Documento del usuario"
                     className="search-equipo-input"
                   />
                   <button

@@ -18,6 +18,7 @@ export default function Register() {
   const [telefono, setTelefono] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
+  const [aceptaTerminos, setAceptaTerminos] = useState(false)
   const [mostrarPassword, setMostrarPassword] = useState(false)
   const [mostrarConfirmPassword, setMostrarConfirmPassword] = useState(false)
   const [rol, setRol] = useState('Aprendiz')
@@ -26,6 +27,12 @@ export default function Register() {
   const [errores, setErrores] = useState({})
   const navigate = useNavigate()
   const [toast, setToast] = useState(null)
+
+  const handleVerTerminos = (event) => {
+    event.preventDefault()
+    event.stopPropagation()
+    navigate('/terminos-condiciones')
+  }
 
   useEffect(() => {
     async function fetchRoles() {
@@ -69,9 +76,12 @@ export default function Register() {
     const errorEspaciosNombre = validarEspaciosInicioFinalNombre(name, 'nombre')
     if (errorEspaciosNombre) nuevosErrores.nombre_usuario = errorEspaciosNombre
     if (!cedula) {
-      nuevosErrores.cedula_usuario = 'La Documento es obligatoria'
+      nuevosErrores.cedula_usuario = 'El Documento es obligatorio'
     } else if (validarCaracteresEspeciales(cedula, 'Documento')) {
       nuevosErrores.cedula_usuario = validarCaracteresEspeciales(cedula, 'Documento')
+    }
+    if (!aceptaTerminos) {
+      nuevosErrores.acepta_terminos = 'Debes aceptar los términos y el tratamiento de datos para registrarte'
     }
     setErrores(nuevosErrores)
     if (Object.keys(nuevosErrores).length > 0) return
@@ -245,6 +255,27 @@ export default function Register() {
               </p>
             </>
           )}
+          <div className="form-row form-row-full" style={{ textAlign: 'left', marginTop: '4px' }}>
+            <label className="form-checkbox-label">
+              <input
+                type="checkbox"
+                className="form-checkbox terms-checkbox"
+                checked={aceptaTerminos}
+                onChange={e => setAceptaTerminos(e.target.checked)}
+              />
+              <span className="terms-checkbox-text">
+                He leído y acepto los{' '}
+                <button
+                  type="button"
+                  className="terms-link-button"
+                  onClick={handleVerTerminos}
+                >
+                  <strong>Términos, Condiciones y la Política de Tratamiento de Datos</strong> {' '}
+                </button>{' '}
+              </span>
+            </label>
+            {errores.acepta_terminos && <div className="error-msg">{errores.acepta_terminos}</div>}
+          </div>
           <button className="btn primary" type="submit">Registrarse</button>
         </form>
 
