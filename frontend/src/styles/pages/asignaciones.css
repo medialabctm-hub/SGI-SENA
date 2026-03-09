@@ -339,7 +339,7 @@
   margin-bottom: 1rem;
   border-radius: 8px;
   background-color: var(--info-100);
-  border-left: 4px solid var(--info-600);
+  border-left: 8px solid var(--info-600);
   color: var(--info-900);
 }
 

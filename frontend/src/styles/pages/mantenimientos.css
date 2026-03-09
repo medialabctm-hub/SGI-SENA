@@ -179,7 +179,7 @@
   background: var(--neutral-50);
   padding: 1rem;
   border-radius: 10px;
-  border-left: 4px solid var(--success-500);
+  border-left: 8px solid var(--success-500);
 }
 
 .mantenimientos-modal-field-label {

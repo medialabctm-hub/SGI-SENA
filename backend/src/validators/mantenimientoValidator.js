@@ -10,9 +10,7 @@ export const crearMantenimientoSchema = z.object({
     z.number().int().positive('El código del equipo debe ser un número positivo'),
   ]),
   tipo_mantenimiento: z.enum(['Preventivo', 'Correctivo', 'Predictivo'], {
-    errorMap: () => ({ 
-      message: 'Tipo de mantenimiento inválido. Debe ser: Preventivo, Correctivo o Predictivo' 
-    }),
+    error: 'Tipo de mantenimiento inv\u00e1lido. Debe ser: Preventivo, Correctivo o Predictivo',
   }),
   descripcion: z.string()
     .min(10, 'La descripción debe tener al menos 10 caracteres')
@@ -25,7 +23,7 @@ export const crearMantenimientoSchema = z.object({
 
 export const actualizarEstadoMantenimientoSchema = z.object({
   estado_mantenimiento: z.enum(['Programado', 'En Proceso', 'Completado', 'Cancelado'], {
-    errorMap: () => ({ message: 'Estado de mantenimiento inválido. Debe ser: Programado, En Proceso, Completado o Cancelado' }),
+    error: 'Estado de mantenimiento inv\u00e1lido. Debe ser: Programado, En Proceso, Completado o Cancelado',
   }),
 });
 
@@ -46,8 +44,8 @@ export const validate = (schema) => (req, res, next) => {
     req.body = validated;
     next();
   } catch (error) {
-    if (error instanceof z.ZodError && error.errors && Array.isArray(error.errors)) {
-      const details = error.errors.map((e) => ({
+    if (error instanceof z.ZodError && error.issues && Array.isArray(error.issues)) {
+      const details = error.issues.map((e) => ({
         path: e.path && Array.isArray(e.path) ? e.path.join('.') : 'unknown',
         message: e.message || 'Error de validación desconocido',
         code: e.code || 'invalid_type',

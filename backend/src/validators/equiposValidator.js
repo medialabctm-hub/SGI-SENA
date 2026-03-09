@@ -10,7 +10,7 @@ export const registrarEquipoSchema = z.object({
   r_centro: z.string().optional().nullable(),
   centro: z.string().optional().nullable(), // Alias de r_centro
   consecutivo: z.string().optional().nullable(),
-  tipo: z.string().min(1, 'El tipo es requerido').max(100),
+  tipo: z.string({ error: 'El tipo es requerido' }).min(1, 'El tipo es requerido').max(100),
   categoria: z.string().min(1, 'La categoría es requerida').max(100).optional().nullable(),
   modelo: z.string().max(100).optional().nullable(),
   descripcion: z.string().optional().nullable(),
@@ -34,7 +34,7 @@ export const registrarEquipoSchema = z.object({
     z.null()
   ]).optional().nullable(),
   estado_fisico: z.enum(['Nuevo', 'Bueno', 'Regular', 'Malo', 'Dañado'], {
-    errorMap: () => ({ message: 'Estado físico inválido' }),
+    error: 'Estado físico inválido',
   }),
   specs_completas: z.string().optional().nullable(),
   atributos: z.string().optional().nullable(),
@@ -113,7 +113,7 @@ export const asignarEquipoSchema = z.object({
   ]),
   id_usuario: z.number().int().positive('El ID del usuario es requerido'),
   tipo_responsabilidad: z.enum(['Principal', 'Secundario'], {
-    errorMap: () => ({ message: 'Tipo de responsabilidad inválido. Debe ser "Principal" o "Secundario"' }),
+    error: 'Tipo de responsabilidad inválido. Debe ser "Principal" o "Secundario"',
   }),
   observaciones: z.string().max(500).optional().nullable(),
   fecha_fin: z.string().optional().nullable(), // Para responsabilidades temporales
@@ -134,7 +134,7 @@ export const verificarInventarioSchema = z.object({
     z.number().int().positive(),
   ]),
   estado_verificacion: z.enum(['Verificado', 'Con Novedad', 'No Verificado'], {
-    errorMap: () => ({ message: 'Estado de verificación inválido. Debe ser: Verificado, Con Novedad o No Verificado' }),
+    error: 'Estado de verificación inválido. Debe ser: Verificado, Con Novedad o No Verificado',
   }),
   observaciones: z.string().max(1000).optional().nullable(),
 });
@@ -344,8 +344,8 @@ export const validate = (schema) => (req, res, next) => {
     req.body = validated;
     next();
   } catch (error) {
-    if (error instanceof z.ZodError && error.errors && Array.isArray(error.errors)) {
-      const details = error.errors.map((e) => ({
+    if (error instanceof z.ZodError && error.issues && Array.isArray(error.issues)) {
+      const details = error.issues.map((e) => ({
         path: e.path && Array.isArray(e.path) ? e.path.join('.') : 'unknown',
         message: e.message || 'Error de validación',
         code: e.code || 'invalid_type',

@@ -20,9 +20,7 @@ export const crearNovedadSchema = z.object({
     z.number().int().positive('El código del equipo debe ser un número positivo'),
   ]),
   tipo_novedad: z.enum(tiposNovedadValidos, {
-    errorMap: () => ({ 
-      message: `Tipo de novedad inválido. Tipos válidos: ${tiposNovedadValidos.join(', ')}` 
-    }),
+    error: `Tipo de novedad inv\u00e1lido. Tipos v\u00e1lidos: ${tiposNovedadValidos.join(', ')}`,
   }),
   descripcion: z.string()
     .min(10, 'La descripción debe tener al menos 10 caracteres')
@@ -31,7 +29,7 @@ export const crearNovedadSchema = z.object({
 
 export const actualizarEstadoNovedadSchema = z.object({
   estado_resolucion: z.enum(['Pendiente', 'En Proceso', 'Resuelto', 'No Resuelto'], {
-    errorMap: () => ({ message: 'Estado de resolución inválido. Debe ser: Pendiente, En Proceso, Resuelto o No Resuelto' }),
+    error: 'Estado de resoluci\u00f3n inv\u00e1lido. Debe ser: Pendiente, En Proceso, Resuelto o No Resuelto',
   }),
   observaciones_resolucion: z.string().max(1000).optional().nullable(),
 });
@@ -45,8 +43,8 @@ export const validate = (schema) => (req, res, next) => {
     req.body = validated;
     next();
   } catch (error) {
-    if (error instanceof z.ZodError && error.errors && Array.isArray(error.errors)) {
-      const details = error.errors.map((e) => ({
+    if (error instanceof z.ZodError && error.issues && Array.isArray(error.issues)) {
+      const details = error.issues.map((e) => ({
         path: e.path && Array.isArray(e.path) ? e.path.join('.') : 'unknown',
         message: e.message || 'Error de validación desconocido',
         code: e.code || 'invalid_type',

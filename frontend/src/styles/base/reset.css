@@ -120,7 +120,7 @@ body::after {
 }
 
 .sidebar .big-card.active-card {
-  border-left: 6px solid var(--success-800);
+  border-left: 8px solid var(--success-800);
   background: linear-gradient(90deg, rgba(67, 160, 71, 0.06), rgba(255, 255, 255, 0));
 }
 

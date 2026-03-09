@@ -3,8 +3,9 @@ import { logger } from '../utils/logger.js';
 import { DatabaseError } from '../utils/errors.js';
 import { config } from '../config/config.js';
 
-// Cachear el secret al cargar el módulo (una sola vez)
-const WEBHOOK_SECRET = config.webhook?.secret || process.env.WEBHOOK_SECRET;
+// Obtener el secret desde configuración/entorno.
+// Se evalúa en cada petición para respetar cambios en variables de entorno en tests.
+const getWebhookSecret = () => config.webhook?.secret || process.env.WEBHOOK_SECRET;
 
 // Query SQL pre-compilado (mejor rendimiento)
 const INSERT_QUERY = `
@@ -40,6 +41,7 @@ export const recibirWebhookExterno = async (req, res, next) => {
   try {
     // Validación temprana del token (antes de procesar body)
     const apiKey = req.headers['x-api-key'];
+    const WEBHOOK_SECRET = getWebhookSecret();
     
     if (!WEBHOOK_SECRET) {
       logger.error('WEBHOOK_SECRET no configurado en variables de entorno');

@@ -106,7 +106,7 @@
   background: linear-gradient(90deg, rgba(1, 175, 0, 0.12), rgba(1, 175, 0, 0.04));
   color: var(--success-800);
   font-weight: 600;
-  border-left: 4px solid var(--success-800);
+  border-left: 8px solid var(--success-800);
 }
 
 .sidebar-home {

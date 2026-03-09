@@ -71,8 +71,8 @@ export const validate = (schema) => (req, res, next) => {
     req.body = validated;
     next();
   } catch (error) {
-    if (error instanceof z.ZodError && error.errors && Array.isArray(error.errors)) {
-      const details = error.errors.map((e) => ({
+    if (error instanceof z.ZodError && error.issues && Array.isArray(error.issues)) {
+      const details = error.issues.map((e) => ({
         path: e.path && Array.isArray(e.path) ? e.path.join('.') : 'unknown',
         message: e.message || 'Error de validación',
         code: e.code || 'invalid_type',

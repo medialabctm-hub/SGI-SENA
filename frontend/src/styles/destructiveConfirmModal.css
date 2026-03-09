@@ -152,7 +152,7 @@
   padding: 8px 12px;
   background: rgba(220, 53, 69, 0.08);
   border-radius: 6px;
-  border-left: 3px solid var(--error-500);
+  border-left: 8px solid var(--error-500);
 }
 
 .destructive-confirm-modal-footer {

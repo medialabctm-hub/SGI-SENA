@@ -58,7 +58,7 @@ export class Subject {
    * @param {Object} data - Datos del evento
    */
   notify(event, data) {
-    this.observers.forEach((observer) => {
+    this.observers.forEach(async (observer) => {
       try {
         observer.update(event, data);
       } catch (error) {

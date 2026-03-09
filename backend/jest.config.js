@@ -12,7 +12,22 @@ export default {
     '!src/di/setup.js',
   ],
   coverageDirectory: 'coverage',
-  coverageReporters: ['text', 'lcov', 'html'],
+  coverageReporters: [
+    'text',          // tabla en consola (por archivo)
+    'text-summary',  // resumen global con porcentaje general
+    'lcov',
+    'html',
+    'json-summary',  // genera coverage-summary.json con % global
+  ],
+  // Umbrales mínimos de cobertura global (informativo, no bloquea build)
+  coverageThreshold: {
+    global: {
+      statements: 0,
+      branches: 0,
+      functions: 0,
+      lines: 0,
+    },
+  },
   setupFilesAfterEnv: ['<rootDir>/tests/setup.js'],
   testTimeout: 10000,
   verbose: true,
