@@ -12,18 +12,25 @@ jest.unstable_mockModule(path.resolve(__dirname, '../../src/config/dbconfig.js')
   pool: { execute: mockExecute }
 }));
 
-const mockLogger = { info: jest.fn(), error: jest.fn(), warn: jest.fn() };
+const mockLogger = { info: jest.fn(), error: jest.fn(), warn: jest.fn(), debug: jest.fn() };
 jest.unstable_mockModule(path.resolve(__dirname, '../../src/utils/logger.js'), () => ({
   logger: mockLogger
 }));
 
+const mockExpandirAsignacionesPorFechas = jest.fn();
+const mockConvertirNombresDiasANumeros = jest.fn();
+const mockValidarRangoHoras = jest.fn();
+const mockValidarRangoFechas = jest.fn();
+const mockCalcularCantidadAsignaciones = jest.fn();
+const mockObtenerNombreDia = jest.fn();
+
 jest.unstable_mockModule(path.resolve(__dirname, '../../src/services/ambientesService.js'), () => ({
-  expandirAsignacionesPorFechas: jest.fn(),
-  convertirNombresDiasANumeros: jest.fn(),
-  validarRangoHoras: jest.fn(),
-  validarRangoFechas: jest.fn(),
-  calcularCantidadAsignaciones: jest.fn(),
-  obtenerNombreDia: jest.fn()
+  expandirAsignacionesPorFechas: mockExpandirAsignacionesPorFechas,
+  convertirNombresDiasANumeros: mockConvertirNombresDiasANumeros,
+  validarRangoHoras: mockValidarRangoHoras,
+  validarRangoFechas: mockValidarRangoFechas,
+  calcularCantidadAsignaciones: mockCalcularCantidadAsignaciones,
+  obtenerNombreDia: mockObtenerNombreDia
 }));
 
 jest.unstable_mockModule(path.resolve(__dirname, '../../src/services/socketService.js'), () => ({
@@ -37,7 +44,11 @@ const {
   crearAmbiente,
   actualizarAmbiente,
   eliminarAmbiente,
-  listarAmbientesActivos
+  listarAmbientesActivos,
+  asignarAmbienteInstructor,
+  desasignarAmbienteInstructor,
+  listarAsignacionesAmbientes,
+  obtenerInstructoresAmbiente
 } = await import(path.resolve(__dirname, '../../src/controller/ambientesController.js'));
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -378,6 +389,173 @@ describe('listarAmbientesActivos', () => {
     const req = mockReq();
     const res = mockRes();
     await listarAmbientesActivos(req, res);
+    expect(res.status).toHaveBeenCalledWith(500);
+  });
+});
+
+// ── NEW COVERAGE TESTS ─────────────────────────────────────────────────────
+
+describe('asignarAmbienteInstructor', () => {
+  beforeEach(() => {
+    mockExecute.mockReset();
+    jest.clearAllMocks();
+    mockValidarRangoFechas.mockReturnValue({ valid: true });
+    mockValidarRangoHoras.mockReturnValue({ valid: true });
+    mockConvertirNombresDiasANumeros.mockReturnValue([1]);
+    mockExpandirAsignacionesPorFechas.mockReturnValue([
+      { fecha_asignacion: new Date('2024-01-01T00:00:00.000Z'), nombre_dia: 'Lunes' }
+    ]);
+  });
+
+  it('returns 400 when required fields are missing', async () => {
+    const req = mockReq({ body: {} });
+    const res = mockRes();
+    await asignarAmbienteInstructor(req, res);
+    expect(res.status).toHaveBeenCalledWith(400);
+  });
+
+  it('returns 404 when ambiente not found', async () => {
+    mockExecute.mockResolvedValueOnce([[]]);
+    const req = mockReq({
+      body: {
+        id_ambiente: 99,
+        id_instructor: 1,
+        fecha_inicio: '2024-01-01',
+        fecha_fin: '2024-01-31',
+        dias_semana: ['Lunes'],
+        hora_inicio: '08:00',
+        hora_fin: '10:00'
+      }
+    });
+    const res = mockRes();
+    await asignarAmbienteInstructor(req, res);
+    expect(res.status).toHaveBeenCalledWith(404);
+  });
+
+  it('returns 404 when instructor not found', async () => {
+    mockExecute
+      .mockResolvedValueOnce([[{ id_ambiente: 1 }]])
+      .mockResolvedValueOnce([[]]);
+    const req = mockReq({
+      body: {
+        id_ambiente: 1,
+        id_instructor: 99,
+        fecha_inicio: '2024-01-01',
+        fecha_fin: '2024-01-31',
+        dias_semana: ['Lunes'],
+        hora_inicio: '08:00',
+        hora_fin: '10:00'
+      }
+    });
+    const res = mockRes();
+    await asignarAmbienteInstructor(req, res);
+    expect(res.status).toHaveBeenCalledWith(404);
+  });
+
+  it('returns 500 on DB error', async () => {
+    mockExecute.mockRejectedValueOnce(new Error('fail'));
+    const req = mockReq({
+      body: {
+        id_ambiente: 1,
+        id_instructor: 1,
+        fecha_inicio: '2024-01-01',
+        fecha_fin: '2024-01-31',
+        dias_semana: ['Lunes'],
+        hora_inicio: '08:00',
+        hora_fin: '10:00'
+      }
+    });
+    const res = mockRes();
+    await asignarAmbienteInstructor(req, res);
+    expect(res.status).toHaveBeenCalledWith(500);
+  });
+});
+
+describe('desasignarAmbienteInstructor', () => {
+  beforeEach(() => { mockExecute.mockReset(); jest.clearAllMocks(); });
+
+  it('returns 404 when asignacion not found', async () => {
+    mockExecute.mockResolvedValueOnce([[]]);
+    const req = mockReq({ params: { id: '99' } });
+    const res = mockRes();
+    await desasignarAmbienteInstructor(req, res);
+    expect(res.status).toHaveBeenCalledWith(404);
+  });
+
+  it('desasigns successfully', async () => {
+    mockExecute
+      .mockResolvedValueOnce([[{ id_asignacion: 1, id_instructor: 1 }]])
+      .mockResolvedValueOnce([{ affectedRows: 1 }]);
+    const req = mockReq({ params: { id: '1' } });
+    const res = mockRes();
+    await desasignarAmbienteInstructor(req, res);
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ ok: true }));
+  });
+
+  it('returns 500 on DB error', async () => {
+    mockExecute.mockRejectedValueOnce(new Error('fail'));
+    const req = mockReq({ params: { id: '1' } });
+    const res = mockRes();
+    await desasignarAmbienteInstructor(req, res);
+    expect(res.status).toHaveBeenCalledWith(500);
+  });
+});
+
+describe('listarAsignacionesAmbientes', () => {
+  beforeEach(() => { mockExecute.mockReset(); jest.clearAllMocks(); });
+
+  it('returns list of asignaciones', async () => {
+    const fakeRows = [{ id_asignacion: 1, id_ambiente: 1, id_instructor: 1 }];
+    mockExecute.mockResolvedValueOnce([fakeRows]);
+    const req = mockReq({ query: {} });
+    const res = mockRes();
+    await listarAsignacionesAmbientes(req, res);
+    expect(res.json).toHaveBeenCalled();
+  });
+
+  it('filters by id_ambiente', async () => {
+    mockExecute.mockResolvedValueOnce([[{ id_asignacion: 1 }]]);
+    const req = mockReq({ query: { id_ambiente: '2' } });
+    const res = mockRes();
+    await listarAsignacionesAmbientes(req, res);
+    expect(res.json).toHaveBeenCalled();
+  });
+
+  it('returns 500 on DB error', async () => {
+    mockExecute.mockRejectedValueOnce(new Error('fail'));
+    const req = mockReq({ query: {} });
+    const res = mockRes();
+    await listarAsignacionesAmbientes(req, res);
+    expect(res.status).toHaveBeenCalledWith(500);
+  });
+});
+
+describe('obtenerInstructoresAmbiente', () => {
+  beforeEach(() => { mockExecute.mockReset(); jest.clearAllMocks(); });
+
+  it('returns 404 when ambiente not found', async () => {
+    mockExecute.mockResolvedValueOnce([[]]);
+    const req = mockReq({ params: { id: '99' } });
+    const res = mockRes();
+    await obtenerInstructoresAmbiente(req, res);
+    expect(res.status).toHaveBeenCalledWith(404);
+  });
+
+  it('returns instructors list', async () => {
+    mockExecute
+      .mockResolvedValueOnce([[{ id_ambiente: 1 }]])
+      .mockResolvedValueOnce([[{ id_instructor: 5, nombre: 'Ana' }]]);
+    const req = mockReq({ params: { id: '1' } });
+    const res = mockRes();
+    await obtenerInstructoresAmbiente(req, res);
+    expect(res.json).toHaveBeenCalled();
+  });
+
+  it('returns 500 on DB error', async () => {
+    mockExecute.mockRejectedValueOnce(new Error('fail'));
+    const req = mockReq({ params: { id: '1' } });
+    const res = mockRes();
+    await obtenerInstructoresAmbiente(req, res);
     expect(res.status).toHaveBeenCalledWith(500);
   });
 });

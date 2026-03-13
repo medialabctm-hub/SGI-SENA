@@ -135,6 +135,24 @@ describe('EquipoService', () => {
         expect.anything()
       );
     });
+
+    it('debe combinar ambientes y cuentadante para vista por defecto del Cuentadante', async () => {
+      mockRepository.execute.mockResolvedValue([{ id_ambiente: 2 }, { id_ambiente: 4 }]);
+      mockRepository.findAll.mockResolvedValue({ equipos: [], pagination: {} });
+
+      await service.listarEquipos(
+        { vista_inventario: 'todos', estado: 'Activo' }, {}, {}, 3, 'Cuentadante'
+      );
+
+      expect(mockRepository.findAll).toHaveBeenCalledWith(
+        expect.objectContaining({
+          estado: 'Activo',
+          cuentadanteOrAmbientes: { ambientesIds: [2, 4], cuentadanteId: 3 },
+        }),
+        expect.anything(),
+        expect.anything()
+      );
+    });
   });
 
   // ------------------------------------------------------------------
@@ -186,6 +204,116 @@ describe('EquipoService', () => {
       await expect(
         service.registrarEquipo({ ...baseData, id_ambiente: null, ambiente: '999' }, 1, 'Administrador')
       ).rejects.toThrow(ValidationError);
+    });
+
+    it('debe lanzar ValidationError si la categoría no se puede resolver', async () => {
+      mockRepository.findByPlaca.mockResolvedValue(null);
+      mockRepository.createCategoriaIfNotExists.mockResolvedValue(null);
+
+      await expect(
+        service.registrarEquipo(baseData, 1, 'Administrador')
+      ).rejects.toThrow('Error al procesar la categoría');
+    });
+
+    it('debe exigir id_cuentadante válido cuando el rol es Administrador', async () => {
+      mockRepository.findByPlaca.mockResolvedValue(null);
+      mockRepository.createCategoriaIfNotExists.mockResolvedValue({ id_categoria: 1 });
+      mockRepository.findOne.mockResolvedValue({ id_ambiente: 1, nombre_ambiente: 'Lab 1' });
+      mockRepository.columnExists
+        .mockResolvedValueOnce(true)
+        .mockResolvedValueOnce(false);
+
+      await expect(
+        service.registrarEquipo(baseData, 1, 'Administrador')
+      ).rejects.toThrow('El ID del cuentadante es inválido o faltante para un Administrador');
+    });
+
+    it('debe lanzar ValidationError si falta el tipo configurado al usar id_tipo', async () => {
+      mockRepository.findByPlaca.mockResolvedValue(null);
+      mockRepository.createCategoriaIfNotExists.mockResolvedValue({ id_categoria: 1, es_componente: false });
+      mockRepository.findOne.mockResolvedValue({ id_ambiente: 1, nombre_ambiente: 'Lab 1' });
+      mockRepository.columnExists
+        .mockResolvedValueOnce(true)
+        .mockResolvedValueOnce(true);
+      mockRepository.db.execute.mockResolvedValueOnce([[undefined]]);
+
+      await expect(
+        service.registrarEquipo({ ...baseData, id_cuentadante: 7 }, 1, 'Administrador')
+      ).rejects.toThrow('Tipo de equipo no configurado: Equipo Completo');
+    });
+
+    it('debe registrar equipo para Administrador combinando descripción, comentarios y tipo', async () => {
+      mockRepository.findByPlaca.mockResolvedValue(null);
+      mockRepository.createCategoriaIfNotExists.mockResolvedValue({ id_categoria: 5, es_componente: false });
+      mockRepository.findOne.mockResolvedValue({ id_ambiente: 10, nombre_ambiente: 'Lab 10' });
+      mockRepository.columnExists
+        .mockResolvedValueOnce(false)
+        .mockResolvedValueOnce(true);
+      mockRepository.db.execute
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([[{ id_tipo: 3 }]]);
+      mockRepository.create.mockResolvedValue({ insertId: 55 });
+
+      const result = await service.registrarEquipo({
+        ...baseData,
+        ambiente: 'Lab 10',
+        id_ambiente: null,
+        id_cuentadante: 9,
+        descripcion: 'Equipo de pruebas',
+        comentarios: 'Requiere revisión',
+        valor_ingreso: '1500.50',
+        consecutivo: 'A-01',
+        centro: '12345',
+      }, 1, 'Administrador');
+
+      expect(mockRepository.db.execute).toHaveBeenNthCalledWith(
+        1,
+        expect.stringContaining('ALTER TABLE Elementos')
+      );
+      expect(mockRepository.create).toHaveBeenCalledWith(expect.objectContaining({
+        idCategoria: 5,
+        idTipo: 3,
+        idAmbiente: 10,
+        idCuentadante: 9,
+        descripcion: 'Equipo de pruebas\n\nComentarios: Requiere revisión',
+        valorIngreso: 1500.5,
+        rCentro: '12345',
+        consecutivo: 'A-01',
+        placa: 'PLC001',
+      }));
+      expect(mockLogger.info).toHaveBeenCalledWith('Columna id_cuentadante creada en la tabla Elementos');
+      expect(result).toEqual({
+        codigo_equipo: 55,
+        placa: 'PLC001',
+        tipo: 'Computador',
+        modelo: 'Dell',
+        ambiente_id: 10,
+      });
+    });
+
+    it('debe asignar el cuentadante actual cuando el rol es Cuentadante', async () => {
+      mockRepository.findByPlaca.mockResolvedValue(null);
+      mockRepository.createCategoriaIfNotExists.mockResolvedValue({ id_categoria: 2, es_componente: true });
+      mockRepository.findOne.mockResolvedValue({ id_ambiente: 1, nombre_ambiente: 'Lab 1' });
+      mockRepository.columnExists
+        .mockResolvedValueOnce(true)
+        .mockResolvedValueOnce(false);
+      mockRepository.create.mockResolvedValue({ insertId: 77 });
+
+      await service.registrarEquipo({
+        ...baseData,
+        comentarios: 'Entrega parcial',
+        specs_completas: '16GB RAM',
+      }, 44, 'Cuentadante');
+
+      expect(mockRepository.create).toHaveBeenCalledWith(expect.objectContaining({
+        idCategoria: 2,
+        idTipo: null,
+        idCuentadante: 44,
+        descripcion: 'Comentarios: Entrega parcial',
+        atributos: '16GB RAM',
+        registradoPor: 44,
+      }));
     });
   });
 

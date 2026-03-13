@@ -19,13 +19,13 @@ export default {
     'html',
     'json-summary',  // genera coverage-summary.json con % global
   ],
-  // Umbrales mínimos de cobertura global (informativo, no bloquea build)
+  // Umbrales mínimos de cobertura global (gate activo para evitar regresiones)
   coverageThreshold: {
     global: {
-      statements: 0,
-      branches: 0,
-      functions: 0,
-      lines: 0,
+      statements: 79,
+      branches: 69,
+      functions: 88,
+      lines: 80,
     },
   },
   setupFilesAfterEnv: ['<rootDir>/tests/setup.js'],

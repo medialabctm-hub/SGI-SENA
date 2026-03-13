@@ -37,4 +37,7 @@ dist-ssr
 backend/uploads/
 
 # Documentacion de desarrollo
-SGI-SENA Documentacion/
+Documentation/
+
+# Coverage reports
+coverage/

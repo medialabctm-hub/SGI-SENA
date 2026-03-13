@@ -12,7 +12,7 @@ jest.unstable_mockModule(path.resolve(__dirname, '../../src/config/dbconfig.js')
   pool: { execute: mockExecute }
 }));
 
-const mockLogger = { info: jest.fn(), error: jest.fn(), warn: jest.fn() };
+const mockLogger = { info: jest.fn(), error: jest.fn(), warn: jest.fn(), debug: jest.fn() };
 jest.unstable_mockModule(path.resolve(__dirname, '../../src/utils/logger.js'), () => ({
   logger: mockLogger
 }));
@@ -51,7 +51,9 @@ const {
   actualizarClase,
   cancelarClase,
   obtenerNombresClases,
-  crearNombreClase
+  crearNombreClase,
+  aceptarConsentimiento,
+  rechazarConsentimiento
 } = await import(path.resolve(__dirname, '../../src/controller/clasesController.js'));
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -60,6 +62,8 @@ function mockReq(overrides = {}) {
     params: {},
     query: {},
     body: {},
+    ip: '127.0.0.1',
+    get: jest.fn(() => 'jest-test-agent'),
     user: { id: 1, rol: 'Administrador' },
     ...overrides
   };
@@ -477,6 +481,196 @@ describe('crearNombreClase', () => {
     const req = mockReq({ body: { nombre_clase: 'Redes II' } });
     const res = mockRes();
     await crearNombreClase(req, res);
+    expect(res.status).toHaveBeenCalledWith(500);
+  });
+});
+
+// ── NEW COVERAGE TESTS ─────────────────────────────────────────────────────
+
+describe('finalizarClase', () => {
+  beforeEach(() => { mockExecute.mockReset(); jest.clearAllMocks(); });
+
+  it('returns 404 when clase not found', async () => {
+    mockExecute.mockResolvedValueOnce([[undefined]]);
+    const req = mockReq({ params: { id: '99' } });
+    const res = mockRes();
+    await finalizarClase(req, res);
+    expect(res.status).toHaveBeenCalledWith(404);
+  });
+
+  it('returns 400 when clase is not En Curso', async () => {
+    mockExecute.mockResolvedValueOnce([[{ id_clase: 1, estado_clase: 'Programada', fecha_inicio_real: null }]]);
+    const req = mockReq({ params: { id: '1' } });
+    const res = mockRes();
+    await finalizarClase(req, res);
+    expect(res.status).toHaveBeenCalledWith(400);
+  });
+
+  it('finalizes clase successfully', async () => {
+    mockExecute
+      .mockResolvedValueOnce([[{ id_clase: 1, estado_clase: 'En Curso', fecha_inicio_real: '2024-01-01 08:00' }]])
+      .mockResolvedValueOnce([[]])   // CALL sp_finalizar_clase
+      .mockResolvedValueOnce([[{ estado_clase: 'Finalizada', fecha_fin_real: '2024-01-01 10:00' }]]);
+    const req = mockReq({ params: { id: '1' }, body: {} });
+    const res = mockRes();
+    await finalizarClase(req, res);
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ ok: true }));
+  });
+
+  it('returns 500 on DB error', async () => {
+    mockExecute.mockRejectedValueOnce(new Error('fail'));
+    const req = mockReq({ params: { id: '1' } });
+    const res = mockRes();
+    await finalizarClase(req, res);
+    expect(res.status).toHaveBeenCalledWith(500);
+  });
+});
+
+describe('obtenerResponsablesAmbiente', () => {
+  beforeEach(() => { mockExecute.mockReset(); jest.clearAllMocks(); });
+
+  it('returns responsables list', async () => {
+    const fakeResponsables = [{ id_usuario: 1, nombre_usuario: 'Carlos' }];
+    mockExecute.mockResolvedValueOnce([[fakeResponsables]]);
+    const req = mockReq({ params: { id_ambiente: '3' }, query: {} });
+    const res = mockRes();
+    await obtenerResponsablesAmbiente(req, res);
+    expect(res.json).toHaveBeenCalled();
+  });
+
+  it('returns 500 on DB error', async () => {
+    mockExecute.mockRejectedValueOnce(new Error('fail'));
+    const req = mockReq({ params: { id_ambiente: '3' }, query: {} });
+    const res = mockRes();
+    await obtenerResponsablesAmbiente(req, res);
+    expect(res.status).toHaveBeenCalledWith(500);
+  });
+});
+
+describe('actualizarClase', () => {
+  beforeEach(() => { mockExecute.mockReset(); jest.clearAllMocks(); });
+
+  it('returns 404 when clase not found', async () => {
+    mockExecute.mockResolvedValueOnce([[undefined]]);
+    const req = mockReq({ params: { id: '99' }, body: {} });
+    const res = mockRes();
+    await actualizarClase(req, res);
+    expect(res.status).toHaveBeenCalledWith(404);
+  });
+
+  it('returns 403 when Instructor tries to update another instructor class', async () => {
+    mockExecute.mockResolvedValueOnce([[{ id_clase: 1, estado_clase: 'Programada', id_instructor: 99 }]]);
+    const req = mockReq({ user: { id: 5, rol: 'Instructor' }, params: { id: '1' }, body: {} });
+    const res = mockRes();
+    await actualizarClase(req, res);
+    expect(res.status).toHaveBeenCalledWith(403);
+  });
+
+  it('returns 400 when clase is not Programada', async () => {
+    mockExecute.mockResolvedValueOnce([[{ id_clase: 1, estado_clase: 'En Curso', id_instructor: 1 }]]);
+    const req = mockReq({ params: { id: '1' }, body: {} });
+    const res = mockRes();
+    await actualizarClase(req, res);
+    expect(res.status).toHaveBeenCalledWith(400);
+  });
+
+  it('returns 500 on DB error', async () => {
+    mockExecute.mockRejectedValueOnce(new Error('fail'));
+    const req = mockReq({ params: { id: '1' }, body: {} });
+    const res = mockRes();
+    await actualizarClase(req, res);
+    expect(res.status).toHaveBeenCalledWith(500);
+  });
+});
+
+describe('aceptarConsentimiento', () => {
+  beforeEach(() => { mockExecute.mockReset(); jest.clearAllMocks(); });
+
+  it('returns 404 when clase not found', async () => {
+    mockExecute.mockResolvedValueOnce([[undefined]]);
+    const req = mockReq({ params: { id: '99' } });
+    const res = mockRes();
+    await aceptarConsentimiento(req, res);
+    expect(res.status).toHaveBeenCalledWith(404);
+  });
+
+  it('returns 403 when user is not the instructor', async () => {
+    mockExecute.mockResolvedValueOnce([[{ id_clase: 1, estado_clase: 'Programada', id_instructor: 99 }]]);
+    const req = mockReq({ user: { id: 5, rol: 'Instructor' }, params: { id: '1' } });
+    const res = mockRes();
+    await aceptarConsentimiento(req, res);
+    expect(res.status).toHaveBeenCalledWith(403);
+  });
+
+  it('returns 400 when clase is not Programada', async () => {
+    mockExecute.mockResolvedValueOnce([[{ id_clase: 1, estado_clase: 'En Curso', id_instructor: 1 }]]);
+    const req = mockReq({ user: { id: 1, rol: 'Instructor' }, params: { id: '1' } });
+    const res = mockRes();
+    await aceptarConsentimiento(req, res);
+    expect(res.status).toHaveBeenCalledWith(400);
+  });
+
+  it('starts clase and returns ok', async () => {
+    mockExecute
+      .mockResolvedValueOnce([[{ id_clase: 1, estado_clase: 'Programada', id_instructor: 1 }]])
+      .mockResolvedValueOnce([[]]); // CALL sp_iniciar_clase
+    const req = mockReq({ user: { id: 1, rol: 'Instructor' }, params: { id: '1' } });
+    const res = mockRes();
+    await aceptarConsentimiento(req, res);
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ ok: true }));
+  });
+
+  it('returns 500 on DB error', async () => {
+    mockExecute.mockRejectedValueOnce(new Error('fail'));
+    const req = mockReq({ params: { id: '1' } });
+    const res = mockRes();
+    await aceptarConsentimiento(req, res);
+    expect(res.status).toHaveBeenCalledWith(500);
+  });
+});
+
+describe('rechazarConsentimiento', () => {
+  beforeEach(() => { mockExecute.mockReset(); jest.clearAllMocks(); });
+
+  it('returns 404 when clase not found', async () => {
+    mockExecute.mockResolvedValueOnce([[undefined]]);
+    const req = mockReq({ params: { id: '99' } });
+    const res = mockRes();
+    await rechazarConsentimiento(req, res);
+    expect(res.status).toHaveBeenCalledWith(404);
+  });
+
+  it('returns 403 when user is not the instructor', async () => {
+    mockExecute.mockResolvedValueOnce([[{ id_clase: 1, estado_clase: 'Programada', id_instructor: 99 }]]);
+    const req = mockReq({ user: { id: 5, rol: 'Instructor' }, params: { id: '1' } });
+    const res = mockRes();
+    await rechazarConsentimiento(req, res);
+    expect(res.status).toHaveBeenCalledWith(403);
+  });
+
+  it('returns 400 when clase is not Programada', async () => {
+    mockExecute.mockResolvedValueOnce([[{ id_clase: 1, estado_clase: 'Cancelada', id_instructor: 1 }]]);
+    const req = mockReq({ user: { id: 1, rol: 'Instructor' }, params: { id: '1' } });
+    const res = mockRes();
+    await rechazarConsentimiento(req, res);
+    expect(res.status).toHaveBeenCalledWith(400);
+  });
+
+  it('cancels clase and returns ok', async () => {
+    mockExecute
+      .mockResolvedValueOnce([[{ id_clase: 1, estado_clase: 'Programada', id_instructor: 1 }]])
+      .mockResolvedValueOnce([{ affectedRows: 1 }]);
+    const req = mockReq({ user: { id: 1, rol: 'Instructor' }, params: { id: '1' } });
+    const res = mockRes();
+    await rechazarConsentimiento(req, res);
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ ok: true }));
+  });
+
+  it('returns 500 on DB error', async () => {
+    mockExecute.mockRejectedValueOnce(new Error('fail'));
+    const req = mockReq({ params: { id: '1' } });
+    const res = mockRes();
+    await rechazarConsentimiento(req, res);
     expect(res.status).toHaveBeenCalledWith(500);
   });
 });

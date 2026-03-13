@@ -237,6 +237,162 @@ describe('eliminarRol', () => {
     await eliminarRol(req, res);
     expect(res.status).toHaveBeenCalledWith(500);
   });
+
+  it('returns 400 when role has assigned users', async () => {
+    mockExecute
+      .mockResolvedValueOnce([[{ id_rol: 9 }]])
+      .mockResolvedValueOnce([[{ total: 2 }]]);
+    const req = mockReq({ params: { roleName: 'Aprendiz' } });
+    const res = mockRes();
+    await eliminarRol(req, res);
+    expect(res.status).toHaveBeenCalledWith(400);
+  });
+
+  it('deletes role successfully when no users assigned', async () => {
+    mockExecute
+      .mockResolvedValueOnce([[{ id_rol: 9 }]])
+      .mockResolvedValueOnce([[{ total: 0 }]])
+      .mockResolvedValueOnce([{ affectedRows: 0 }])
+      .mockResolvedValueOnce([{ affectedRows: 1 }]);
+    const req = mockReq({ params: { roleName: 'Temporal' } });
+    const res = mockRes();
+    await eliminarRol(req, res);
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ message: expect.stringContaining('eliminado') }));
+  });
+});
+
+describe('actualizarPermisosRol', () => {
+  beforeEach(() => {
+    mockExecute.mockReset();
+    jest.clearAllMocks();
+  });
+
+  it('returns 400 when permisos is not array', async () => {
+    const req = mockReq({ params: { roleName: 'Instructor' }, body: { permisos: 'bad' } });
+    const res = mockRes();
+    await actualizarPermisosRol(req, res);
+    expect(res.status).toHaveBeenCalledWith(400);
+  });
+
+  it('returns 404 when role does not exist', async () => {
+    mockExecute.mockResolvedValueOnce([[]]);
+    const req = mockReq({ params: { roleName: 'NoExiste' }, body: { permisos: [] } });
+    const res = mockRes();
+    await actualizarPermisosRol(req, res);
+    expect(res.status).toHaveBeenCalledWith(404);
+  });
+
+  it('returns 400 when includes invalid permissions', async () => {
+    mockExecute
+      .mockResolvedValueOnce([[{ id_rol: 3 }]])
+      .mockResolvedValueOnce([[{ id_permiso: 1, codigo_permiso: 'clases:ver' }]]);
+    const req = mockReq({
+      params: { roleName: 'Instructor' },
+      body: { permisos: ['invalido'] }
+    });
+    const res = mockRes();
+    await actualizarPermisosRol(req, res);
+    expect(res.status).toHaveBeenCalledWith(400);
+  });
+
+  it('updates permissions with add/remove/reactivate counts', async () => {
+    mockExecute
+      .mockResolvedValueOnce([[{ id_rol: 3 }]])
+      .mockResolvedValueOnce([[
+        { id_permiso: 1, codigo_permiso: 'clases:ver' },
+        { id_permiso: 2, codigo_permiso: 'clases:crear' },
+        { id_permiso: 3, codigo_permiso: 'clases:editar' }
+      ]])
+      .mockResolvedValueOnce([[{ id_permiso: 1, activo: 1 }, { id_permiso: 3, activo: 0 }]])
+      .mockResolvedValueOnce([{ affectedRows: 1 }])
+      .mockResolvedValueOnce([{ affectedRows: 1 }])
+      .mockResolvedValueOnce([{ affectedRows: 1 }]);
+
+    const req = mockReq({
+      user: { id: 50, rol: 'Administrador' },
+      params: { roleName: 'Instructor' },
+      body: { permisos: ['clases:ver', 'clases:editar', 'clases:crear'] }
+    });
+    const res = mockRes();
+    await actualizarPermisosRol(req, res);
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
+      message: expect.stringContaining('Permisos actualizados'),
+      agregados: expect.any(Number),
+      reactivados: expect.any(Number)
+    }));
+  });
+});
+
+describe('togglePermisoRol', () => {
+  beforeEach(() => {
+    mockExecute.mockReset();
+    jest.clearAllMocks();
+  });
+
+  it('returns 400 when activo is not boolean', async () => {
+    const req = mockReq({
+      params: { roleName: 'Instructor', permissionCode: 'clases:ver' },
+      body: { activo: 'si' }
+    });
+    const res = mockRes();
+    await togglePermisoRol(req, res);
+    expect(res.status).toHaveBeenCalledWith(400);
+  });
+
+  it('returns 404 when role not found', async () => {
+    mockExecute.mockResolvedValueOnce([[]]);
+    const req = mockReq({
+      params: { roleName: 'NoExiste', permissionCode: 'clases:ver' },
+      body: { activo: true }
+    });
+    const res = mockRes();
+    await togglePermisoRol(req, res);
+    expect(res.status).toHaveBeenCalledWith(404);
+  });
+
+  it('returns 404 when permission not found', async () => {
+    mockExecute
+      .mockResolvedValueOnce([[{ id_rol: 1 }]])
+      .mockResolvedValueOnce([[]]);
+    const req = mockReq({
+      params: { roleName: 'Instructor', permissionCode: 'no:permiso' },
+      body: { activo: true }
+    });
+    const res = mockRes();
+    await togglePermisoRol(req, res);
+    expect(res.status).toHaveBeenCalledWith(404);
+  });
+
+  it('creates relation when it does not exist', async () => {
+    mockExecute
+      .mockResolvedValueOnce([[{ id_rol: 1 }]])
+      .mockResolvedValueOnce([[{ id_permiso: 2 }]])
+      .mockResolvedValueOnce([[]])
+      .mockResolvedValueOnce([{ affectedRows: 1 }]);
+    const req = mockReq({
+      user: { id: 99, rol: 'Administrador' },
+      params: { roleName: 'Instructor', permissionCode: 'clases:ver' },
+      body: { activo: true }
+    });
+    const res = mockRes();
+    await togglePermisoRol(req, res);
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ activo: true }));
+  });
+
+  it('updates relation when it already exists', async () => {
+    mockExecute
+      .mockResolvedValueOnce([[{ id_rol: 1 }]])
+      .mockResolvedValueOnce([[{ id_permiso: 2 }]])
+      .mockResolvedValueOnce([[{ activo: 1 }]])
+      .mockResolvedValueOnce([{ affectedRows: 1 }]);
+    const req = mockReq({
+      params: { roleName: 'Instructor', permissionCode: 'clases:ver' },
+      body: { activo: false }
+    });
+    const res = mockRes();
+    await togglePermisoRol(req, res);
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ activo: false }));
+  });
 });
 
 describe('listarPermisos', () => {

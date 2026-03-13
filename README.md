@@ -208,6 +208,18 @@ npm run format:check   # Verifica el formato del código
 
 El proyecto incluye tests unitarios e integración usando Jest. Los tests se encuentran en `backend/tests/`.
 
+Comando estándar de validación de cobertura en local/CI:
+
+```bash
+cd backend
+npm run test:coverage
+```
+
+El resultado se valida en consola (`Coverage summary`) y queda disponible en:
+
+- `backend/coverage/coverage-summary.json` (resumen consumible por scripts/CI)
+- `backend/coverage/lcov-report/index.html` (reporte navegable por archivo)
+
 Para más información sobre cómo escribir y ejecutar tests, consulta [backend/tests/README.md](./backend/tests/README.md).
 
 ## Documentación Adicional
@@ -216,6 +228,7 @@ Para más información sobre cómo escribir y ejecutar tests, consulta [backend/
 - **[CODING_STANDARDS.md](./CODING_STANDARDS.md)** - Estándares de código del proyecto
 - **[backend/ARCHITECTURE.md](./backend/ARCHITECTURE.md)** - Arquitectura del backend
 - **[backend/RBAC_DOCUMENTATION.md](./backend/RBAC_DOCUMENTATION.md)** - Documentación del sistema de roles y permisos
+- **[Documentation/E2E_READINESS_CHECKLIST.md](./Documentation/E2E_READINESS_CHECKLIST.md)** - Checklist de entrada para pruebas end-to-end
 
 ## Configuración de CORS
 
