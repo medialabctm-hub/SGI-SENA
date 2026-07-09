@@ -1,0 +1,224 @@
+/* ============================================
+   ESTILOS PARA AUTocompletado
+   ============================================ */
+
+.autocomplete-wrapper {
+  position: relative;
+  width: 100%;
+}
+
+.autocomplete-input-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.autocomplete-input {
+  width: 100%;
+  padding: 10px 14px;
+  padding-right: 70px;
+  border-radius: 8px;
+  border: 2px solid var(--success-800);
+  font-size: 1rem;
+  font-family: inherit;
+  background: white;
+  color: var(--neutral-900);
+  transition: all 0.2s ease;
+}
+
+.autocomplete-input:focus {
+  outline: none;
+  border-color: var(--success-900);
+  box-shadow: 0 0 0 4px rgba(1, 175, 0, 0.1);
+}
+
+.autocomplete-input:disabled {
+  background: var(--neutral-100);
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.autocomplete-clear {
+  position: absolute;
+  right: 40px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--neutral-500);
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+
+.autocomplete-clear:hover {
+  background: var(--neutral-100);
+  color: var(--neutral-700);
+}
+
+.autocomplete-arrow {
+  position: absolute;
+  right: 12px;
+  color: var(--neutral-500);
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.autocomplete-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  margin-top: 4px;
+  background: white;
+  border: 2px solid var(--success-800);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  max-height: 300px;
+  overflow-y: auto;
+  z-index: 1000;
+  animation: autocompleteSlideDown 0.2s ease-out;
+}
+
+@keyframes autocompleteSlideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.autocomplete-option {
+  padding: 12px 16px;
+  cursor: pointer;
+  transition: all 0.15s;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--neutral-800);
+  font-size: 0.95rem;
+}
+
+.autocomplete-option:hover,
+.autocomplete-option.highlighted {
+  background: var(--success-50);
+  color: var(--success-900);
+}
+
+.autocomplete-option.is-new {
+  border-top: 1px solid var(--neutral-200);
+  padding-top: 12px;
+  margin-top: 4px;
+  font-weight: 600;
+  color: var(--info-600);
+}
+
+.autocomplete-option.is-new:hover,
+.autocomplete-option.is-new.highlighted {
+  background: var(--info-50);
+  color: var(--info-700);
+}
+
+.autocomplete-new-icon {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--info-600);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.autocomplete-option.is-new:hover .autocomplete-new-icon,
+.autocomplete-option.is-new.highlighted .autocomplete-new-icon {
+  background: var(--info-700);
+}
+
+/* Scrollbar personalizado */
+.autocomplete-dropdown::-webkit-scrollbar {
+  width: 8px;
+}
+
+.autocomplete-dropdown::-webkit-scrollbar-track {
+  background: var(--neutral-100);
+  border-radius: 4px;
+}
+
+.autocomplete-dropdown::-webkit-scrollbar-thumb {
+  background: var(--neutral-300);
+  border-radius: 4px;
+}
+
+.autocomplete-dropdown::-webkit-scrollbar-thumb:hover {
+  background: var(--neutral-400);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .autocomplete-input {
+    padding-right: 60px;
+    font-size: 0.95rem;
+  }
+
+  .autocomplete-clear {
+    right: 35px;
+  }
+
+  .autocomplete-arrow {
+    right: 10px;
+  }
+
+  .autocomplete-dropdown {
+    max-height: 250px;
+  }
+
+  .autocomplete-option {
+    padding: 10px 14px;
+    font-size: 0.9rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .autocomplete-input {
+    padding-right: 50px;
+    font-size: 0.9rem;
+    padding: 8px 12px;
+  }
+
+  .autocomplete-clear {
+    right: 30px;
+    padding: 2px;
+  }
+
+  .autocomplete-arrow {
+    right: 8px;
+  }
+
+  .autocomplete-dropdown {
+    max-height: 200px;
+    border-radius: 6px;
+  }
+
+  .autocomplete-option {
+    padding: 8px 12px;
+    font-size: 0.85rem;
+  }
+
+  .autocomplete-new-icon {
+    width: 18px;
+    height: 18px;
+    font-size: 12px;
+  }
+}
+

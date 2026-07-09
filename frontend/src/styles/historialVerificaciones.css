@@ -1,0 +1,183 @@
+/* ============================================
+   ESTILOS PARA HISTORIAL VERIFICACIONES
+   ============================================ */
+
+.historial-verificaciones-header {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.historial-verificaciones-subtitle {
+  margin: 8px 0 0 0;
+  border: 1px solid var(--success-700);
+  font-size: 0.9rem;
+  padding: 8px 12px;
+  border-radius: 6px;
+  background: var(--success-50);
+}
+
+.historial-verificaciones-refresh-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.historial-verificaciones-filter-section {
+  margin-top: 1.5rem;
+  padding: 1rem;
+  background: #f9fafb;
+  border-radius: 10px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+}
+
+.historial-verificaciones-filter-label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.historial-verificaciones-filter-input {
+  width: 100%;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--success-700);
+}
+
+.historial-verificaciones-filter-actions {
+  display: flex;
+  align-items: flex-end;
+}
+
+.historial-verificaciones-filter-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.historial-verificaciones-loading {
+  text-align: center;
+  padding: 3rem;
+  color: #6b7280;
+}
+
+.historial-verificaciones-empty {
+  text-align: center;
+  padding: 3rem;
+  color: #6b7280;
+}
+
+.historial-verificaciones-empty-icon {
+  margin-bottom: 1rem;
+  opacity: 0.5;
+}
+
+.historial-verificaciones-empty-text {
+  font-size: 0.9rem;
+  margin-top: 0.5rem;
+}
+
+.historial-verificaciones-table-wrapper {
+  margin-top: 1.5rem;
+  overflow-x: auto;
+}
+
+.historial-verificaciones-table {
+  width: 100%;
+}
+
+.historial-verificaciones-date-cell {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.historial-verificaciones-equipo-info {
+  font-size: 0.85rem;
+  color: #6b7280;
+}
+
+.historial-verificaciones-instructor-info {
+  font-size: 0.85rem;
+  color: #6b7280;
+}
+
+.historial-verificaciones-ambiente-info {
+  font-size: 0.85rem;
+  color: #6b7280;
+}
+
+.historial-verificaciones-clase-info {
+  font-size: 0.85rem;
+  color: #6b7280;
+}
+
+.historial-verificaciones-clase-time {
+  font-size: 0.85rem;
+  color: #6b7280;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.historial-verificaciones-jornada-badge {
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.historial-verificaciones-jornada-manana {
+  color: var(--warning-600);
+  background: #fef3c7;
+}
+
+.historial-verificaciones-jornada-tarde {
+  color: #3b82f6;
+  background: #dbeafe;
+}
+
+.historial-verificaciones-jornada-noche {
+  color: #8b5cf6;
+  background: #ede9fe;
+}
+
+/* Badges de estado */
+.historial-verificaciones-estado-badge {
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.historial-verificaciones-estado-badge-verificado {
+  background: #d1fae5;
+  color: var(--success-800);
+}
+
+.historial-verificaciones-estado-badge-con-novedad {
+  background: #fee2e2;
+  color: var(--error-700);
+}
+
+.historial-verificaciones-estado-badge-no-verificado {
+  background: #f3f4f6;
+  color: #6b7280;
+}
+
+.historial-verificaciones-back-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}

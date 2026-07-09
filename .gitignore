@@ -1,0 +1,43 @@
+# Variables de entorno
+.env
+.env.local
+.env.*.local
+
+# Dependencias
+node_modules/
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Archivos del sistema
+.DS_Store
+Thumbs.db
+
+dist
+dist-ssr
+*.local
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Uploads (imágenes de equipos)
+backend/uploads/
+
+# Documentacion de desarrollo
+Documentation/
+
+# Coverage reports
+coverage/

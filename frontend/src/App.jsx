@@ -1,0 +1,308 @@
+import { Routes, Route } from 'react-router-dom';
+import Login from './pages/Login';
+import Register from './pages/Register';
+import CambiarContrasena from './pages/CambiarContrasena';
+import OlvidarContrasena from './pages/OlvidarContrasena';
+import RestablecerContrasena from './pages/RestablecerContrasena';
+import Dashboard from './pages/Dashboard';
+import Equipos from './pages/Equipos';
+import ConsultarEquipo from './pages/ConsultarEquipo';
+import Usuarios from './pages/Usuarios';
+import Aprendices from './pages/Aprendices';
+import Config from './pages/Config';
+import CrearNovedad from './pages/CrearNovedad';
+import CrearReporte from './pages/CrearReporte';
+import AsignarEquipo from './pages/AsignarEquipo';
+import MisEquipos from './pages/MisEquipos';
+import Novedades from './pages/Novedades';
+import Reportes from './pages/Reportes';
+import Mantenimientos from './pages/Mantenimientos';
+import PaginaNoEncontrada from './pages/PaginaNoEncontrada.jsx';
+import Asignaciones from './pages/Asignaciones';
+import Ambientes from './pages/Ambientes';
+import AsignarAmbientes from './pages/AsignarAmbientes';
+import VerificarInventario from './pages/VerificarInventario';
+import Horarios from './pages/Horarios';
+import HistorialVerificaciones from './pages/HistorialVerificaciones';
+import HistorialVerificacionesGeneral from './pages/HistorialVerificacionesGeneral';
+import TerminosCondiciones from './pages/TerminosCondiciones';
+// PÁGINAS DESACTIVADAS
+// import HistorialUsoEquipos from './pages/HistorialUsoEquipos';
+// import HistorialUsoEquipo from './pages/HistorialUsoEquipo';
+import DetalleEquipo from './pages/DetalleEquipo';
+import BuscarCuentadante from './pages/BuscarCuentadante';
+import Perfil from './pages/Perfil';
+import ProtectedRoute from './components/ProtectedRoute';
+import RedirectIfAuth from './components/RedirectIfAuth';
+import ErrorBoundary from './components/ErrorBoundary';
+import NavigationBlocker from './components/NavigationBlocker';
+import { SocketProvider } from './contexts/SocketContext';
+
+export default function App() {
+  return (
+    <ErrorBoundary>
+      <SocketProvider>
+      <NavigationBlocker />
+      <Routes>
+      <Route
+        path="/login"
+        element={
+          <RedirectIfAuth>
+            <Login />
+          </RedirectIfAuth>
+        }
+      />
+      <Route
+        path="/register"
+        element={
+          <RedirectIfAuth>
+            <Register />
+          </RedirectIfAuth>
+        }
+      />
+      <Route
+        path="/terminos-condiciones"
+        element={<TerminosCondiciones />}
+      />
+      <Route
+        path="/olvidar-contrasena"
+        element={
+          <RedirectIfAuth>
+            <OlvidarContrasena />
+          </RedirectIfAuth>
+        }
+      />
+      <Route
+        path="/restablecer-contrasena"
+        element={<RestablecerContrasena />}
+      />
+      <Route
+        path="/cambiar-contrasena"
+        element={<CambiarContrasena />}
+      />
+      <Route
+        path="/"
+        element={
+          <ProtectedRoute>
+            <Dashboard />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/dashboard"
+        element={
+          <ProtectedRoute>
+            <Dashboard />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/equipos"
+        element={
+          <ProtectedRoute>
+            <Equipos />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/equipos/consultar"
+        element={
+          <ProtectedRoute>
+            <ConsultarEquipo />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/equipos/verificar"
+        element={
+          <ProtectedRoute>
+            <VerificarInventario />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/usuarios"
+        element={
+          <ProtectedRoute>
+            <Usuarios />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/aprendices"
+        element={
+          <ProtectedRoute>
+            <Aprendices />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/config"
+        element={
+          <ProtectedRoute>
+            <Config />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/perfil"
+        element={
+          <ProtectedRoute>
+            <Perfil />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/novedades"
+        element={
+          <ProtectedRoute>
+            <Novedades />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/novedades/crear"
+        element={
+          <ProtectedRoute>
+            <CrearNovedad />
+          </ProtectedRoute>
+        }
+      />
+      {/* Ruta de reportes redirige a novedades con pestaña de reportes */}
+      <Route
+        path="/reportes"
+        element={
+          <ProtectedRoute>
+            <Novedades />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/reportes/crear"
+        element={
+          <ProtectedRoute>
+            <Novedades />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/equipos/asignar"
+        element={
+          <ProtectedRoute>
+            <AsignarEquipo />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/mis-equipos"
+        element={
+          <ProtectedRoute>
+            <MisEquipos />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/mantenimientos"
+        element={
+          <ProtectedRoute>
+            <Mantenimientos />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/mantenimientos/crear"
+        element={
+          <ProtectedRoute>
+            <Mantenimientos />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/asignaciones"
+        element={
+          <ProtectedRoute>
+            <Asignaciones />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/ambientes"
+        element={
+          <ProtectedRoute>
+            <Ambientes />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/ambientes/asignar"
+        element={
+          <ProtectedRoute>
+            <AsignarAmbientes />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/horarios"
+        element={
+          <ProtectedRoute>
+            <Horarios />
+          </ProtectedRoute>
+        }
+      />
+      {/* RUTAS DESACTIVADAS - Historial de Verificaciones */}
+      {/* <Route
+        path="/equipos/verificacion/historial"
+        element={
+          <ProtectedRoute>
+            <HistorialVerificacionesGeneral />
+          </ProtectedRoute>
+        }
+      /> */}
+      {/* RUTAS DESACTIVADAS - Historial de Uso */}
+      {/* <Route
+        path="/equipos/uso/historial"
+        element={
+          <ProtectedRoute>
+            <HistorialUsoEquipos />
+          </ProtectedRoute>
+        }
+      /> */}
+      {/* <Route
+        path="/equipos/:codigo/uso/historial"
+        element={
+          <ProtectedRoute>
+            <HistorialUsoEquipo />
+          </ProtectedRoute>
+        }
+      /> */}
+      <Route
+        path="/equipos/historial-verificaciones/:codigo"
+        element={
+          <ProtectedRoute>
+            <HistorialVerificaciones />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/equipos/detalle/:codigoEquipo"
+        element={
+          <ProtectedRoute>
+            <DetalleEquipo />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/equipos/cuentadantes/buscar"
+        element={
+          <ProtectedRoute>
+            <BuscarCuentadante />
+          </ProtectedRoute>
+        }
+      />
+      {/* Ruta 404 */}
+      <Route element={<PaginaNoEncontrada />} path="*" />
+        </Routes>
+      </SocketProvider>
+    </ErrorBoundary>
+  );
+}

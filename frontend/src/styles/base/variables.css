@@ -1,0 +1,84 @@
+/* ============================================
+   VARIABLES CSS GLOBALES
+   ============================================ */
+
+:root {
+  --muted: #777;
+  --card-shadow: 0 6px 18px rgba(17, 17, 17, 0.06);
+  
+  /* Neutral */
+  --neutral-50: #f2f1f0;
+  --neutral-100: #e6e4e2;
+  --neutral-200: #dad6d3;
+  --neutral-300: #cdc8c4;
+  --neutral-400: #c1bbb6;
+  --neutral-500: #b4ada7;
+  --neutral-600: #8c8178;
+  --neutral-700: #5e5650;
+  --neutral-800: #2f2b28;
+  --neutral-900: #000000;
+
+  /* Warning */
+  --warning-50: #ffe8a2;
+  --warning-100: #ffe083;
+  --warning-200: #ffd864;
+  --warning-300: #ffd145;
+  --warning-400: #ffc926;
+  --warning-500: #ffc107;
+  --warning-600: #ffa300;
+  --warning-700: #FF6400;
+  --warning-800: #a47b00;
+  --warning-900: #836200;
+
+  /* Error */
+  --error-50: #ee9aa2;
+  --error-100: #ea868f;
+  --error-200: #e7727d;
+  --error-300: #e35d6a;
+  --error-400: #e04958;
+  --error-500: #dc3545;
+  --error-600: #c72332;
+  --error-700: #a61d2a;
+  --error-800: #851722;
+  --error-900: #641119;
+
+  /* Success */
+  --success-50: #f0fdf4;
+  --success-100: #dcfce7;
+  --success-200: #bbf7d0;
+  --success-300: #86efac;
+  --success-400: #4ade80;
+  --success-500: #22c55e;
+  --success-600: #16a34a;
+  --success-700: #15c415;
+  --success-800: #01af00;
+  --success-900: #0E6E29;
+
+  /* Info / Primary accent (used for neutral action like "Ver") */
+  --info-50: #e6f0ff;
+  --info-100: #cfe3ff;
+  --info-200: #b7d6ff;
+  --info-300: #9fc8ff;
+  --info-400: #74b4ff;
+  --info-500: #3b8bff;
+  --info-600: #1770e6;
+  --info-700: #1258bf;
+  --info-800: #0b47a6;
+  --info-900: #083277;
+
+  /* DarkMode */
+  --darkmode-50: #244a4d;
+  --darkmode-100: #214345;
+  --darkmode-200: #1d3b3d;
+  --darkmode-300: #193435;
+  --darkmode-400: #162c2e;
+  --darkmode-500: #122526;
+  --darkmode-600: #0d1c1d;
+  --darkmode-700: #091213;
+  --darkmode-800: #05090a;
+  --darkmode-900: #000000;
+
+  /* otros */
+  --purple-700: #6e06b3;
+}
+

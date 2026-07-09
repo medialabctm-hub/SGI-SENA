@@ -1,0 +1,1153 @@
+/* ============================================
+   ESTILOS PARA EQUIPOS
+   ============================================ */
+
+.equipos-header {
+  margin-bottom: 2rem;
+}
+
+.form-equipos {
+  background: white;
+  border: solid .5px var(--success-800);
+  border-radius: 12px;
+  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.01);
+  padding: 2rem 2.5rem 1.5rem 2.5rem;
+  margin-top: 2rem;
+  max-width: 1200px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.form-equipos .form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 1.5rem 1.5rem;
+}
+
+@media (max-width: 1200px) {
+  .form-equipos .form-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 800px) {
+  .form-equipos .form-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.form-equipos .form-row {
+  margin-bottom: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  max-width: 100%;
+}
+
+.form-equipos .form-row-checkboxes {
+  flex-direction: row;
+  gap: 2.5em;
+  flex-wrap: wrap;
+  margin-bottom: 1.2rem;
+}
+
+.form-equipos label {
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  color: var(--neutral-800);
+  font-size: 0.95rem;
+  letter-spacing: 0.01em;
+}
+
+/* Usar clases globales de forms.css */
+.form-equipos .form-input,
+.form-equipos .form-select,
+.form-equipos .form-textarea {
+  border: 1.5px solid var(--success-800);
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  font-size: 1rem;
+  line-height: 1.5;
+  background: white;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  max-width: 100%;
+  min-height: 44px;
+}
+
+.form-equipos .form-input:focus,
+.form-equipos .form-select:focus,
+.form-equipos .form-textarea:focus {
+  border-color: var(--success-900);
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(1, 175, 0, 0.15);
+  border-width: 2px;
+}
+
+.form-equipos input:not(.form-input):not(.custom-select):not(.autocomplete-input),
+.form-equipos select:not(.form-select):not(.custom-select),
+.form-equipos textarea:not(.form-textarea) {
+  /* Para inputs sin clase, aplicar estilo equipos */
+  border: 1.5px solid var(--success-800) !important;
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  font-size: 1rem;
+  line-height: 1.5;
+  background: white;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  max-width: 100%;
+  min-height: 44px;
+}
+
+.form-equipos input:not(.form-input):not(.custom-select):not(.autocomplete-input):focus,
+.form-equipos select:not(.form-select):not(.custom-select):focus,
+.form-equipos textarea:not(.form-textarea):focus {
+  border-color: var(--success-900) !important;
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(1, 175, 0, 0.15);
+  border-width: 2px !important;
+}
+
+/* Asegurar que CustomSelect no tenga doble borde dentro de form-equipos */
+.form-equipos .custom-select-wrapper {
+  border: none !important;
+  padding: 0 !important;
+  background: transparent !important;
+}
+
+.form-equipos .custom-select {
+  border: 1.5px solid var(--success-800) !important;
+}
+
+.form-equipos .custom-select:hover {
+  border-color: var(--success-900) !important;
+}
+
+.form-equipos .custom-select-open {
+  border-color: var(--success-900) !important;
+}
+
+.form-equipos textarea:not(.form-textarea) {
+  min-height: 44px;
+  padding: 0.875rem 1rem;
+  resize: none;
+  line-height: 1.6;
+}
+
+.form-equipos .form-row label input[type="checkbox"] {
+  margin-right: 0.5em;
+  accent-color: var(--success-900);
+}
+
+.form-equipos .btn-verde {
+  background: var(--success-800);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 0.875rem 1.5rem;
+  font-size: 1.05rem;
+  font-weight: 600;
+  cursor: pointer;
+  margin-top: 1rem;
+  width: 160px;
+  transition: background 0.2s;
+  min-height: 48px;
+  letter-spacing: 0.02em;
+}
+
+.form-equipos .btn-verde:hover {
+  background: var(--success-900);
+  color: white;
+}
+
+.error-text {
+  color: var(--success-900);
+  font-size: 0.97em;
+  margin-top: 0.2em;
+}
+
+.success-text {
+  color: var(--success-700);
+  font-size: 1.05em;
+  margin-top: 1em;
+  text-align: center;
+}
+
+/* Make text inside cards slightly softer than pure black for better visual harmony */
+.form-equipos {
+  color: var(--neutral-800);
+}
+
+.form-equipos h3 {
+  color: var(--neutral-900);
+  font-size: 1.05rem;
+  margin-bottom: 0.6rem;
+}
+
+@media (min-width: 900px) {
+  .page.simple-page.config-page .form-equipos {
+    margin-left: auto;
+    margin-right: auto;
+    transition: transform 0.12s ease;
+  }
+}
+
+@media (min-width: 900px) {
+  .page.simple-page.config-page > div > div > h2 {
+    text-align: center;
+    transform: translateX(-120px);
+    transition: transform 0.12s ease;
+    margin-top: 6px;
+  }
+}
+
+/* Make modal form look like page cards */
+.modal-sheet .form-equipos {
+  box-shadow: none;
+  padding: 18px;
+  border-radius: 10px;
+}
+
+/* ============================================
+   ESTILOS PARA CONSULTAR EQUIPO
+   ============================================ */
+
+.consulta-container {
+  max-width: 100%;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+.consulta-title {
+  font-size: 32px;
+  font-weight: 700;
+  color: var(--neutral-800);
+  margin: 2rem 0 1.5rem 0;
+  text-align: left;
+}
+
+.consulta-form {
+  display: flex;
+  gap: 12px;
+  margin-top: 1.5rem;
+  margin-bottom: 1rem;
+  align-items: center;
+  background: white;
+  padding: 1.5rem;
+  border-radius: 12px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+}
+
+.consulta-input {
+  flex: 1;
+  padding: 12px 16px;
+  border-radius: 8px;
+  border: 1px solid var(--success-800);
+  font-size: 15px;
+  transition: all 0.2s ease;
+  background: white;
+  max-width: 400px;
+}
+
+.consulta-input:focus {
+  outline: none;
+  border-color: var(--success-900);
+  background: white;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+}
+
+.consulta-form .btn {
+  padding: 11px 20px;
+  font-size: 15px;
+  font-weight: 600;
+  border-radius: 10px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  position: relative;
+  overflow: hidden;
+}
+
+.consulta-form .btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: left 0.5s ease;
+}
+
+.consulta-form .btn:hover::before {
+  left: 100%;
+}
+
+.consulta-form .btn.primary {
+  background: linear-gradient(135deg, var(--success-700) 0%, var(--success-800) 100%);
+  color: white;
+  box-shadow: 0 4px 16px rgba(16, 185, 129, 0.25);
+}
+
+.consulta-form .btn.primary:hover:not(:disabled) {
+  background: linear-gradient(135deg, var(--success-800) 0%, var(--success-900) 100%);
+  color: white;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(16, 185, 129, 0.35);
+}
+
+.consulta-form .btn.primary:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: 0 2px 10px rgba(16, 185, 129, 0.25);
+}
+
+.consulta-form .btn.primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none !important;
+}
+
+.consulta-form .btn:not(.primary) {
+  border: 2px solid var(--success-800);
+  color: var(--neutral-700);
+  border: 1px solid var(--success-800);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.consulta-form .btn:not(.primary):hover:not(:disabled) {
+  background: linear-gradient(180deg, var(--neutral-50) 0%, white 100%);
+  border-color: var(--success-400);
+  color: var(--success-800);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.1);
+}
+
+.consulta-form .btn:not(.primary):active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+}
+
+.consulta-form .btn:not(.primary):disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none !important;
+}
+
+.error-msg {
+  color: var(--error-500);
+  margin-top: 12px;
+}
+
+.consulta-card {
+  margin-top: 18px;
+  padding: 0;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+}
+
+.consulta-table-wrap {
+  overflow-x: auto;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  background: white;
+  margin-top: 1.5rem;
+}
+
+.consulta-table {
+  width: 100%;
+  min-width: 2000px;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 14px;
+  background: white;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+/* Tabla de asignaciones más ancha */
+.consulta-table.asignaciones-table {
+  min-width: 2400px;
+}
+
+.consulta-th {
+  padding: 16px 14px;
+  background: linear-gradient(135deg, var(--info-500) 0%, var(--info-700) 100%);
+  color: white;
+  border: none;
+  text-align: left;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  white-space: nowrap;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.consulta-th:first-child {
+  border-top-left-radius: 12px;
+}
+
+.consulta-th:last-child {
+  border-top-right-radius: 12px;
+}
+
+.consulta-td {
+  padding: 16px 14px;
+  border-bottom: 1px solid var(--neutral-100);
+  font-size: 14px;
+  background: white;
+  transition: all 0.2s ease;
+  color: var(--neutral-700);
+  vertical-align: middle;
+}
+
+.consulta-table tbody tr {
+  transition: all 0.2s ease;
+}
+
+.consulta-table tbody tr:nth-child(even) {
+  background: var(--neutral-50);
+}
+
+.consulta-table tbody tr:nth-child(even) .consulta-td {
+  background: var(--neutral-50);
+}
+
+.consulta-table tbody tr:hover {
+  background: var(--neutral-200);
+  transform: scale(1.001);
+  box-shadow: 0 2px 8px rgba(59, 139, 255, 0.1);
+}
+
+.consulta-table tbody tr:hover .consulta-td {
+  background: var(--neutral-200);
+}
+
+.consulta-table tbody tr:last-child .consulta-td {
+  border-bottom: none;
+}
+
+.sticky-col {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  background: white;
+  box-shadow: 2px 0 4px rgba(0, 0, 0, 0.05);
+}
+
+.consulta-th.sticky-col {
+  z-index: 3;
+  background: linear-gradient(135deg, var(--info-500) 0%, var(--info-700) 100%);
+  box-shadow: 2px 0 4px rgba(0, 0, 0, 0.1);
+}
+
+.consulta-table tbody tr:nth-child(even) .sticky-col {
+  background: var(--neutral-50);
+}
+
+.consulta-table tbody tr:hover .sticky-col {
+  background: var(--neutral-200);
+  box-shadow: 2px 0 4px rgba(59, 139, 255, 0.15);
+}
+
+.row-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.row-actions .btn {
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.row-actions .btn.primary {
+  background: var(--success-800);
+  color: white;
+  box-shadow: 0 2px 6px rgba(59, 139, 255, 0.3);
+}
+
+.row-actions .btn.primary:hover {
+  color: white;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(59, 139, 255, 0.4);
+}
+
+.row-actions .btn.danger {
+  background: var(--error-700);
+  color: white;
+  box-shadow: 0 2px 6px rgba(166, 29, 42, 0.3);
+}
+
+.row-actions .btn.danger:hover {
+  background: var(--error-800);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(133, 23, 34, 0.4);
+}
+
+.row-actions .btn:not(.primary):not(.danger) {
+  background: white;
+  color: var(--neutral-700);
+  border: 1.5px solid var(--neutral-300);
+}
+
+.row-actions .btn:not(.primary):not(.danger):hover {
+  background: var(--neutral-50);
+  border-color: var(--neutral-400);
+  transform: translateY(-1px);
+}
+
+.cell-input,
+.cell-textarea {
+  width: 100%;
+  min-width: 200px;
+  padding: 10px 14px;
+  border: 2px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 14px;
+  transition: all 0.2s ease;
+  background: #ffffff;
+  color: #111827;
+  font-family: inherit;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.cell-input:hover,
+.cell-textarea:hover {
+  border-color: #d1d5db;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+}
+
+.cell-input:focus,
+.cell-textarea:focus {
+  outline: none;
+  border-color: var(--success-800);
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1), 0 2px 4px rgba(0, 0, 0, 0.1);
+  background: #ffffff;
+}
+
+.cell-input::placeholder {
+  color: #9ca3af;
+}
+
+.cell-textarea {
+  min-height: 80px;
+  resize: vertical;
+  font-family: inherit;
+  line-height: 1.5;
+}
+
+/* Estilos específicos para selects en modo edición */
+.cell-input select {
+  width: 100%;
+  padding: 10px 14px;
+  border: 2px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 14px;
+  background: #ffffff;
+  color: #111827;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236b7280' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 36px;
+}
+
+.cell-input select:hover {
+  border-color: #d1d5db;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+}
+
+.cell-input select:focus {
+  outline: none;
+  border-color: var(--success-800);
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1), 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Mejoras para celdas en modo edición */
+.users-table tbody td:has(.cell-input),
+.users-table tbody td:has(.cell-textarea),
+.consulta-table tbody td:has(.cell-input),
+.consulta-table tbody td:has(.cell-textarea) {
+  padding: 12px 16px !important;
+  min-width: 200px;
+  vertical-align: middle;
+}
+
+/* Asegurar que los campos de edición tengan suficiente espacio */
+.users-table tbody tr:has(.cell-input) td,
+.consulta-table tbody tr:has(.cell-input) td {
+  white-space: nowrap;
+}
+
+.users-table tbody tr:has(.cell-textarea) td,
+.consulta-table tbody tr:has(.cell-textarea) td {
+  white-space: normal;
+}
+
+/* ============================================
+   ESTILOS PARA BÚSQUEDA DE EQUIPOS
+   ============================================ */
+
+.search-equipo-wrapper {
+  display: flex;
+  gap: 0.75rem;
+  align-items: stretch;
+}
+
+.search-equipo-input {
+  flex: 1;
+  border: 1.5px solid var(--success-800);
+  border-radius: 6px;
+  padding: 0.6rem 0.9rem;
+  font-size: 0.98rem;
+  background: var(--neutral-50);
+  transition: border 0.2s;
+}
+
+.search-equipo-input:focus {
+  border: 2px solid var(--success-900);
+  outline: none;
+  background: white;
+}
+
+.btn-search-equipo {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 1.25rem;
+  background: var(--success-800);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.btn-search-equipo:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(28, 185, 129, 0.3);
+}
+
+.btn-search-equipo:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Tarjeta de equipo encontrado */
+.equipo-found-card {
+  margin-top: 1rem;
+  padding: 1.25rem;
+  background: var(--neutral-100);
+  border: 1px solid var(--success-800);
+  border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(28, 185, 129, 0.1);
+}
+
+.equipo-found-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+  font-weight: 700;
+  color: var(--success-800);
+  font-size: 0.95rem;
+}
+
+.equipo-found-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  color: var(--neutral-800);
+  font-size: 0.9rem;
+  line-height: 1.6;
+}
+
+.equipo-found-info div {
+  padding: 0.25rem 0;
+}
+
+.equipo-found-info strong {
+  color: var(--success-800);
+  margin-right: 0.5rem;
+}
+
+.btn-clear-equipo {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.5rem 1rem;
+  background: white;
+  color: var(--error-600);
+  border: 1.5px solid var(--error-200);
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-clear-equipo:hover {
+  background: var(--error-50);
+  border-color: var(--error-300);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(220, 53, 69, 0.15);
+}
+
+/* ============================================
+   ESTILOS MODERNOS PARA FORMULARIOS
+   ============================================ */
+
+.form-modern {
+  max-width: 1600px;
+  padding: 2.5rem 3rem;
+}
+
+.form-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.form-icon-wrapper {
+  width: 64px;
+  height: 64px;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  flex-shrink: 0;
+}
+
+.form-icon-wrapper svg {
+  display: block;
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+}
+
+.form-icon-wrapper[class*="header-icon"] svg {
+  color: #fff !important;
+}
+
+.form-icon-wrapper:not([class*="header-icon"]) svg,
+.form-icon-wrapper[style*="background: white"] svg,
+.form-icon-wrapper[style*="background: #fff"] svg {
+  color: var(--neutral-50) !important;
+}
+
+.form-icon-wrapper-green {
+  background: var(--success-800);
+}
+
+.form-header-content {
+  flex: 1;
+}
+
+.form-header-title {
+  margin: 0;
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--neutral-800);
+}
+
+.form-header-subtitle {
+  color: var(--muted);
+  margin-top: 8px;
+  font-size: 15px;
+}
+
+.form-tabs {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 1.5rem;
+  border-bottom: 2px solid var(--neutral-200);
+  padding-bottom: 0;
+}
+
+.form-tab {
+  padding: 0.75rem 1.5rem;
+  border: none;
+  background: transparent;
+  color: var(--neutral-600);
+  font-weight: 400;
+  font-size: 1rem;
+  cursor: pointer;
+  border-bottom: 3px solid transparent;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.form-tab.active {
+  color: var(--success-900);
+  font-weight: 600;
+  border-bottom-color: var(--success-900);
+}
+
+.form-tab:hover {
+  color: var(--success-900);
+}
+
+.form-divider {
+  height: 1px;
+  background: linear-gradient(to right, transparent, var(--neutral-200), transparent);
+  margin: 1.5rem 0 2rem 0;
+}
+
+.form-divider-no-margin {
+  margin-top: 0;
+}
+
+.form-group label {
+  display: flex;
+  align-items: center;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  color: var(--neutral-800);
+  font-size: 0.95rem;
+}
+
+.form-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--neutral-200);
+}
+
+.btn-modern {
+  padding: 0.75rem 1.75rem;
+  font-size: 1rem;
+  font-weight: 600;
+  border-radius: 10px;
+  transition: all 0.2s ease;
+  border: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.btn-modern::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: left 0.5s ease;
+}
+
+.btn-modern:hover::before {
+  left: 100%;
+}
+
+.btn-primary.btn-modern {
+  background: linear-gradient(135deg, var(--success-700) 0%, var(--success-800) 100%);
+  color: white;
+  box-shadow: 0 4px 16px rgba(16, 185, 129, 0.25);
+}
+
+.btn-primary.btn-modern:hover:not(:disabled) {
+  background: linear-gradient(135deg, var(--success-800) 0%, var(--success-900) 100%);
+  color: white;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(16, 185, 129, 0.35);
+}
+
+.btn-primary.btn-modern:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: 0 2px 10px rgba(16, 185, 129, 0.25);
+}
+
+.btn-primary.btn-modern:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none !important;
+}
+
+.btn-secondary.btn-modern {
+  border: 2px solid var(--success-800);
+  color: var(--neutral-700);
+  border: 1px solid var(--success-800);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.btn-secondary.btn-modern:hover {
+  background: linear-gradient(180deg, var(--neutral-50) 0%, white 100%);
+  border-color: var(--success-400);
+  color: var(--success-800);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.1);
+}
+
+.btn-secondary.btn-modern:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+}
+
+/* Estados vacíos y carga */
+.empty-state {
+  margin-top: 1rem;
+  text-align: center;
+  padding: 4rem 2rem;
+  background: var(--neutral-50);
+  border-radius: 16px;
+  border: solid 2px var(--neutral-200);
+}
+
+.empty-icon-wrapper {
+  width: 96px;
+  height: 96px;
+  margin: 0 auto 1.5rem;
+  background: var(--neutral-100);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.empty-icon-wrapper svg {
+  display: block;
+  flex-shrink: 0;
+  width: 48px;
+  height: 48px;
+  color: var(--neutral-600) !important;
+}
+
+.empty-state h3 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--neutral-800);
+  margin-bottom: 0.5rem;
+}
+
+.empty-state p {
+  color: var(--muted);
+  font-size: 1rem;
+}
+
+.loading-state {
+  text-align: center;
+  padding: 4rem 2rem;
+}
+
+.loading-spinner {
+  width: 48px;
+  height: 48px;
+  margin: 0 auto 1rem;
+  border: 4px solid var(--neutral-200);
+  border-top-color: var(--success-900);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.loading-state p {
+  color: var(--muted);
+  font-size: 1rem;
+}
+
+/* Mejoras en la tabla */
+.consulta-table {
+  border-collapse: separate;
+  border-spacing: 0;
+  width: 100%;
+  background: white;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.consulta-table thead {
+  background: linear-gradient(135deg, var(--neutral-50) 0%, var(--neutral-100) 100%);
+}
+
+.consulta-table th {
+  padding: 1rem;
+  text-align: left;
+  font-weight: 700;
+  color: var(--neutral-800);
+  font-size: 0.875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 2px solid var(--neutral-200);
+}
+
+.consulta-table td {
+  padding: 1rem;
+  border-bottom: 1px solid var(--neutral-100);
+  color: var(--neutral-700);
+  font-size: 0.9rem;
+}
+
+.consulta-table tbody tr {
+  transition: background 0.2s ease;
+}
+
+.consulta-table tbody tr:hover {
+  background: var(--neutral-200);
+}
+
+.consulta-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+/* ============================================
+   ESTILOS PARA BÚSQUEDA DE EQUIPOS Y SECCIONES
+   ============================================ */
+
+.form-section {
+  margin-bottom: 2rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid var(--neutral-200);
+}
+
+.form-section:last-of-type {
+  border-bottom: none;
+  margin-bottom: 0;
+}
+
+.form-section-title {
+  display: flex;
+  align-items: center;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--neutral-800);
+  margin-bottom: 1.25rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 2px solid var(--neutral-200);
+}
+
+/* Estilos para estados de input */
+.form-equipos .form-input-success {
+  border-color: #22c55e !important;
+  background-color: #f0fdf4;
+}
+
+.form-equipos .form-input-error {
+  border-color: #ef4444 !important;
+  background-color: #fef2f2;
+}
+
+.form-equipos .form-input-disabled {
+  background-color: var(--neutral-100);
+  color: var(--neutral-600);
+  cursor: not-allowed;
+}
+
+/* Mejoras para el campo de cuentadante */
+.form-equipos .form-row[style*="grid-column"] {
+  margin-bottom: 1.5rem;
+}
+
+/* Spinner de carga pequeño */
+.loading-spinner {
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  display: inline-block;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .consulta-form {
+    flex-direction: column;
+  }
+
+  .consulta-input {
+    max-width: 100%;
+  }
+
+  .consulta-form .btn {
+    width: 100%;
+  }
+
+  .search-equipo-wrapper {
+    flex-direction: column;
+  }
+
+  .btn-search-equipo {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .form-modern {
+    padding: 1.5rem;
+  }
+
+  .form-header {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+
+  .form-icon-wrapper {
+    width: 56px;
+    height: 56px;
+  }
+
+  .form-actions {
+    flex-direction: column;
+  }
+
+  .btn-modern {
+    width: 100%;
+  }
+
+  .search-equipo-wrapper {
+    flex-direction: column;
+  }
+
+  .btn-search-equipo {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .form-section {
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+  }
+}
+

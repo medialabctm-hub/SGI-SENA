@@ -1,0 +1,440 @@
+﻿/* ============================================
+   ESTILOS PARA ASIGNACIONES
+   ============================================ */
+
+/* ============================================
+   ASIGNAR EQUIPO
+   ============================================ */
+
+.asignar-equipo-header-icon {
+  background: linear-gradient(135deg, var(--success-800) 0%, var(--success-900) 100%);
+}
+
+.asignar-equipo-header-content {
+  flex: 1;
+}
+
+.asignar-equipo-header-title {
+  margin: 0;
+  font-size: 28px;
+  font-weight: 700;
+  color: #1a2a3a;
+}
+
+.asignar-equipo-header-description {
+  color: #666;
+  margin-top: 8px;
+  font-size: 15px;
+}
+
+.asignar-equipo-tabs {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 1.5rem;
+  border-bottom: 2px solid #e5e7eb;
+  padding-bottom: 0;
+}
+
+.asignar-equipo-tab {
+  padding: 0.75rem 1.5rem;
+  border: none;
+  background: transparent;
+  color: #6b7280;
+  font-weight: 400;
+  font-size: 1rem;
+  cursor: pointer;
+  border-bottom: 3px solid transparent;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.asignar-equipo-tab.active {
+  color: var(--success-800);
+  font-weight: 600;
+  border-bottom: 3px solid var(--success-800);
+}
+
+.asignar-equipo-divider-no-margin {
+  margin-top: 0;
+}
+
+.asignar-equipo-section-icon {
+  margin-right: 8px;
+}
+
+.asignar-equipo-warning-box {
+  margin-top: 12px;
+  padding: 12px;
+  background: #fef3c7;
+  border-radius: 8px;
+  border: 1px solid var(--warning-600);
+}
+
+.asignar-equipo-warning-title {
+  color: var(--warning-600);
+}
+
+.asignar-equipo-warning-text {
+  margin-top: 4px;
+  font-size: 0.9rem;
+  color: #92400e;
+}
+
+.asignar-equipo-form-grid {
+  margin-top: 1.5rem;
+}
+
+.asignar-equipo-shield-icon {
+  margin-right: 6px;
+  vertical-align: middle;
+}
+
+.asignar-equipo-input-full {
+  width: 100%;
+}
+
+.asignar-equipo-help-text {
+  margin-top: 4px;
+  font-size: 0.8rem;
+  color: #666;
+}
+
+.asignar-equipo-content-wrapper {
+  margin-top: 1.5rem;
+}
+
+.asignar-equipo-loading {
+  text-align: center;
+  padding: 3rem;
+}
+
+.asignar-equipo-loading-text {
+  margin-top: 1rem;
+  color: #666;
+}
+
+.asignar-equipo-table-wrapper {
+  overflow-x: auto;
+}
+
+.asignar-equipo-table {
+  margin-top: 1rem;
+}
+
+.asignar-equipo-equipo-info {
+  font-size: 0.85rem;
+  color: #666;
+  margin-top: 4px;
+}
+
+.asignar-equipo-usuario-info {
+  font-size: 0.85rem;
+  color: #666;
+  margin-top: 4px;
+}
+
+.asignar-equipo-rol-badge {
+  margin-left: 8px;
+  padding: 2px 8px;
+  border-radius: 8px;
+  font-size: 0.75rem;
+  background: #e0e7ff;
+  color: #4338ca;
+  font-weight: 600;
+}
+
+.asignar-equipo-dias-badge {
+  font-weight: 600;
+  color: #3b82f6;
+}
+
+.asignar-equipo-observaciones-cell {
+  max-width: 200px;
+  font-size: 0.9rem;
+  color: #666;
+}
+
+.asignar-equipo-delete-btn {
+  padding: 6px 12px;
+  font-size: 0.9rem;
+}
+
+.asignar-equipo-delete-icon {
+  margin-right: 4px;
+}
+
+/* Badges de responsabilidad */
+.asignar-equipo-badge-principal {
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #3b82f6;
+  background: #dbeafe;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.asignar-equipo-badge-secundario {
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #6b7280;
+  background: #f3f4f6;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* ============================================
+   ASIGNAR AMBIENTES
+   ============================================ */
+
+.asignar-ambientes-header {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--neutral-900);
+}
+
+.asignar-ambientes-actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.asignar-ambientes-form-container {
+  margin-top: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.asignar-ambientes-form-title {
+  margin-top: 0;
+  margin-bottom: 1rem;
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--neutral-900);
+}
+
+.asignar-ambientes-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.asignar-ambientes-form-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.asignar-ambientes-form-label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+  color: var(--neutral-800);
+  font-size: 0.95rem;
+}
+
+.asignar-ambientes-form-label-icon {
+  margin-right: 4px;
+  vertical-align: middle;
+  display: inline-block;
+  flex-shrink: 0;
+  color: var(--success-800);
+}
+
+.asignar-ambientes-form-input,
+.asignar-ambientes-form-select {
+  width: 100%;
+  padding: 10px 14px;
+  border-radius: 8px;
+  border: 2px solid var(--success-800) !important;
+  font-size: 1rem;
+  font-family: inherit;
+  background: white;
+  color: var(--neutral-900);
+  transition: all 0.2s ease;
+}
+
+.asignar-ambientes-form-input:focus,
+.asignar-ambientes-form-select:focus {
+  outline: none;
+  border-color: var(--success-900) !important;
+  box-shadow: 0 0 0 4px rgba(1, 175, 0, 0.1);
+}
+
+/* Prevenir doble borde en CustomSelect dentro de formularios de asignaciones */
+.asignar-ambientes-form-container .custom-select-wrapper {
+  border: none !important;
+  padding: 0 !important;
+  background: transparent !important;
+}
+
+.asignar-ambientes-form-container .custom-select {
+  border: 2px solid var(--success-800) !important;
+}
+
+.asignar-ambientes-form-container .custom-select:hover {
+  border-color: var(--success-900) !important;
+}
+
+.asignar-ambientes-form-container .custom-select-open {
+  border-color: var(--success-900) !important;
+}
+
+.asignar-ambientes-form-input:disabled {
+  background: var(--neutral-50);
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+/* Checkboxes de días */
+.asignar-ambientes-dias-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.asignar-ambientes-dia-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px;
+  border: 2px solid var(--success-800);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background: white;
+}
+
+.asignar-ambientes-dia-checkbox:hover {
+  background: var(--success-50);
+}
+
+.asignar-ambientes-dia-checkbox input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--success-800);
+  cursor: pointer;
+}
+
+.asignar-ambientes-dia-checkbox.selected {
+  background: var(--success-100);
+  border-color: var(--success-900);
+}
+
+/* Información de cantidad */
+.asignar-ambientes-info-box {
+  padding: 12px 14px;
+  margin-bottom: 1rem;
+  border-radius: 8px;
+  background-color: var(--info-100);
+  border-left: 8px solid var(--info-600);
+  color: var(--info-900);
+}
+
+.asignar-ambientes-info-box strong {
+  font-weight: 700;
+}
+
+/* Loading y estados vacíos */
+.asignar-ambientes-loading {
+  text-align: center;
+  padding: 3rem;
+}
+
+.asignar-ambientes-loading-spinner {
+  margin: 0 auto;
+}
+
+.asignar-ambientes-content {
+  margin-top: 1.5rem;
+}
+
+/* Cards de ambiente agrupado */
+.asignar-ambientes-ambiente-card {
+  margin-bottom: 1.5rem;
+}
+
+.asignar-ambientes-ambiente-header {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--neutral-900);
+}
+
+.asignar-ambientes-ambiente-subtitle {
+  margin: 4px 0 0 0;
+  color: var(--neutral-600);
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.asignar-ambientes-ambiente-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.asignar-ambientes-table-container {
+  margin-top: 1rem;
+  overflow-x: auto;
+}
+
+.asignar-ambientes-table {
+  width: 100%;
+}
+
+.asignar-ambientes-table-meta {
+  font-size: 0.85rem;
+  color: var(--neutral-600);
+}
+
+.asignar-ambientes-table-cell-observaciones {
+  max-width: 250px;
+  word-wrap: break-word;
+}
+
+.asignar-ambientes-table-actions {
+  font-size: 0.85rem;
+  padding: 6px 12px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .asignar-ambientes-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .asignar-ambientes-dias-container {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .asignar-ambientes-actions {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .asignar-ambientes-actions > * {
+    width: 100%;
+  }
+}

@@ -1,0 +1,336 @@
+/* Header - Nuevo estilo banner blanco */
+.app-header-wrapper {
+  background: linear-gradient(135deg, #f0f9f4 0%, #e8f5ea 25%, #f0f9f4 50%, #e8f5ea 75%, #f0f9f4 100%);
+  background-size: 200% 200%;
+  animation: gradientShift 15s ease infinite;
+  padding: 20px;
+  display: flex;
+  justify-content: center;
+  position: relative;
+  overflow: visible;
+  z-index: 10;
+}
+
+.app-header-wrapper::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: 
+    radial-gradient(circle at 20% 50%, rgba(1, 175, 0, 0.03) 0%, transparent 50%),
+    radial-gradient(circle at 80% 80%, rgba(1, 175, 0, 0.03) 0%, transparent 50%),
+    radial-gradient(circle at 40% 20%, rgba(1, 175, 0, 0.02) 0%, transparent 50%);
+  background-size: 100% 100%;
+  pointer-events: none;
+}
+
+.app-header-wrapper::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: 
+    repeating-linear-gradient(45deg, transparent, transparent 2px, rgba(1, 175, 0, 0.02) 2px, rgba(1, 175, 0, 0.02) 4px);
+  background-size: 40px 40px;
+  pointer-events: none;
+  opacity: 0.5;
+}
+
+@keyframes gradientShift {
+  0%, 100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+.app-header {
+  background: white;
+  color: var(--neutral-800);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 24px;
+  border-radius: 16px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  width: 100%;
+  position: relative;
+  z-index: 1;
+}
+
+.sidebar-toggle-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border: none;
+  background: transparent;
+  color: var(--success-800);
+  cursor: pointer;
+  border-radius: 8px;
+  margin-right: 16px;
+  transition: all 0.2s ease;
+  font-size: 80px;
+}
+
+.sidebar-toggle-btn:hover {
+  background: rgba(1, 175, 0, 0.1);
+}
+
+.sidebar-toggle-btn:focus-visible {
+  outline: 2px solid var(--success-800);
+  outline-offset: 2px;
+}
+
+.app-logo {
+  background: var(--neutral-0);
+  color: #fff;
+  padding: 8px;
+  border-radius: 10px;
+  font-weight: 800;
+  margin-right: 10px;
+  display: flex;
+  align-items: center;
+}
+
+.app-logo img {
+  display: block;
+  width: 48px;
+  height: auto;
+  object-fit: contain;
+  border-radius: 6px;
+  margin-left: 650px;
+}
+
+.app-title .name {
+  font-weight: 700;
+  color: var(--success-800);
+  font-size: 18px;
+}
+
+.app-title .sub {
+  color: var(--muted);
+  font-size: 14px;
+  margin-top: 2px;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  position: relative;
+  z-index: 1;
+}
+
+.header-icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border: none;
+  background: var(--success-800);
+  color: white;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+  font-size: 20px;
+  box-shadow: 0 2px 8px rgba(1, 175, 0, 0.3);
+}
+
+.header-icon-btn:hover {
+  background: var(--success-900);
+  color: white;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(1, 175, 0, 0.4);
+}
+
+.header-icon-btn:active {
+  transform: translateY(0);
+}
+
+.header-icon-btn:focus-visible {
+  outline: 2px solid var(--success-800);
+  outline-offset: 2px;
+}
+
+.notifications-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  z-index: 1;
+}
+
+.notifications-counter {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 50%;
+  background: var(--error-500);
+  color: white;
+  font-size: 11px;
+  font-weight: 700;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+  border: 2px solid white;
+}
+
+/* Estilos para foto de perfil en el header */
+.header-profile-btn {
+  overflow: hidden;
+  padding: 0;
+}
+
+.header-profile-photo {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  border-radius: 50%;
+}
+
+.header-profile-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  font-weight: 700;
+  color: white;
+  background: var(--success-800);
+  border-radius: 50%;
+}
+
+.header-avatar-placeholder-hidden {
+  display: none !important;
+}
+
+.header-avatar-placeholder-visible {
+  display: flex !important;
+}
+
+/* Responsive para móviles */
+@media (max-width: 768px) {
+  .app-header-wrapper {
+    padding: 12px;
+  }
+
+  .app-header {
+    padding: 12px 16px;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .sidebar-toggle-btn {
+    width: 36px;
+    height: 36px;
+    font-size: 24px;
+    margin-right: 12px;
+  }
+
+  .app-logo {
+    padding: 6px;
+  }
+
+  .app-logo img {
+    width: 40px;
+    margin-left: 0;
+  }
+
+  .app-title .name {
+    font-size: 16px;
+  }
+
+  .app-title .sub {
+    font-size: 12px;
+  }
+
+  .header-right {
+    gap: 8px;
+  }
+
+  .header-icon-btn {
+    width: 40px;
+    height: 40px;
+    font-size: 18px;
+  }
+
+  .notifications-counter {
+    min-width: 18px;
+    height: 18px;
+    font-size: 10px;
+    padding: 0 5px;
+  }
+}
+
+@media (max-width: 480px) {
+  .app-header-wrapper {
+    padding: 8px;
+  }
+
+  .app-header {
+    padding: 10px 12px;
+  }
+
+  .header-left {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .app-title {
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  .app-title .name {
+    font-size: 14px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .app-title .sub {
+    display: none;
+  }
+
+  .header-right {
+    gap: 6px;
+  }
+
+  .header-icon-btn {
+    width: 36px;
+    height: 36px;
+    font-size: 16px;
+  }
+
+  .sidebar-toggle-btn {
+    width: 32px;
+    height: 32px;
+    font-size: 20px;
+    margin-right: 8px;
+  }
+
+  .app-logo img {
+    width: 36px;
+  }
+}
+

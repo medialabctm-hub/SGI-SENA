@@ -1,0 +1,221 @@
+/* Modal emergente para notificaciones de clases */
+.class-notification-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10001;
+  animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.class-notification-modal {
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  max-width: 500px;
+  width: 90%;
+  max-height: 90vh;
+  overflow: hidden;
+  animation: slideUp 0.3s ease-out;
+  position: relative;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.class-notification-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.5rem;
+  border-bottom: 1px solid #e5e7eb;
+  background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+}
+
+.class-notification-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: #3b82f6;
+  color: white;
+  flex-shrink: 0;
+}
+
+.class-notification-title {
+  flex: 1;
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #1a2a3a;
+  line-height: 1.4;
+}
+
+.class-notification-close {
+  background: none;
+  border: none;
+  color: #6b7280;
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: 0.375rem;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.class-notification-close:hover {
+  background-color: #f3f4f6;
+  color: #1f2937;
+}
+
+.class-notification-body {
+  padding: 1.5rem;
+}
+
+.class-notification-message {
+  margin: 0 0 1.5rem 0;
+  color: #4b5563;
+  font-size: 1rem;
+  line-height: 1.6;
+}
+
+.class-notification-actions {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.class-notification-action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: 0.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+  flex: 1;
+  min-width: 140px;
+}
+
+.class-notification-action-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.class-notification-action-btn.btn-iniciar {
+  background-color: var(--success-800);
+  color: white;
+}
+
+.class-notification-action-btn.btn-iniciar:hover:not(:disabled) {
+  background-color: var(--success-900);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+}
+
+.class-notification-action-btn.btn-finalizar {
+  background-color: #ef4444;
+  color: white;
+}
+
+.class-notification-action-btn.btn-finalizar:hover:not(:disabled) {
+  background-color: #dc2626;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
+}
+
+.class-notification-action-btn.btn-cancelar {
+  background-color: #6b7280;
+  color: white;
+}
+
+.class-notification-action-btn.btn-cancelar:hover:not(:disabled) {
+  background-color: #4b5563;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(107, 114, 128, 0.4);
+}
+
+.class-notification-action-btn.btn-default {
+  background-color: #3b82f6;
+  color: white;
+}
+
+.class-notification-action-btn.btn-default:hover:not(:disabled) {
+  background-color: #2563eb;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+}
+
+.class-notification-spinner {
+  width: 18px;
+  height: 18px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+  .class-notification-modal {
+    width: 95%;
+    margin: 1rem;
+  }
+
+  .class-notification-header {
+    padding: 1rem;
+  }
+
+  .class-notification-title {
+    font-size: 1.1rem;
+  }
+
+  .class-notification-body {
+    padding: 1rem;
+  }
+
+  .class-notification-actions {
+    flex-direction: column;
+  }
+
+  .class-notification-action-btn {
+    width: 100%;
+    min-width: auto;
+  }
+}
+

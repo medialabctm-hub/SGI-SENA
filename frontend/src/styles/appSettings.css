@@ -1,0 +1,54 @@
+.app-settings-container {
+  max-width: 900px;
+}
+
+.app-settings-loading {
+  text-align: center;
+  padding: 2rem;
+}
+
+.app-settings-loading-text {
+  margin-top: 1rem;
+  color: #666;
+}
+
+.app-settings-header {
+  margin-bottom: 1.5rem;
+}
+
+.app-settings-title {
+  margin: 0;
+  font-size: 1.5rem;
+  color: var(--neutral-800);
+}
+
+.app-settings-description {
+  margin: 0.5rem 0 0 0;
+  color: #666;
+  font-size: 0.9rem;
+}
+
+.app-settings-form {
+  display: grid;
+  gap: 1.5rem;
+  max-width: 600px;
+}
+
+.app-settings-select {
+  display: block;
+  margin-top: 6px;
+  width: 100%;
+  padding: 0.5rem;
+}
+
+.app-settings-help {
+  color: #666;
+  font-size: 0.85rem;
+  margin-top: 4px;
+  display: block;
+}
+
+.app-settings-save {
+  margin-top: 0.5rem;
+}
+
