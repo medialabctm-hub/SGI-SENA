@@ -382,7 +382,7 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator:hover {
 }
 
 .horarios-dia-checkbox:hover {
-  background: var(--success-50);
+  background: var(--success-700);
   border-color: var(--success-900);
 }
 
@@ -395,7 +395,7 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator:hover {
 }
 
 .horarios-dia-checkbox.selected {
-  background: var(--success-100);
+  background: var(--success-700);
   border-color: var(--success-900);
   font-weight: 600;
 }
@@ -607,7 +607,7 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator:hover {
   gap: 8px;
   margin-top: 0.75rem;
   padding: 10px 14px;
-  background: var(--success-50);
+  background: var(--success-700);
   border-radius: 8px;
   color: var(--success-800);
   font-size: 0.9rem;
@@ -777,7 +777,7 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator:hover {
 .horarios-auto-badge {
   display: inline-block;
   padding: 4px 8px;
-  background: var(--success-100);
+  background: var(--success-300);
   color: var(--success-700);
   border-radius: 4px;
   font-size: 0.75rem;

@@ -8,6 +8,10 @@ import {
 } from '../utils/sqlQueries.js'
 import emailService from '../services/emailService.js'
 import { config } from '../config/config.js'
+import PDFDocument from 'pdfkit'
+import path from 'path'
+import { fileURLToPath } from 'url'
+import fs from 'fs'
 
 /**
  * Crear una nueva novedad
@@ -198,37 +202,37 @@ export async function crearNovedad(req, res) {
               )
             }
 
-            // Deshabilitar todas las asignaciones activas del equipo
-            // Esto asegura que ningún usuario pueda seguir usando un equipo dañado o dado de baja
-            try {
-              const razonDeshabilitacion = `Equipo deshabilitado automáticamente por novedad: ${tipoNovedadNormalizado}`
-              const resultadoDeshabilitacion = await deshabilitarAsignacionesActivas(
-                defaultDb,
-                codigo_equipo,
-                userId,
-                razonDeshabilitacion
-              )
-
-              if (resultadoDeshabilitacion.deshabilitadas > 0) {
-                logger.info('Asignaciones deshabilitadas automáticamente por cambio de estado crítico', {
+            // Deshabilitar asignaciones activas solo para Daño (no para Pérdida/Robo: se conserva el registro de uso)
+            const esPerdidaORobo = tipoLower.includes('pérdida') || tipoLower.includes('perdida') || tipoLower.includes('robo')
+            if (!esPerdidaORobo) {
+              try {
+                const razonDeshabilitacion = `Equipo deshabilitado automáticamente por novedad: ${tipoNovedadNormalizado}`
+                const resultadoDeshabilitacion = await deshabilitarAsignacionesActivas(
+                  defaultDb,
                   codigo_equipo,
-                  asignaciones_deshabilitadas: resultadoDeshabilitacion.deshabilitadas,
-                  usuarios_afectados: resultadoDeshabilitacion.usuarios_afectados,
-                  nuevo_estado: nuevoEstadoOperativo
-                })
+                  userId,
+                  razonDeshabilitacion
+                )
 
-                // Notificar a los usuarios afectados (se agregará a los destinatarios más adelante)
-                resultadoDeshabilitacion.usuarios_afectados.forEach(userIdAfectado => {
-                  destinatariosIds.add(userIdAfectado)
+                if (resultadoDeshabilitacion.deshabilitadas > 0) {
+                  logger.info('Asignaciones deshabilitadas automáticamente por cambio de estado crítico', {
+                    codigo_equipo,
+                    asignaciones_deshabilitadas: resultadoDeshabilitacion.deshabilitadas,
+                    usuarios_afectados: resultadoDeshabilitacion.usuarios_afectados,
+                    nuevo_estado: nuevoEstadoOperativo
+                  })
+
+                  resultadoDeshabilitacion.usuarios_afectados.forEach(userIdAfectado => {
+                    destinatariosIds.add(userIdAfectado)
+                  })
+                }
+              } catch (deshabErr) {
+                logger.error('Error al deshabilitar asignaciones activas por cambio de estado', {
+                  error: deshabErr.message,
+                  stack: deshabErr.stack,
+                  codigo_equipo
                 })
               }
-            } catch (deshabErr) {
-              // No fallar si hay error al deshabilitar, solo loguear
-              logger.error('Error al deshabilitar asignaciones activas por cambio de estado', {
-                error: deshabErr.message,
-                stack: deshabErr.stack,
-                codigo_equipo
-              })
             }
 
             logger.info('Estado del equipo actualizado por novedad crítica', {
@@ -889,6 +893,334 @@ export async function obtenerNovedadPorId(req, res) {
   } catch (err) {
     logger.error('Error al obtener novedad', { error: err.message, stack: err.stack })
     return res.status(500).json({ error: 'Error al obtener detalle de la novedad', details: err.message })
+  }
+}
+
+/**
+ * Generar PDF de acta de novedad por robo o pérdida.
+ * Incluye: datos técnicos del elemento, ambiente, responsables de uso,
+ * último instructor en el ambiente, cuentadante principal, instructor que reportó.
+ * Solo aplica a novedades de tipo Pérdida o Robo.
+ */
+export async function generarPDFNovedadRoboPerdida(req, res) {
+  try {
+    const { id } = req.params
+    const userId = req.user?.id
+    const userRole = req.user?.rol
+
+    const [[novedad]] = await defaultDb.execute(
+      `SELECT n.id_novedad, n.codigo_equipo, n.tipo_novedad, n.descripcion, n.fecha_novedad, n.reportado_por
+       FROM Novedades n
+       INNER JOIN Elementos e ON n.codigo_equipo = e.codigo_equipo
+       WHERE n.id_novedad = ?`,
+      [id]
+    )
+
+    if (!novedad) {
+      return res.status(404).json({ error: 'Novedad no encontrada' })
+    }
+
+    const tipoLower = (novedad.tipo_novedad || '').toLowerCase()
+    const esRoboOPerdida = tipoLower.includes('robo') || tipoLower.includes('pérdida') || tipoLower.includes('perdida')
+    if (!esRoboOPerdida) {
+      return res.status(400).json({
+        error: 'El PDF de acta solo está disponible para novedades de tipo Pérdida o Robo'
+      })
+    }
+
+    // Mismo criterio de permiso que ver detalle: Instructor/Aprendiz solo si tienen asignación del equipo
+    if (userRole === 'Instructor' || userRole === 'Aprendiz') {
+      const [[asignacion]] = await defaultDb.execute(
+        `SELECT id_responsable FROM Responsables_Equipo 
+         WHERE codigo_equipo = ? AND id_usuario = ? AND estado_responsabilidad = 'Activo'`,
+        [novedad.codigo_equipo, userId]
+      )
+      if (!asignacion) {
+        return res.status(403).json({ error: 'No tienes permiso para descargar este documento' })
+      }
+    }
+
+    // Equipo completo con ambiente, categoría y cuentadante
+    const [[equipo]] = await defaultDb.execute(
+      `SELECT e.codigo_equipo, e.tipo, e.modelo, e.placa, e.consecutivo, e.r_centro, e.descripcion,
+              e.specs_completas, e.atributos, e.estado_fisico, e.fecha_adquisicion, e.costo, e.valor_ingreso,
+              e.id_cuentadante, e.cuentadante_principal AS cuentadante_principal_text,
+              a.id_ambiente, a.nombre_ambiente, a.codigo_ambiente, a.tipo_ambiente,
+              c.nombre_categoria,
+              u_cuent.nombre_usuario AS cuentadante_nombre, u_cuent.cedula AS cuentadante_cedula, u_cuent.correo AS cuentadante_correo
+       FROM Elementos e
+       LEFT JOIN Ambientes a ON e.id_ambiente = a.id_ambiente
+       LEFT JOIN Categorias_Equipo c ON e.id_categoria = c.id_categoria
+       LEFT JOIN Usuarios u_cuent ON e.id_cuentadante = u_cuent.id_usuario
+       WHERE e.codigo_equipo = ?`,
+      [novedad.codigo_equipo]
+    )
+
+    if (!equipo) {
+      return res.status(404).json({ error: 'Equipo no encontrado' })
+    }
+
+    // Solo responsables activos del equipo (registro de uso se conserva al reportar robo/pérdida)
+    const [responsablesRaw] = await defaultDb.execute(
+      `SELECT re.tipo_responsabilidad,
+              re.ficha,
+              re.nombre_externo,
+              re.documento_externo,
+              COALESCE(u.nombre_usuario, re.nombre_externo) AS nombre,
+              COALESCE(u.cedula, re.documento_externo) AS documento,
+              r.nombre_rol
+       FROM Responsables_Equipo re
+       LEFT JOIN Usuarios u ON re.id_usuario = u.id_usuario
+       LEFT JOIN Roles r ON u.id_rol = r.id_rol
+       WHERE re.codigo_equipo = ? AND re.estado_responsabilidad = 'Activo'
+       ORDER BY re.tipo_responsabilidad = 'Principal' DESC, re.fecha_asignacion`,
+      [novedad.codigo_equipo]
+    )
+    // Una línea por persona (evitar duplicados por mismo documento)
+    const vistosDoc = new Set()
+    const responsables = (responsablesRaw || []).filter((r) => {
+      const doc = (r.documento || r.documento_externo || '').toString().trim() || `id-${r.nombre}-${r.ficha}`
+      if (vistosDoc.has(doc)) return false
+      vistosDoc.add(doc)
+      return true
+    })
+
+    // Último instructor en el ambiente: última clase en ese ambiente, o última responsabilidad activa
+    let ultimoInstructor = null
+    const idAmbiente = equipo.id_ambiente
+    if (idAmbiente) {
+      const [clase] = await defaultDb.execute(
+        `SELECT c.id_instructor, u.nombre_usuario, u.cedula, u.correo
+         FROM Clases c
+         INNER JOIN Usuarios u ON c.id_instructor = u.id_usuario
+         WHERE c.id_ambiente = ?
+         ORDER BY c.fecha_clase DESC, c.hora_fin DESC
+         LIMIT 1`,
+        [idAmbiente]
+      )
+      if (clase && clase.length > 0) {
+        ultimoInstructor = clase[0]
+      }
+      if (!ultimoInstructor) {
+        const [ra] = await defaultDb.execute(
+          `SELECT u.id_usuario, u.nombre_usuario, u.cedula, u.correo
+           FROM Responsabilidades_Ambiente ra
+           INNER JOIN Usuarios u ON ra.id_usuario = u.id_usuario
+           INNER JOIN Roles r ON u.id_rol = r.id_rol
+           WHERE ra.id_ambiente = ? AND ra.estado_responsabilidad = 'Activa' AND r.nombre_rol = 'Instructor'
+           ORDER BY ra.fecha_inicio DESC
+           LIMIT 1`,
+          [idAmbiente]
+        )
+        if (ra && ra.length > 0) ultimoInstructor = ra[0]
+      }
+    }
+
+    // Usuario que reportó la novedad
+    const [[reportador]] = await defaultDb.execute(
+      `SELECT u.nombre_usuario, u.cedula, u.correo, r.nombre_rol
+       FROM Usuarios u
+       LEFT JOIN Roles r ON u.id_rol = r.id_rol
+       WHERE u.id_usuario = ?`,
+      [novedad.reportado_por]
+    )
+
+    const fechaReporte = novedad.fecha_novedad
+      ? new Date(novedad.fecha_novedad).toLocaleString('es-ES', {
+          dateStyle: 'long',
+          timeStyle: 'short'
+        })
+      : 'No registrada'
+
+    // Generar PDF. Margen inferior grande en la primera página para reservar espacio del pie y que no pase a otra hoja.
+    const doc = new PDFDocument({
+      size: 'LETTER',
+      margins: { top: 40, bottom: 72, left: 50, right: 50 }
+    })
+
+    res.setHeader('Content-Type', 'application/pdf')
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="Acta_Novedad_${novedad.tipo_novedad}_${novedad.codigo_equipo}_${id}.pdf"`
+    )
+    doc.pipe(res)
+
+    const grisTexto = '#444444'
+    const grisClaro = '#888888'
+    const grisLinea = '#cccccc'
+    const verdeIcono = '#00a650'
+    const margen = 50
+    const anchoPagina = 612
+    const altoPagina = 792
+    const topInicio = 28
+    const pieY = altoPagina - 38
+
+    // Fondo blanco del acta
+    doc.fillColor('#ffffff').rect(0, 0, anchoPagina, altoPagina).fill()
+    doc.fillColor(grisTexto)
+
+    const sep = (opciones = {}) => {
+      const { omitirLinea = false } = opciones
+      if (!omitirLinea) {
+        doc.strokeColor(grisLinea).lineWidth(0.4)
+        doc.moveTo(margen, doc.y).lineTo(anchoPagina - margen, doc.y).stroke()
+        doc.strokeColor('black')
+      }
+      doc.moveDown(0.85)
+    }
+
+    const seccionTitulo = (num, titulo) => {
+      doc.moveDown(0.25)
+      doc.fillColor(verdeIcono)
+      doc.circle(margen + 6, doc.y + 7, 5).fill()
+      doc.fontSize(12).font('Helvetica-Bold').fillColor(grisTexto)
+      doc.text(`${num}. ${titulo}`, margen + 18, doc.y, { continued: false })
+      doc.moveDown(0.4)
+      doc.fontSize(10).font('Helvetica').fillColor(grisTexto)
+    }
+
+    doc.y = topInicio
+    doc.fillColor(grisTexto)
+
+    doc.moveDown(0.35)
+
+    doc.fontSize(18).font('Helvetica-Bold').fillColor(grisTexto)
+    doc.text('ACTA DE NOVEDAD POR ROBO O PÉRDIDA', { align: 'center' })
+    doc.moveDown(0.3)
+    doc.fontSize(11).font('Helvetica').fillColor(grisTexto).text('Sistema de Gestión de Inventarios SENA', { align: 'center' })
+    doc.moveDown(0.25)
+    doc.fontSize(10).fillColor(grisClaro).text(`Fecha y hora del reporte: ${fechaReporte}`, { align: 'center' })
+    doc.moveDown(1)
+    sep()
+
+    // 1. Información técnica del elemento (dos columnas)
+    seccionTitulo('1', 'Información técnica del elemento')
+    const filasIzq = []
+    const filasDer = []
+    const add = (eti, val) => {
+      if (val == null || val === '') return
+      const texto = `${eti}: ${String(val).trim()}`
+      if (filasIzq.length <= filasDer.length) filasIzq.push(texto)
+      else filasDer.push(texto)
+    }
+    add('Código', equipo.codigo_equipo)
+    add('Tipo', equipo.tipo)
+    add('Modelo', equipo.modelo)
+    add('Placa', equipo.placa)
+    add('Consecutivo', equipo.consecutivo)
+    add('R. Centro', equipo.r_centro)
+    add('Categoría', equipo.nombre_categoria)
+    add('Estado físico', equipo.estado_fisico)
+    add('Descripción', equipo.descripcion)
+    add('Fecha adquisición', equipo.fecha_adquisicion ? new Date(equipo.fecha_adquisicion).toLocaleDateString('es-ES') : null)
+    const valorEq = equipo.valor_ingreso ?? equipo.costo
+    if (valorEq != null) {
+      const v = new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP' }).format(Number(valorEq))
+      if (filasIzq.length <= filasDer.length) filasIzq.push(`Valor: ${v}`)
+      else filasDer.push(`Valor: ${v}`)
+    }
+    if (equipo.specs_completas) {
+      const t = String(equipo.specs_completas).trim().substring(0, 120)
+      if (filasDer.length <= filasIzq.length) filasDer.push(`Especificaciones: ${t}`)
+      else filasIzq.push(`Especificaciones: ${t}`)
+    } else if (equipo.atributos) {
+      const t = String(equipo.atributos).trim().substring(0, 120)
+      if (filasDer.length <= filasIzq.length) filasDer.push(`Atributos: ${t}`)
+      else filasIzq.push(`Atributos: ${t}`)
+    }
+
+    const colWidth = (anchoPagina - 2 * margen - 20) / 2
+    const startY = doc.y
+    doc.text(filasIzq.join('\n'), margen, startY, { width: colWidth, lineGap: 2 })
+    const yDespuesIzq = doc.y
+    doc.y = startY
+    doc.text(filasDer.join('\n'), margen + colWidth + 20, startY, { width: colWidth, lineGap: 2 })
+    doc.y = Math.max(yDespuesIzq, doc.y) + 10
+    doc.moveDown(0.6)
+    sep()
+
+    // 2. Ambiente donde estaba el elemento
+    seccionTitulo('2', 'Ambiente donde estaba el elemento por última vez')
+    doc.text(equipo.nombre_ambiente || 'Sin asignar', { continued: false })
+    doc.text(`Código: ${equipo.codigo_ambiente || 'N/A'} | Tipo: ${equipo.tipo_ambiente || 'N/A'}`, { continued: false })
+    doc.moveDown(0.55)
+    sep()
+
+    // 3. Responsables de uso del elemento
+    seccionTitulo('3', 'Responsables de uso del elemento')
+    if (responsables.length === 0) {
+      doc.text('No hay responsables activos registrados para este equipo.', { continued: false })
+    } else {
+      responsables.forEach((r, i) => {
+        const nombre = (r.nombre || r.nombre_externo || 'N/A').trim()
+        const docum = (r.documento || r.documento_externo || 'N/A').trim()
+        const ficha = (r.ficha || '').trim()
+        const rol = (r.nombre_rol || (r.documento_externo || r.nombre_externo ? 'Externo/Aprendiz' : '')).trim()
+        const tipo = (r.tipo_responsabilidad || 'Principal').trim()
+        let linea = `${i + 1}. ${nombre} | Doc: ${docum}`
+        if (ficha) linea += ` | Ficha: ${ficha}`
+        if (rol) linea += ` | Rol: ${rol}`
+        linea += ` | ${tipo}`
+        doc.text(linea, { continued: false })
+      })
+    }
+    doc.moveDown(0.55)
+    sep()
+
+    // 4. Último instructor presente en el ambiente
+    seccionTitulo('4', 'Último instructor presente en el ambiente')
+    if (!ultimoInstructor) {
+      doc.text('No hay registro de instructor asignado a este ambiente.', { continued: false })
+    } else {
+      doc.text(`Nombre: ${ultimoInstructor.nombre_usuario || 'N/A'}`, { continued: false })
+      doc.text(`Cédula: ${ultimoInstructor.cedula || 'N/A'}`, { continued: false })
+      if (ultimoInstructor.correo) doc.text(`Correo: ${ultimoInstructor.correo}`, { continued: false })
+    }
+    doc.moveDown(0.55)
+    sep()
+
+    // 5. Cuentadante principal del elemento
+    seccionTitulo('5', 'Cuentadante principal del elemento')
+    const nombreCuent = equipo.cuentadante_nombre || equipo.cuentadante_principal_text
+    if (!nombreCuent) {
+      doc.text('No asignado.', { continued: false })
+    } else {
+      doc.text(`Nombre: ${nombreCuent}`, { continued: false })
+      if (equipo.cuentadante_cedula) doc.text(`Cédula: ${equipo.cuentadante_cedula}`, { continued: false })
+      if (equipo.cuentadante_correo) doc.text(`Correo: ${equipo.cuentadante_correo}`, { continued: false })
+    }
+    doc.moveDown(0.55)
+    sep()
+
+    // 6. Quien reportó la novedad
+    seccionTitulo('6', 'Quien reportó la novedad')
+    if (reportador) {
+      doc.text(`Nombre: ${reportador.nombre_usuario || 'N/A'}`, { continued: false })
+      doc.text(`Cédula: ${reportador.cedula || 'N/A'}`, { continued: false })
+      doc.text(`Rol: ${reportador.nombre_rol || 'N/A'}`, { continued: false })
+      if (reportador.correo) doc.text(`Correo: ${reportador.correo}`, { continued: false })
+    } else {
+      doc.text('No disponible.', { continued: false })
+    }
+    doc.moveDown(0.55)
+    sep({ omitirLinea: true })
+
+    doc.moveDown(0.35)
+    doc.fontSize(10).font('Helvetica').fillColor(grisTexto)
+    doc.text(`Descripción de la novedad: ${novedad.descripcion || 'Sin descripción.'}`, { continued: false })
+
+    // Pie de página fijo en la primera hoja: volver a página 0 y dibujar en la zona del margen inferior
+    try {
+      doc.switchToPage(0)
+    } catch (_) {}
+    doc.y = pieY
+    doc.fontSize(9).font('Helvetica').fillColor(grisClaro).text(`Novedad #${id} | Equipo ${equipo.placa || novedad.codigo_equipo} | SGI SENA`, { align: 'center' })
+    doc.end()
+  } catch (err) {
+    logger.error('Error al generar PDF novedad robo/pérdida', { error: err.message, stack: err.stack })
+    if (!res.headersSent) {
+      return res.status(500).json({ error: 'Error al generar el PDF', details: err.message })
+    }
   }
 }
 

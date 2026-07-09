@@ -76,21 +76,20 @@ app.use(helmet({
 
 // CORS - Configuración de origen cruzado
 // Configuración base: permite múltiples orígenes si están separados por comas
+const normalizeOrigin = (o) => (o || '').trim().replace(/\/+$/, '') || o;
+
 const getAllowedOrigins = () => {
   const origins = [];
   
   if (config.cors.origin) {
-    // Si CORS_ORIGIN es una lista separada por comas, dividirla
     const originList = config.cors.origin.split(',').map(o => o.trim()).filter(o => o);
     origins.push(...originList);
   } else {
     origins.push('http://localhost:5173');
   }
   
-  // Agregar dominio de página externa para endpoints públicos
-  // Este dominio también puede ser usado para endpoints protegidos si está configurado
   const externalDomain = 'https://sgi-senadata.up.railway.app';
-  if (!origins.includes(externalDomain)) {
+  if (!origins.some(o => normalizeOrigin(o) === externalDomain)) {
     origins.push(externalDomain);
   }
   
@@ -99,15 +98,15 @@ const getAllowedOrigins = () => {
 
 const corsOptions = {
   origin: (origin, callback) => {
-    // Permitir requests sin origen (Postman, curl, mobile apps, etc.)
     if (!origin) {
       return callback(null, true);
     }
 
+    const normalized = normalizeOrigin(origin);
     const allowedOrigins = getAllowedOrigins();
+    const allowed = allowedOrigins.some(o => normalizeOrigin(o) === normalized);
     
-    // Verificar si el origen está en la lista permitida
-    if (allowedOrigins.includes(origin)) {
+    if (allowed) {
       callback(null, true);
     } else {
       // Permitir localhost SOLO en desarrollo

@@ -184,7 +184,7 @@ body::after {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  background: var(--neutral-200);
+  background: var(--neutral-50);
   text-align: center;
   height: 100%;
 }

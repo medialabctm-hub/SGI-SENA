@@ -12,36 +12,29 @@
 
 .consultar-equipo-estado-badge-nuevo {
   color: var(--info-700);
-  background: var(--info-50);
 }
 
 .consultar-equipo-estado-badge-bueno {
   color: var(--success-800);
-  background: var(--success-50);
 }
 
 .consultar-equipo-estado-badge-regular {
   color: var(--warning-700);
-  background: var(--warning-50);
 }
 
 .consultar-equipo-estado-badge-malo {
   color: var(--error-700);
-  background: var(--error-50);
 }
 
 .consultar-equipo-estado-badge-danado {
   color: var(--error-800);
-  background: var(--error-100);
 }
 
 .consultar-equipo-estado-badge-en-reparacion {
   color: var(--purple-700);
-  background: var(--purple-50);
 }
 
 .consultar-equipo-estado-badge-default {
   color: var(--neutral-600);
-  background: var(--neutral-100);
 }
 

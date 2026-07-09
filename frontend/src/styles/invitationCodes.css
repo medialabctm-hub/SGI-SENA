@@ -98,7 +98,6 @@
 }
 
 .invitation-codes-status-badge-activo {
-  background: var(--success-50);
   color: var(--success-800);
 }
 

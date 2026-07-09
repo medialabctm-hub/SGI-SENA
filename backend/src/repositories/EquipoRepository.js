@@ -47,7 +47,8 @@ export class EquipoRepository extends BaseRepository {
    */
   async findAll(filters = {}, pagination = {}, sorting = {}) {
     const page = Math.max(1, parseInt(pagination.page) || 1);
-    const limit = Math.min(100, Math.max(1, parseInt(pagination.limit) || 50));
+    // Máximo 5000 por página para permitir carga completa en app móvil (o paginación incremental)
+    const limit = Math.min(5000, Math.max(1, parseInt(pagination.limit) || 50));
     const offset = (page - 1) * limit;
     
     const sortField = sorting.field || 'codigo_equipo';
@@ -63,13 +64,14 @@ export class EquipoRepository extends BaseRepository {
 
     let query = `
       SELECT e.codigo_equipo, e.placa AS codigo_inventario, e.tipo, e.modelo, e.consecutivo, e.descripcion,
-             e.fecha_adquisicion, e.valor_ingreso AS costo, e.estado_fisico,
+             e.fecha_adquisicion, e.valor_ingreso, e.valor_ingreso AS costo, e.estado_fisico,
              e.specs_completas, e.id_cuentadante, e.cuentadante_principal,
              a.id_ambiente, a.nombre_ambiente, a.codigo_ambiente,
              COALESCE(ee.estado_operativo, 'Disponible') AS estado_operativo,
              ee.detalles AS detalles_estado,
              ee.fecha_actualizacion AS fecha_actualizacion_estado,
-             c.nombre_categoria
+             c.nombre_categoria,
+             CASE WHEN COALESCE(e.verificado_ambiente, 0) = 1 THEN 'Verificado' ELSE 'No verificado' END AS status_verificacion
       FROM Elementos e
       LEFT JOIN Ambientes a ON a.id_ambiente = e.id_ambiente
       LEFT JOIN Estado_Equipo ee ON e.codigo_equipo = ee.codigo_equipo
@@ -238,7 +240,7 @@ export class EquipoRepository extends BaseRepository {
     
     // Sanitizar valores para prevenir SQL injection (ya son números enteros validados)
     // Asegurar que sean enteros positivos
-    const safeLimit = Math.max(1, Math.min(100, Math.floor(validLimit)));
+    const safeLimit = Math.max(1, Math.min(5000, Math.floor(validLimit)));
     const safeOffset = Math.max(0, Math.floor(validOffset));
     
     query += ` LIMIT ${safeLimit} OFFSET ${safeOffset}`;
@@ -305,6 +307,7 @@ export class EquipoRepository extends BaseRepository {
       idTipo,
       idAmbiente,
       idCuentadante,
+      cuentadantePrincipal,
       tipo,
       modelo,
       descripcion,
@@ -320,12 +323,12 @@ export class EquipoRepository extends BaseRepository {
     } = equipoData;
 
     const columns = [
-      'id_categoria', 'id_ambiente', 'id_cuentadante', 'tipo', 'modelo',
+      'id_categoria', 'id_ambiente', 'id_cuentadante', 'cuentadante_principal', 'tipo', 'modelo',
       'descripcion', 'fecha_adquisicion', 'valor_ingreso', 'estado_fisico',
       'specs_completas', 'atributos', 'r_centro', 'consecutivo', 'placa', 'registrado_por'
     ];
     const values = [
-      idCategoria, idAmbiente, idCuentadante, tipo, modelo,
+      idCategoria, idAmbiente, idCuentadante, cuentadantePrincipal ?? null, tipo, modelo,
       descripcion, fechaAdquisicion, valorIngreso, estadoFisico,
       specsCompletas, atributos, rCentro, consecutivo, placa, registradoPor
     ];
@@ -355,9 +358,10 @@ export class EquipoRepository extends BaseRepository {
     const updates = [];
     const values = [];
 
+    // Solo valor_ingreso para el valor del equipo (misma columna que al registrar)
     const allowedFields = [
       'tipo', 'modelo', 'consecutivo', 'descripcion', 'fecha_adquisicion',
-      'costo', 'valor_ingreso', 'estado_fisico', 'specs_completas', 'atributos',
+      'valor_ingreso', 'estado_fisico', 'specs_completas', 'atributos',
       'id_ambiente', 'placa', 'r_centro'
     ];
 

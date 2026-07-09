@@ -141,9 +141,9 @@
 }
 
 .verificacion-badge.verificado {
-  background: var(--success-100);
+  background: var(--success-700);
   color: var(--success-900);
-  border: 1px solid var(--success-300);
+  border: 1px solid var(--success-700);
 }
 
 .verificacion-badge.pendiente {
@@ -662,7 +662,7 @@
   background: linear-gradient(135deg, var(--success-50) 0%, white 100%);
   padding: 1.5rem;
   border-radius: 12px;
-  border: 2px solid var(--success-200);
+  border: 2px solid var(--success-700);
   box-shadow: 0 2px 8px rgba(16, 185, 129, 0.1);
 }
 

@@ -79,7 +79,7 @@
 
 .novedades-estado-badge.resuelto {
   color: var(--success-600);
-  background: var(--success-50);
+  background: var(--success-400);
 }
 
 .novedades-estado-badge.no-resuelto {
@@ -110,7 +110,19 @@
   display: flex;
   align-items: center;
   gap: 4px;
-  /* Los estilos base vienen de .btn en buttons.css */
+  background-color: var(--info-600);
+  color: var(--neutral-50);
+  /* Estilo distinto al PDF: Ver = info (azul), PDF = success (verde) */
+}
+
+.novedades-pdf-btn {
+  padding: 6px 12px;
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background-color: var(--success-700);
+  color: var(--neutral-50);
 }
 
 .novedades-icon-inline {
@@ -129,6 +141,13 @@
 
 .novedades-table {
   margin-top: 1rem;
+}
+
+.novedades-acciones-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 /* Modal de detalle */
@@ -165,6 +184,7 @@ body.modal-open .app-sidebar {
   from {
     opacity: 0;
   }
+
   to {
     opacity: 1;
   }
@@ -191,6 +211,7 @@ body.modal-open .app-sidebar {
     transform: translateY(20px);
     opacity: 0;
   }
+
   to {
     transform: translateY(0);
     opacity: 1;
@@ -261,10 +282,10 @@ body.modal-open .app-sidebar {
 }
 
 .novedades-modal-section-resolucion {
-  background: var(--success-50);
+  background: var(--success-700);
   padding: 1.25rem;
   border-radius: 12px;
-  border: 1px solid var(--success-200);
+  border: 1px solid var(--success-700);
   margin-top: 0.5rem;
 }
 
@@ -353,8 +374,8 @@ body.modal-open .app-sidebar {
 }
 
 .novedades-observaciones-box {
-  background: var(--success-50);
-  border-color: var(--success-200);
+  background: var(--success-700);
+  border-color: var(--success-700);
 }
 
 .novedades-estado-header {
@@ -529,6 +550,10 @@ body.modal-open .app-sidebar {
   .novedades-equipo-info {
     gap: 0.375rem;
   }
+
+  .novedades-editar-estado-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 480px) {
@@ -566,4 +591,3 @@ body.modal-open .app-sidebar {
     margin-bottom: 1rem;
   }
 }
-

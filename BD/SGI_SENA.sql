@@ -221,6 +221,7 @@ CREATE TABLE Elementos (
   atributos TEXT,
   valor_ingreso DECIMAL(10,2),
   cuentadante_principal VARCHAR(255) NULL COMMENT 'Cuentadante principal permanente',
+  verificado_ambiente TINYINT(1) DEFAULT 0 COMMENT '1 = equipo ya fue verificado en ambiente (primera verificación externa); no se vuelve a cambiar',
   FOREIGN KEY (id_categoria) REFERENCES Categorias_Equipo(id_categoria),
   FOREIGN KEY (id_ambiente) REFERENCES Ambientes(id_ambiente) ON DELETE RESTRICT,
   FOREIGN KEY (id_cuentadante) REFERENCES Usuarios(id_usuario) ON DELETE SET NULL,
@@ -232,7 +233,8 @@ CREATE TABLE Elementos (
   INDEX idx_cuentadante (id_cuentadante),
   INDEX idx_categoria (id_categoria),
   INDEX idx_estado_fisico (estado_fisico),
-  INDEX idx_r_centro_consecutivo (r_centro, consecutivo)
+  INDEX idx_r_centro_consecutivo (r_centro, consecutivo),
+  INDEX idx_verificado_ambiente (verificado_ambiente)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
 COMMENT = 'Tabla principal de equipos y componentes tecnológicos';
 
@@ -300,7 +302,7 @@ COMMENT = 'Estado operativo actual de cada equipo';
 CREATE TABLE Responsables_Equipo (
   id_responsable INT PRIMARY KEY AUTO_INCREMENT,
   codigo_equipo INT NOT NULL,
-  id_usuario INT NULL COMMENT 'NULL si es registro externo',
+  id_usuario INT NULL COMMENT 'NULL si es asignación desde verificación externa (usuario externo/aprendiz)',
   fecha_asignacion DATETIME DEFAULT NOW(),
   fecha_desvinculacion DATETIME,
   estado_responsabilidad ENUM('Activo', 'Finalizado') DEFAULT 'Activo',
@@ -308,8 +310,8 @@ CREATE TABLE Responsables_Equipo (
   observaciones TEXT,
   asignado_por INT,
   -- Campos para registros externos
-  ficha VARCHAR(50) NULL COMMENT 'Número de ficha del aprendiz (registro externo)',
-  nombre_externo VARCHAR(200) NULL COMMENT 'Nombre completo del usuario (registro externo)',
+  ficha VARCHAR(50) NULL COMMENT 'Número de ficha del aprendiz (asignación desde verificación externa)',
+  nombre_externo VARCHAR(200) NULL COMMENT 'Nombre completo del usuario (asignación desde verificación externa)',
   documento_externo VARCHAR(50) NULL COMMENT 'Documento del responsable externo',
   dias_semana JSON NULL COMMENT 'Array de días de la semana para horarios',
   hora_inicio TIME NULL COMMENT 'Hora de inicio del horario',
@@ -474,6 +476,26 @@ CREATE TABLE Novedades (
 COMMENT = 'Registro de novedades reportadas sobre equipos';
 
 -- ============================================
+-- TABLA DE REPORTES
+-- ============================================
+CREATE TABLE Reportes (
+  id_reporte INT PRIMARY KEY AUTO_INCREMENT,
+  tipo_reporte ENUM('General', 'Equipos', 'Mantenimiento', 'Novedades', 'Uso', 'Otro') NOT NULL,
+  titulo VARCHAR(200) NOT NULL,
+  descripcion TEXT,
+  codigo_equipo INT NULL,
+  generado_por INT NULL,
+  fecha_generacion DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (codigo_equipo) REFERENCES Elementos(codigo_equipo) ON DELETE SET NULL,
+  FOREIGN KEY (generado_por) REFERENCES Usuarios(id_usuario) ON DELETE SET NULL,
+  INDEX idx_tipo_reporte (tipo_reporte),
+  INDEX idx_codigo_equipo (codigo_equipo),
+  INDEX idx_generado_por (generado_por),
+  INDEX idx_fecha_generacion (fecha_generacion DESC)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+COMMENT = 'Reportes generados por usuarios y reportes automáticos (ej. mantenimiento)';
+
+-- ============================================
 -- TABLA DE HISTORIAL (Reemplazo Rastreo)
 -- ============================================
 CREATE TABLE Historial_Equipos (
@@ -487,15 +509,52 @@ CREATE TABLE Historial_Equipos (
   estado_nuevo VARCHAR(50),
   fecha_evento DATETIME DEFAULT NOW(),
   registrado_por INT,
+  id_autorizado_por INT NULL COMMENT 'Usuario que autorizó el movimiento (cuando el equipo estaba verificado)',
+  motivo_autorizacion TEXT NULL COMMENT 'Motivo de la autorización para mover equipo verificado',
   FOREIGN KEY (codigo_equipo) REFERENCES Elementos(codigo_equipo) ON DELETE CASCADE,
   FOREIGN KEY (id_ambiente_anterior) REFERENCES Ambientes(id_ambiente) ON DELETE SET NULL,
   FOREIGN KEY (id_ambiente_nuevo) REFERENCES Ambientes(id_ambiente) ON DELETE SET NULL,
   FOREIGN KEY (registrado_por) REFERENCES Usuarios(id_usuario),
+  FOREIGN KEY (id_autorizado_por) REFERENCES Usuarios(id_usuario) ON DELETE SET NULL,
   INDEX idx_historial_fecha (codigo_equipo, fecha_evento DESC),
   INDEX idx_tipo (tipo_evento),
   INDEX idx_fecha_evento (fecha_evento DESC)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
 COMMENT = 'Registro histórico de eventos de equipos';
+
+-- ============================================
+-- SOLICITUDES DE AUTORIZACIÓN PARA MOVER EQUIPO VERIFICADO
+-- Flujo: solicitar → autorizador aprueba/rechaza → uso único al ejecutar el movimiento
+-- ============================================
+CREATE TABLE Solicitudes_Autorizacion_Movimiento (
+  id_solicitud INT PRIMARY KEY AUTO_INCREMENT,
+  codigo_equipo INT NOT NULL,
+  id_ambiente_origen INT NOT NULL,
+  id_ambiente_destino INT NOT NULL,
+  motivo TEXT NOT NULL COMMENT 'Motivo para realizar la acción (obligatorio)',
+  id_solicitante INT NOT NULL,
+  id_autorizador INT NOT NULL,
+  estado ENUM('Pendiente', 'Aprobada', 'Rechazada') NOT NULL DEFAULT 'Pendiente',
+  fecha_solicitud DATETIME NOT NULL DEFAULT NOW(),
+  fecha_resolucion DATETIME NULL,
+  id_resolucion_por INT NULL,
+  observacion_rechazo TEXT NULL,
+  fecha_uso DATETIME NULL COMMENT 'Cuando se usó esta autorización para ejecutar el movimiento (un solo uso)',
+  id_usado_por INT NULL,
+  id_historial_movimiento INT NULL COMMENT 'FK a Historial_Equipos cuando se usó',
+  FOREIGN KEY (codigo_equipo) REFERENCES Elementos(codigo_equipo) ON DELETE CASCADE,
+  FOREIGN KEY (id_ambiente_origen) REFERENCES Ambientes(id_ambiente) ON DELETE RESTRICT,
+  FOREIGN KEY (id_ambiente_destino) REFERENCES Ambientes(id_ambiente) ON DELETE RESTRICT,
+  FOREIGN KEY (id_solicitante) REFERENCES Usuarios(id_usuario) ON DELETE CASCADE,
+  FOREIGN KEY (id_autorizador) REFERENCES Usuarios(id_usuario) ON DELETE CASCADE,
+  FOREIGN KEY (id_resolucion_por) REFERENCES Usuarios(id_usuario) ON DELETE SET NULL,
+  FOREIGN KEY (id_usado_por) REFERENCES Usuarios(id_usuario) ON DELETE SET NULL,
+  FOREIGN KEY (id_historial_movimiento) REFERENCES Historial_Equipos(id_historial) ON DELETE SET NULL,
+  INDEX idx_autorizador_estado (id_autorizador, estado),
+  INDEX idx_equipo_estado_uso (codigo_equipo, estado, fecha_uso),
+  INDEX idx_solicitante (id_solicitante)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+COMMENT = 'Solicitudes de autorización para mover equipo verificado; un solo uso por autorización';
 
 -- ============================================
 -- TABLA DE AUDITORÍA
@@ -607,14 +666,20 @@ CREATE TABLE pedidos_externos (
   ficha VARCHAR(255) NOT NULL COMMENT 'Ficha asociada al pedido',
   estado VARCHAR(255) NOT NULL COMMENT 'Estado del pedido',
   fecha_recepcion DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Fecha y hora de recepción del webhook',
+  jornada ENUM('Mañana', 'Tarde', 'Noche') NULL COMMENT 'Jornada del pedido (formulario externo SGI-SENA_DATA)',
+  dias_semana JSON NULL COMMENT 'Días de la semana: array de strings ej. ["Lunes","Martes"] (formulario externo)',
+  hora_inicio TIME NULL COMMENT 'Hora de inicio asociada al pedido (formulario externo)',
+  hora_fin TIME NULL COMMENT 'Hora de fin asociada al pedido (formulario externo)',
   FOREIGN KEY (id_ambiente) REFERENCES Ambientes(id_ambiente) ON DELETE RESTRICT,
   INDEX idx_usuario (usuario),
   INDEX idx_ambiente (id_ambiente),
   INDEX idx_ficha (ficha),
   INDEX idx_estado (estado),
-  INDEX idx_fecha_recepcion (fecha_recepcion DESC)
+  INDEX idx_fecha_recepcion (fecha_recepcion DESC),
+  INDEX idx_jornada (jornada),
+  INDEX idx_horarios (hora_inicio, hora_fin)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-COMMENT = 'Tabla para almacenar pedidos recibidos de sistemas externos';
+COMMENT = 'Tabla para almacenar pedidos recibidos de sistemas externos (SGI-SENA_DATA)';
 
 -- ============================================
 -- TABLA DE HISTORIAL DE USO DE EQUIPOS
@@ -1529,3 +1594,44 @@ ANALYZE TABLE Usuarios;
 ANALYZE TABLE Participantes_Clase;
 ANALYZE TABLE Ambientes;
 ANALYZE TABLE Estado_Equipo;
+
+ALTER TABLE Elementos ADD COLUMN verificado_ambiente TINYINT(1) DEFAULT 0
+  COMMENT '1 = verificado en primera verificación de ambiente/aprendices'
+  AFTER cuentadante_principal;
+
+ALTER TABLE Elementos ADD INDEX idx_verificado_ambiente (verificado_ambiente);
+
+ALTER TABLE Historial_Equipos
+  ADD COLUMN id_autorizado_por INT NULL COMMENT 'Usuario que autorizó el movimiento (equipo verificado)' AFTER registrado_por,
+  ADD COLUMN motivo_autorizacion TEXT NULL COMMENT 'Motivo de la autorización' AFTER id_autorizado_por,
+  ADD CONSTRAINT fk_historial_autorizado_por FOREIGN KEY (id_autorizado_por) REFERENCES Usuarios(id_usuario) ON DELETE SET NULL;
+
+CREATE TABLE Solicitudes_Autorizacion_Movimiento (
+  id_solicitud INT PRIMARY KEY AUTO_INCREMENT,
+  codigo_equipo INT NOT NULL,
+  id_ambiente_origen INT NOT NULL,
+  id_ambiente_destino INT NOT NULL,
+  motivo TEXT NOT NULL COMMENT 'Motivo para realizar la acción (obligatorio)',
+  id_solicitante INT NOT NULL,
+  id_autorizador INT NOT NULL,
+  estado ENUM('Pendiente', 'Aprobada', 'Rechazada') NOT NULL DEFAULT 'Pendiente',
+  fecha_solicitud DATETIME NOT NULL DEFAULT NOW(),
+  fecha_resolucion DATETIME NULL,
+  id_resolucion_por INT NULL,
+  observacion_rechazo TEXT NULL,
+  fecha_uso DATETIME NULL COMMENT 'Cuando se usó esta autorización para ejecutar el movimiento (un solo uso)',
+  id_usado_por INT NULL,
+  id_historial_movimiento INT NULL COMMENT 'FK a Historial_Equipos cuando se usó',
+  FOREIGN KEY (codigo_equipo) REFERENCES Elementos(codigo_equipo) ON DELETE CASCADE,
+  FOREIGN KEY (id_ambiente_origen) REFERENCES Ambientes(id_ambiente) ON DELETE RESTRICT,
+  FOREIGN KEY (id_ambiente_destino) REFERENCES Ambientes(id_ambiente) ON DELETE RESTRICT,
+  FOREIGN KEY (id_solicitante) REFERENCES Usuarios(id_usuario) ON DELETE CASCADE,
+  FOREIGN KEY (id_autorizador) REFERENCES Usuarios(id_usuario) ON DELETE CASCADE,
+  FOREIGN KEY (id_resolucion_por) REFERENCES Usuarios(id_usuario) ON DELETE SET NULL,
+  FOREIGN KEY (id_usado_por) REFERENCES Usuarios(id_usuario) ON DELETE SET NULL,
+  FOREIGN KEY (id_historial_movimiento) REFERENCES Historial_Equipos(id_historial) ON DELETE SET NULL,
+  INDEX idx_autorizador_estado (id_autorizador, estado),
+  INDEX idx_equipo_estado_uso (codigo_equipo, estado, fecha_uso),
+  INDEX idx_solicitante (id_solicitante)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+COMMENT = 'Solicitudes de autorización para mover equipo verificado; un solo uso por autorización';

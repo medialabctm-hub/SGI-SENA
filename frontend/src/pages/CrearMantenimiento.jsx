@@ -8,6 +8,7 @@ import { FiTool, FiPackage, FiCalendar, FiUser, FiFileText, FiSearch, FiCheck, F
 import { parseApiResponse, buildErrorMessage } from '../utils/api'
 import '../styles/pages/equipos.css'
 import '../styles/pages/mantenimientos.css'
+import { LoadingScreen } from './LoadingDemo'
 
 export default function CrearMantenimiento() {
   const navigate = useNavigate()
@@ -303,7 +304,7 @@ export default function CrearMantenimiento() {
 
           {cargandoOpciones ? (
             <div className="loading-state">
-              <p>Cargando opciones de mantenimiento...</p>
+              <LoadingScreen message="Cargando opciones de mantenimiento" />
             </div>
           ) : (
           <form onSubmit={handleSubmit}>

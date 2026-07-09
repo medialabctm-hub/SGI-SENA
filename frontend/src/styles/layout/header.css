@@ -1,6 +1,5 @@
 /* Header - Nuevo estilo banner blanco */
 .app-header-wrapper {
-  background: linear-gradient(135deg, #f0f9f4 0%, #e8f5ea 25%, #f0f9f4 50%, #e8f5ea 75%, #f0f9f4 100%);
   background-size: 200% 200%;
   animation: gradientShift 15s ease infinite;
   padding: 20px;
@@ -18,7 +17,7 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background-image: 
+  background-image:
     radial-gradient(circle at 20% 50%, rgba(1, 175, 0, 0.03) 0%, transparent 50%),
     radial-gradient(circle at 80% 80%, rgba(1, 175, 0, 0.03) 0%, transparent 50%),
     radial-gradient(circle at 40% 20%, rgba(1, 175, 0, 0.02) 0%, transparent 50%);
@@ -33,7 +32,7 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background-image: 
+  background-image:
     repeating-linear-gradient(45deg, transparent, transparent 2px, rgba(1, 175, 0, 0.02) 2px, rgba(1, 175, 0, 0.02) 4px);
   background-size: 40px 40px;
   pointer-events: none;
@@ -41,9 +40,12 @@
 }
 
 @keyframes gradientShift {
-  0%, 100% {
+
+  0%,
+  100% {
     background-position: 0% 50%;
   }
+
   50% {
     background-position: 100% 50%;
   }
@@ -105,12 +107,11 @@
   height: auto;
   object-fit: contain;
   border-radius: 6px;
-  margin-left: 650px;
 }
 
 .app-title .name {
   font-weight: 700;
-  color: var(--success-800);
+  color: rgba(1, 175, 0, 1);
   font-size: 18px;
 }
 
@@ -133,13 +134,14 @@
   z-index: 1;
 }
 
+/* Alineado con .btn-verde en buttons.css (notificaciones, perfil) */
 .header-icon-btn {
   display: flex;
   align-items: center;
   justify-content: center;
   width: 44px;
   height: 44px;
-  border: none;
+  border: 2px solid transparent;
   background: var(--success-800);
   color: white;
   border-radius: 50%;
@@ -147,18 +149,20 @@
   transition: all 0.2s ease;
   position: relative;
   font-size: 20px;
-  box-shadow: 0 2px 8px rgba(1, 175, 0, 0.3);
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.25);
 }
 
 .header-icon-btn:hover {
-  background: var(--success-900);
-  color: white;
+  background: white;
+  color: var(--success-800);
+  border-color: var(--success-800);
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(1, 175, 0, 0.4);
+  box-shadow: 0 6px 16px rgba(16, 185, 129, 0.35);
 }
 
 .header-icon-btn:active {
   transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.25);
 }
 
 .header-icon-btn:focus-visible {
@@ -333,4 +337,3 @@
     width: 36px;
   }
 }
-

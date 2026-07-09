@@ -6,6 +6,7 @@ import { FiPackage, FiInbox } from 'react-icons/fi'
 import { useSocket } from '../contexts/SocketContext'
 import '../styles/pages/equipos.css'
 import '../styles/misEquipos.css'
+import { LoadingScreen } from './LoadingDemo'
 
 export default function MisEquipos() {
   const [equipos, setEquipos] = useState([])
@@ -103,8 +104,7 @@ export default function MisEquipos() {
 
           {loading ? (
             <div className="loading-state">
-              <div className="loading-spinner"></div>
-              <p>Cargando equipos...</p>
+              <LoadingScreen message="Cargando equipos" />
             </div>
           ) : equipos.length === 0 ? (
             <div className="empty-state">

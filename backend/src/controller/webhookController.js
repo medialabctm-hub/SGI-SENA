@@ -9,9 +9,15 @@ const getWebhookSecret = () => config.webhook?.secret || process.env.WEBHOOK_SEC
 
 // Query SQL pre-compilado (mejor rendimiento)
 const INSERT_QUERY = `
-  INSERT INTO pedidos_externos (usuario, id_ambiente, ficha, estado, fecha_recepcion)
-  VALUES (?, ?, ?, ?, NOW())
+  INSERT INTO pedidos_externos (usuario, id_ambiente, ficha, estado, fecha_recepcion, jornada, dias_semana, hora_inicio, hora_fin)
+  VALUES (?, ?, ?, ?, NOW(), ?, ?, ?, ?)
 `;
+
+/** Valores válidos de jornada (coinciden con ENUM en BD) */
+const JORNADAS_VALIDAS = ['Mañana', 'Tarde', 'Noche'];
+
+/** Días de la semana aceptados en español (para validar dias_semana) */
+const DIAS_SEMANA_VALIDOS = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
 
 /**
  * Valida que un valor no esté vacío
@@ -30,6 +36,47 @@ const validarYConvertirAmbiente = (ambiente) => {
     return !isNaN(parsed) && Number.isInteger(parsed) ? parsed : null;
   }
   return null;
+};
+
+/**
+ * Valida jornada: debe ser uno de Mañana, Tarde, Noche. Opcional (null si no se envía).
+ */
+const validarJornada = (jornada) => {
+  if (jornada === undefined || jornada === null || jornada === '') return null;
+  const valor = typeof jornada === 'string' ? jornada.trim() : String(jornada);
+  return JORNADAS_VALIDAS.includes(valor) ? valor : null;
+};
+
+/**
+ * Valida dias_semana: array de strings con nombres de días. Opcional.
+ * Acepta también números 1-7 (1=Lunes, 7=Domingo) y los convierte a nombre.
+ */
+const validarDiasSemana = (dias) => {
+  if (dias === undefined || dias === null) return null;
+  if (!Array.isArray(dias) || dias.length === 0) return null;
+  const normalizados = dias
+    .map((d) => {
+      if (typeof d === 'number' && d >= 1 && d <= 7) return DIAS_SEMANA_VALIDOS[d - 1];
+      const s = typeof d === 'string' ? d.trim() : String(d);
+      return DIAS_SEMANA_VALIDOS.includes(s) ? s : null;
+    })
+    .filter(Boolean);
+  return normalizados.length > 0 ? JSON.stringify(normalizados) : null;
+};
+
+/**
+ * Parsea y valida hora en formato HH:mm o HH:mm:ss. Retorna string para TIME o null si inválido.
+ */
+const validarHora = (hora) => {
+  if (hora === undefined || hora === null || hora === '') return null;
+  const s = typeof hora === 'string' ? hora.trim() : String(hora);
+  const match = /^(\d{1,2}):(\d{2})(?::(\d{2}))?$/.exec(s);
+  if (!match) return null;
+  const h = parseInt(match[1], 10);
+  const m = parseInt(match[2], 10);
+  const sec = match[3] ? parseInt(match[3], 10) : 0;
+  if (h < 0 || h > 23 || m < 0 || m > 59 || sec < 0 || sec > 59) return null;
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
 };
 
 /**
@@ -64,10 +111,10 @@ export const recibirWebhookExterno = async (req, res, next) => {
       });
     }
 
-    // Extraer y validar datos en una sola pasada
-    const { usuario, ambiente, ficha, estado } = req.body;
+    // Extraer datos requeridos y opcionales (jornada, dias_semana, hora desde SGI-SENA_DATA)
+    const { usuario, ambiente, ficha, estado, jornada, dias_semana, hora, hora_inicio, hora_fin } = req.body;
 
-    // Validación optimizada: una sola pasada
+    // Validación optimizada: una sola pasada para campos obligatorios
     const camposFaltantes = [];
     if (isEmpty(usuario)) camposFaltantes.push('usuario');
     if (isEmpty(ambiente)) camposFaltantes.push('ambiente');
@@ -100,6 +147,42 @@ export const recibirWebhookExterno = async (req, res, next) => {
       });
     }
 
+    // Validar campos opcionales: jornada, dias_semana, hora(s)
+    const jornadaValida = validarJornada(jornada);
+    if (jornada !== undefined && jornada !== null && jornada !== '' && jornadaValida === null) {
+      return res.status(400).json({
+        success: false,
+        error: 'Valor de jornada inválido',
+        detalles: `jornada debe ser uno de: ${JORNADAS_VALIDAS.join(', ')}`,
+      });
+    }
+
+    const diasSemanaJson = validarDiasSemana(dias_semana);
+    if (dias_semana !== undefined && dias_semana !== null && !Array.isArray(dias_semana)) {
+      return res.status(400).json({
+        success: false,
+        error: 'dias_semana inválido',
+        detalles: 'dias_semana debe ser un array de días (ej. ["Lunes","Martes"]) o números 1-7.',
+      });
+    }
+
+    const horaInicioValida = validarHora(hora_inicio ?? hora);
+    const horaFinValida = validarHora(hora_fin);
+    if (hora_inicio !== undefined && hora_inicio !== null && hora_inicio !== '' && horaInicioValida === null) {
+      return res.status(400).json({
+        success: false,
+        error: 'hora_inicio inválida',
+        detalles: 'hora_inicio debe tener formato HH:mm o HH:mm:ss',
+      });
+    }
+    if (hora_fin !== undefined && hora_fin !== null && hora_fin !== '' && horaFinValida === null) {
+      return res.status(400).json({
+        success: false,
+        error: 'hora_fin inválida',
+        detalles: 'hora_fin debe tener formato HH:mm o HH:mm:ss',
+      });
+    }
+
     // Guardar en la base de datos usando dbWrapper (más eficiente)
     try {
       const [result] = await dbWrapper.execute(INSERT_QUERY, [
@@ -107,6 +190,10 @@ export const recibirWebhookExterno = async (req, res, next) => {
         ambienteNumero,
         ficha,
         estado,
+        jornadaValida,
+        diasSemanaJson,
+        horaInicioValida,
+        horaFinValida,
       ]);
 
       // Solo loggear en desarrollo para reducir overhead en producción

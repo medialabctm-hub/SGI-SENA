@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import Toast from '../../components/Toast'
 import { parseApiResponse, buildErrorMessage, getAuthHeaders } from '../../utils/api'
 import '../../styles/pages/tiposEquipo.css'
+import { LoadingScreen } from '../LoadingDemo'
 
 export default function TiposEquipo() {
   const [categorias, setCategorias] = useState([])
@@ -149,8 +150,7 @@ export default function TiposEquipo() {
     return (
       <div className="form-equipos tipos-equipo-container">
         <div className="tipos-equipo-loading">
-          <div className="loading-spinner"></div>
-          <p>Cargando categorías...</p>
+          <LoadingScreen message="Cargando categorías" />
         </div>
       </div>
     )

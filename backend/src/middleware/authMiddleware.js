@@ -54,4 +54,39 @@ export async function authenticate(req, res, next) {
   }
 }
 
+/**
+ * Autenticación opcional: si hay token válido adjunta req.user; si no hay o es inválido, continúa sin adjuntar.
+ * No responde 401 cuando falta o falla el token.
+ */
+export async function optionalAuthenticate(req, res, next) {
+  try {
+    const authHeader = req.headers.authorization || '';
+    const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+    if (!token) return next();
+
+    try {
+      const jwtService = ServiceFactory.create('jwtService');
+      const payload = jwtService.verify(token);
+      const userRepository = ServiceFactory.create('userRepository');
+      const user = await userRepository.findById(payload.id);
+      if (!user) return next();
+
+      req.user = {
+        id: user.id_usuario,
+        nombre: user.nombre_usuario,
+        cedula: user.cedula,
+        correo: user.correo,
+        id_rol: user.id_rol,
+        rol: user.nombre_rol,
+      };
+    } catch {
+      // Token inválido o expirado: no bloquear, seguir sin req.user
+    }
+    return next();
+  } catch (err) {
+    logger.error('Error en optionalAuthenticate', { error: err.message });
+    return next();
+  }
+}
+
 export default authenticate

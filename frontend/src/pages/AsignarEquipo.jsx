@@ -9,6 +9,7 @@ import { parseApiResponse, buildErrorMessage } from '../utils/api'
 import { useSocket } from '../contexts/SocketContext'
 import '../styles/pages/equipos.css'
 import '../styles/pages/asignaciones.css'
+import { LoadingScreen } from './LoadingDemo'
 
 export default function AsignarEquipo() {
   const [activeTab, setActiveTab] = useState('asignar') // 'asignar' o 'ver'
@@ -585,8 +586,7 @@ export default function AsignarEquipo() {
             <div className="asignar-equipo-content-wrapper">
               {loadingAsignaciones ? (
                 <div className="asignar-equipo-loading">
-                  <div className="loading-spinner"></div>
-                  <p className="asignar-equipo-loading-text">Cargando asignaciones...</p>
+                  <LoadingScreen message="Cargando asignaciones" />
                 </div>
               ) : asignaciones.length === 0 ? (
                 <div className="empty-state">

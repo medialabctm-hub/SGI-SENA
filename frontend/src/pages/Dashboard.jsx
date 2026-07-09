@@ -3,10 +3,11 @@ import { useNavigate } from 'react-router-dom'
 import Header from '../components/Header'
 import Sidebar from '../components/Sidebar'
 import Toast from '../components/Toast'
-import { FiPlus, FiAlertCircle, FiPackage, FiCheckCircle, FiDollarSign, FiTrendingUp, FiUsers, FiCalendar, FiTool, FiBarChart2 } from 'react-icons/fi'
+import { FiPlus, FiAlertCircle, FiPackage, FiCheckCircle, FiDollarSign, FiTrendingUp, FiUsers, FiCalendar, FiTool, FiBarChart2, FiClipboard } from 'react-icons/fi'
 import { parseApiResponse, buildErrorMessage, handleError } from '../utils/api'
 import { useSocket } from '../contexts/SocketContext'
 import '../styles/layout/dashboard.css'
+import { LoadingScreen } from './LoadingDemo'
 
 export default function Dashboard() {
   const [user, setUser] = useState(null)
@@ -14,6 +15,7 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(false)
   const [statsLoaded, setStatsLoaded] = useState(false)
   const [toast, setToast] = useState(null)
+  const [pendientesAutorizacion, setPendientesAutorizacion] = useState(0)
   const nav = useNavigate()
 
   useEffect(() => {
@@ -73,6 +75,19 @@ export default function Dashboard() {
       return () => clearTimeout(timer)
     }
   }, [user, statsLoaded, cargarEstadisticas, shouldShowStats])
+
+  // Contador de solicitudes de autorización pendientes (Administrador y Cuentadante)
+  useEffect(() => {
+    if (user?.nombre_rol !== 'Administrador' && user?.nombre_rol !== 'Cuentadante') return
+    const token = localStorage.getItem('token')
+    if (!token) return
+    fetch('/api/equipos/autorizacion-movimiento/pendientes/count', {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+      .then(r => r.ok ? r.json() : { count: 0 })
+      .then(d => setPendientesAutorizacion(d?.count ?? 0))
+      .catch(() => setPendientesAutorizacion(0))
+  }, [user?.nombre_rol])
 
   // Suscribirse a actualizaciones en tiempo real que afectan estadísticas
   const { subscribe } = useSocket()
@@ -134,6 +149,24 @@ export default function Dashboard() {
             <h2>¡Bienvenido{userRole ? `, ${userRole}` : ''}{user ? ` ${user.nombre_usuario}` : ''}!</h2>
           </div>
 
+          {/* Alerta: solicitudes de autorización pendientes (Administrador y Cuentadante) */}
+          {(isAdmin || isCuentadante) && pendientesAutorizacion > 0 && (
+            <div className="dashboard-alert dashboard-alert-autorizaciones">
+              <FiClipboard className="dashboard-alert-icon" />
+              <div className="dashboard-alert-content">
+                <strong>Tienes {pendientesAutorizacion} solicitud{pendientesAutorizacion !== 1 ? 'es' : ''} de autorización pendiente{pendientesAutorizacion !== 1 ? 's' : ''}</strong>
+                <p>Revisa y aprueba o rechaza las solicitudes de movimiento de equipos verificados.</p>
+              </div>
+              <button
+                type="button"
+                className="dashboard-alert-action"
+                onClick={() => nav('/equipos/autorizaciones#pendientes')}
+              >
+                Ver autorizaciones
+              </button>
+            </div>
+          )}
+
           {/* Accesos Rápidos Destacados */}
           <div className="quick-actions">
             <h3 className="section-title">Accesos Rápidos</h3>
@@ -185,8 +218,7 @@ export default function Dashboard() {
               </div>
               {loading ? (
                 <div className="stats-loading">
-                  <div className="loading-spinner"></div>
-                  <p>Cargando estadísticas...</p>
+                  <LoadingScreen message="Cargando estadísticas" />
                 </div>
               ) : stats ? (
                 <>

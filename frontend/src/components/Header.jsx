@@ -1,10 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import {
-  FiBell,
-  FiLogOut,
-  FiUser,
-  FiMenu,
-} from 'react-icons/fi';
+import {FiBell, FiLogOut, FiUser, FiMenu,} from 'react-icons/fi';
 import { Link } from "react-router-dom";
 import { useNavigate } from 'react-router-dom';
 import logo from '/public/images/logoSena.png';
@@ -249,15 +244,14 @@ export default function Header() {
   useEffect(() => {
     if (notifications.length === 0) return
 
-    // Buscar notificaciones no leídas con acciones de consentimiento
+    // Buscar notificación no leída: consentimiento (Aceptar/Rechazar) o informativa (clase por comenzar para cuentadante principal)
     const notificacionClase = notifications.find(
       (notif) =>
         !notif.leida &&
         notif.metadata &&
-        notif.metadata.acciones &&
-        Array.isArray(notif.metadata.acciones) &&
-        notif.metadata.acciones.length > 0 &&
-        notif.metadata.tipo === 'consentimiento_inicio'
+        notif.metadata.id_clase &&
+        (notif.metadata.tipo === 'consentimiento_inicio' ||
+          notif.metadata.tipo === 'clase_proxima_inicio')
     )
 
     // Verificar estado de la clase antes de mostrar el modal

@@ -83,14 +83,13 @@
 .config-profile-save-btn,
 .config-profile-cancel-btn,
 .config-security-submit,
-.config-users-button,
-.app-settings-save {
+.config-users-button {
   /* Los estilos base vienen de buttons.css */
 }
 
 .config-security-container {
-  max-width: 900px;
-  padding: 2.5rem;
+  max-width: 500px;
+  padding: 1.5rem;
 }
 
 .config-security-submit {
@@ -118,94 +117,12 @@
 }
 
 /* ============================================
-   APP SETTINGS
-   ============================================ */
-
-.app-settings-container {
-  max-width: 900px;
-}
-
-.app-settings-loading {
-  text-align: center;
-  padding: 2rem;
-}
-
-.app-settings-loading-text {
-  margin-top: 1rem;
-  color: #666;
-}
-
-.app-settings-header {
-  margin-bottom: 1.5rem;
-}
-
-.app-settings-title {
-  margin: 0;
-  font-size: 1.5rem;
-  color: var(--neutral-800);
-}
-
-.app-settings-description {
-  margin: 0.5rem 0 0 0;
-  color: #666;
-  font-size: 0.9rem;
-}
-
-.app-settings-form {
-  display: grid;
-  gap: 1.5rem;
-  max-width: 600px;
-}
-
-.app-settings-select {
-  display: block;
-  margin-top: 6px;
-  width: 100%;
-  padding: 0.5rem;
-}
-
-/* Asegurar que los selects usen estilos globales */
-.app-settings-select {
-  /* Los estilos base vienen de forms.css */
-}
-
-/* Prevenir doble borde en CustomSelect dentro de app-settings */
-.app-settings-form .custom-select-wrapper {
-  border: none !important;
-  padding: 0 !important;
-  background: transparent !important;
-}
-
-.app-settings-form .custom-select {
-  border: 2px solid var(--success-800) !important;
-}
-
-.app-settings-form .custom-select:hover {
-  border-color: var(--success-900) !important;
-}
-
-.app-settings-form .custom-select-open {
-  border-color: var(--success-900) !important;
-}
-
-.app-settings-help {
-  color: #666;
-  font-size: 0.85rem;
-  margin-top: 4px;
-  display: block;
-}
-
-.app-settings-save {
-  margin-top: 0.5rem;
-}
-
-/* ============================================
    SECURITY
    ============================================ */
 
 .security-container {
   max-width: 900px;
-  padding: 2.5rem;
+  padding: 1.5rem;
 }
 
 .security-header {
@@ -253,10 +170,10 @@
 .security-container .form-input {
   padding: 1.125rem 1.5rem;
   font-size: 1.1rem;
-  min-height: 60px;
+  height: 50px;
   border-width: 2px;
   border-radius: 12px;
-  width: 100%;
+  width: 50%;
   transition: all 0.2s ease;
 }
 
@@ -287,7 +204,7 @@
 .security-submit .btn {
   padding: 1rem 2rem;
   font-size: 1.05rem;
-  min-height: 56px;
+  min-height: auto;
   font-weight: 600;
 }
 
@@ -314,7 +231,41 @@
 .security-generator .btn {
   padding: 1rem 2rem;
   font-size: 1.05rem;
-  min-height: 56px;
-  font-weight: 600;
+  min-height: 20px;
 }
 
+
+/* Responsive */
+@media (max-width: 768px) {
+  .config-page-title {
+    font-size: 1.75rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .config-profile-container,
+  .config-security-container {
+    padding: 1.5rem;
+  }
+
+  .config-profile-header {
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+
+  .config-profile-actions {
+    width: 100%;
+    flex-direction: column;
+  }
+
+  .config-profile-actions button {
+    width: 100%;
+  }
+
+  .security-submit {
+    flex-direction: column;
+  }
+
+  .security-submit button {
+    width: 100%;
+  }
+}

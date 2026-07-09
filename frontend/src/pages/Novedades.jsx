@@ -5,13 +5,14 @@ import Toast from '../components/Toast'
 import ConfirmModal from '../components/ConfirmModal'
 import CustomSelect from '../components/CustomSelect'
 import { FiAlertCircle, FiEye, FiCheckCircle, FiXCircle, FiEdit, FiPackage, FiFileText, FiSearch, FiCheck, FiX, FiList, FiType, FiTrash2, FiDownload, FiHash, FiUser, FiCalendar, FiClock, FiInfo } from 'react-icons/fi'
-import { parseApiResponse, buildErrorMessage } from '../utils/api'
+import { parseApiResponse, buildErrorMessage, descargarPDFNovedadRoboPerdida } from '../utils/api'
 import { useSocket } from '../contexts/SocketContext'
 import jsPDF from 'jspdf'
 import '../styles/pages/equipos.css'
 import '../styles/novedades.css'
 import '../styles/pages/reportes.css'
 import '../styles/components/modals.css'
+import { LoadingScreen } from './LoadingDemo'
 
 export default function Novedades() {
   const [activeTab, setActiveTab] = useState('ver') // 'ver', 'crear', o 'reportes'
@@ -271,9 +272,11 @@ export default function Novedades() {
       const data = await res.json()
 
       if (res.ok) {
-        setToast({ 
-          message: data.message || 'Novedad registrada correctamente', 
-          type: 'success' 
+        const tipoNovedad = form.tipo_novedad || ''
+        const esRoboOPerdida = tipoNovedad === 'Pérdida' || tipoNovedad === 'Robo'
+        setToast({
+          message: data.message || 'Novedad registrada correctamente',
+          type: 'success'
         })
         setForm({
           codigo_equipo: '',
@@ -281,9 +284,17 @@ export default function Novedades() {
           descripcion: '',
         })
         limpiarEquipo()
-        // Cambiar a la pestaña de ver y actualizar lista
         setActiveTab('ver')
         await fetchNovedades()
+        if (data.id && esRoboOPerdida) {
+          try {
+            await descargarPDFNovedadRoboPerdida(data.id)
+            setToast({ message: 'Novedad registrada. Se descargó el acta en PDF.', type: 'success' })
+          } catch (e) {
+            console.error('Error al descargar PDF acta:', e)
+            setToast({ message: buildErrorMessage(e, 'Acta disponible en detalle de la novedad.'), type: 'warning' })
+          }
+        }
       } else {
         setToast({ 
           message: data.error || 'Error al registrar la novedad', 
@@ -745,8 +756,7 @@ export default function Novedades() {
               <>
                 {loading ? (
                   <div className="loading-state">
-                    <div className="loading-spinner"></div>
-                    <p>Cargando novedades...</p>
+                    <LoadingScreen message="Cargando novedades" />
                   </div>
                 ) : novedades.length === 0 ? (
                   <div className="empty-state">
@@ -791,13 +801,33 @@ export default function Novedades() {
                             <td>{formatDate(novedad.fecha_novedad)}</td>
                             <td>{getEstadoBadge(novedad.estado_resolucion)}</td>
                             <td>
-                              <button
-                                className="btn novedades-ver-btn"
-                                onClick={() => setSelectedNovedad(novedad)}
-                              >
-                                <FiEye size={14} className="novedades-icon-inline-small" />
-                                Ver
-                              </button>
+                              <div className="novedades-acciones-cell">
+                                <button
+                                  className="btn novedades-ver-btn"
+                                  onClick={() => setSelectedNovedad(novedad)}
+                                >
+                                  <FiEye size={14} className="novedades-icon-inline-small" />
+                                  Ver
+                                </button>
+                                {(novedad.tipo_novedad === 'Pérdida' || novedad.tipo_novedad === 'Robo') && (
+                                  <button
+                                    type="button"
+                                    className="btn novedades-pdf-btn"
+                                    title="Descargar acta en PDF"
+                                    onClick={async () => {
+                                      try {
+                                        await descargarPDFNovedadRoboPerdida(novedad.id_novedad)
+                                        setToast({ message: 'Acta en PDF descargada correctamente', type: 'success' })
+                                      } catch (e) {
+                                        setToast({ message: buildErrorMessage(e, 'No se pudo descargar el PDF'), type: 'error' })
+                                      }
+                                    }}
+                                  >
+                                    <FiDownload size={14} className="novedades-icon-inline-small" />
+                                    PDF
+                                  </button>
+                                )}
+                              </div>
                             </td>
                           </tr>
                         ))}
@@ -1025,68 +1055,145 @@ export default function Novedades() {
                         </div>
                       </div>
                     ) : (
-                      <div className="reportes-detail-content">
-                        <div className="reportes-detail-header">
-                          <h3>Detalle del Reporte</h3>
+                      <div className="reportes-detail-content novedades-modal-content">
+                        <div className="novedades-modal-header">
+                          <div className="novedades-modal-title-wrapper">
+                            <FiFileText size={24} className="novedades-modal-title-icon" />
+                            <h3 className="novedades-modal-title">Detalle del Reporte</h3>
+                          </div>
                           <button
                             onClick={() => {
                               setSelectedReporte(null)
                               setReportesTab('ver')
                             }}
-                            className="btn-secondary btn-modern"
+                            className="novedades-modal-close"
+                            aria-label="Cerrar"
                           >
-                            <FiX size={16} />
-                            Cerrar
+                            <FiX size={20} />
                           </button>
                         </div>
-                        <div className="reportes-modal-info-grid">
-                          <div><strong>ID:</strong> {selectedReporte.id_reporte}</div>
-                          <div>
-                            <strong>Tipo:</strong> 
-                            <span className={`reportes-tipo-badge reportes-tipo-badge-${selectedReporte.tipo_reporte.toLowerCase()}`}>
-                              {selectedReporte.tipo_reporte}
-                            </span>
-                          </div>
-                          <div><strong>Título:</strong> {selectedReporte.titulo}</div>
-                          {selectedReporte.equipo_tipo && (
-                            <div>
-                              <strong>Equipo:</strong> {selectedReporte.equipo_tipo} {selectedReporte.equipo_marca} {selectedReporte.equipo_modelo}
+
+                        <div className="novedades-modal-body">
+                          {/* Información principal */}
+                          <div className="novedades-modal-section">
+                            <div className="novedades-modal-field">
+                              <div className="novedades-modal-field-label">
+                                <FiHash size={16} />
+                                <span>ID</span>
+                              </div>
+                              <div className="novedades-modal-field-value">
+                                #{selectedReporte.id_reporte}
+                              </div>
                             </div>
-                          )}
-                          <div>
-                            <strong>Descripción:</strong>
-                            <div className="reportes-modal-description-box">
-                              {selectedReporte.descripcion}
+
+                            <div className="novedades-modal-field">
+                              <div className="novedades-modal-field-label">
+                                <FiType size={16} />
+                                <span>Tipo</span>
+                              </div>
+                              <div className="novedades-modal-field-value">
+                                <span className={`reportes-tipo-badge reportes-tipo-badge-${selectedReporte.tipo_reporte.toLowerCase()}`}>
+                                  {selectedReporte.tipo_reporte}
+                                </span>
+                              </div>
                             </div>
-                          </div>
-                          <div><strong>Generado por:</strong> {selectedReporte.generado_por_nombre}</div>
-                          <div><strong>Fecha de generación:</strong> {formatDate(selectedReporte.fecha_generacion)}</div>
-                          <div className="reportes-detail-actions">
-                            <button
-                              onClick={() => generarPDFReporte(selectedReporte)}
-                              className="btn-primary btn-modern"
-                            >
-                              <FiDownload size={16} />
-                              Descargar PDF
-                            </button>
-                            {isAdmin && (
-                              <>
-                                <button
-                                  onClick={() => startEditReporte(selectedReporte)}
-                                  className="btn btn-modern"
-                                >
-                                  <FiEdit size={16} />
-                                  Editar
-                                </button>
-                                <button
-                                  onClick={() => confirmDeleteReporte(selectedReporte.id_reporte)}
-                                  className="btn danger btn-modern"
-                                >
-                                  <FiTrash2 size={16} />
-                                  Eliminar
-                                </button>
-                              </>
+
+                            <div className="novedades-modal-field">
+                              <div className="novedades-modal-field-label">
+                                <FiFileText size={16} />
+                                <span>Título</span>
+                              </div>
+                              <div className="novedades-modal-field-value">
+                                {selectedReporte.titulo}
+                              </div>
+                            </div>
+
+                            {selectedReporte.equipo_tipo && (
+                              <div className="novedades-modal-field">
+                                <div className="novedades-modal-field-label">
+                                  <FiPackage size={16} />
+                                  <span>Equipo</span>
+                                </div>
+                                <div className="novedades-modal-field-value">
+                                  {selectedReporte.equipo_tipo} {selectedReporte.equipo_marca} {selectedReporte.equipo_modelo}
+                                </div>
+                              </div>
                             )}
+                          </div>
+
+                          {/* Descripción */}
+                          <div className="novedades-modal-section">
+                            <div className="novedades-modal-field novedades-modal-field-full">
+                              <div className="novedades-modal-field-label">
+                                <FiFileText size={16} />
+                                <span>Descripción</span>
+                              </div>
+                              <div className="novedades-descripcion-box">
+                                {selectedReporte.descripcion}
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Generado por y fecha */}
+                          <div className="novedades-modal-section">
+                            <div className="novedades-modal-field">
+                              <div className="novedades-modal-field-label">
+                                <FiUser size={16} />
+                                <span>Generado por</span>
+                              </div>
+                              <div className="novedades-modal-field-value">
+                                {selectedReporte.generado_por_nombre}
+                              </div>
+                            </div>
+
+                            <div className="novedades-modal-field">
+                              <div className="novedades-modal-field-label">
+                                <FiCalendar size={16} />
+                                <span>Fecha de generación</span>
+                              </div>
+                              <div className="novedades-modal-field-value">
+                                {formatDate(selectedReporte.fecha_generacion)}
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Acciones */}
+                          <div className="novedades-modal-section">
+                            <div className="novedades-modal-field novedades-modal-field-full">
+                              <div className="novedades-estado-header">
+                                <div className="novedades-modal-field-label">
+                                  <FiInfo size={16} />
+                                  <span>Acciones</span>
+                                </div>
+                              </div>
+                              <div className="novedades-editar-buttons">
+                                <button
+                                  onClick={() => generarPDFReporte(selectedReporte)}
+                                  className="btn btn-verde novedades-editar-btn"
+                                >
+                                  <FiDownload size={14} />
+                                  Descargar PDF
+                                </button>
+                                {isAdmin && (
+                                  <>
+                                    <button
+                                      onClick={() => startEditReporte(selectedReporte)}
+                                      className="btn novedades-ver-btn"
+                                    >
+                                      <FiEdit size={14} />
+                                      Editar
+                                    </button>
+                                    <button
+                                      onClick={() => confirmDeleteReporte(selectedReporte.id_reporte)}
+                                      className="btn danger novedades-ver-btn"
+                                    >
+                                      <FiTrash2 size={14} />
+                                      Eliminar
+                                    </button>
+                                  </>
+                                )}
+                              </div>
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -1238,8 +1345,7 @@ export default function Novedades() {
                     </form>
                 ) : loadingReportes ? (
                   <div className="loading-state">
-                    <div className="loading-spinner"></div>
-                    <p>Cargando reportes...</p>
+                    <LoadingScreen message="Cargando reportes" />
                   </div>
                 ) : reportes.length === 0 ? (
                   <div className="empty-state">
@@ -1299,7 +1405,7 @@ export default function Novedades() {
                                   Ver
                                 </button>
                                 <button
-                                  className="btn novedades-ver-btn"
+                                  className="btn novedades-pdf-btn"
                                   onClick={() => generarPDFReporte(reporte)}
                                   title="Descargar PDF"
                                 >
@@ -1447,6 +1553,24 @@ export default function Novedades() {
                           >
                             <FiEdit size={14} />
                             Cambiar Estado
+                          </button>
+                        )}
+                        {(selectedNovedad.tipo_novedad === 'Pérdida' || selectedNovedad.tipo_novedad === 'Robo') && (
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              try {
+                                await descargarPDFNovedadRoboPerdida(selectedNovedad.id_novedad)
+                                setToast({ message: 'Acta en PDF descargada correctamente', type: 'success' })
+                              } catch (e) {
+                                setToast({ message: buildErrorMessage(e, 'No se pudo descargar el PDF'), type: 'error' })
+                              }
+                            }}
+                            className="btn novedades-pdf-btn"
+                            title="Descargar acta en PDF"
+                          >
+                            <FiDownload size={14} />
+                            Descargar PDF
                           </button>
                         )}
                       </div>

@@ -2,6 +2,7 @@ import express from 'express';
 import multer from 'multer';
 import { 
   importarEquipos, 
+  obtenerEstadoImportacionEquipos,
   importarUsuarios, 
   importarAprendices, 
   obtenerDuplicadosPendientes, 
@@ -32,12 +33,19 @@ const upload = multer({
   }
 });
 
-// Importar equipos desde Excel - Solo Admin
+// Importar equipos desde Excel - Solo Admin (devuelve job_id; progreso vía GET status)
 router.post('/equipos',
   authenticate,
   requirePermission(PERMISSIONS.EQUIPOS.CREATE),
   upload.single('archivo'),
   importarEquipos
+);
+
+// Estado y progreso de importación de equipos (progreso real)
+router.get('/equipos/status/:job_id',
+  authenticate,
+  requirePermission(PERMISSIONS.EQUIPOS.CREATE),
+  obtenerEstadoImportacionEquipos
 );
 
 // Importar usuarios desde Excel - Solo Admin

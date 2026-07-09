@@ -6,6 +6,7 @@ import CustomSelect from '../../components/CustomSelect';
 import { parseApiResponse, buildErrorMessage, getAuthHeaders } from '../../utils/api';
 import '../../styles/pages/equipos.css';
 import '../../styles/invitationCodes.css';
+import { LoadingScreen } from '../LoadingDemo';
 
 export default function InvitationCodes() {
   const [codes, setCodes] = useState([]);
@@ -231,8 +232,7 @@ export default function InvitationCodes() {
 
       {loading && codes.length === 0 ? (
         <div className="invitation-codes-loading">
-          <div className="loading-spinner"></div>
-          <p className="invitation-codes-loading-text">Cargando códigos...</p>
+          <LoadingScreen message="Cargando códigos" />
         </div>
       ) : codes.length === 0 ? (
         <div className="empty-state">

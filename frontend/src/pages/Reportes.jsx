@@ -9,6 +9,7 @@ import { parseApiResponse, buildErrorMessage } from '../utils/api'
 import '../styles/pages/equipos.css'
 import '../styles/pages/reportes.css'
 import '../styles/components/modals.css'
+import { LoadingScreen } from './LoadingDemo'
 
 export default function Reportes() {
   const [activeTab, setActiveTab] = useState('ver') // 'ver' o 'crear'
@@ -464,8 +465,7 @@ export default function Reportes() {
             <>
             {loading ? (
             <div className="loading-state">
-              <div className="loading-spinner"></div>
-              <p>Cargando reportes...</p>
+              <LoadingScreen message="Cargando reportes" />
             </div>
           ) : reportes.length === 0 ? (
             <div className="empty-state">

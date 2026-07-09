@@ -50,7 +50,7 @@ export const uploadProfileImage = multer({
   storage,
   fileFilter,
   limits: {
-    fileSize: 2 * 1024 * 1024, // 2MB máximo para fotos de perfil
+    fileSize: 10 * 1024 * 1024, // 10MB
   },
 });
 
@@ -58,7 +58,7 @@ export const uploadProfileImage = multer({
 export const handleProfileUploadError = (err, req, res, next) => {
   if (err instanceof multer.MulterError) {
     if (err.code === 'LIMIT_FILE_SIZE') {
-      return res.status(400).json({ error: 'El archivo es demasiado grande. Tamaño máximo: 2MB' });
+      return res.status(400).json({ error: 'El archivo es demasiado grande. Tamaño máximo: 10MB' });
     }
     if (err.code === 'LIMIT_FILE_COUNT') {
       return res.status(400).json({ error: 'Solo se permite una imagen de perfil' });
