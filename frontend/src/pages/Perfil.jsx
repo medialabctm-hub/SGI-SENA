@@ -96,8 +96,8 @@ export default function Perfil() {
       return;
     }
 
-    if (file.size > 2 * 1024 * 1024) {
-      setToast({ message: 'El archivo es demasiado grande. Tamaño máximo: 2MB', type: 'error' });
+    if (file.size > 10 * 1024 * 1024) {
+      setToast({ message: 'El archivo es demasiado grande. Tamaño máximo: 10MB', type: 'error' });
       return;
     }
 
@@ -413,14 +413,6 @@ export default function Perfil() {
                         className={!editing ? 'readonly' : ''}
                       />
                     </div>
-
-                    <div className="perfil-form-row">
-                      <label>
-                        <FiShield size={18} />
-                        Rol
-                      </label>
-                      <div className="perfil-role-badge">{rol}</div>
-                    </div>
                   </div>
                 </div>
               </div>
@@ -430,7 +422,7 @@ export default function Perfil() {
                 <div className="perfil-info-card perfil-danger-zone">
                   <h3 className="perfil-info-card-title perfil-danger-title">Zona de Peligro</h3>
                   <p className="perfil-danger-description">
-                    Una vez que elimines tu cuenta, no hay vuelta atrás. Por favor, ten cuidado.
+                    Esta acción eliminará permanentemente tu cuenta y todos los datos asociados, por favor ten cuidado ya que esta accion es irreversible.
                   </p>
                   <button
                     className="btn btn-delete perfil-delete-account-btn"

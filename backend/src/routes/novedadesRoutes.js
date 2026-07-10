@@ -2,7 +2,7 @@ import express from 'express'
 import { authenticate } from '../middleware/authMiddleware.js'
 import { requireAnyPermission, requirePermission } from '../middleware/authorization.js'
 import { PERMISSIONS } from '../config/permissions.js'
-import { crearNovedad, listarNovedades, obtenerNovedadPorId, actualizarEstadoNovedad, obtenerTiposNovedad, obtenerEstadosNovedad } from '../controller/novedadesController.js'
+import { crearNovedad, listarNovedades, obtenerNovedadPorId, generarPDFNovedadRoboPerdida, actualizarEstadoNovedad, obtenerTiposNovedad, obtenerEstadosNovedad } from '../controller/novedadesController.js'
 import { writeLimiter, readLimiter } from '../middleware/rateLimiter.js'
 import { validate, crearNovedadSchema, actualizarEstadoNovedadSchema } from '../validators/novedadesValidator.js'
 
@@ -37,6 +37,15 @@ router.get('/tipos', obtenerTiposNovedad)
 
 // Obtener estados de novedad disponibles (DEBE ir antes de /:id)
 router.get('/estados', obtenerEstadosNovedad)
+
+// Generar PDF acta robo/pérdida (DEBE ir antes de /:id)
+router.get('/:id/pdf',
+  requireAnyPermission([
+    PERMISSIONS.NOVEDADES.VIEW,
+    PERMISSIONS.NOVEDADES.VIEW_OWN
+  ]),
+  generarPDFNovedadRoboPerdida
+)
 
 // Obtener detalle de novedad
 router.get('/:id', 

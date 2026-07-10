@@ -61,9 +61,10 @@ export const parseFormData = (req, res, next) => {
 
     // Si no hay usuarios pero hay campos de usuario en el nivel raíz (formato antiguo)
     // Convertir a formato nuevo
-    if (!parsedBody.usuarios && (parsedBody.documento)) {
+    const documentoRaiz = (parsedBody.documento ?? parsedBody.cedula ?? parsedBody.doc ?? '').toString().trim();
+    if (!parsedBody.usuarios && documentoRaiz) {
       const usuario = {
-        documento: parsedBody.documento || '',
+        documento: documentoRaiz,
       };
 
       // Parsear diasSemana si viene como string
@@ -77,8 +78,8 @@ export const parseFormData = (req, res, next) => {
               diasSemana: diasSemanaStr,
               error: e.message
             });
-            // Si es un string simple, intentar como array de un elemento
-            usuario.dias_semana = [diasSemanaStr];
+            // Si no es JSON, puede ser "Lunes,Martes" o "Lunes"; dividir por coma
+            usuario.dias_semana = diasSemanaStr.split(',').map((s) => s.trim()).filter(Boolean);
           }
         } else {
           usuario.dias_semana = diasSemanaStr;
@@ -105,14 +106,14 @@ export const parseFormData = (req, res, next) => {
           if (typeof diasSemanaStr === 'string') {
             try {
               parsedUsuario.dias_semana = JSON.parse(diasSemanaStr);
-            } catch (e) {
-              logger.warn('Error al parsear diasSemana en usuario', {
-                diasSemana: diasSemanaStr,
-                error: e.message
-              });
-              // Si es un string simple, intentar como array de un elemento
-              parsedUsuario.dias_semana = [diasSemanaStr];
-            }
+          } catch (e) {
+            logger.warn('Error al parsear diasSemana en usuario', {
+              diasSemana: diasSemanaStr,
+              error: e.message
+            });
+            // Si no es JSON, puede ser "Lunes,Martes"; dividir por coma
+            parsedUsuario.dias_semana = diasSemanaStr.split(',').map((s) => s.trim()).filter(Boolean);
+          }
           } else {
             parsedUsuario.dias_semana = diasSemanaStr;
           }
@@ -134,7 +135,7 @@ export const parseFormData = (req, res, next) => {
       });
     }
 
-    // Sanitizar: aceptar únicamente los campos esperados para el registro externo
+    // Sanitizar: aceptar únicamente los campos esperados para la verificación de ambiente y asignación de aprendices
     // Campos permitidos: placa, ambiente, usuarios (array) o documento en nivel raíz
     const sanitized = {};
 
@@ -144,8 +145,9 @@ export const parseFormData = (req, res, next) => {
     // Si ya venía un array de usuarios válido, usarlo (cada usuario debe tener documento y opcional campos de horario)
     if (parsedBody.usuarios && Array.isArray(parsedBody.usuarios)) {
       sanitized.usuarios = parsedBody.usuarios.map(u => {
+        const doc = (u.documento ?? u.cedula ?? u.doc ?? '').toString().trim();
         const usuarioSanitizado = {
-          documento: u.documento ? String(u.documento).trim() : undefined,
+          documento: doc || undefined,
           dias_semana: u.dias_semana || null,
           hora_inicio: u.hora_inicio || null,
           hora_fin: u.hora_fin || null
@@ -156,9 +158,9 @@ export const parseFormData = (req, res, next) => {
         }
         return usuarioSanitizado;
       });
-    } else if (parsedBody.documento) {
+    } else if (documentoRaiz) {
       // Formato antiguo / simple: documento (y opcional ficha) en nivel raíz
-      const usuarioRoot = { documento: String(parsedBody.documento).trim() };
+      const usuarioRoot = { documento: documentoRaiz };
       if (parsedBody.ficha && String(parsedBody.ficha).trim().length > 0) {
         usuarioRoot.ficha = String(parsedBody.ficha).trim();
       }

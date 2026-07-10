@@ -25,6 +25,7 @@ jest.unstable_mockModule('multer', () => ({
 
 jest.unstable_mockModule(path.resolve(__dirname, '../../src/controller/importController.js'), () => ({
   importarEquipos: jest.fn(),
+  obtenerEstadoImportacionEquipos: jest.fn(), // seguimiento en tiempo real de import jobs
   importarUsuarios: jest.fn(),
   importarAprendices: jest.fn(),
   obtenerDuplicadosPendientes: jest.fn(),

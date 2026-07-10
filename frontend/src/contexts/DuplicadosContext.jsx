@@ -6,6 +6,7 @@ const DuplicadosContext = createContext()
 export function DuplicadosProvider({ children }) {
   const [tieneDuplicadosPendientes, setTieneDuplicadosPendientes] = useState(false)
   const [modalBloqueoAbierto, setModalBloqueoAbierto] = useState(false)
+  const [importacionEnCurso, setImportacionEnCurso] = useState(false)
 
   const establecerDuplicadosPendientes = (hayDuplicados) => {
     setTieneDuplicadosPendientes(hayDuplicados)
@@ -29,7 +30,9 @@ export function DuplicadosProvider({ children }) {
         tieneDuplicadosPendientes,
         establecerDuplicadosPendientes,
         limpiarDuplicados,
-        mostrarModalBloqueo
+        mostrarModalBloqueo,
+        importacionEnCurso,
+        setImportacionEnCurso
       }}
     >
       {children}

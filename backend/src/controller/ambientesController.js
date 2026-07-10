@@ -145,16 +145,123 @@ export async function obtenerAmbiente(req, res) {
       [id]
     );
 
+    // Usos del ambiente: clases iniciadas (consentimiento aceptado) para detectar uso consecutivo
+    const [usosClases] = await defaultDb.execute(
+      `SELECT c.id_instructor, u.nombre_usuario, c.fecha_clase
+       FROM Clases c
+       INNER JOIN Usuarios u ON c.id_instructor = u.id_usuario
+       WHERE c.id_ambiente = ?
+         AND c.estado_clase IN ('En Curso', 'Finalizada')
+         AND c.fecha_inicio_real IS NOT NULL
+       ORDER BY c.id_instructor, c.fecha_clase`,
+      [id]
+    );
+
+    const usoConsecutivoInstructores = calcularUsoConsecutivoInstructores(usosClases || []);
+
+    // Enriquecer con datos completos del instructor/cuentadante (nombre, rol, cédula, correo)
+    let usoConsecutivoConInfo = [];
+    if (usoConsecutivoInstructores.length > 0) {
+      const ids = usoConsecutivoInstructores.map((u) => u.id_instructor);
+      const placeholders = ids.map(() => '?').join(',');
+      const [usuarios] = await defaultDb.execute(
+        `SELECT u.id_usuario, u.nombre_usuario, u.cedula, u.correo, r.nombre_rol
+         FROM Usuarios u
+         INNER JOIN Roles r ON u.id_rol = r.id_rol
+         WHERE u.id_usuario IN (${placeholders})`,
+        ids
+      );
+      const mapaUsuarios = Object.fromEntries((usuarios || []).map((u) => [u.id_usuario, u]));
+      usoConsecutivoConInfo = usoConsecutivoInstructores.map((u) => {
+        const usuario = mapaUsuarios[u.id_instructor] || {};
+        return {
+          id_usuario: u.id_instructor,
+          id_instructor: u.id_instructor,
+          nombre_usuario: usuario.nombre_usuario ?? u.nombre_instructor,
+          nombre_instructor: usuario.nombre_usuario ?? u.nombre_instructor,
+          nombre_rol: usuario.nombre_rol,
+          cedula: usuario.cedula,
+          correo: usuario.correo,
+          uso_recurrente: {
+            cantidad_dias: u.cantidad_dias,
+            dia_semana: u.dia_semana
+          }
+        };
+      });
+    }
+
     return res.json({
       ...ambiente,
       equipos,
       responsables_actuales: responsables,
-      imagenes: imagenes || []
+      imagenes: imagenes || [],
+      uso_consecutivo_instructores: usoConsecutivoConInfo
     });
   } catch (err) {
     logger.error('Error al obtener ambiente', { error: err.message, stack: err.stack });
     return res.status(500).json({ error: 'Error al obtener el ambiente', detalle: err.message });
   }
+}
+
+/**
+ * Calcula instructores que usan el ambiente más de 2 veces consecutivas el mismo día de la semana
+ * (ej.: 3 martes seguidos). Solo se incluyen si hay al menos 3 usos consecutivos.
+ * @param {Array<{id_instructor: number, nombre_usuario: string, fecha_clase: string|Date}>} usos
+ * @returns {Array<{nombre_instructor: string, cantidad_dias: number, dia_semana: string}>}
+ */
+function calcularUsoConsecutivoInstructores(usos) {
+  const DIAS_SEMANA = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+  const UMBRAL_CONSECUTIVOS = 3; // más de 2 = al menos 3
+
+  const porInstructor = {};
+  for (const u of usos) {
+    const key = u.id_instructor;
+    if (!porInstructor[key]) {
+      porInstructor[key] = { nombre_usuario: u.nombre_usuario, fechas: [] };
+    }
+    const f = typeof u.fecha_clase === 'string' ? new Date(u.fecha_clase + 'T00:00:00') : new Date(u.fecha_clase);
+    if (!isNaN(f.getTime())) porInstructor[key].fechas.push(f);
+  }
+
+  const resultado = [];
+  const MS_DIA = 24 * 60 * 60 * 1000;
+
+  for (const id_instructor of Object.keys(porInstructor)) {
+    const { nombre_usuario, fechas } = porInstructor[id_instructor];
+    const fechasUnicas = [...new Set(fechas.map(d => d.getTime()))].map(t => new Date(t)).sort((a, b) => a - b);
+    let maxConsecutivos = 0;
+    let diaSemanaMax = 0;
+
+    for (let dia = 0; dia <= 6; dia++) {
+      const delDia = fechasUnicas.filter(d => d.getDay() === dia).sort((a, b) => a - b);
+      if (delDia.length === 0) continue;
+      let run = 1;
+      for (let i = 1; i < delDia.length; i++) {
+        const diffDias = Math.round((delDia[i] - delDia[i - 1]) / MS_DIA);
+        if (diffDias === 7) run += 1;
+        else run = 1;
+        if (run > maxConsecutivos) {
+          maxConsecutivos = run;
+          diaSemanaMax = dia;
+        }
+      }
+      if (run > maxConsecutivos) {
+        maxConsecutivos = run;
+        diaSemanaMax = dia;
+      }
+    }
+
+    if (maxConsecutivos >= UMBRAL_CONSECUTIVOS) {
+      resultado.push({
+        id_instructor: Number(id_instructor),
+        nombre_instructor: nombre_usuario,
+        cantidad_dias: maxConsecutivos,
+        dia_semana: DIAS_SEMANA[diaSemanaMax]
+      });
+    }
+  }
+
+  return resultado;
 }
 
 export async function crearAmbiente(req, res) {

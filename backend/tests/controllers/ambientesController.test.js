@@ -139,7 +139,8 @@ describe('obtenerAmbiente', () => {
       .mockResolvedValueOnce([[fakeAmbiente]])
       .mockResolvedValueOnce([[{ codigo_equipo: 10 }]])
       .mockResolvedValueOnce([[]])
-      .mockResolvedValueOnce([[{ id_imagen_ambiente: 5 }]]);
+      .mockResolvedValueOnce([[{ id_imagen_ambiente: 5 }]])
+      .mockResolvedValueOnce([[]]); // usosClases (uso consecutivo de instructores)
     const req = mockReq({ params: { id: '1' } });
     const res = mockRes();
     await obtenerAmbiente(req, res);

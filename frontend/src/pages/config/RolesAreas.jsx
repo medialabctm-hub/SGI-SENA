@@ -4,6 +4,7 @@ import DestructiveConfirmModal from '../../components/DestructiveConfirmModal'
 import { parseApiResponse, buildErrorMessage, getAuthHeaders } from '../../utils/api'
 import { FiPlus, FiEdit2, FiTrash2, FiChevronDown, FiChevronRight, FiCheck, FiX } from 'react-icons/fi'
 import '../../styles/rolesAreas.css'
+import { LoadingScreen } from '../LoadingDemo'
 
 export default function RolesAreas() {
   const [roles, setRoles] = useState([])
@@ -247,8 +248,7 @@ export default function RolesAreas() {
 
       {loading ? (
         <div className="roles-areas-loading">
-          <div className="loading-spinner"></div>
-          <p className="roles-areas-loading-text">Cargando información...</p>
+          <LoadingScreen message="Cargando información" />
         </div>
       ) : (
         <div className="roles-areas-content">

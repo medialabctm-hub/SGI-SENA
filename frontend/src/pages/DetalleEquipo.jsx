@@ -7,10 +7,11 @@ import ConfirmModal from '../components/ConfirmModal';
 import ImageViewer from '../components/ImageViewer';
 import CustomSelect from '../components/CustomSelect';
 import { parseApiResponse, buildErrorMessage } from '../utils/api';
-import { FiArrowLeft, FiUpload, FiTrash2, FiStar, FiImage, FiX, FiInfo, FiPackage, FiMapPin, FiCalendar, FiDollarSign, FiUsers, FiUser, FiEdit2 } from 'react-icons/fi';
+import { FiArrowLeft, FiUpload, FiTrash2, FiStar, FiImage, FiX, FiInfo, FiPackage, FiMapPin, FiCalendar, FiDollarSign, FiUsers, FiUser, FiEdit2, FiUserPlus } from 'react-icons/fi';
 import '../styles/pages/equipos.css';
 import '../styles/detalleEquipo.css';
 import '../styles/pages/ambientes.css';
+import { LoadingScreen } from './LoadingDemo';
 
 export default function DetalleEquipo() {
   const { codigoEquipo } = useParams();
@@ -39,6 +40,13 @@ export default function DetalleEquipo() {
     hora_fin: '',
     observaciones: ''
   });
+  const [showRegistrarUsoModal, setShowRegistrarUsoModal] = useState(false);
+  const [registrarUsoDocumento, setRegistrarUsoDocumento] = useState('');
+  const [registrarUsoObservaciones, setRegistrarUsoObservaciones] = useState('');
+  const [registrarUsoDiasSemana, setRegistrarUsoDiasSemana] = useState([]);
+  const [registrarUsoHoraInicio, setRegistrarUsoHoraInicio] = useState('');
+  const [registrarUsoHoraFin, setRegistrarUsoHoraFin] = useState('');
+  const [registrarUsoLoading, setRegistrarUsoLoading] = useState(false);
 
   useEffect(() => {
     try {
@@ -60,9 +68,15 @@ export default function DetalleEquipo() {
       const res = await fetch(`/api/equipos/${encodeURIComponent(codigoEquipo)}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/4fca1e6c-7d65-41f5-87f3-c0784e21a846', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'DetalleEquipo.jsx:fetchEquipo', message: 'GET equipo response', data: { codigoEquipo, status: res.status, ok: res.ok }, timestamp: Date.now(), hypothesisId: 'H1' }) }).catch(() => {});
+      // #endregion
       const data = await parseApiResponse(res, 'No se pudo cargar el equipo');
       setEquipo(data);
     } catch (err) {
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/4fca1e6c-7d65-41f5-87f3-c0784e21a846', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'DetalleEquipo.jsx:fetchEquipo catch', message: 'GET equipo failed', data: { codigoEquipo, errStatus: err?.status }, timestamp: Date.now(), hypothesisId: 'H3' }) }).catch(() => {});
+      // #endregion
       setToast({ message: buildErrorMessage(err, 'No se pudo cargar el equipo'), type: 'error' });
     } finally {
       setLoading(false);
@@ -129,6 +143,61 @@ export default function DetalleEquipo() {
       fetchEquipo(); // Recargar datos del equipo
     } catch (err) {
       setToast({ message: buildErrorMessage(err, 'Error al actualizar la asignación'), type: 'error' });
+    }
+  }
+
+  async function handleRegistrarUsoAprendiz() {
+    const doc = (registrarUsoDocumento || '').trim();
+    if (!doc) {
+      setToast({ message: 'Ingresa el documento del aprendiz', type: 'error' });
+      return;
+    }
+    setRegistrarUsoLoading(true);
+    setToast(null);
+    try {
+      const token = localStorage.getItem('token');
+      const usuario = {
+        documento: doc,
+        ficha: null,
+      };
+      if (registrarUsoDiasSemana.length > 0) usuario.dias_semana = registrarUsoDiasSemana;
+      if ((registrarUsoHoraInicio || '').trim() && (registrarUsoHoraFin || '').trim()) {
+        usuario.hora_inicio = registrarUsoHoraInicio.trim();
+        usuario.hora_fin = registrarUsoHoraFin.trim();
+      }
+      const payload = { placa: equipo.placa ?? equipo.codigo_inventario, usuarios: [usuario] };
+      const res = await fetch('/api/equipos/uso/registro-externo', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(payload),
+      });
+      const data = await parseApiResponse(res, 'No se pudo registrar el uso');
+      const resultados = data?.data?.usuarios || data?.usuarios || [];
+      const errores = data?.data?.errores || data?.errores || [];
+      if (errores.length > 0 && resultados.length === 0) {
+        const primerError = errores[0];
+        setToast({ message: primerError.error || 'Error al registrar el uso', type: 'error' });
+        return;
+      }
+      setToast({ message: data.message || 'Uso registrado correctamente', type: 'success' });
+      setShowRegistrarUsoModal(false);
+      setRegistrarUsoDocumento('');
+      setRegistrarUsoObservaciones('');
+      setRegistrarUsoDiasSemana([]);
+      setRegistrarUsoHoraInicio('');
+      setRegistrarUsoHoraFin('');
+      try {
+        await fetchEquipo();
+      } catch (_) {
+        // No mostrar error para no tapar el toast de éxito
+      }
+    } catch (err) {
+      setToast({ message: buildErrorMessage(err, 'Error al registrar uso'), type: 'error' });
+    } finally {
+      setRegistrarUsoLoading(false);
     }
   }
 
@@ -329,7 +398,7 @@ export default function DetalleEquipo() {
         <div className="dashboard-layout">
           <Sidebar user={user} />
           <main className="dashboard-main">
-            <div className="detalle-equipo-loading">Cargando equipo...</div>
+            <LoadingScreen message="Cargando equipo" />
           </main>
         </div>
       </div>
@@ -529,6 +598,133 @@ export default function DetalleEquipo() {
             </div>
           )}
 
+          {/* Modal Registrar uso por aprendiz */}
+          {showRegistrarUsoModal && (
+            <div
+              className="detalle-equipo-modal-overlay"
+              onClick={() => {
+                if (!registrarUsoLoading) {
+                  setShowRegistrarUsoModal(false);
+                  setRegistrarUsoDiasSemana([]);
+                  setRegistrarUsoHoraInicio('');
+                  setRegistrarUsoHoraFin('');
+                }
+              }}
+            >
+              <div className="detalle-equipo-modal" onClick={(e) => e.stopPropagation()}>
+                <div className="detalle-equipo-modal-header">
+                  <div>
+                    <h3>Registrar uso por aprendiz</h3>
+                    <p>Registra que un aprendiz está usando este equipo (documento de identidad)</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowRegistrarUsoModal(false);
+                      setRegistrarUsoDiasSemana([]);
+                      setRegistrarUsoHoraInicio('');
+                      setRegistrarUsoHoraFin('');
+                    }}
+                    disabled={registrarUsoLoading}
+                    className="detalle-equipo-modal-close"
+                  >
+                    <FiX />
+                  </button>
+                </div>
+                <div className="detalle-equipo-modal-section">
+                  <label className="detalle-equipo-modal-label">Documento del aprendiz *</label>
+                  <input
+                    type="text"
+                    value={registrarUsoDocumento}
+                    onChange={(e) => setRegistrarUsoDocumento(e.target.value)}
+                    disabled={registrarUsoLoading}
+                    className="detalle-equipo-modal-input"
+                    placeholder="Cédula o documento de identidad"
+                  />
+                </div>
+                <div className="detalle-equipo-modal-section">
+                  <label className="detalle-equipo-modal-label">Horario de uso (opcional)</label>
+                  <div className="detalle-equipo-edit-modal-dias-grid">
+                    {['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'].map(dia => (
+                      <label key={dia} className="detalle-equipo-edit-modal-dia-label">
+                        <input
+                          type="checkbox"
+                          checked={registrarUsoDiasSemana.includes(dia)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setRegistrarUsoDiasSemana([...registrarUsoDiasSemana, dia]);
+                            } else {
+                              setRegistrarUsoDiasSemana(registrarUsoDiasSemana.filter(d => d !== dia));
+                            }
+                          }}
+                          disabled={registrarUsoLoading}
+                          className="detalle-equipo-edit-modal-dia-checkbox"
+                        />
+                        <span className="detalle-equipo-edit-modal-dia-text">{dia}</span>
+                      </label>
+                    ))}
+                  </div>
+                  <div className="detalle-equipo-edit-modal-horario-grid" style={{ marginTop: '10px' }}>
+                    <div>
+                      <label className="detalle-equipo-modal-label">Hora inicio</label>
+                      <input
+                        type="time"
+                        value={registrarUsoHoraInicio}
+                        onChange={(e) => setRegistrarUsoHoraInicio(e.target.value)}
+                        disabled={registrarUsoLoading}
+                        className="detalle-equipo-modal-input"
+                      />
+                    </div>
+                    <div>
+                      <label className="detalle-equipo-modal-label">Hora fin</label>
+                      <input
+                        type="time"
+                        value={registrarUsoHoraFin}
+                        onChange={(e) => setRegistrarUsoHoraFin(e.target.value)}
+                        disabled={registrarUsoLoading}
+                        className="detalle-equipo-modal-input"
+                      />
+                    </div>
+                  </div>
+                </div>
+                <div className="detalle-equipo-modal-section">
+                  <label className="detalle-equipo-modal-label">Observaciones (opcional)</label>
+                  <textarea
+                    value={registrarUsoObservaciones}
+                    onChange={(e) => setRegistrarUsoObservaciones(e.target.value)}
+                    disabled={registrarUsoLoading}
+                    className="detalle-equipo-modal-textarea"
+                    placeholder="Notas sobre el uso"
+                    rows={2}
+                  />
+                </div>
+                <div className="detalle-equipo-modal-actions">
+                  <button
+                    type="button"
+                    className="btn detalle-equipo-modal-btn"
+                    onClick={() => {
+                      setShowRegistrarUsoModal(false);
+                      setRegistrarUsoDiasSemana([]);
+                      setRegistrarUsoHoraInicio('');
+                      setRegistrarUsoHoraFin('');
+                    }}
+                    disabled={registrarUsoLoading}
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="button"
+                    className="btn detalle-equipo-modal-btn-primary"
+                    onClick={handleRegistrarUsoAprendiz}
+                    disabled={registrarUsoLoading || !(registrarUsoDocumento || '').trim()}
+                  >
+                    {registrarUsoLoading ? 'Registrando...' : 'Registrar uso'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className="users-panel detalle-equipo-panel">
             {/* Header mejorado */}
             <div className="detalle-equipo-header-container">
@@ -549,6 +745,7 @@ export default function DetalleEquipo() {
                   </p>
                 </div>
               </div>
+              <div className="detalle-equipo-header-actions">
               {(user?.nombre_rol === 'Administrador' || user?.nombre_rol === 'Instructor') && (
                 <button 
                   className="btn btn-verde detalle-equipo-upload-button"
@@ -558,6 +755,17 @@ export default function DetalleEquipo() {
                   Cargar Imágenes
                 </button>
               )}
+              {(user?.nombre_rol === 'Administrador' || user?.nombre_rol === 'Instructor' || user?.nombre_rol === 'Cuentadante') && (
+                <button 
+                  type="button"
+                  className="btn btn-secondary detalle-equipo-upload-button"
+                  onClick={() => setShowRegistrarUsoModal(true)}
+                >
+                  <FiUserPlus size={18} />
+                  Registrar uso por aprendiz
+                </button>
+              )}
+            </div>
             </div>
 
             <div className="detalle-equipo-info-grid">
@@ -569,7 +777,7 @@ export default function DetalleEquipo() {
                 </div>
                 <div className="detalle-equipo-info-inner-grid">
                   <div className="detalle-equipo-info-item-with-icon">
-                    <FiPackage size={18} color="var(--neutral-500)" />
+                    <FiPackage size={18} color="var(--success-800)" />
                     <div className="detalle-equipo-info-item-content">
                       <div className="detalle-equipo-info-label">CÓDIGO DE INVENTARIO</div>
                       <div className="detalle-equipo-info-value-large">{equipo.codigo_inventario || '-'}</div>
@@ -589,10 +797,6 @@ export default function DetalleEquipo() {
 
                   <div className="detalle-equipo-info-item-grid">
                     <div className="detalle-equipo-info-item-small">
-                      <div className="detalle-equipo-info-label">NÚMERO DE SERIE</div>
-                      <div className="detalle-equipo-info-value">{equipo.numero_serie || '-'}</div>
-                    </div>
-                    <div className="detalle-equipo-info-item-small">
                       <div className="detalle-equipo-info-label">CONSECUTIVO</div>
                       <div className="detalle-equipo-info-value">{equipo.consecutivo || '-'}</div>
                     </div>
@@ -605,14 +809,14 @@ export default function DetalleEquipo() {
 
                   <div className="detalle-equipo-info-item-grid">
                     <div className="detalle-equipo-info-item-with-icon">
-                      <FiCalendar size={18} color="var(--neutral-500)" />
+                      <FiCalendar size={18} color="var(--success-800)" />
                       <div className="detalle-equipo-info-item-content">
                         <div className="detalle-equipo-info-label">FECHA ADQUISICIÓN</div>
                         <div className="detalle-equipo-info-value">{formatDate(equipo.fecha_adquisicion)}</div>
                       </div>
                     </div>
                     <div className="detalle-equipo-info-item-with-icon">
-                      <FiDollarSign size={18} color="var(--neutral-500)" />
+                      <FiDollarSign size={18} color="var(--success-800)" />
                       <div className="detalle-equipo-info-item-content">
                         <div className="detalle-equipo-info-label">COSTO</div>
                         <div className="detalle-equipo-info-value-bold">{formatCurrency(equipo.costo)}</div>
@@ -620,12 +824,32 @@ export default function DetalleEquipo() {
                     </div>
                   </div>
 
-                  <div className="detalle-equipo-info-item-with-icon">
-                    <FiMapPin size={18} color="var(--neutral-500)" />
-                    <div className="detalle-equipo-info-item-content">
-                      <div className="detalle-equipo-info-label">AMBIENTE</div>
-                      <div className="detalle-equipo-info-value">
-                        {equipo.nombre_ambiente || '-'} {equipo.codigo_ambiente && `(${equipo.codigo_ambiente})`}
+                  <div className="detalle-equipo-info-item-grid detalle-equipo-info-fila-tres">
+                    <div className="detalle-equipo-info-item-with-icon detalle-equipo-info-item-cell">
+                      <FiMapPin size={18} color="var(--success-800)" />
+                      <div className="detalle-equipo-info-item-content">
+                        <div className="detalle-equipo-info-label">AMBIENTE</div>
+                        <div className="detalle-equipo-info-value">
+                          {equipo.nombre_ambiente || '-'} {equipo.codigo_ambiente && `(${equipo.codigo_ambiente})`}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="detalle-equipo-info-item-with-icon detalle-equipo-info-item-cell">
+                      <FiUser size={18} color="var(--success-800)" />
+                      <div className="detalle-equipo-info-item-content">
+                        <div className="detalle-equipo-info-label">CUENTADANTE</div>
+                        <div className="detalle-equipo-info-value">
+                          {equipo.cuentadante_principal || '-'}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="detalle-equipo-info-item-with-icon detalle-equipo-info-item-cell">
+                      <FiUser size={18} color="var(--success-800)" />
+                      <div className="detalle-equipo-info-item-content">
+                        <div className="detalle-equipo-info-label">DOC. CUENTADANTE</div>
+                        <div className="detalle-equipo-info-value">
+                          {equipo.cuentadante_cedula || '-'}
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -876,33 +1100,29 @@ export default function DetalleEquipo() {
                             <strong>Fecha asignación:</strong> {formatDate(responsable.fecha_asignacion)}
                           </div>
                         </div>
-                        {(responsable.dias_semana || responsable.hora_inicio || responsable.hora_fin) && (
-                          <div className="detalle-equipo-responsable-horario-box">
-                            <div className="detalle-equipo-responsable-horario-title">
-                              Horario de Uso:
+                        <div className="detalle-equipo-responsable-horario-box">
+                          <div className="detalle-equipo-responsable-horario-title">
+                            Horario de Uso:
+                          </div>
+                          <div className="detalle-equipo-responsable-horario-grid">
+                            <div>
+                              <strong>Días:</strong>{' '}
+                              {responsable.dias_semana && Array.isArray(responsable.dias_semana) && responsable.dias_semana.length > 0
+                                ? responsable.dias_semana.join(', ')
+                                : '-'}
                             </div>
-                            <div className="detalle-equipo-responsable-horario-grid">
-                              {responsable.dias_semana && Array.isArray(responsable.dias_semana) && responsable.dias_semana.length > 0 && (
-                                <div>
-                                  <strong>Días:</strong> {responsable.dias_semana.join(', ')}
-                                </div>
-                              )}
-                              {(responsable.hora_inicio || responsable.hora_fin) && (
-                                <div>
-                                  <strong>Horario:</strong> {
-                                    responsable.hora_inicio && responsable.hora_fin
-                                      ? `${responsable.hora_inicio.substring(0, 5)} - ${responsable.hora_fin.substring(0, 5)}`
-                                      : responsable.hora_inicio
-                                        ? `Desde ${responsable.hora_inicio.substring(0, 5)}`
-                                        : responsable.hora_fin
-                                          ? `Hasta ${responsable.hora_fin.substring(0, 5)}`
-                                          : '-'
-                                  }
-                                </div>
-                              )}
+                            <div>
+                              <strong>Horario:</strong>{' '}
+                              {responsable.hora_inicio && responsable.hora_fin
+                                ? `${responsable.hora_inicio.substring(0, 5)} - ${responsable.hora_fin.substring(0, 5)}`
+                                : responsable.hora_inicio
+                                  ? `Desde ${responsable.hora_inicio.substring(0, 5)}`
+                                  : responsable.hora_fin
+                                    ? `Hasta ${responsable.hora_fin.substring(0, 5)}`
+                                    : '-'}
                             </div>
                           </div>
-                        )}
+                        </div>
                         {responsable.observaciones && (
                           <div className="detalle-equipo-responsable-observaciones-box">
                             <strong>Observaciones:</strong> {responsable.observaciones}

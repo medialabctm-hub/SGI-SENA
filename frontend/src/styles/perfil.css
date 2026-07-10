@@ -85,7 +85,7 @@
   border-radius: 50%;
   overflow: hidden;
   border: 6px solid white;
-  background: linear-gradient(135deg, var(--success-800) 0%, var(--success-900) 100%);
+  background: var(--success-800);
   cursor: pointer;
   transition: all 0.3s ease;
   margin-bottom: 24px;
@@ -283,7 +283,7 @@
 .perfil-role-badge {
   display: inline-block;
   padding: 8px 16px;
-  background: var(--success-900);
+  background: var(--success-800);
   color: white;
   border-radius: 20px;
   font-size: 14px;
@@ -394,8 +394,8 @@
 
 .profile-photo-container {
   position: relative;
-  width: 160px;
-  height: 160px;
+  width: 220px;
+  height: 220px;
   border-radius: 50%;
   overflow: hidden;
   border: 5px solid white;
@@ -424,7 +424,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 56px;
+  font-size: 72px;
   font-weight: 700;
   color: white;
   text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
@@ -451,8 +451,8 @@
 .profile-photo-upload-btn {
   background: white;
   border: none;
-  width: 48px;
-  height: 48px;
+  width: 56px;
+  height: 56px;
   border-radius: 50%;
   color: #111827;
   cursor: pointer;
@@ -562,7 +562,7 @@
 .profile-photo-file-name.has-file {
   color: #111827;
   background: #f0fdf4;
-  border-color: var(--success-300);
+  border-color: var(--success-700);
   font-weight: 500;
 }
 
@@ -610,13 +610,13 @@
   margin-left: 8px;
 }
 
-/* Botón de editar perfil */
+/* Botón de editar perfil - alineado con diseño nuevo (hover invertido) */
 .btn-edit-perfil {
   background: var(--success-800);
   color: white;
-  border: none;
+  border: 2px solid transparent;
   padding: .625rem 1.25rem;
-  border-radius: 8px;
+  border-radius: 10px;
   font-weight: 600;
   font-size: .95rem;
   cursor: pointer;
@@ -624,15 +624,21 @@
   align-items: center;
   justify-content: center;
   gap: .5rem;
-  transition: all 0.2s;
-  transition: background .2s, border-color .2s;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
-.btn-edit-perfil:hover {
-  background: var(--success-900);
-  color: white;
-  transform: translateY(-1px);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+.btn-edit-perfil:hover:not(:disabled) {
+  background: white;
+  color: var(--success-800);
+  border-color: var(--success-800);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(16, 185, 129, 0.35);
+}
+
+.btn-edit-perfil:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.25);
 }
 
 /* Responsive adicional para clases de profile.css */
@@ -649,12 +655,12 @@
   }
 
   .profile-photo-container {
-    width: 140px;
-    height: 140px;
+    width: 180px;
+    height: 180px;
   }
 
   .profile-photo-placeholder {
-    font-size: 48px;
+    font-size: 56px;
   }
 
   .profile-form {
@@ -664,7 +670,7 @@
 
 /* Sección de eliminación de cuenta */
 .perfil-danger-zone {
-  border: 1px solid var(--neutral-300) !important;
+  border: 1px solid var(--error-600) !important;
   background: var(--neutral-50) !important;
 }
 
@@ -680,6 +686,7 @@
   font-size: 0.9rem;
   line-height: 1.6;
   margin-bottom: 1rem;
+  text-align: justify;
 }
 
 .perfil-delete-account-btn {

@@ -11,17 +11,14 @@
 }
 
 .badge-success {
-  background: var(--success-50);
   color: var(--success-800);
 }
 
 .badge-error {
-  background: var(--error-50);
   color: var(--error-700);
 }
 
 .badge-warning {
-  background: var(--warning-50);
   color: var(--warning-700);
 }
 

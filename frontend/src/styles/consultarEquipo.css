@@ -68,18 +68,20 @@
   flex-wrap: wrap;
 }
 
+/* Alineado con buttons.css: base .btn */
 .consultar-equipo-btn {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 10px 16px;
-  border-radius: 8px;
-  font-size: 0.9rem;
+  padding: 12px 20px;
+  border-radius: 10px;
+  font-size: 0.95rem;
   font-weight: 600;
-  border: none;
+  border: 2px solid transparent;
   cursor: pointer;
   transition: all 0.2s ease;
   white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
 .consultar-equipo-btn svg {
@@ -87,37 +89,48 @@
   display: block;
 }
 
+/* Alineado con .btn-verde en buttons.css */
 .consultar-equipo-btn-verde {
   background: var(--success-800);
   color: white;
 }
 
 .consultar-equipo-btn-verde:hover:not(:disabled) {
-  background: var(--success-900);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+  background: white;
+  color: var(--success-800);
+  border-color: var(--success-800);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(16, 185, 129, 0.35);
 }
 
+.consultar-equipo-btn-verde:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.25);
+}
+
+/* Alineado con .btn-secondary en buttons.css */
 .consultar-equipo-btn-gris {
-  background: white;
-  color: var(--neutral-700);
-  border: 2px solid var(--neutral-300);
+  background: var(--neutral-600);
+  color: white;
 }
 
 .consultar-equipo-btn-gris svg {
-  color: var(--neutral-700) !important;
+  color: white !important;
 }
 
 .consultar-equipo-btn-gris:hover:not(:disabled) {
-  background: var(--neutral-50);
-  border-color: var(--neutral-400);
-  transform: translateY(-1px);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  background: white;
+  color: var(--neutral-600);
+  border-color: var(--neutral-600);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
 }
 
 .consultar-equipo-btn-gris:hover:not(:disabled) svg {
-  color: var(--neutral-800) !important;
+  color: var(--neutral-600) !important;
 }
+
+
 
 .consultar-equipo-btn:disabled {
   opacity: 0.6;
@@ -344,7 +357,7 @@
 
 .consultar-equipo-column-item.checked {
   border-color: var(--success-800);
-  background: var(--success-50);
+  background: var(--success-200);
 }
 
 .consultar-equipo-column-checkbox {
@@ -397,4 +410,60 @@
   border-color: var(--neutral-400);
   transform: translateY(-1px);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Badges Estado verificación (Verificado / No verificado) */
+.consultar-equipo-badge-verificado {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  background: var(--success-100, #d1fae5);
+  color: var(--success-800, #166534);
+}
+
+.consultar-equipo-badge-no-verificado {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  background: var(--neutral-100, #f3f4f6);
+  color: var(--neutral-600, #4b5563);
+}
+
+/* Bloque de autorización al cambiar ambiente de equipo verificado */
+.consultar-equipo-ambiente-edit {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.consultar-equipo-autorizacion {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+  padding: 8px;
+  background: var(--neutral-50, #f9fafb);
+  border-radius: 8px;
+  border: 1px solid var(--neutral-200, #e5e7eb);
+}
+
+.consultar-equipo-autorizacion-label {
+  font-size: 0.8rem;
+  color: var(--neutral-600, #4b5563);
+  font-weight: 500;
+}
+
+.consultar-equipo-autorizacion-sin-disponibles {
+  font-size: 0.85rem;
+  color: var(--neutral-600, #4b5563);
+  margin: 4px 0 0 0;
+}
+
+.consultar-equipo-autorizacion-sin-disponibles a {
+  color: var(--success-800);
+  text-decoration: underline;
 }

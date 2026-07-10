@@ -178,8 +178,10 @@ export async function obtenerEquipoPorCodigo(req, res) {
 
     const queryBase = `
       SELECT e.codigo_equipo, e.placa AS codigo_inventario, e.tipo, e.modelo, e.consecutivo, e.descripcion,
-             e.fecha_adquisicion, e.valor_ingreso AS costo, e.estado_fisico,
+             e.fecha_adquisicion, e.valor_ingreso, e.valor_ingreso AS costo, e.estado_fisico,
              e.specs_completas, e.id_cuentadante,
+             COALESCE(e.cuentadante_principal, u_cuentadante.nombre_usuario) AS cuentadante_principal,
+             u_cuentadante.cedula AS cuentadante_cedula,
              a.id_ambiente, a.nombre_ambiente, a.codigo_ambiente,
              COALESCE(ee.estado_operativo, 'Disponible') AS estado_operativo,
              ee.detalles AS detalles_estado,
@@ -189,10 +191,12 @@ export async function obtenerEquipoPorCodigo(req, res) {
               ORDER BY fecha_mantenimiento DESC LIMIT 1) as estado_mantenimiento_activo,
              (SELECT tipo_mantenimiento FROM Mantenimiento 
               WHERE codigo_equipo = e.codigo_equipo AND estado_mantenimiento = 'En Proceso' 
-              ORDER BY fecha_mantenimiento DESC LIMIT 1) as tipo_mantenimiento_activo
+              ORDER BY fecha_mantenimiento DESC LIMIT 1) as tipo_mantenimiento_activo,
+             CASE WHEN COALESCE(e.verificado_ambiente, 0) = 1 THEN 'Verificado' ELSE 'No verificado' END AS status_verificacion
       FROM Elementos e
       LEFT JOIN Ambientes a ON a.id_ambiente = e.id_ambiente
       LEFT JOIN Estado_Equipo ee ON e.codigo_equipo = ee.codigo_equipo
+      LEFT JOIN Usuarios u_cuentadante ON e.id_cuentadante = u_cuentadante.id_usuario
     `;
 
     // Construir cláusula WHERE según el rol
@@ -275,6 +279,9 @@ export async function obtenerEquipoPorCodigo(req, res) {
     }
 
     if (!equipoData) {
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/4fca1e6c-7d65-41f5-87f3-c0784e21a846', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'equiposController.js:obtenerEquipoPorCodigo', message: '404 equipo no encontrado', data: { codigoParam: codigo, userRole }, timestamp: Date.now(), hypothesisId: 'H1' }) }).catch(() => {});
+    // #endregion
     return res.status(404).json({ error: 'Equipo no encontrado' });
     }
 
@@ -333,8 +340,6 @@ export async function obtenerEquipoPorCodigo(req, res) {
     const responsablesConDias = responsables.map(resp => {
       // Parsear dias_semana si existe
       if (resp.dias_semana) {
-        let documentoOficial = documentoNormalizado;
-
         try {
           // Si es string, parsearlo; si ya es array, dejarlo como está
           if (typeof resp.dias_semana === 'string') {
@@ -445,6 +450,7 @@ export async function actualizarEquipo(req, res) {
     }
 
     const body = req.body || {};
+    const userId = req.user?.id;
 
     // Resolver id_ambiente si viene 'ambiente' en texto o codigo
     let ambienteId = body.id_ambiente ?? null;
@@ -456,9 +462,64 @@ export async function actualizarEquipo(req, res) {
       ambienteId = amb?.id_ambiente || null;
     }
 
+    // Si se está cambiando el ambiente: equipo verificado requiere una solicitud de autorización aprobada (uso único)
+    let idSolicitudAutorizacion = body.id_solicitud_autorizacion != null ? Number(body.id_solicitud_autorizacion) : null;
+    if (ambienteId != null) {
+      const [[equipoActual]] = await defaultDb.execute(
+        'SELECT id_ambiente, COALESCE(verificado_ambiente, 0) AS verificado_ambiente FROM Elementos WHERE codigo_equipo = ?',
+        [codigoEquipo]
+      );
+      if (!equipoActual) {
+        return res.status(404).json({ error: 'Equipo no encontrado' });
+      }
+      const ambienteCambia = Number(equipoActual.id_ambiente) !== Number(ambienteId);
+      if (ambienteCambia && equipoActual.verificado_ambiente === 1) {
+        if (!idSolicitudAutorizacion || idSolicitudAutorizacion <= 0) {
+          return res.status(403).json({
+            error: 'Equipo verificado en ambiente',
+            detalle: 'Para mover un equipo verificado debe usar una autorización aprobada. Cree una solicitud de autorización y espere a que el autorizador la apruebe, luego seleccione esa autorización al guardar.'
+          });
+        }
+        const [[solicitud]] = await defaultDb.execute(
+          `SELECT id_solicitud, codigo_equipo, id_ambiente_origen, id_ambiente_destino, id_autorizador, motivo, estado, fecha_uso
+           FROM Solicitudes_Autorizacion_Movimiento WHERE id_solicitud = ?`,
+          [idSolicitudAutorizacion]
+        );
+        if (!solicitud) {
+          return res.status(404).json({ error: 'Solicitud de autorización no encontrada' });
+        }
+        if (solicitud.estado !== 'Aprobada') {
+          return res.status(403).json({
+            error: 'La autorización no está aprobada',
+            detalle: 'Solo puede usar una solicitud en estado Aprobada.'
+          });
+        }
+        if (solicitud.fecha_uso != null) {
+          return res.status(403).json({
+            error: 'Autorización ya utilizada',
+            detalle: 'Cada autorización tiene un solo uso. Debe crear una nueva solicitud.'
+          });
+        }
+        if (Number(solicitud.codigo_equipo) !== codigoEquipo) {
+          return res.status(403).json({ error: 'La autorización no corresponde a este equipo' });
+        }
+        if (Number(solicitud.id_ambiente_destino) !== Number(ambienteId)) {
+          return res.status(403).json({
+            error: 'La autorización no aplica para el ambiente destino seleccionado'
+          });
+        }
+        if (Number(solicitud.id_ambiente_origen) !== Number(equipoActual.id_ambiente)) {
+          return res.status(403).json({
+            error: 'El ambiente actual del equipo no coincide con la autorización'
+          });
+        }
+      }
+    }
+
+    // Solo valor_ingreso para el valor del equipo (no costo) y así mantener una sola columna en BD
     const allowed = [
       'tipo', 'modelo', 'descripcion', 'fecha_adquisicion',
-      'costo', 'valor_ingreso', 'estado_fisico', 'specs_completas',
+      'valor_ingreso', 'estado_fisico', 'specs_completas',
       'consecutivo', 'placa', 'r_centro'
     ];
 
@@ -479,16 +540,74 @@ export async function actualizarEquipo(req, res) {
     if (ambienteId) {
       sets.push('id_ambiente = ?');
       params.push(ambienteId);
+      // Registrar quién realizó el cambio (para el trigger de historial)
+      if (userId) {
+        sets.push('registrado_por = ?');
+        params.push(userId);
+      }
     }
 
-    if (sets.length === 0) {
+    const estadoOperativo = body.estado_operativo != null && body.estado_operativo !== ''
+      ? String(body.estado_operativo).trim()
+      : null;
+    const tieneEstadoOperativo = estadoOperativo && ['Disponible', 'En Uso', 'En Mantenimiento', 'Dañado', 'Dado de Baja'].includes(estadoOperativo);
+
+    if (sets.length === 0 && !tieneEstadoOperativo) {
       return res.status(400).json({ error: 'Sin cambios para actualizar' });
     }
 
-    const query = `UPDATE Elementos SET ${sets.join(', ')} WHERE codigo_equipo = ?`;
-    params.push(codigoEquipo);
-    const [result] = await defaultDb.execute(query, params);
-    if (result.affectedRows === 0) return res.status(404).json({ error: 'Equipo no encontrado' });
+    let affectedRows = 0;
+    if (sets.length > 0) {
+      const query = `UPDATE Elementos SET ${sets.join(', ')} WHERE codigo_equipo = ?`;
+      const queryParams = [...params, codigoEquipo];
+      const [result] = await defaultDb.execute(query, queryParams);
+      if (result.affectedRows === 0) return res.status(404).json({ error: 'Equipo no encontrado' });
+      affectedRows = result.affectedRows;
+    } else {
+      // Solo se actualiza estado operativo: verificar que el equipo exista
+      const [[existe]] = await defaultDb.execute('SELECT 1 FROM Elementos WHERE codigo_equipo = ?', [codigoEquipo]);
+      if (!existe) return res.status(404).json({ error: 'Equipo no encontrado' });
+    }
+
+    // Actualizar estado operativo en Estado_Equipo si se envió
+    if (tieneEstadoOperativo) {
+      await defaultDb.execute(
+        `INSERT INTO Estado_Equipo (codigo_equipo, estado_operativo, fecha_actualizacion, actualizado_por)
+         VALUES (?, ?, NOW(), ?)
+         ON DUPLICATE KEY UPDATE estado_operativo = VALUES(estado_operativo), fecha_actualizacion = NOW(), actualizado_por = VALUES(actualizado_por)`,
+        [codigoEquipo, estadoOperativo, userId || null]
+      );
+      affectedRows = Math.max(affectedRows, 1);
+    }
+
+    // Si fue movimiento usando solicitud de autorización: marcar solicitud como usada y enlazar historial
+    if (ambienteId && idSolicitudAutorizacion && affectedRows > 0) {
+      const [[ultimoHistorial]] = await defaultDb.execute(
+        `SELECT id_historial FROM Historial_Equipos
+         WHERE codigo_equipo = ? AND tipo_evento = 'Movimiento Ambiente'
+         ORDER BY fecha_evento DESC LIMIT 1`,
+        [codigoEquipo]
+      );
+      if (ultimoHistorial) {
+        const idHistorial = ultimoHistorial.id_historial;
+        const [[sol]] = await defaultDb.execute(
+          'SELECT id_autorizador, motivo FROM Solicitudes_Autorizacion_Movimiento WHERE id_solicitud = ?',
+          [idSolicitudAutorizacion]
+        );
+        if (sol) {
+          await defaultDb.execute(
+            `UPDATE Solicitudes_Autorizacion_Movimiento
+             SET fecha_uso = NOW(), id_usado_por = ?, id_historial_movimiento = ?
+             WHERE id_solicitud = ?`,
+            [userId, idHistorial, idSolicitudAutorizacion]
+          );
+          await defaultDb.execute(
+            'UPDATE Historial_Equipos SET id_autorizado_por = ?, motivo_autorizacion = ? WHERE id_historial = ?',
+            [sol.id_autorizador, sol.motivo, idHistorial]
+          );
+        }
+      }
+    }
 
     // Emitir evento WebSocket para actualización en tiempo real
     try {
@@ -502,7 +621,7 @@ export async function actualizarEquipo(req, res) {
       logger.warn('Error al emitir evento Socket.io', { error: socketErr.message });
     }
 
-    return res.json({ ok: true, updated: result.affectedRows });
+    return res.json({ ok: true, updated: affectedRows });
   } catch (err) {
     return res.status(500).json({ error: 'Error al actualizar equipo', detalle: err.message });
   }
@@ -1553,6 +1672,74 @@ export async function consultarHistorialVerificaciones(req, res) {
 }
 
 /**
+ * Obtener historial de movimientos de ambiente de un equipo
+ * Incluye quién autorizó cuando el equipo estaba verificado
+ */
+export async function obtenerHistorialMovimientos(req, res) {
+  try {
+    const { codigo } = req.params
+    let codigoEquipo = null
+    const codigoNumerico = Number.parseInt(codigo, 10)
+    if (Number.isFinite(codigoNumerico)) {
+      codigoEquipo = codigoNumerico
+    } else {
+      const [[row]] = await defaultDb.execute(
+        'SELECT codigo_equipo FROM Elementos WHERE r_centro = ? LIMIT 1',
+        [codigo]
+      )
+      codigoEquipo = row?.codigo_equipo ?? null
+    }
+    if (!codigoEquipo) {
+      return res.status(404).json({ error: 'Equipo no encontrado' })
+    }
+
+    const [movimientos] = await defaultDb.execute(
+      `SELECT
+        h.id_historial,
+        h.codigo_equipo,
+        h.tipo_evento,
+        h.descripcion,
+        h.id_ambiente_anterior,
+        h.id_ambiente_nuevo,
+        h.fecha_evento,
+        h.registrado_por,
+        h.id_autorizado_por,
+        h.motivo_autorizacion,
+        a1.nombre_ambiente AS ambiente_anterior,
+        a2.nombre_ambiente AS ambiente_nuevo,
+        u_reg.nombre_usuario AS registrado_por_nombre,
+        u_aut.nombre_usuario AS autorizado_por_nombre
+       FROM Historial_Equipos h
+       LEFT JOIN Ambientes a1 ON h.id_ambiente_anterior = a1.id_ambiente
+       LEFT JOIN Ambientes a2 ON h.id_ambiente_nuevo = a2.id_ambiente
+       LEFT JOIN Usuarios u_reg ON h.registrado_por = u_reg.id_usuario
+       LEFT JOIN Usuarios u_aut ON h.id_autorizado_por = u_aut.id_usuario
+       WHERE h.codigo_equipo = ? AND h.tipo_evento = 'Movimiento Ambiente'
+       ORDER BY h.fecha_evento DESC`,
+      [codigoEquipo]
+    )
+
+    const [[equipo]] = await defaultDb.execute(
+      `SELECT codigo_equipo, placa AS codigo_inventario, tipo, modelo, consecutivo
+       FROM Elementos WHERE codigo_equipo = ?`,
+      [codigoEquipo]
+    )
+
+    return res.json({
+      equipo,
+      movimientos,
+      total: movimientos.length
+    })
+  } catch (err) {
+    logger.error('Error al obtener historial de movimientos', { error: err.message, stack: err.stack })
+    return res.status(500).json({
+      error: 'Error al obtener historial de movimientos',
+      details: err.message
+    })
+  }
+}
+
+/**
  * Obtener historial de verificaciones de un equipo específico
  * Útil para rastrear qué instructor estaba a cargo cuando ocurrió un incidente
  */
@@ -1877,6 +2064,9 @@ export async function buscarCuentadantePorDocumento(req, res) {
     // Obtener inventario del cuentadante
     // OPTIMIZACIÓN: Separar consultas para evitar GROUP BY costoso con múltiples JOINs
     // Primero obtener equipos básicos
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/4fca1e6c-7d65-41f5-87f3-c0784e21a846',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'equiposController.js:inventario',message:'Antes consulta inventario',data:{id_cuentadante:cuentadante.id_usuario},timestamp:Date.now(),hypothesisId:'B'})}).catch(()=>{});
+    // #endregion
     const [inventario] = await defaultDb.execute(
       `SELECT 
         e.codigo_equipo,
@@ -1904,10 +2094,12 @@ export async function buscarCuentadantePorDocumento(req, res) {
     if (inventario.length > 0) {
       const codigosEquipos = inventario.map(e => e.codigo_equipo);
       const placeholders = codigosEquipos.map(() => '?').join(',');
-      
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/4fca1e6c-7d65-41f5-87f3-c0784e21a846',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'equiposController.js:conteos',message:'Antes consulta conteos',data:{numEquipos:codigosEquipos.length},timestamp:Date.now(),hypothesisId:'A'})}).catch(()=>{});
+      // #endregion
       const [conteos] = await defaultDb.execute(
         `SELECT 
-          codigo_equipo,
+          e.codigo_equipo,
           COUNT(DISTINCT n.id_novedad) AS total_novedades,
           COUNT(DISTINCT m.id_mantenimiento) AS total_mantenimientos
          FROM Elementos e
@@ -1934,6 +2126,9 @@ export async function buscarCuentadantePorDocumento(req, res) {
     }
 
     // Obtener estadísticas del inventario
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/4fca1e6c-7d65-41f5-87f3-c0784e21a846',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'equiposController.js:estadisticas',message:'Antes consulta estadisticas',data:{},timestamp:Date.now(),hypothesisId:'D'})}).catch(()=>{});
+    // #endregion
     const [[estadisticas]] = await defaultDb.execute(
       `SELECT 
         COUNT(*) AS total_equipos,
@@ -1969,6 +2164,9 @@ export async function buscarCuentadantePorDocumento(req, res) {
       }
     })
   } catch (err) {
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/4fca1e6c-7d65-41f5-87f3-c0784e21a846',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'equiposController.js:catch buscarCuentadante',message:'Error capturado',data:{errorMessage:err.message},timestamp:Date.now(),hypothesisId:'A'})}).catch(()=>{});
+    // #endregion
     logger.error('Error al buscar cuentadante por documento', { error: err.message, stack: err.stack })
     return res.status(500).json({
       error: 'Error al buscar cuentadante',
@@ -2764,26 +2962,27 @@ export async function obtenerSesionesActivas(req, res) {
 }
 
 /**
- * Registrar uso de equipo desde página externa (público)
- * Recibe: documento, placa, ambiente, imagenes (opcional)
- * No requiere autenticación, pero valida que el usuario y equipo existan
- * 
+ * Verificación de que el equipo está en un ambiente y registro de qué aprendices y qué días usarán el equipo (endpoint público).
+ * Recibe: placa, ambiente, usuarios (documento, ficha, dias_semana, hora_inicio, hora_fin), imágenes (opcional).
+ * No requiere autenticación; valida que el equipo exista y esté disponible.
+ *
  * Acciones:
- * 1. Busca el usuario por documento en la base de datos y obtiene todos sus datos
- * 2. Actualiza el ambiente del equipo en el inventario (tabla Elementos)
- * 3. Asigna el equipo al usuario en Responsables_Equipo con los datos oficiales del sistema (no desde la página externa)
- * 4. Registra el uso en Historial_Uso_Equipos
- * 5. Si hay imágenes, las guarda en Imagenes_Equipo asociadas al equipo
+ * 1. Valida equipo por placa y su disponibilidad.
+ * 2. Actualiza el ambiente del equipo en el inventario (tabla Elementos) si se indica ambiente.
+ * 3. Por cada usuario: busca en Usuarios o Aprendices y asigna en Responsables_Equipo con datos oficiales del sistema.
+ * 4. Registra el uso en Historial_Uso_Equipos.
+ * 5. Si hay imágenes, las guarda en Imagenes_Equipo. En la primera verificación exitosa marca verificado_ambiente = 1 en Elementos.
  */
 export async function registrarUsoEquipoExterno(req, res) {
   const uploadedFiles = []; // Para limpiar archivos en caso de error
-  
+  const asignadoPor = req.user?.id ?? null; // Cuando hay auth (web/app), quién registró el uso
+
   try {
     const { placa, ambiente, usuarios } = req.body;
     const files = req.files || (req.file ? [req.file] : []);
 
     // Log de los datos recibidos para debugging
-    logger.info('Datos recibidos en registro externo', {
+    logger.info('Datos recibidos: verificación de ambiente y asignación de aprendices/días de uso', {
       placa: placa?.substring(0, 20),
       ambiente: ambiente,
       cantidad_usuarios: usuarios?.length || 0,
@@ -2816,22 +3015,21 @@ export async function registrarUsoEquipoExterno(req, res) {
     const codigoEquipo = equipo.codigo_equipo;
 
     // Verificar disponibilidad del equipo (estado_operativo y estado_fisico)
-    const disponibilidad = await verificarDisponibilidadEquipo(defaultDb, codigoEquipo)
-    
-    if (!disponibilidad.disponible) {
-      // Eliminar archivos subidos si el equipo no está disponible
+    const disponibilidad = await verificarDisponibilidadEquipo(defaultDb, codigoEquipo);
+    const bloqueadoPorDanadoConFisicoBueno = !disponibilidad.disponible
+      && disponibilidad.razon === 'Equipo dañado, no disponible para asignación'
+      && disponibilidad.estado_fisico === 'Bueno';
+    if (!bloqueadoPorDanadoConFisicoBueno && !disponibilidad.disponible) {
       if (files && files.length > 0) {
-        files.forEach((file) => {
-          deleteImageFile(file.filename);
-        });
+        files.forEach((file) => deleteImageFile(file.filename));
       }
-      return res.status(409).json({ 
+      return res.status(409).json({
         success: false,
         error: disponibilidad.razon,
         message: `El equipo con placa "${placa}" no está disponible para uso. Estado: ${disponibilidad.estado_operativo || 'N/A'}`,
         estado_operativo: disponibilidad.estado_operativo,
         estado_fisico: disponibilidad.estado_fisico
-      })
+      });
     }
     
     // Procesar imágenes si se enviaron
@@ -2845,7 +3043,7 @@ export async function registrarUsoEquipoExterno(req, res) {
         
         for (const file of files) {
           if (!file || !file.filename) {
-            logger.warn('Archivo inválido en registro externo', { file });
+            logger.warn('Archivo inválido en verificación de ambiente', { file });
             continue;
           }
 
@@ -2872,7 +3070,7 @@ export async function registrarUsoEquipoExterno(req, res) {
           // Guardar en la base de datos
           const rutaImagen = getImagePath(nuevoFilename);
           const tipoImagen = 'Detalle'; // Por defecto
-          const descripcion = `Imagen subida desde registro externo - Placa: ${placa}`;
+          const descripcion = `Imagen subida en verificación de ambiente - Placa: ${placa}`;
 
           const [resultImagen] = await defaultDb.execute(
             `INSERT INTO Imagenes_Equipo 
@@ -2891,7 +3089,7 @@ export async function registrarUsoEquipoExterno(req, res) {
             es_principal: false,
           });
 
-          logger.info('Imagen guardada desde registro externo', {
+          logger.info('Imagen guardada en verificación de ambiente', {
             id_imagen: resultImagen.insertId,
             codigo_equipo: codigoEquipo,
             placa: placa,
@@ -2899,7 +3097,7 @@ export async function registrarUsoEquipoExterno(req, res) {
           });
         }
       } catch (imagenError) {
-        logger.error('Error al procesar imágenes en registro externo', {
+        logger.error('Error al procesar imágenes en verificación de ambiente', {
           error: imagenError.message,
           stack: imagenError.stack,
           codigo_equipo: codigoEquipo
@@ -3095,6 +3293,28 @@ export async function registrarUsoEquipoExterno(req, res) {
         logger.warn('No se pudo ajustar id_usuario a NULL (puede existir restricción). Se intentará continuar.', { error: eNull?.message });
       }
 
+      // Asegurar que Historial_Uso_Equipos.id_usuario permita NULL (aprendices sin usuario en Usuarios)
+      try {
+        const [[colIdUsuarioHist]] = await connection.execute(
+          `SELECT IS_NULLABLE FROM INFORMATION_SCHEMA.COLUMNS 
+           WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'Historial_Uso_Equipos' AND COLUMN_NAME = 'id_usuario'`
+        );
+        if (colIdUsuarioHist && colIdUsuarioHist.IS_NULLABLE === 'NO') {
+          await connection.execute(
+            `ALTER TABLE Historial_Uso_Equipos MODIFY id_usuario INT NULL`
+          );
+          logger.info('Columna id_usuario en Historial_Uso_Equipos ajustada a NULL para registros externos');
+        }
+      } catch (eNullHist) {
+        logger.warn('No se pudo ajustar id_usuario a NULL en Historial_Uso_Equipos', { error: eNullHist?.message });
+      }
+
+      const [[colAsignadoPor]] = await connection.execute(
+        `SELECT COUNT(*) AS cnt FROM INFORMATION_SCHEMA.COLUMNS 
+         WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'Responsables_Equipo' AND COLUMN_NAME = 'asignado_por'`
+      );
+      const tieneAsignadoPor = colAsignadoPor?.cnt > 0;
+
       const tieneFicha = colFicha.cnt > 0;
       const tieneNombreExterno = colNombreExterno.cnt > 0;
       const tieneDocumentoExterno = colDocumentoExterno.cnt > 0;
@@ -3113,6 +3333,13 @@ export async function registrarUsoEquipoExterno(req, res) {
         const fichaNormalizada = typeof ficha === 'string' && ficha.trim().length > 0 ? ficha.trim() : null;
         let documentoOficial = documentoNormalizado;
 
+        logger.debug('Procesando usuario en asignación múltiple', {
+          documento: documentoNormalizado || 'N/A',
+          ficha: fichaNormalizada,
+          tiene_dias_semana: Array.isArray(dias_semana) && dias_semana.length > 0,
+          dias_semana_cantidad: Array.isArray(dias_semana) ? dias_semana.length : 0
+        });
+
         if (!documentoNormalizado) {
           const errObj = { documento: 'N/A', error: 'El documento del usuario es obligatorio' };
           if (fichaNormalizada) errObj.ficha = fichaNormalizada;
@@ -3120,7 +3347,37 @@ export async function registrarUsoEquipoExterno(req, res) {
           continue;
         }
 
+        // Calcular días y horas para uso en rama Aprendiz y Usuario (verificación de ambiente y asignación de aprendices)
+        let diasSemanaJson = null;
+        if (dias_semana && Array.isArray(dias_semana) && dias_semana.length > 0) {
+          diasSemanaJson = JSON.stringify(dias_semana);
+        }
+        logger.debug('diasSemanaJson calculado para usuario', {
+          documento: documentoNormalizado,
+          diasSemanaJson_es_null: diasSemanaJson === null,
+          diasSemanaJson_length: diasSemanaJson ? diasSemanaJson.length : 0
+        });
+        let horaInicioTime = null;
+        let horaFinTime = null;
+        if (hora_inicio) {
+          const horaInicioParts = hora_inicio.split(':');
+          if (horaInicioParts.length === 2) {
+            horaInicioTime = `${horaInicioParts[0].padStart(2, '0')}:${horaInicioParts[1].padStart(2, '0')}:00`;
+          } else {
+            horaInicioTime = hora_inicio;
+          }
+        }
+        if (hora_fin) {
+          const horaFinParts = hora_fin.split(':');
+          if (horaFinParts.length === 2) {
+            horaFinTime = `${horaFinParts[0].padStart(2, '0')}:${horaFinParts[1].padStart(2, '0')}:00`;
+          } else {
+            horaFinTime = hora_fin;
+          }
+        }
+
         try {
+          logger.info('Asignación múltiple: paso 1 - Buscando usuario por documento', { documento: documentoNormalizado });
           // Buscar usuario por documento
           const [[usuarioRow]] = await connection.execute(
             `SELECT u.id_usuario, u.nombre_usuario, u.cedula, u.tipo_documento, u.tipo_documento_otro,
@@ -3132,8 +3389,14 @@ export async function registrarUsoEquipoExterno(req, res) {
             [documentoNormalizado]
           );
           const usuario = usuarioRow || null;
+          logger.info('Asignación múltiple: paso 2 - Usuario en BD', {
+            documento: documentoNormalizado,
+            encontrado: !!usuario,
+            id_usuario: usuario?.id_usuario
+          });
 
           if (!usuario) {
+            logger.info('Asignación múltiple: paso 3 - Buscando en Aprendices', { documento: documentoNormalizado });
             // Si no existe en Usuarios, intentar buscar en la tabla Aprendices (importados)
             const [[aprendizRow]] = await connection.execute(
               `SELECT id_aprendiz, ficha, nombre, documento, jornada, fecha_creacion
@@ -3142,12 +3405,30 @@ export async function registrarUsoEquipoExterno(req, res) {
             )
 
             if (aprendizRow) {
+              logger.info('Asignación múltiple: paso 4 - Rama aprendiz, verificando asignación existente', {
+                documento: documentoNormalizado,
+                id_aprendiz: aprendizRow.id_aprendiz
+              });
               // Si existe un aprendiz importado, crear una asignación externa
               // en Responsables_Equipo con id_usuario = NULL y crear un
               // registro en Historial_Uso_Equipos para que aparezca en la UI.
               const aprendizNombre = aprendizRow.nombre || null
               const aprendizDocumento = aprendizRow.documento || documentoNormalizado
               const fichaAprendiz = aprendizRow.ficha || null
+
+              // Evitar duplicados: no permitir la misma persona asignada dos veces al mismo equipo
+              const [[asignacionAprendizExistente]] = await connection.execute(
+                `SELECT id_responsable FROM Responsables_Equipo
+                 WHERE codigo_equipo = ? AND id_usuario IS NULL AND documento_externo = ? AND estado_responsabilidad = 'Activo'
+                 LIMIT 1`,
+                [equipo.codigo_equipo, aprendizDocumento]
+              );
+              if (asignacionAprendizExistente) {
+                const errObj = { documento: aprendizDocumento, error: 'Esta persona ya está asignada a este equipo' };
+                if (fichaAprendiz) errObj.ficha = fichaAprendiz;
+                errores.push(errObj);
+                continue;
+              }
 
               // Insertar en Responsables_Equipo usando las mismas columnas condicionales
               const camposResp = ['codigo_equipo', 'id_usuario', 'tipo_responsabilidad', 'observaciones', 'fecha_asignacion']
@@ -3169,12 +3450,44 @@ export async function registrarUsoEquipoExterno(req, res) {
                 valoresResp.push(aprendizDocumento)
                 placeholdersResp.push('?')
               }
+              logger.debug('Rama aprendiz: preparando INSERT Responsables_Equipo', {
+                documento: aprendizDocumento,
+                tieneDiasSemana,
+                diasSemanaJson_es_null: diasSemanaJson === null
+              });
+              if (tieneDiasSemana && diasSemanaJson) {
+                camposResp.push('dias_semana')
+                valoresResp.push(diasSemanaJson)
+                placeholdersResp.push('?')
+              }
+              if (tieneHoraInicio && horaInicioTime) {
+                camposResp.push('hora_inicio')
+                valoresResp.push(horaInicioTime)
+                placeholdersResp.push('?')
+              }
+              if (tieneHoraFin && horaFinTime) {
+                camposResp.push('hora_fin')
+                valoresResp.push(horaFinTime)
+                placeholdersResp.push('?')
+              }
+              if (tieneAsignadoPor && asignadoPor) {
+                camposResp.push('asignado_por')
+                valoresResp.push(asignadoPor)
+                placeholdersResp.push('?')
+              }
 
               // Ejecutar inserción
+              logger.info('Asignación múltiple: paso 5 - INSERT Responsables_Equipo (aprendiz)', {
+                documento: aprendizDocumento,
+                campos: camposResp.length
+              });
               const [resultAsignacionAprendiz] = await connection.execute(
                 `INSERT INTO Responsables_Equipo (${camposResp.join(', ')}) VALUES (${placeholdersResp.join(', ')})`,
                 valoresResp
               )
+              logger.info('Asignación múltiple: paso 5 OK - INSERT Responsables_Equipo aprendiz realizado', {
+                id_responsable: resultAsignacionAprendiz.insertId
+              });
 
               // Insertar historial de uso para que aparezca en el historial del equipo
               let resultHistAprendiz
@@ -3208,7 +3521,7 @@ export async function registrarUsoEquipoExterno(req, res) {
               if (fichaAprendiz) resultAprendiz.ficha = fichaAprendiz;
               resultados.push(resultAprendiz);
 
-              logger.info('Registro externo: aprendiz importado asignado temporalmente al equipo', {
+              logger.info('Verificación ambiente: aprendiz importado asignado temporalmente al equipo', {
                 id_aprendiz: aprendizRow.id_aprendiz,
                 id_responsable: resultAsignacionAprendiz.insertId,
                 id_historial: resultHistAprendiz?.insertId,
@@ -3236,6 +3549,10 @@ export async function registrarUsoEquipoExterno(req, res) {
           const nombreUsuario = usuario.nombre_usuario || null;
           documentoOficial = usuarioDetalle.documento || documentoOficial;
 
+          logger.info('Asignación múltiple: paso 6 - Rama usuario existente, buscando asignación activa', {
+            documento: documentoOficial,
+            id_usuario: usuario.id_usuario
+          });
           // Verificar si ya existe una asignación activa para este equipo y usuario
           const [[asignacionExistente]] = await connection.execute(
             `SELECT id_responsable FROM Responsables_Equipo 
@@ -3244,31 +3561,20 @@ export async function registrarUsoEquipoExterno(req, res) {
             [equipo.codigo_equipo, usuario.id_usuario]
           );
 
-          // Preparar datos de horarios
-          let diasSemanaJson = null;
-          if (dias_semana && Array.isArray(dias_semana) && dias_semana.length > 0) {
-            diasSemanaJson = JSON.stringify(dias_semana);
-          }
+          // Usar diasSemanaJson ya calculado al inicio de la iteración (evitar redeclaración que causa TDZ)
+          logger.debug('Rama usuario existente: usando diasSemanaJson', {
+            documento: documentoOficial,
+            id_usuario: usuario.id_usuario,
+            diasSemanaJson_es_null: diasSemanaJson === null
+          });
 
-          // Convertir horas de string a TIME (formato HH:MM:SS)
-          let horaInicioTime = null;
-          let horaFinTime = null;
-          if (hora_inicio) {
-            const horaInicioParts = hora_inicio.split(':');
-            if (horaInicioParts.length === 2) {
-              horaInicioTime = `${horaInicioParts[0].padStart(2, '0')}:${horaInicioParts[1].padStart(2, '0')}:00`;
-            } else {
-              horaInicioTime = hora_inicio;
-            }
-          }
-          if (hora_fin) {
-            const horaFinParts = hora_fin.split(':');
-            if (horaFinParts.length === 2) {
-              horaFinTime = `${horaFinParts[0].padStart(2, '0')}:${horaFinParts[1].padStart(2, '0')}:00`;
-            } else {
-              horaFinTime = hora_fin;
-            }
-          }
+          // Usar horaInicioTime y horaFinTime ya calculados al inicio de la iteración (evitar redeclaración que causa TDZ)
+          logger.info('Asignación múltiple: paso 7 - Horarios calculados, validando conflictos', {
+            documento: documentoOficial,
+            tiene_dias_semana: !!diasSemanaJson,
+            hora_inicio: horaInicioTime,
+            hora_fin: horaFinTime
+          });
 
           // Validar conflictos de horario: no puede haber dos usuarios con el mismo equipo
           if (diasSemanaJson && horaInicioTime && horaFinTime) {
@@ -3311,7 +3617,12 @@ export async function registrarUsoEquipoExterno(req, res) {
               horaInicioTime, horaFinTime
             );
 
+            logger.info('Asignación múltiple: paso 8 - Ejecutando consulta de conflictos de horario', { documento: documentoOficial });
             const [conflictos] = await connection.execute(conflictQuery, conflictParams);
+            logger.info('Asignación múltiple: paso 8 OK - Consulta conflictos realizada', {
+              documento: documentoOficial,
+              conflictos_encontrados: conflictos.length
+            });
 
             if (conflictos.length > 0) {
               const conflicto = conflictos[0];
@@ -3369,6 +3680,10 @@ export async function registrarUsoEquipoExterno(req, res) {
           const observaciones = observacionesPartes.join(', ');
 
           if (!asignacionExistente) {
+            logger.info('Asignación múltiple: paso 9 - INSERT nueva asignación Responsables_Equipo', {
+              documento: documentoOficial,
+              id_usuario: usuario.id_usuario
+            });
             let campos = ['codigo_equipo', 'id_usuario', 'tipo_responsabilidad', 'observaciones', 'fecha_asignacion'];
             let valores = [equipo.codigo_equipo, usuario.id_usuario, 'Principal', observaciones];
             let placeholders = ['?', '?', '?', '?', 'NOW()'];
@@ -3409,6 +3724,10 @@ export async function registrarUsoEquipoExterno(req, res) {
                VALUES (${placeholders.join(', ')})`,
               valores
             );
+            logger.info('Asignación múltiple: paso 9 OK - INSERT Responsables_Equipo realizado', {
+              id_responsable: resultAsignacion.insertId,
+              documento: documentoOficial
+            });
 
             logger.info('Equipo asignado al usuario desde página externa', {
               id_responsable: resultAsignacion.insertId,
@@ -3419,6 +3738,10 @@ export async function registrarUsoEquipoExterno(req, res) {
               documento: documentoOficial
             });
           } else {
+            logger.info('Asignación múltiple: paso 10 - UPDATE asignación existente Responsables_Equipo', {
+              documento: documentoOficial,
+              id_responsable: asignacionExistente.id_responsable
+            });
             let updates = [];
             let valoresUpdate = [];
 
@@ -3458,6 +3781,10 @@ export async function registrarUsoEquipoExterno(req, res) {
                  WHERE id_responsable = ?`,
                 valoresUpdate
               );
+              logger.info('Asignación múltiple: paso 10 OK - UPDATE Responsables_Equipo realizado', {
+                id_responsable: asignacionExistente.id_responsable,
+                filas_afectadas: updateResult.affectedRows
+              });
 
               logger.info('Asignación actualizada desde página externa', {
                 id_responsable: asignacionExistente.id_responsable,
@@ -3478,12 +3805,20 @@ export async function registrarUsoEquipoExterno(req, res) {
             }
           }
 
+          logger.info('Asignación múltiple: paso 11 - Buscando sesión activa en Historial_Uso_Equipos', {
+            documento: documentoOficial,
+            id_usuario: usuario.id_usuario
+          });
           const [[sesionActiva]] = await connection.execute(
             `SELECT id_historial FROM Historial_Uso_Equipos 
              WHERE codigo_equipo = ? AND id_usuario = ? AND estado = 'En Uso' 
              ORDER BY fecha_hora_inicio DESC LIMIT 1`,
             [equipo.codigo_equipo, usuario.id_usuario]
           );
+          logger.info('Asignación múltiple: paso 11 OK - Sesión activa consultada', {
+            documento: documentoOficial,
+            tiene_sesion_activa: !!sesionActiva
+          });
 
           if (sesionActiva) {
             logger.info('Sesión activa existente - actualizando asignación con nuevos datos', {
@@ -3520,6 +3855,11 @@ export async function registrarUsoEquipoExterno(req, res) {
           const fechaInicio = new Date();
           let resultHistorial;
 
+          logger.info('Asignación múltiple: paso 12 - INSERT Historial_Uso_Equipos (nueva sesión)', {
+            documento: documentoOficial,
+            id_usuario: usuario.id_usuario,
+            tieneNombreUsuarioHistorial
+          });
           try {
             if (tieneNombreUsuarioHistorial) {
               [resultHistorial] = await connection.execute(
@@ -3536,6 +3876,10 @@ export async function registrarUsoEquipoExterno(req, res) {
                 [equipo.codigo_equipo, usuario.id_usuario, fechaInicio, observacionesHistorial]
               );
             }
+            logger.info('Asignación múltiple: paso 12 OK - INSERT Historial_Uso_Equipos realizado', {
+              id_historial: resultHistorial.insertId,
+              documento: documentoOficial
+            });
 
             logger.info('Historial de uso creado exitosamente', {
               id_historial: resultHistorial.insertId,
@@ -3543,9 +3887,10 @@ export async function registrarUsoEquipoExterno(req, res) {
               id_usuario: usuario.id_usuario
             });
           } catch (historialError) {
-            logger.error('Error al crear historial de uso', {
+            logger.error('Asignación múltiple: FALLO en paso 12 - INSERT Historial_Uso_Equipos', {
               error: historialError.message,
               stack: historialError.stack,
+              documento: documentoOficial,
               codigo_equipo: equipo.codigo_equipo,
               id_usuario: usuario.id_usuario
             });
@@ -3578,6 +3923,10 @@ export async function registrarUsoEquipoExterno(req, res) {
           if (fichaNormalizada) historialObj.ficha = fichaNormalizada;
           resultados.push(historialObj);
 
+          logger.info('Asignación múltiple: paso 13 OK - Usuario procesado correctamente (sin sesión previa)', {
+            documento: documentoOficial,
+            id_historial: resultHistorial.insertId
+          });
           logger.info('Uso de equipo registrado para usuario', {
             id_historial: resultHistorial.insertId,
             codigo_equipo: equipo.codigo_equipo,
@@ -3588,16 +3937,18 @@ export async function registrarUsoEquipoExterno(req, res) {
           });
 
         } catch (usuarioError) {
-          logger.error('Error al procesar usuario', {
-            error: usuarioError.message,
-            stack: usuarioError.stack,
+          logger.error('Asignación múltiple: Error al procesar usuario (revisar último "paso X" arriba para ubicar fallo)', {
+            error_name: usuarioError?.name,
+            error_message: usuarioError?.message,
+            stack: usuarioError?.stack,
             documento: documentoOficial,
-            ficha: fichaNormalizada
+            ficha: fichaNormalizada,
+            codigo_equipo: equipo?.codigo_equipo
           });
           errores.push({
             documento: documentoOficial || 'N/A',
             ficha: fichaNormalizada || 'N/A',
-            error: usuarioError.message || 'Error al procesar usuario'
+            error: usuarioError?.message || 'Error al procesar usuario'
           });
         }
       }
@@ -3613,8 +3964,8 @@ export async function registrarUsoEquipoExterno(req, res) {
         connection.release();
         return res.status(400).json({
           success: false,
-          error: 'No se pudo procesar ningún usuario',
-          message: 'Todos los usuarios tuvieron errores',
+          error: 'No se pudo procesar ningún usuario en la verificación de ambiente',
+          message: 'Ningún usuario pudo ser asignado; revisar documentos y errores.',
           errores: errores
         });
       }
@@ -3626,10 +3977,24 @@ export async function registrarUsoEquipoExterno(req, res) {
         errores_count: errores.length
       });
 
+      // Si al menos un usuario se procesó, marcar equipo como verificado (primera verificación; no se vuelve a cambiar)
+      if (resultados.length > 0) {
+        const [[colVerificado]] = await connection.execute(
+          `SELECT COUNT(*) AS cnt FROM INFORMATION_SCHEMA.COLUMNS 
+           WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'Elementos' AND COLUMN_NAME = 'verificado_ambiente'`
+        );
+        if (colVerificado && colVerificado.cnt > 0) {
+          await connection.execute(
+            `UPDATE Elementos SET verificado_ambiente = 1 WHERE codigo_equipo = ? AND (verificado_ambiente IS NULL OR verificado_ambiente = 0)`,
+            [equipo.codigo_equipo]
+          );
+        }
+      }
+
       // Confirmar transacción
       await connection.commit();
 
-      logger.info('Registro de múltiples usuarios completado', {
+      logger.info('Verificación de ambiente y asignación de aprendices completada', {
         codigo_equipo: equipo.codigo_equipo,
         placa: equipo.placa,
         usuarios_procesados: resultados.length,
@@ -3642,7 +4007,7 @@ export async function registrarUsoEquipoExterno(req, res) {
       return res.status(201).json({
         success: true,
         message: resultados.length > 0 
-          ? `${resultados.length} usuario(s) registrado(s) correctamente${errores.length > 0 ? `, ${errores.length} con errores` : ''}${imagenesSubidas.length > 0 ? `, ${imagenesSubidas.length} imagen(es) guardada(s)` : ''}`
+          ? `${resultados.length} Equipo verificado ${errores.length > 0 ? `, ${errores.length} con errores` : ''}${imagenesSubidas.length > 0 ? `, ${imagenesSubidas.length} y asignado correctamente` : ''}`
           : 'Procesamiento completado con errores',
         data: {
           codigo_equipo: equipo.codigo_equipo,
@@ -3673,14 +4038,14 @@ export async function registrarUsoEquipoExterno(req, res) {
       });
     }
     
-    logger.error('Error al registrar uso de equipo externo', { 
+    logger.error('Error en verificación de ambiente / asignación de uso de equipo', { 
       error: err.message, 
       stack: err.stack,
       body: req.body 
     });
     return res.status(500).json({
       success: false,
-      error: 'Error al registrar el uso del equipo',
+      error: 'Error en la verificación de ambiente o asignación de uso',
       message: 'Ocurrió un error interno. Por favor intenta nuevamente más tarde.',
       detalle: process.env.NODE_ENV === 'development' ? err.message : undefined
     });

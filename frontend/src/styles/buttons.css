@@ -14,7 +14,8 @@
   font-weight: 600;
   font-family: inherit;
   cursor: pointer;
-  border: none;
+  border: 2px solid transparent;
+  /* RESERVA ESPACIO PARA EVITAR PARPADEO */
   transition: all 0.2s ease;
   white-space: nowrap;
   text-decoration: none;
@@ -27,20 +28,27 @@
   opacity: 0.6;
   cursor: not-allowed;
   transform: none !important;
+  box-shadow: none;
 }
 
-/* Botón verde (primary) */
+/* 
+   MIXIN CONCEPTUAL (Aplicado manualmente a cada clase):
+   Normal: bg: COLOR, text: WHITE, border: TRANSPARENT
+   Hover:  bg: WHITE, text: COLOR, border: COLOR
+*/
+
+/* --- Botones Primarios / Éxito --- */
 .btn-verde,
 .btn-primary {
   background: var(--success-800);
   color: white;
-  border: none;
-  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.25);
 }
 
 .btn-verde:hover:not(:disabled),
 .btn-primary:hover:not(:disabled) {
-  background: var(--success-900);
+  background: white;
+  color: var(--success-800);
+  border-color: var(--success-800);
   transform: translateY(-2px);
   box-shadow: 0 6px 16px rgba(16, 185, 129, 0.35);
 }
@@ -51,91 +59,92 @@
   box-shadow: 0 2px 8px rgba(16, 185, 129, 0.25);
 }
 
-/* Botón secundario */
+/* --- Botón Secundario --- */
+/* Rediseñado para cumplir patrón: Fondo Oscuro -> Hover Blanco */
 .btn-secondary {
-  background: var(--neutral-100);
-  color: var(--neutral-700);
-  border: 1px solid var(--neutral-200);
+  background: var(--neutral-600);
+  color: white;
 }
 
 .btn-secondary:hover:not(:disabled) {
-  background: var(--neutral-200);
-  border-color: var(--neutral-300);
+  background: white;
+  color: var(--neutral-600);
+  border-color: var(--neutral-600);
 }
 
-/* Botón de editar */
+/* --- Botón Editar --- */
 .btn-edit {
   background: var(--success-800);
   color: white;
-  border: none;
-  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.2);
 }
 
 .btn-edit:hover:not(:disabled) {
-  background: var(--success-900);
+  background: white;
+  color: var(--success-800);
+  border-color: var(--success-800);
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
 }
 
-/* Botón de eliminar */
+/* --- Botón Eliminar --- */
 .btn-delete {
   background: var(--error-500);
   color: white;
-  border: none;
-  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.2);
 }
 
 .btn-delete:hover:not(:disabled) {
-  background: var(--error-600);
+  background: white;
+  color: var(--error-500);
+  border-color: var(--error-500);
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
 }
 
-/* Botón de ver/info */
+/* --- Botón Ver / Info --- */
 .btn-view,
 .btn-info {
   background: var(--info-600);
   color: white;
-  border: none;
-  box-shadow: 0 2px 8px rgba(59, 139, 255, 0.2);
 }
 
 .btn-view:hover:not(:disabled),
 .btn-info:hover:not(:disabled) {
-  background: var(--info-700);
+  background: white;
+  color: var(--info-600);
+  border-color: var(--info-600);
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(59, 139, 255, 0.3);
 }
 
-/* Botón de warning */
+/* --- Botón Warning --- */
 .btn-warning {
   background: var(--warning-600);
   color: white;
-  border: none;
-  box-shadow: 0 2px 8px rgba(255, 193, 7, 0.2);
 }
 
 .btn-warning:hover:not(:disabled) {
-  background: var(--warning-700);
+  background: white;
+  color: var(--warning-600);
+  border-color: var(--warning-600);
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(255, 193, 7, 0.3);
 }
 
-/* Botón de error */
+/* --- Botón Error (Genérico) --- */
 .btn-error {
   background: var(--error-500);
   color: white;
-  border: none;
-  box-shadow: 0 2px 8px rgba(220, 53, 69, 0.2);
 }
 
 .btn-error:hover:not(:disabled) {
-  background: var(--error-600);
+  background: white;
+  color: var(--error-500);
+  border-color: var(--error-500);
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(220, 53, 69, 0.3);
 }
 
-/* Tamaños de botones */
+/* --- Tamaños --- */
 .btn-sm {
   padding: 8px 14px;
   font-size: 0.875rem;
@@ -146,12 +155,11 @@
   font-size: 1.05rem;
 }
 
-/* Botón full width */
 .btn-full {
   width: 100%;
 }
 
-/* Botón icono solo */
+/* --- Botones Icono --- */
 .btn-icon {
   padding: 10px;
   width: 40px;
@@ -173,10 +181,11 @@
   height: 48px;
 }
 
-/* Botón outline */
+/* --- Botón Outline (Variante especial) --- */
+/* Se ajusta ligeramente para mantener coherencia, o se deja como alternativa explícita */
 .btn-outline {
   background: transparent;
-  border: 2px solid currentColor;
+  border-color: currentColor;
 }
 
 .btn-outline.btn-verde {
@@ -199,17 +208,23 @@
   color: white;
 }
 
-/* Botón ghost */
+/* --- Botón Ghost --- */
 .btn-ghost {
   background: transparent;
   box-shadow: none;
+  border-color: transparent;
+  /* Mantiene reserva */
+  color: var(--neutral-700);
 }
 
 .btn-ghost:hover:not(:disabled) {
   background: var(--neutral-100);
+  border-color: var(--neutral-100);
+  /* Opcional */
+  color: var(--neutral-900);
 }
 
-/* Grupo de botones */
+/* --- Grupo de botones --- */
 .btn-group {
   display: flex;
   gap: 8px;
@@ -224,43 +239,8 @@
   width: 100%;
 }
 
-/* Botón de acción (btn-act) - usado en historiales y horarios */
-.btn-act {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 10px 16px;
-  background: var(--success-800);
-  color: white;
-  border: none;
-  border-radius: 8px;
-  font-size: 0.9rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  white-space: nowrap;
-  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.25);
-}
-
-.btn-act:hover:not(:disabled) {
-  background: var(--success-900);
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.35);
-}
-
-.btn-act:active:not(:disabled) {
-  transform: translateY(0);
-  box-shadow: 0 2px 6px rgba(16, 185, 129, 0.25);
-}
-
-.btn-act:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-  transform: none;
-}
-
-/* Botón refresh/actualizar específico */
+/* --- Botones de Acción / Específicos (Act, Refresh) --- */
+.btn-act,
 .btn-refresh,
 .refresh-btn {
   display: inline-flex;
@@ -268,9 +248,10 @@
   justify-content: center;
   gap: 8px;
   padding: 10px 16px;
+  /* Estado Normal: Color Sólido, Borde Transparente */
   background: var(--success-800);
   color: white;
-  border: none;
+  border: 2px solid transparent;
   border-radius: 8px;
   font-size: 0.9rem;
   font-weight: 600;
@@ -280,17 +261,29 @@
   box-shadow: 0 2px 8px rgba(16, 185, 129, 0.25);
 }
 
+.btn-act:hover:not(:disabled),
 .btn-refresh:hover:not(:disabled),
 .refresh-btn:hover:not(:disabled) {
-  background: var(--success-900);
+  background: white;
+  color: var(--success-800);
+  border-color: var(--success-800);
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(16, 185, 129, 0.35);
 }
 
+.btn-act:active:not(:disabled),
 .btn-refresh:active:not(:disabled),
 .refresh-btn:active:not(:disabled) {
   transform: translateY(0);
   box-shadow: 0 2px 6px rgba(16, 185, 129, 0.25);
+}
+
+.btn-act:disabled,
+.btn-refresh:disabled,
+.refresh-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
 }
 
 /* Responsive */
@@ -315,4 +308,3 @@
     font-size: 0.85rem;
   }
 }
-

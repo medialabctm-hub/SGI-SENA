@@ -22,7 +22,7 @@ export default function BloqueoModal({ isOpen, onClose }) {
             No puedes cambiar de página mientras haya registros con placas duplicadas pendientes de revisión.
           </p>
           <p className="bloqueo-modal-instruction">
-            Por favor, aprueba o rechaza todos los registros duplicados antes de continuar.
+            Por favor, aprueba o rechaza cada uno de los registros duplicados antes de continuar.
           </p>
         </div>
         

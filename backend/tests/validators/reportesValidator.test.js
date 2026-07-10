@@ -35,7 +35,8 @@ describe('crearReporteSchema', () => {
   });
 
   it('debe aceptar todos los tipos de reporte válidos', () => {
-    const tipos = ['General', 'Equipos', 'Mantenimiento', 'Novedad', 'Consulta', 'Solicitud', 'Novedades', 'Uso', 'Otro'];
+    // Lista alineada con el ENUM de la tabla Reportes (SGI_SENA.sql)
+    const tipos = ['General', 'Equipos', 'Mantenimiento', 'Novedades', 'Uso', 'Otro'];
     for (const tipo of tipos) {
       expect(() => crearReporteSchema.parse({ ...baseCrear, tipo_reporte: tipo })).not.toThrow();
     }
@@ -96,9 +97,9 @@ describe('crearReporteSchema', () => {
     expect(result.codigo_equipo).toBe('EQUIPO-001');
   });
 
-  it('debe aceptar codigo_equipo como null', () => {
+  it('debe aceptar codigo_equipo como null (se normaliza a undefined)', () => {
     const result = crearReporteSchema.parse({ ...baseCrear, codigo_equipo: null });
-    expect(result.codigo_equipo).toBeNull();
+    expect(result.codigo_equipo).toBeUndefined();
   });
 
   it('debe aceptar codigo_equipo como undefined (campo omitido)', () => {

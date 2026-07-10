@@ -240,7 +240,7 @@
 }
 
 .mantenimientos-modal-body .custom-select {
-  border: 2px solid var(--success-200) !important;
+  border: 2px solid var(--success-700) !important;
 }
 
 .mantenimientos-modal-body .custom-select:hover {
@@ -275,7 +275,7 @@
   margin-top: 8px;
 }
 
-.mantenimientos-modal-edit-row > span {
+.mantenimientos-modal-edit-row>span {
   flex: 1;
   font-size: 1rem;
   color: var(--neutral-900);
@@ -291,16 +291,16 @@
   border-radius: 8px;
   font-weight: 500;
   transition: all 0.2s;
-  background: var(--success-50);
+  background: var(--success-700);
   color: var(--success-700);
-  border: 1.5px solid var(--success-200);
+  border: 1.5px solid var(--success-700);
   cursor: pointer;
   white-space: nowrap;
 }
 
 .mantenimientos-modal-edit-button-small:hover {
-  background: var(--success-100);
-  border-color: var(--success-300);
+  background: var(--success-700);
+  border-color: var(--success-700);
   transform: translateY(-1px);
   box-shadow: 0 2px 8px rgba(34, 197, 94, 0.15);
 }
@@ -353,7 +353,7 @@
 
 .mantenimientos-estado-badge.completado {
   color: var(--success-700);
-  background: var(--success-50);
+  background: var(--success-700);
 }
 
 .mantenimientos-estado-badge.cancelado {
@@ -412,6 +412,11 @@
 
   .mantenimientos-modal-footer {
     padding: 1rem 1.5rem;
+    flex-direction: column;
+  }
+
+  .mantenimientos-modal-footer-button {
+    width: 100%;
   }
 
   .mantenimientos-modal-edit-row {
@@ -421,6 +426,22 @@
 
   .mantenimientos-modal-edit-button-small {
     align-self: flex-start;
+  }
+
+  .mantenimientos-modal-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .mantenimientos-tabs {
+    flex-wrap: wrap;
+  }
+
+  .mantenimientos-tab {
+    flex: 1;
+    justify-content: center;
+    padding: 0.75rem 0.5rem;
+    text-align: center;
+    font-size: 0.9rem;
   }
 }
 
@@ -474,4 +495,3 @@
     font-size: 22px;
   }
 }
-

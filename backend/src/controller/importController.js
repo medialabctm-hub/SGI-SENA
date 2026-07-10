@@ -6,6 +6,39 @@ import { ensureAprendicesTable } from './aprendicesController.js';
 import { logger } from '../utils/logger.js';
 
 /**
+ * Store en memoria para jobs de importación de equipos (progreso real).
+ * Clave: job_id. Valor: { total, processed, done, error?, success?, message?, resultados?, id_importacion?, tiene_duplicados?, equipos_importados_ids? }
+ * Se limpian jobs con más de 1 hora para no acumular memoria.
+ */
+const importJobsStore = new Map();
+const JOB_TTL_MS = 60 * 60 * 1000;
+
+function updateImportJobProgress(jobId, processed, total) {
+  const cur = importJobsStore.get(jobId);
+  if (cur) importJobsStore.set(jobId, { ...cur, processed, total });
+}
+
+function setImportJobDone(jobId, payload) {
+  const cur = importJobsStore.get(jobId);
+  if (cur) importJobsStore.set(jobId, { ...cur, done: true, ...payload });
+}
+
+function setImportJobError(jobId, errorMessage) {
+  const cur = importJobsStore.get(jobId);
+  if (cur) importJobsStore.set(jobId, { ...cur, done: true, success: false, error: errorMessage });
+}
+
+// Limpieza periódica de jobs antiguos
+setInterval(() => {
+  const now = Date.now();
+  for (const [id, job] of importJobsStore.entries()) {
+    if (job.done && job.finishedAt && now - job.finishedAt > JOB_TTL_MS) {
+      importJobsStore.delete(id);
+    }
+  }
+}, 15 * 60 * 1000);
+
+/**
  * Inicializar tabla de duplicados pendientes si no existe
  */
 async function inicializarTablaDuplicados() {
@@ -42,6 +75,183 @@ async function inicializarTablaDuplicados() {
   } catch (error) {
     logger.error('Error al inicializar tabla de duplicados', { error: error.message });
     throw error;
+  }
+}
+
+/**
+ * Ejecuta el bucle de procesamiento de filas en segundo plano y actualiza el progreso del job.
+ * Al finalizar actualiza el store con el resultado.
+ */
+async function runImportEquiposLoop(jobId, data, resultados, idImportacion, userId, cuentadanteFinal, nombreCuentadantePrincipal) {
+  const total = data.length;
+  try {
+    for (let i = 0; i < data.length; i++) {
+      const row = data[i];
+      const numeroFila = i + 2;
+
+      try {
+        const placa = String(row['placa'] || '').trim();
+        const tipo = String(row['tipo'] || '').trim();
+        const categoria = String(row['categoria'] || '').trim();
+        const modelo = String(row['modelo'] || '').trim();
+        const consecutivo = String(row['consecutivo'] || '').trim();
+        const descripcion = row['descripcion'] || null;
+        const fecha_adquisicion = row['fecha_adquisicion'] || null;
+
+        let valor_ingreso = row['valor_ingreso'] || null;
+        if (valor_ingreso && typeof valor_ingreso === 'string') {
+          valor_ingreso = valor_ingreso.replace(/[^\d.,-]/g, '');
+          if (valor_ingreso.includes('.') && valor_ingreso.includes(',')) {
+            valor_ingreso = valor_ingreso.replace(/\./g, '').replace(',', '.');
+          } else if (valor_ingreso.includes(',')) {
+            valor_ingreso = valor_ingreso.replace(',', '.');
+          }
+        }
+
+        const r_centro = String(row['r_centro'] || '').trim() || null;
+        const atributos = row['atributos'] || null;
+        const ambiente = String(row['ambiente'] || '').trim();
+
+        if (!placa) {
+          resultados.errores.push({ fila: numeroFila, codigo: placa || 'N/A', error: 'La placa es obligatoria' });
+          resultados.fallidos++;
+          updateImportJobProgress(jobId, i + 1, total);
+          continue;
+        }
+        if (!tipo || !modelo || !consecutivo) {
+          resultados.errores.push({ fila: numeroFila, codigo: placa, error: 'Faltan campos obligatorios: tipo, modelo o consecutivo' });
+          resultados.fallidos++;
+          updateImportJobProgress(jobId, i + 1, total);
+          continue;
+        }
+
+        let categoriaId = null;
+        let categoriaNombre = categoria;
+        if (!categoriaNombre && descripcion) {
+          const descripcionStr = String(descripcion).trim();
+          if (descripcionStr.length <= 50 && !descripcionStr.includes('TIPO ELEMENTO')) {
+            categoriaNombre = descripcionStr;
+          }
+        }
+        if (categoriaNombre) {
+          const [[cat]] = await defaultDb.execute(
+            'SELECT id_categoria, nombre_categoria FROM Categorias_Equipo WHERE nombre_categoria = ? OR id_categoria = ? LIMIT 1',
+            [categoriaNombre, categoriaNombre]
+          );
+          if (!cat?.id_categoria) {
+            resultados.errores.push({ fila: numeroFila, codigo: placa, error: `Categoría "${categoriaNombre}" no encontrada.` });
+            resultados.fallidos++;
+            updateImportJobProgress(jobId, i + 1, total);
+            continue;
+          }
+          categoriaId = cat.id_categoria;
+          categoriaNombre = cat.nombre_categoria;
+        } else {
+          resultados.errores.push({ fila: numeroFila, codigo: placa, error: 'El campo "categoria" es obligatorio.' });
+          resultados.fallidos++;
+          updateImportJobProgress(jobId, i + 1, total);
+          continue;
+        }
+
+        let ambienteId = null;
+        const ambienteABuscar = ambiente || 'Neutral';
+        const [[amb]] = await defaultDb.execute(
+          'SELECT id_ambiente FROM Ambientes WHERE id_ambiente = ? OR codigo_ambiente = ? OR nombre_ambiente = ? LIMIT 1',
+          [ambienteABuscar, ambienteABuscar, ambienteABuscar]
+        );
+        ambienteId = amb?.id_ambiente || null;
+        if (!ambienteId) {
+          resultados.errores.push({ fila: numeroFila, codigo: placa, error: `Ambiente "${ambienteABuscar}" no encontrado.` });
+          resultados.fallidos++;
+          updateImportJobProgress(jobId, i + 1, total);
+          continue;
+        }
+
+        const estado_fisico = 'Bueno';
+        let fecha_adquisicion_final = null;
+        if (fecha_adquisicion) {
+          if (typeof fecha_adquisicion === 'number') {
+            const excelEpoch = new Date(1899, 11, 30);
+            const date = new Date(excelEpoch.getTime() + fecha_adquisicion * 24 * 60 * 60 * 1000);
+            fecha_adquisicion_final = date.toISOString().split('T')[0];
+          } else {
+            const dateStr = String(fecha_adquisicion);
+            if (dateStr.includes('T')) fecha_adquisicion_final = dateStr.split('T')[0];
+            else if (dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) fecha_adquisicion_final = dateStr;
+            else {
+              const parsed = new Date(dateStr);
+              if (!isNaN(parsed.getTime())) fecha_adquisicion_final = parsed.toISOString().split('T')[0];
+            }
+          }
+        }
+
+        if (placa) {
+          const [equiposExistentes] = await defaultDb.execute(
+            `SELECT e.*, c.nombre_categoria, a.nombre_ambiente, a.codigo_ambiente, u.nombre_usuario as cuentadante_nombre
+             FROM Elementos e
+             LEFT JOIN Categorias_Equipo c ON e.id_categoria = c.id_categoria
+             LEFT JOIN Ambientes a ON e.id_ambiente = a.id_ambiente
+             LEFT JOIN Usuarios u ON e.id_cuentadante = u.id_usuario
+             WHERE e.placa = ? LIMIT 1`,
+            [placa]
+          );
+          if (equiposExistentes.length > 0) {
+            const equipoExistente = equiposExistentes[0];
+            const datosExcel = { placa, tipo, categoria: categoriaNombre, modelo, consecutivo: consecutivo || null, descripcion: descripcion || null, fecha_adquisicion: fecha_adquisicion_final || null, valor_ingreso: valor_ingreso ? parseFloat(valor_ingreso) : null, r_centro: r_centro || null, atributos: atributos || null, ambiente: ambiente || 'Neutral', categoria_id: categoriaId, ambiente_id: ambienteId };
+            const datosBD = { codigo_equipo: equipoExistente.codigo_equipo, placa: equipoExistente.placa, tipo: equipoExistente.tipo, categoria: equipoExistente.nombre_categoria || null, modelo: equipoExistente.modelo, consecutivo: equipoExistente.consecutivo || null, descripcion: equipoExistente.descripcion || null, fecha_adquisicion: equipoExistente.fecha_adquisicion ? new Date(equipoExistente.fecha_adquisicion).toISOString().split('T')[0] : null, valor_ingreso: equipoExistente.valor_ingreso ? parseFloat(equipoExistente.valor_ingreso) : (equipoExistente.costo ? parseFloat(equipoExistente.costo) : null), r_centro: equipoExistente.r_centro || null, atributos: equipoExistente.atributos || null, ambiente: equipoExistente.nombre_ambiente || equipoExistente.codigo_ambiente || null, categoria_id: equipoExistente.id_categoria, ambiente_id: equipoExistente.id_ambiente };
+            await defaultDb.execute(
+              `INSERT INTO Importaciones_Duplicados (id_importacion, fila_excel, placa, codigo_equipo_existente, datos_excel, datos_bd, estado) VALUES (?, ?, ?, ?, ?, ?, 'Pendiente')`,
+              [idImportacion, numeroFila, placa, equipoExistente.codigo_equipo, JSON.stringify(datosExcel), JSON.stringify(datosBD)]
+            );
+            resultados.duplicados++;
+            resultados.fallidos++;
+            updateImportJobProgress(jobId, i + 1, total);
+            continue;
+          }
+        }
+
+        const [[colCuentadante]] = await defaultDb.execute(
+          "SELECT COUNT(*) AS cnt FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'Elementos' AND COLUMN_NAME = 'id_cuentadante'"
+        );
+        if (colCuentadante.cnt === 0) {
+          await defaultDb.execute(
+            `ALTER TABLE Elementos ADD COLUMN id_cuentadante INT NULL, ADD INDEX idx_cuentadante (id_cuentadante), ADD FOREIGN KEY (id_cuentadante) REFERENCES Usuarios(id_usuario) ON DELETE SET NULL`
+          );
+        }
+
+        const id_cuentadante = cuentadanteFinal;
+        const query = `INSERT INTO Elementos (id_categoria, id_ambiente, id_cuentadante, cuentadante_principal, tipo, modelo, descripcion, fecha_adquisicion, valor_ingreso, estado_fisico, registrado_por, r_centro, consecutivo, placa, atributos) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+        const [insertResult] = await defaultDb.execute(query, [
+          categoriaId, ambienteId, id_cuentadante, nombreCuentadantePrincipal, tipo, modelo, descripcion || null, fecha_adquisicion_final || null, valor_ingreso ? parseFloat(valor_ingreso) : null, estado_fisico, userId, r_centro, consecutivo || null, placa || null, atributos || null
+        ]);
+        if (insertResult.insertId) resultados.equipos_importados_ids.push(insertResult.insertId);
+        resultados.exitosos++;
+      } catch (error) {
+        const placaErr = String(row['placa'] || '').trim() || 'N/A';
+        resultados.errores.push({ fila: numeroFila, codigo: placaErr, error: error.message || 'Error desconocido' });
+        resultados.fallidos++;
+      }
+      updateImportJobProgress(jobId, i + 1, total);
+    }
+
+    const success = resultados.exitosos > 0 && resultados.fallidos === 0;
+    const partialSuccess = resultados.exitosos > 0 && resultados.fallidos > 0;
+    let mensaje = success ? `Importación completada exitosamente: ${resultados.exitosos} registro(s) importado(s)` : partialSuccess ? `Importación parcial: ${resultados.exitosos} exitoso(s), ${resultados.fallidos} fallido(s)` : `Importación fallida: ${resultados.fallidos} registro(s) con errores`;
+    if (resultados.duplicados > 0) mensaje += `. ${resultados.duplicados} registro(s) con placas duplicadas pendientes de revisión`;
+
+    setImportJobDone(jobId, {
+      success: success || partialSuccess,
+      message: mensaje,
+      resultados,
+      id_importacion: idImportacion,
+      tiene_duplicados: resultados.duplicados > 0,
+      equipos_importados_ids: resultados.equipos_importados_ids || [],
+      porcentaje_exito: total > 0 ? Math.round((resultados.exitosos / total) * 100) : 0,
+      finishedAt: Date.now()
+    });
+  } catch (err) {
+    logger.error('Error en runImportEquiposLoop', { error: err.message, stack: err.stack });
+    setImportJobError(jobId, err.message || 'Error al procesar la importación');
   }
 }
 
@@ -289,6 +499,13 @@ export async function importarEquipos(req, res) {
         detalle: 'No se pudo determinar el cuentadante para la importación. Por favor, intente nuevamente.'
       });
     }
+
+    // Nombre del cuentadante para llenar cuentadante_principal en cada equipo importado
+    const [[rowCuentadante]] = await defaultDb.execute(
+      'SELECT nombre_usuario FROM Usuarios WHERE id_usuario = ? LIMIT 1',
+      [cuentadanteFinal]
+    );
+    const nombreCuentadantePrincipal = rowCuentadante?.nombre_usuario ?? null;
     
     // Generar ID único para esta importación
     const idImportacion = `import_${Date.now()}_${userId}`;
@@ -296,322 +513,16 @@ export async function importarEquipos(req, res) {
     // Inicializar tabla de duplicados
     await inicializarTablaDuplicados();
 
-    // Procesar cada fila
-    for (let i = 0; i < data.length; i++) {
-      const row = data[i];
-      const numeroFila = i + 2; // +2 porque la fila 1 es el encabezado y empezamos desde 0
+    // Procesamiento en segundo plano con progreso real: crear job y devolver job_id
+    const jobId = `import_${Date.now()}_${userId}_${Math.random().toString(36).slice(2, 10)}`;
+    importJobsStore.set(jobId, { total: data.length, processed: 0, done: false });
 
-      try {
-        // Mapear columnas del Excel usando nombres EXACTOS (iguales a BD)
-        const placa = String(row['placa'] || '').trim();
-        const tipo = String(row['tipo'] || '').trim();
-        const categoria = String(row['categoria'] || '').trim();
-        const modelo = String(row['modelo'] || '').trim();
-        const consecutivo = String(row['consecutivo'] || '').trim();
-        const descripcion = row['descripcion'] || null;
-        const fecha_adquisicion = row['fecha_adquisicion'] || null;
-        
-        // Procesar valor_ingreso (manejar formatos de moneda)
-        let valor_ingreso = row['valor_ingreso'] || null;
-        if (valor_ingreso && typeof valor_ingreso === 'string') {
-          // Eliminar símbolos de moneda, puntos de miles y espacios
-          valor_ingreso = valor_ingreso.replace(/[^\d.,-]/g, ''); 
-          if (valor_ingreso.includes('.') && valor_ingreso.includes(',')) {
-             // Formato: 1.234,56 → eliminar puntos y reemplazar coma por punto
-             valor_ingreso = valor_ingreso.replace(/\./g, '').replace(',', '.');
-          } else if (valor_ingreso.includes(',')) {
-             // Formato: 1234,56 → reemplazar coma por punto
-             valor_ingreso = valor_ingreso.replace(',', '.');
-          }
-        }
-
-        const r_centro = String(row['r_centro'] || '').trim() || null;
-        const atributos = row['atributos'] || null;
-        const ambiente = String(row['ambiente'] || '').trim();
-
-        // Validaciones básicas
-        // AHORA: Validamos 'placa' en lugar de 'codigoInventario'
-        if (!placa) {
-          resultados.errores.push({
-            fila: numeroFila,
-            codigo: placa || 'N/A',
-            error: 'La placa es obligatoria'
-          });
-          resultados.fallidos++;
-          continue;
-        }
-
-        // Validaciones básicas
-        if (!tipo || !modelo || !consecutivo) {
-          resultados.errores.push({
-            fila: numeroFila,
-            codigo: placa,
-            error: 'Faltan campos obligatorios: tipo, modelo o consecutivo'
-          });
-          resultados.fallidos++;
-          continue;
-        }
-
-        // Resolver categoría usando columna "categoria" del Excel
-        // Si no está presente, intentar usar "descripcion" como fallback
-        let categoriaId = null;
-        let categoriaNombre = categoria;
-        
-        // Si no hay categoria, intentar usar descripcion
-        // PERO ignorar si descripcion parece ser "Descripción Actual" (texto muy largo o contiene "TIPO ELEMENTO")
-        if (!categoriaNombre && descripcion) {
-          const descripcionStr = String(descripcion).trim();
-          // Si la descripción es muy larga (>50 caracteres) o contiene "TIPO ELEMENTO", 
-          // probablemente es "Descripción Actual" y no debe usarse para buscar categoría
-          if (descripcionStr.length <= 50 && !descripcionStr.includes('TIPO ELEMENTO')) {
-            categoriaNombre = descripcionStr;
-          }
-        }
-        
-        if (categoriaNombre) {
-          // Buscar por nombre o por ID (si el dato es numérico)
-          const [[cat]] = await defaultDb.execute(
-            'SELECT id_categoria, nombre_categoria FROM Categorias_Equipo WHERE nombre_categoria = ? OR id_categoria = ? LIMIT 1',
-            [categoriaNombre, categoriaNombre]
-          );
-          
-          if (!cat?.id_categoria) {
-            resultados.errores.push({
-              fila: numeroFila,
-              codigo: placa,
-              error: `Categoría "${categoriaNombre}" no encontrada. Debe existir en Categorias_Equipo (por nombre o ID). Intenta usar la columna "categoria" o asegúrate de que "descripcion" coincida con un nombre de categoría.`
-            });
-            resultados.fallidos++;
-            continue;
-          }
-          categoriaId = cat.id_categoria;
-          // Actualizar categoriaNombre con el nombre real de la BD para la comparación
-          categoriaNombre = cat.nombre_categoria;
-        } else {
-          resultados.errores.push({
-            fila: numeroFila,
-            codigo: placa,
-            error: 'El campo "categoria" es obligatorio. Agrega una columna "categoria" al Excel o asegúrate de que "descripcion" coincida con un nombre de categoría válido.'
-          });
-          resultados.fallidos++;
-          continue;
-        }
-
-        // Resolver ambiente usando columna "ambiente" del Excel
-        // Si no se especifica, usar "Neutral" por defecto
-        let ambienteId = null;
-        const ambienteABuscar = ambiente || 'Neutral';
-        
-        const [[amb]] = await defaultDb.execute(
-          'SELECT id_ambiente FROM Ambientes WHERE id_ambiente = ? OR codigo_ambiente = ? OR nombre_ambiente = ? LIMIT 1',
-          [ambienteABuscar, ambienteABuscar, ambienteABuscar]
-        );
-        ambienteId = amb?.id_ambiente || null;
-        
-        if (!ambienteId) {
-          resultados.errores.push({
-            fila: numeroFila,
-            codigo: placa,
-            error: `Ambiente "${ambienteABuscar}" no encontrado. Verifique que existe en la base de datos.`
-          });
-          resultados.fallidos++;
-          continue;
-        }
-
-        // Estado físico se maneja en el aplicativo, usar valor por defecto
-        const estado_fisico = 'Bueno'; // Valor por defecto, se actualiza en el aplicativo
-
-        // Convertir fecha_adquisicion
-        let fecha_adquisicion_final = null;
-        if (fecha_adquisicion) {
-          if (typeof fecha_adquisicion === 'number') {
-            // Excel almacena fechas como números (días desde 1900-01-01)
-            const excelEpoch = new Date(1899, 11, 30); // 30 de diciembre de 1899
-            const date = new Date(excelEpoch.getTime() + fecha_adquisicion * 24 * 60 * 60 * 1000);
-            fecha_adquisicion_final = date.toISOString().split('T')[0];
-          } else {
-            // Si es string, intentar parsearlo
-            const dateStr = String(fecha_adquisicion);
-            if (dateStr.includes('T')) {
-              fecha_adquisicion_final = dateStr.split('T')[0];
-            } else if (dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
-              fecha_adquisicion_final = dateStr;
-            } else {
-              // Intentar parsear otros formatos
-              const parsed = new Date(dateStr);
-              if (!isNaN(parsed.getTime())) {
-                fecha_adquisicion_final = parsed.toISOString().split('T')[0];
-              }
-            }
-          }
-        }
-        // Validar placa única - Si existe, guardar como duplicado pendiente
-        // IMPORTANTE: Esta validación debe ir DESPUÉS de inicializar todas las variables necesarias
-        if (placa) {
-          const [equiposExistentes] = await defaultDb.execute(
-            `SELECT e.*, 
-                    c.nombre_categoria,
-                    a.nombre_ambiente,
-                    a.codigo_ambiente,
-                    u.nombre_usuario as cuentadante_nombre
-             FROM Elementos e
-             LEFT JOIN Categorias_Equipo c ON e.id_categoria = c.id_categoria
-             LEFT JOIN Ambientes a ON e.id_ambiente = a.id_ambiente
-             LEFT JOIN Usuarios u ON e.id_cuentadante = u.id_usuario
-             WHERE e.placa = ? 
-             LIMIT 1`,
-            [placa]
-          );
-          
-          if (equiposExistentes.length > 0) {
-            const equipoExistente = equiposExistentes[0];
-            
-            // Preparar datos del Excel para comparación (usando nombres exactos)
-            const datosExcel = {
-              placa,
-              tipo,
-              categoria: categoriaNombre,
-              modelo,
-              consecutivo: consecutivo || null,
-              descripcion: descripcion || null,
-              fecha_adquisicion: fecha_adquisicion_final || null,
-              valor_ingreso: valor_ingreso ? parseFloat(valor_ingreso) : null,
-              r_centro: r_centro || null,
-              atributos: atributos || null,
-              ambiente: ambiente || 'Neutral',
-              categoria_id: categoriaId,
-              ambiente_id: ambienteId
-            };
-            
-            // Preparar datos de BD para comparación (usando nombres exactos)
-            const datosBD = {
-              codigo_equipo: equipoExistente.codigo_equipo,
-              placa: equipoExistente.placa,
-              tipo: equipoExistente.tipo,
-              categoria: equipoExistente.nombre_categoria || null,
-              modelo: equipoExistente.modelo,
-              consecutivo: equipoExistente.consecutivo || null,
-              descripcion: equipoExistente.descripcion || null,
-              fecha_adquisicion: equipoExistente.fecha_adquisicion ? 
-                new Date(equipoExistente.fecha_adquisicion).toISOString().split('T')[0] : null,
-              valor_ingreso: equipoExistente.valor_ingreso ? parseFloat(equipoExistente.valor_ingreso) : 
-                           (equipoExistente.costo ? parseFloat(equipoExistente.costo) : null),
-              r_centro: equipoExistente.r_centro || null,
-              atributos: equipoExistente.atributos || null,
-              ambiente: equipoExistente.nombre_ambiente || equipoExistente.codigo_ambiente || null,
-              categoria_id: equipoExistente.id_categoria,
-              ambiente_id: equipoExistente.id_ambiente
-            };
-            
-            // Guardar como duplicado pendiente
-            await defaultDb.execute(
-              `INSERT INTO Importaciones_Duplicados 
-               (id_importacion, fila_excel, placa, codigo_equipo_existente, datos_excel, datos_bd, estado)
-               VALUES (?, ?, ?, ?, ?, ?, 'Pendiente')`,
-              [
-                idImportacion,
-                numeroFila,
-                placa,
-                equipoExistente.codigo_equipo,
-                JSON.stringify(datosExcel),
-                JSON.stringify(datosBD)
-              ]
-            );
-            
-            resultados.duplicados++;
-            resultados.fallidos++;
-            continue;
-          }
-        }
-
-        // Verificar si la columna id_cuentadante existe
-        const [[colCuentadante]] = await defaultDb.execute(
-          "SELECT COUNT(*) AS cnt FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'Elementos' AND COLUMN_NAME = 'id_cuentadante'"
-        );
-        if (colCuentadante.cnt === 0) {
-          await defaultDb.execute(
-            `ALTER TABLE Elementos 
-             ADD COLUMN id_cuentadante INT NULL,
-             ADD INDEX idx_cuentadante (id_cuentadante),
-             ADD FOREIGN KEY (id_cuentadante) REFERENCES Usuarios(id_usuario) ON DELETE SET NULL`
-          );
-        }
-
-        // Usar el cuentadante ya validado al inicio de la importación
-        // Esto garantiza que todos los equipos importados tengan un cuentadante asignado
-        const id_cuentadante = cuentadanteFinal;
-
-        // Insertar equipo usando nombres exactos de campos
-        const query = `INSERT INTO Elementos
-          (id_categoria, id_ambiente, id_cuentadante, tipo, modelo, descripcion, 
-           fecha_adquisicion, valor_ingreso, estado_fisico, registrado_por,
-           r_centro, consecutivo, placa, atributos)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
-
-        const [insertResult] = await defaultDb.execute(query, [
-          categoriaId,
-          ambienteId,
-          id_cuentadante,
-          tipo,
-          modelo,
-          descripcion || null,
-          fecha_adquisicion_final || null,
-          valor_ingreso ? parseFloat(valor_ingreso) : null,
-          estado_fisico,
-          userId,
-          r_centro,
-          consecutivo || null,
-          placa || null,
-          atributos || null
-        ]);
-
-        // Guardar el ID del equipo importado para poder asignar cuentadante después si es necesario
-        if (insertResult.insertId) {
-          resultados.equipos_importados_ids.push(insertResult.insertId);
-        }
-
-        resultados.exitosos++;
-      } catch (error) {
-        resultados.errores.push({
-          fila: numeroFila,
-          codigo: placa || 'N/A',
-          error: error.message || 'Error desconocido'
-        });
-        resultados.fallidos++;
-      }
-    }
-
-    // Respuesta mejorada para el frontend
-    const success = resultados.exitosos > 0 && resultados.fallidos === 0;
-    const partialSuccess = resultados.exitosos > 0 && resultados.fallidos > 0;
-    
-    let mensaje = '';
-    if (success) {
-      mensaje = `Importación completada exitosamente: ${resultados.exitosos} registro(s) importado(s)`;
-    } else if (partialSuccess) {
-      mensaje = `Importación parcial: ${resultados.exitosos} exitoso(s), ${resultados.fallidos} fallido(s)`;
-    } else {
-      mensaje = `Importación fallida: ${resultados.fallidos} registro(s) con errores`;
-    }
-    
-    if (resultados.duplicados > 0) {
-      mensaje += `. ${resultados.duplicados} registro(s) con placas duplicadas pendientes de revisión`;
-    }
-
-    return res.status(success ? 200 : partialSuccess ? 207 : 400).json({
-      success: success || partialSuccess,
-      message: mensaje,
-      resultados,
-      id_importacion: idImportacion,
-      tiene_duplicados: resultados.duplicados > 0,
-      // Campos adicionales para facilitar el manejo en frontend
-      total_procesados: resultados.total,
-      porcentaje_exito: resultados.total > 0 
-        ? Math.round((resultados.exitosos / resultados.total) * 100) 
-        : 0,
-      // IDs de equipos importados para asignar cuentadante después
-      equipos_importados_ids: resultados.equipos_importados_ids || []
+    runImportEquiposLoop(jobId, data, resultados, idImportacion, userId, cuentadanteFinal, nombreCuentadantePrincipal).catch((err) => {
+      logger.error('Error en importación en background', { jobId, error: err.message });
+      setImportJobError(jobId, err.message || 'Error al procesar la importación');
     });
+
+    return res.status(202).json({ job_id: jobId });
   } catch (error) {
     logger.error('Error en importarEquipos', { error: error.message, stack: error.stack });
     return res.status(500).json({ 
@@ -620,6 +531,45 @@ export async function importarEquipos(req, res) {
       detalle: error.message,
       message: 'No se pudo completar la importación. Verifique el formato del archivo e intente nuevamente.'
     });
+  }
+}
+
+/**
+ * Obtener estado y progreso de un job de importación de equipos (progreso real).
+ */
+export async function obtenerEstadoImportacionEquipos(req, res) {
+  try {
+    const { job_id: jobId } = req.params;
+    if (!jobId) {
+      return res.status(400).json({ error: 'Falta job_id' });
+    }
+    const job = importJobsStore.get(jobId);
+    if (!job) {
+      return res.status(404).json({ error: 'Job no encontrado o ya expirado', done: false });
+    }
+    const total = job.total || 0;
+    const processed = job.processed || 0;
+    const progress = total > 0 ? Math.round((processed / total) * 100) : 0;
+    const payload = {
+      progress,
+      total,
+      processed,
+      done: !!job.done,
+      ...(job.done && {
+        success: job.success,
+        message: job.message,
+        resultados: job.resultados,
+        id_importacion: job.id_importacion,
+        tiene_duplicados: job.tiene_duplicados,
+        equipos_importados_ids: job.equipos_importados_ids,
+        porcentaje_exito: job.porcentaje_exito,
+        error: job.error
+      })
+    };
+    return res.status(200).json(payload);
+  } catch (error) {
+    logger.error('Error en obtenerEstadoImportacionEquipos', { error: error.message });
+    return res.status(500).json({ error: 'Error al obtener estado de la importación' });
   }
 }
 
@@ -782,16 +732,27 @@ export async function procesarDuplicado(req, res) {
         idCuentadante = id_cuentadante;
       }
 
+      // Nombre del cuentadante para cuentadante_principal
+      let nombreCuentadantePrincipal = null;
+      if (idCuentadante) {
+        const [[rowCuent]] = await defaultDb.execute(
+          'SELECT nombre_usuario FROM Usuarios WHERE id_usuario = ? LIMIT 1',
+          [idCuentadante]
+        );
+        nombreCuentadantePrincipal = rowCuent?.nombre_usuario ?? null;
+      }
+
       const query = `INSERT INTO Elementos
-        (id_categoria, id_ambiente, id_cuentadante, tipo, modelo, descripcion, 
+        (id_categoria, id_ambiente, id_cuentadante, cuentadante_principal, tipo, modelo, descripcion, 
          fecha_adquisicion, valor_ingreso, estado_fisico, registrado_por,
          r_centro, consecutivo, placa, atributos)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
       
       await defaultDb.execute(query, [
         datosExcel.categoria_id,
         datosExcel.ambiente_id,
         idCuentadante,
+        nombreCuentadantePrincipal,
         datosExcel.tipo,
         datosExcel.modelo,
         datosExcel.descripcion || null,
@@ -914,6 +875,16 @@ export async function procesarDuplicadosMasivo(req, res) {
       idCuentadante = id_cuentadante;
     }
 
+    // Nombre del cuentadante para cuentadante_principal en cada equipo aprobado
+    let nombreCuentadantePrincipalMasivo = null;
+    if (idCuentadante) {
+      const [[rowCuent]] = await defaultDb.execute(
+        'SELECT nombre_usuario FROM Usuarios WHERE id_usuario = ? LIMIT 1',
+        [idCuentadante]
+      );
+      nombreCuentadantePrincipalMasivo = rowCuent?.nombre_usuario ?? null;
+    }
+
     for (const decision of decisiones) {
       const { id_duplicado, accion } = decision;
 
@@ -947,17 +918,18 @@ export async function procesarDuplicadosMasivo(req, res) {
           : duplicado.datos_excel;
 
         if (accion === 'aprobar') {
-          // Insertar el equipo
+          // Insertar el equipo (con cuentadante_principal)
           const query = `INSERT INTO Elementos
-            (id_categoria, id_ambiente, id_cuentadante, tipo, modelo, descripcion, 
+            (id_categoria, id_ambiente, id_cuentadante, cuentadante_principal, tipo, modelo, descripcion, 
              fecha_adquisicion, valor_ingreso, estado_fisico, registrado_por,
              r_centro, consecutivo, placa, atributos)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
 
           await defaultDb.execute(query, [
             datosExcel.categoria_id,
             datosExcel.ambiente_id,
             idCuentadante,
+            nombreCuentadantePrincipalMasivo,
             datosExcel.tipo,
             datosExcel.modelo,
             datosExcel.descripcion || null,

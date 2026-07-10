@@ -11,6 +11,7 @@ import * as XLSX from 'xlsx'
 import '../styles/pages/equipos.css'
 import '../styles/consultarEquipo.css'
 import '../styles/consultarEquipoBadges.css'
+import { LoadingScreen } from './LoadingDemo'
 
 export default function ConsultarEquipo() {
   const navigate = useNavigate()
@@ -24,12 +25,15 @@ export default function ConsultarEquipo() {
   const [user, setUser] = useState(null)
   const [showColumnFilter, setShowColumnFilter] = useState(false)
   const [ambientes, setAmbientes] = useState([])
+  // Autorizaciones aprobadas y no usadas para el movimiento actual (equipo + ambiente destino)
+  const [autorizacionesDisponibles, setAutorizacionesDisponibles] = useState([])
   // Vista inventario para Cuentadante con ambientes: ambientes | inventario_total | todos
   const [vistaInventario, setVistaInventario] = useState('todos')
   const [mostrarSelectorVistaInventario, setMostrarSelectorVistaInventario] = useState(false)
   
   const ESTADOS_FISICOS = ['Nuevo', 'Bueno', 'Regular', 'Malo', 'Dañado']
-  
+  const ESTADOS_OPERATIVOS = ['Disponible', 'En Uso', 'En Mantenimiento', 'Dañado', 'Dado de Baja']
+
   // Definir todas las columnas disponibles
   const allColumns = [
     { key: 'codigo_inventario', label: 'Código Inventario', default: true },
@@ -37,19 +41,24 @@ export default function ConsultarEquipo() {
     { key: 'modelo', label: 'Modelo', default: true },
     { key: 'consecutivo', label: 'Consecutivo', default: true },
     { key: 'estado_fisico', label: 'Estado Físico', default: true },
+    { key: 'estado_operativo', label: 'Estado operativo', default: true },
     { key: 'fecha_adquisicion', label: 'Fecha Adquisición', default: true },
-    { key: 'costo', label: 'Valor Ingreso', default: true },
+    { key: 'valor_ingreso', label: 'Valor Ingreso', default: true },
     { key: 'nombre_ambiente', label: 'Ambiente', default: true },
+    { key: 'status_verificacion', label: 'Estado verificación', default: true },
     { key: 'descripcion', label: 'Descripción', default: true },
     { key: 'specs_completas', label: 'Atributos', default: true },
   ]
 
-  // Estado para columnas visibles (inicializado con las columnas por defecto)
+  // Estado para columnas visibles (migrar 'costo' -> 'valor_ingreso' para misma columna que al agregar)
   const [visibleColumns, setVisibleColumns] = useState(() => {
     const saved = localStorage.getItem('equipos_visible_columns')
     if (saved) {
       try {
-        return JSON.parse(saved)
+        const parsed = JSON.parse(saved)
+        return Array.isArray(parsed)
+          ? parsed.map(k => (k === 'costo' ? 'valor_ingreso' : k))
+          : allColumns.filter(col => col.default).map(col => col.key)
       } catch {
         return allColumns.filter(col => col.default).map(col => col.key)
       }
@@ -91,6 +100,33 @@ export default function ConsultarEquipo() {
     }
     cargarAmbientes()
   }, [])
+
+  // Cargar autorizaciones disponibles cuando en edición se cambia el ambiente (equipo verificado)
+  useEffect(() => {
+    if (!editingCodigo) { setAutorizacionesDisponibles([]); return }
+    const eq = equipos.find(e => e.codigo_equipo === editingCodigo)
+    const idDestino = draft.id_ambiente || eq?.id_ambiente
+    if (!eq || eq.status_verificacion !== 'Verificado' || !idDestino || Number(idDestino) === Number(eq.id_ambiente)) {
+      setAutorizacionesDisponibles([])
+      return
+    }
+    let cancelled = false
+    async function fetchDisponibles() {
+      try {
+        const token = localStorage.getItem('token')
+        const res = await fetch(
+          `/api/equipos/autorizacion-movimiento/disponibles?codigo_equipo=${editingCodigo}&id_ambiente_destino=${idDestino}`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        )
+        const data = await parseApiResponse(res, '')
+        if (!cancelled) setAutorizacionesDisponibles(data.autorizaciones || [])
+      } catch {
+        if (!cancelled) setAutorizacionesDisponibles([])
+      }
+    }
+    fetchDisponibles()
+    return () => { cancelled = true }
+  }, [editingCodigo, draft.id_ambiente, equipos])
 
   // Cuentadante con ambientes: detectar si debe mostrarse el selector de vista (Mis ambientes | Mi inventario total | Todos)
   useEffect(() => {
@@ -196,7 +232,9 @@ export default function ConsultarEquipo() {
     setDraft({
       ...eq,
       fecha_adquisicion: eq.fecha_adquisicion ? String(eq.fecha_adquisicion).slice(0,10) : '',
-      id_ambiente: eq.id_ambiente || null
+      id_ambiente: eq.id_ambiente || null,
+      valor_ingreso: eq.valor_ingreso ?? eq.costo ?? null,
+      estado_operativo: eq.estado_operativo || 'Disponible'
     })
   }
 
@@ -263,10 +301,7 @@ export default function ConsultarEquipo() {
         payload.fecha_adquisicion = String(draft.fecha_adquisicion).trim() || null;
       }
       
-      // Números
-      if (draft.costo !== undefined) {
-        payload.costo = cleanNumber(draft.costo);
-      }
+      // Valor del equipo: solo valor_ingreso (misma columna que al agregar)
       if (draft.valor_ingreso !== undefined) {
         payload.valor_ingreso = cleanNumber(draft.valor_ingreso);
       }
@@ -278,7 +313,11 @@ export default function ConsultarEquipo() {
       if (draft.estado_fisico !== undefined && draft.estado_fisico !== null && draft.estado_fisico !== '') {
         payload.estado_fisico = String(draft.estado_fisico).trim();
       }
-      
+      // Estado operativo (permite reactivar equipo dado de baja)
+      if (draft.estado_operativo !== undefined && draft.estado_operativo !== null && draft.estado_operativo !== '') {
+        payload.estado_operativo = String(draft.estado_operativo).trim();
+      }
+
       // ID Ambiente
       if (draft.id_ambiente !== undefined && draft.id_ambiente !== null && draft.id_ambiente !== '') {
         const idAmb = typeof draft.id_ambiente === 'string' ? parseInt(draft.id_ambiente, 10) : draft.id_ambiente;
@@ -286,6 +325,14 @@ export default function ConsultarEquipo() {
           payload.id_ambiente = idAmb;
         } else {
           payload.id_ambiente = null;
+        }
+      }
+      // Si se cambia ambiente y el equipo está verificado, enviar id de la solicitud de autorización aprobada (uso único)
+      const equipoEditado = equipos.find(eq => eq.codigo_equipo === editingCodigo);
+      if (payload.id_ambiente != null && equipoEditado?.status_verificacion === 'Verificado') {
+        const idAmbActual = equipoEditado.id_ambiente != null ? Number(equipoEditado.id_ambiente) : null;
+        if (idAmbActual !== payload.id_ambiente && draft.id_solicitud_autorizacion != null && draft.id_solicitud_autorizacion !== '') {
+          payload.id_solicitud_autorizacion = typeof draft.id_solicitud_autorizacion === 'string' ? parseInt(draft.id_solicitud_autorizacion, 10) : draft.id_solicitud_autorizacion;
         }
       }
 
@@ -302,7 +349,8 @@ export default function ConsultarEquipo() {
       setEquipos(prev => prev.map(eq => eq.codigo_equipo === editingCodigo ? {
         ...eq,
         ...draft,
-        fecha_adquisicion: draft.fecha_adquisicion || eq.fecha_adquisicion
+        fecha_adquisicion: draft.fecha_adquisicion || eq.fecha_adquisicion,
+        estado_operativo: draft.estado_operativo || eq.estado_operativo || 'Disponible'
       } : eq))
       setToast({ message: data?.message || 'Equipo actualizado correctamente', type: 'success' })
       cancelEdit()
@@ -360,6 +408,20 @@ export default function ConsultarEquipo() {
                         estado === 'En Reparación' ? 'consultar-equipo-estado-badge-en-reparacion' :
                         'consultar-equipo-estado-badge-default'
     
+    return (
+      <span className={`consultar-equipo-estado-badge ${estadoClass}`}>
+        {estado}
+      </span>
+    )
+  }
+
+  function getEstadoOperativoBadge(estado) {
+    if (!estado) return <span className="consultar-equipo-estado-badge consultar-equipo-estado-badge-default">-</span>
+    const estadoClass = estado === 'Disponible' ? 'consultar-equipo-estado-badge-bueno' :
+                        estado === 'En Uso' ? 'consultar-equipo-estado-badge-regular' :
+                        estado === 'En Mantenimiento' ? 'consultar-equipo-estado-badge-en-reparacion' :
+                        estado === 'Dañado' || estado === 'Dado de Baja' ? 'consultar-equipo-estado-badge-danado' :
+                        'consultar-equipo-estado-badge-default'
     return (
       <span className={`consultar-equipo-estado-badge ${estadoClass}`}>
         {estado}
@@ -460,8 +522,9 @@ export default function ConsultarEquipo() {
           'Modelo': eq.modelo || '-',
           'Consecutivo': eq.consecutivo || '-',
           'Estado Físico': eq.estado_fisico || '-',
+          'Estado operativo': eq.estado_operativo || 'Disponible',
           'Fecha Adquisición': eq.fecha_adquisicion ? formatDate(eq.fecha_adquisicion) : '-',
-          'Valor Ingreso': eq.costo ? formatCurrency(eq.costo) : '-',
+          'Valor Ingreso': (eq.valor_ingreso ?? eq.costo) ? formatCurrency(eq.valor_ingreso ?? eq.costo) : '-',
           'Ambiente': eq.nombre_ambiente || '-',
           'Descripción': eq.descripcion || '-',
           'Atributos': eq.specs_completas || '-'
@@ -758,7 +821,7 @@ export default function ConsultarEquipo() {
 
           <div className="consultar-equipo-content">
             {loading ? (
-              <div>Cargando equipos...</div>
+              <LoadingScreen message="Cargando equipos" />
             ) : equipos.length > 0 ? (
               <div className="consultar-equipo-table-wrapper">
                 <table className="users-table consultar-equipo-table">
@@ -769,9 +832,11 @@ export default function ConsultarEquipo() {
                       {visibleColumns.includes('modelo') && <th>Modelo</th>}
                       {visibleColumns.includes('consecutivo') && <th>Consecutivo</th>}
                       {visibleColumns.includes('estado_fisico') && <th>Estado Físico</th>}
+                      {visibleColumns.includes('estado_operativo') && <th>Estado operativo</th>}
                       {visibleColumns.includes('fecha_adquisicion') && <th>Fecha Adquisición</th>}
-                      {visibleColumns.includes('costo') && <th>Valor Ingreso</th>}
+                      {visibleColumns.includes('valor_ingreso') && <th>Valor Ingreso</th>}
                       {visibleColumns.includes('nombre_ambiente') && <th>Ambiente</th>}
+                      {visibleColumns.includes('status_verificacion') && <th>Estado verificación</th>}
                       {visibleColumns.includes('descripcion') && <th>Descripción</th>}
                       {visibleColumns.includes('specs_completas') && <th>Atributos</th>}
                       <th className={user?.nombre_rol === 'Administrador' ? 'consultar-equipo-actions-column' : 'consultar-equipo-actions-column-instructor'}>Acciones</th>
@@ -818,6 +883,20 @@ export default function ConsultarEquipo() {
                             ) : getEstadoBadge(eq.estado_fisico)}
                           </td>
                         )}
+                        {visibleColumns.includes('estado_operativo') && (
+                          <td>
+                            {editingCodigo === eq.codigo_equipo ? (
+                              <CustomSelect
+                                name="estado_operativo"
+                                value={draft.estado_operativo || ''}
+                                onChange={e => onDraft('estado_operativo', e.target.value)}
+                                options={['', ...ESTADOS_OPERATIVOS]}
+                                placeholder="Seleccionar estado"
+                                className="cell-input"
+                              />
+                            ) : getEstadoOperativoBadge(eq.estado_operativo || 'Disponible')}
+                          </td>
+                        )}
                         {visibleColumns.includes('fecha_adquisicion') && (
                           <td>
                             {editingCodigo === eq.codigo_equipo ? (
@@ -825,31 +904,68 @@ export default function ConsultarEquipo() {
                             ) : formatDate(eq.fecha_adquisicion)}
                           </td>
                         )}
-                        {visibleColumns.includes('costo') && (
+                        {visibleColumns.includes('valor_ingreso') && (
                           <td>
                             {editingCodigo === eq.codigo_equipo ? (
-                              <input type="number" value={draft.costo ?? ''} onChange={e=>onDraft('costo', e.target.value === '' ? null : Number(e.target.value))} className="cell-input" />
-                            ) : formatCurrency(eq.costo)}
+                              <input type="number" value={draft.valor_ingreso ?? ''} onChange={e=>onDraft('valor_ingreso', e.target.value === '' ? null : Number(e.target.value))} className="cell-input" />
+                            ) : formatCurrency(eq.valor_ingreso ?? eq.costo)}
                           </td>
                         )}
                         {visibleColumns.includes('nombre_ambiente') && (
                           <td>
                             {editingCodigo === eq.codigo_equipo ? (
-                              <CustomSelect
-                                name="id_ambiente"
-                                value={draft.id_ambiente || eq.id_ambiente || ''}
-                                onChange={e => onDraft('id_ambiente', e.target.value)}
-                                options={[
-                                  { value: '', label: 'Seleccionar ambiente' },
-                                  ...(ambientes || []).map(amb => ({
-                                    value: amb.id_ambiente.toString(),
-                                    label: `${amb.codigo_ambiente} - ${amb.nombre_ambiente}`
-                                  }))
-                                ]}
-                                placeholder="Seleccionar ambiente"
-                                className="cell-input"
-                              />
+                              <div className="consultar-equipo-ambiente-edit">
+                                <CustomSelect
+                                  name="id_ambiente"
+                                  value={draft.id_ambiente || eq.id_ambiente || ''}
+                                  onChange={e => {
+                                    onDraft('id_ambiente', e.target.value);
+                                    onDraft('id_solicitud_autorizacion', '');
+                                  }}
+                                  options={[
+                                    { value: '', label: 'Seleccionar ambiente' },
+                                    ...(ambientes || []).map(amb => ({
+                                      value: amb.id_ambiente.toString(),
+                                      label: `${amb.codigo_ambiente} - ${amb.nombre_ambiente}`
+                                    }))
+                                  ]}
+                                  placeholder="Seleccionar ambiente"
+                                  className="cell-input"
+                                />
+                                {eq.status_verificacion === 'Verificado' && String(draft.id_ambiente || eq.id_ambiente || '') !== String(eq.id_ambiente || '') && (
+                                  <div className="consultar-equipo-autorizacion">
+                                    <span className="consultar-equipo-autorizacion-label">Use una autorización aprobada (un solo uso por autorización):</span>
+                                    {autorizacionesDisponibles.length === 0 ? (
+                                      <p className="consultar-equipo-autorizacion-sin-disponibles">
+                                        No hay autorizaciones aprobadas para este movimiento. <a href="/equipos/autorizaciones#solicitar" onClick={e => { e.preventDefault(); navigate('/equipos/autorizaciones#solicitar'); }}>Solicite una</a> y espere a que el autorizador la apruebe.
+                                      </p>
+                                    ) : (
+                                      <CustomSelect
+                                        name="id_solicitud_autorizacion"
+                                        value={draft.id_solicitud_autorizacion ?? ''}
+                                        onChange={e => onDraft('id_solicitud_autorizacion', e.target.value)}
+                                        options={[
+                                          { value: '', label: 'Seleccionar autorización' },
+                                          ...autorizacionesDisponibles.map(a => ({
+                                            value: String(a.id_solicitud),
+                                            label: `#${a.id_solicitud} - ${a.autorizador_nombre} (${a.fecha_resolucion ? new Date(a.fecha_resolucion).toLocaleDateString('es-ES') : ''})`
+                                          }))
+                                        ]}
+                                        placeholder="Seleccionar autorización"
+                                        className="cell-input"
+                                      />
+                                    )}
+                                  </div>
+                                )}
+                              </div>
                             ) : (eq.nombre_ambiente || '-')}
+                          </td>
+                        )}
+                        {visibleColumns.includes('status_verificacion') && (
+                          <td>
+                            <span className={eq.status_verificacion === 'Verificado' ? 'consultar-equipo-badge-verificado' : 'consultar-equipo-badge-no-verificado'}>
+                              {eq.status_verificacion || 'No verificado'}
+                            </span>
                           </td>
                         )}
                         {visibleColumns.includes('descripcion') && (
@@ -893,6 +1009,16 @@ export default function ConsultarEquipo() {
                               >
                                 <FiClock size={14} className="consultar-equipo-action-icon" />
                                 Historial
+                              </button>
+                              <button 
+                                className="btn btn-view consultar-equipo-action-button" 
+                                type="button" 
+                                onClick={() => navigate(`/equipos/historial-movimientos/${eq.codigo_equipo}`)} 
+                                disabled={loading}
+                                title="Ver historial de movimientos de ambiente"
+                              >
+                                <FiList size={14} className="consultar-equipo-action-icon" />
+                                Movimientos
                               </button>
                               {user?.nombre_rol === 'Administrador' && (
                                 <>

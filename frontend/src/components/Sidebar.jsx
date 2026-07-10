@@ -20,7 +20,8 @@ import {
   FiBell,
   FiCheckCircle,
   FiCalendar,
-  FiClock
+  FiClock,
+  FiClipboard
 } from 'react-icons/fi'
 import { useSidebar } from '../contexts/SidebarContext'
 import { useBlockedNavigate } from '../hooks/useBlockedNavigate'
@@ -43,6 +44,20 @@ export default function Sidebar({ user }) {
     horarios: false,
     config: false
   })
+
+  // Contador de solicitudes pendientes de autorizar (para badge en menú)
+  const [pendientesAutorizacion, setPendientesAutorizacion] = useState(0)
+  useEffect(() => {
+    if (user?.nombre_rol !== 'Administrador' && user?.nombre_rol !== 'Cuentadante') return
+    const token = localStorage.getItem('token')
+    if (!token) return
+    fetch('/api/equipos/autorizacion-movimiento/pendientes/count', {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+      .then(r => r.ok ? r.json() : { count: 0 })
+      .then(d => setPendientesAutorizacion(d?.count ?? 0))
+      .catch(() => setPendientesAutorizacion(0))
+  }, [user?.nombre_rol])
 
   // Expandir automáticamente el menú correspondiente según la ruta actual
   useEffect(() => {
@@ -121,10 +136,9 @@ export default function Sidebar({ user }) {
       { title: 'Mis Equipos', path: '/mis-equipos', icon: <FiPackage />, roles: ['all'] },
       { title: 'Asignar Equipo', path: '/equipos/asignar', icon: <FiUsers />, roles: ['Administrador', 'Instructor', 'Cuentadante'] },
       { title: 'Verificar Inventario', path: '/equipos/verificar', icon: <FiCheckCircle />, roles: ['Instructor', 'Cuentadante'] },
-      // { title: 'Historial de Verificaciones', path: '/equipos/verificacion/historial', icon: <FiClock />, roles: ['all'] }, // DESACTIVADO
-      // Historial de Uso - DESACTIVADO
+      { title: 'Autorizaciones', path: '/equipos/autorizaciones', icon: <FiClipboard />, roles: ['Administrador', 'Instructor', 'Cuentadante'] },
       { title: 'Buscar Cuentadante', path: '/equipos/cuentadantes/buscar', icon: <FiSearch />, roles: ['Administrador'] },
-      { title: 'Gestión de Ambientes', path: '/ambientes', icon: <FiMapPin />, roles: ['Administrador'] },
+      { title: 'Gestión de Ambientes', path: '/ambientes', icon: <FiMapPin />, roles: ['Administrador', 'Cuentadante'] },
       { title: 'Asignar Ambientes', path: '/ambientes/asignar', icon: <FiUserCheck />, roles: ['Administrador'] }
     ],
     incidencias: [
@@ -145,8 +159,7 @@ export default function Sidebar({ user }) {
       { title: 'Códigos de Seguridad', path: '/config?section=invitation-codes', icon: <FiKey />, roles: ['Administrador'] },
       { title: 'Tipos de Equipos', path: '/config?section=tipos-equipo', icon: <FiPackage />, roles: ['Administrador'] },
       { title: 'Roles y Áreas', path: '/config?section=roles', icon: <FiSettings />, roles: ['Administrador', 'Instructor', 'Aprendiz'] },
-      { title: 'Notificaciones', path: '/config?section=notifications', icon: <FiBell />, roles: ['all'] },
-      { title: 'Ajustes de la App', path: '/config?section=app', icon: <FiSettings />, roles: ['all'] }
+      { title: 'Notificaciones', path: '/config?section=notifications', icon: <FiBell />, roles: ['all'] }
     ]
   }
 
@@ -186,6 +199,11 @@ export default function Sidebar({ user }) {
             >
               {item.icon}
               <span>{item.title}</span>
+              {item.path === '/equipos/autorizaciones' && pendientesAutorizacion > 0 && (
+                <span className="sidebar-badge sidebar-badge-pendientes" title={`${pendientesAutorizacion} solicitud(es) pendiente(s)`}>
+                  {pendientesAutorizacion > 99 ? '99+' : pendientesAutorizacion}
+                </span>
+              )}
             </button>
           ))}
         </div>

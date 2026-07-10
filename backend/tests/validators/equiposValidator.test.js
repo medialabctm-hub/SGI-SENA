@@ -586,9 +586,9 @@ describe('registrarUsoEquipoExternoSchema', () => {
     expect(() => registrarUsoEquipoExternoSchema.parse(sin)).toThrow();
   });
 
-  it('debe fallar si falta ambiente', () => {
+  it('debe aceptar que falte ambiente (opcional para uso autenticado desde web/app)', () => {
     const { ambiente, ...sin } = baseNuevo;
-    expect(() => registrarUsoEquipoExternoSchema.parse(sin)).toThrow();
+    expect(() => registrarUsoEquipoExternoSchema.parse(sin)).not.toThrow();
   });
 
   it('debe aceptar usuarios como string JSON válido', () => {

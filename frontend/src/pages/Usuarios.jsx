@@ -13,6 +13,7 @@ import '../styles/pages/equipos.css';
 import '../styles/pages/usuarios.css';
 import '../styles/components/modals.css';
 import '../styles/layout/sidebar.css';
+import { LoadingScreen } from './LoadingDemo';
 
 export default function Usuarios() {
   const [users, setUsers] = useState([]);
@@ -402,7 +403,7 @@ export default function Usuarios() {
           </div>
 
           <div className="users-content">
-            {loading ? <div>Cargando usuarios...</div> : (
+            {loading ? <LoadingScreen message="Cargando usuarios" /> : (
               displayedUsers.length ? (
                 <div className="users-table-wrapper">
                   <table className="users-table">

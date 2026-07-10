@@ -165,11 +165,13 @@ class SchedulerService {
       const fechaHoy = obtenerFechaISO(ahoraColombia);
 
       // 1. MONITOREAR CLASES PROGRAMADAS QUE DEBEN INICIARSE
+      // instructor_es_cuentadante_principal: 1 si el instructor tiene equipos asignados en este ambiente (es cuentadante principal)
       const [clasesProgramadas] = await defaultDb.execute(
         `SELECT c.id_clase, c.fecha_clase, c.hora_inicio, c.hora_fin, 
                 c.nombre_clase, c.id_instructor,
-                a.codigo_ambiente, a.nombre_ambiente,
-                u.nombre_usuario AS instructor_nombre
+                a.codigo_ambiente, a.nombre_ambiente, a.id_ambiente,
+                u.nombre_usuario AS instructor_nombre,
+                (SELECT 1 FROM Elementos e WHERE e.id_ambiente = c.id_ambiente AND e.id_cuentadante = c.id_instructor LIMIT 1) AS instructor_es_cuentadante_principal
          FROM Clases c
          INNER JOIN Ambientes a ON c.id_ambiente = a.id_ambiente
          INNER JOIN Usuarios u ON c.id_instructor = u.id_usuario
@@ -209,14 +211,14 @@ class SchedulerService {
         }
       });
 
-      // ENVIAR NOTIFICACIONES DE CONSENTIMIENTO (3-5 minutos antes)
+      // ENVIAR NOTIFICACIONES (3-5 minutos antes): informativa para cuentadante principal, consentimiento para el resto
       for (const clase of clasesParaConsentimiento) {
         const claveConsentimiento = `consentimiento_${clase.id_clase}`;
-        
-        // Evitar enviar múltiples notificaciones de consentimiento
-        if (this.notificacionesEnviadas.has(claveConsentimiento)) {
-          continue;
-        }
+        const claveClaseProxima = `clase_proxima_${clase.id_clase}`;
+        const esCuentadantePrincipal = !!clase.instructor_es_cuentadante_principal;
+
+        if (esCuentadantePrincipal && this.notificacionesEnviadas.has(claveClaseProxima)) continue;
+        if (!esCuentadantePrincipal && this.notificacionesEnviadas.has(claveConsentimiento)) continue;
 
         try {
           const fechaClaseStr = obtenerFechaISO(clase.fecha_clase);
@@ -224,45 +226,73 @@ class SchedulerService {
           const inicioProgramado = crearDateTime(fechaClaseStr, horaInicio);
           const minutosRestantes = Math.floor((inicioProgramado.getTime() - ahoraColombia.getTime()) / 60000);
 
-          await createForUsers({
-            userIds: [clase.id_instructor],
-            titulo: 'Consentimiento para iniciar clase',
-            cuerpo: `¿Seguro que desea convertirse en CUENTADANTE TEMPORAL del inventario correspondiente al Ambiente ${clase.codigo_ambiente} (${clase.nombre_ambiente})?`,
-            tipo: 'alerta',
-            metadata: {
+          if (esCuentadantePrincipal) {
+            // Cuentadante principal: solo información de la clase por comenzar (sin Aceptar/Rechazar)
+            await createForUsers({
+              userIds: [clase.id_instructor],
+              titulo: 'Clase por comenzar',
+              cuerpo: `Tu clase "${clase.nombre_clase}" está por comenzar en el Ambiente ${clase.codigo_ambiente} (${clase.nombre_ambiente}). Inicio en aproximadamente ${minutosRestantes} minuto(s).`,
+              tipo: 'alerta',
+              metadata: {
+                id_clase: clase.id_clase,
+                id_ambiente: clase.id_ambiente,
+                tipo: 'clase_proxima_inicio',
+                hora_inicio: horaInicio,
+                minutos_restantes: minutosRestantes,
+                nombre_clase: clase.nombre_clase,
+                codigo_ambiente: clase.codigo_ambiente,
+                nombre_ambiente: clase.nombre_ambiente,
+                acciones: []
+              },
+              creadoPor: null
+            });
+            this.notificacionesEnviadas.add(claveClaseProxima);
+            logger.info(`📋 Notificación informativa (clase por comenzar) enviada: Clase ${clase.id_clase}`, {
               id_clase: clase.id_clase,
-              id_ambiente: clase.id_ambiente,
-              tipo: 'consentimiento_inicio',
-              hora_inicio: horaInicio,
-              minutos_restantes: minutosRestantes,
-              acciones: [
-                {
-                  tipo: 'aceptar_consentimiento',
-                  label: 'Aceptar',
-                  endpoint: `/api/clases/${clase.id_clase}/consentimiento/aceptar`,
-                  metodo: 'POST'
-                },
-                {
-                  tipo: 'rechazar_consentimiento',
-                  label: 'Rechazar',
-                  endpoint: `/api/clases/${clase.id_clase}/consentimiento/rechazar`,
-                  metodo: 'POST'
-                }
-              ]
-            },
-            creadoPor: null
-          });
+              instructor: clase.instructor_nombre,
+              minutos_restantes: minutosRestantes
+            });
+          } else {
+            // No es cuentadante principal: debe aceptar ser cuentadante temporal
+            await createForUsers({
+              userIds: [clase.id_instructor],
+              titulo: 'Consentimiento para iniciar clase',
+              cuerpo: `¿Seguro que desea convertirse en CUENTADANTE TEMPORAL del inventario correspondiente al Ambiente ${clase.codigo_ambiente} (${clase.nombre_ambiente})?`,
+              tipo: 'alerta',
+              metadata: {
+                id_clase: clase.id_clase,
+                id_ambiente: clase.id_ambiente,
+                tipo: 'consentimiento_inicio',
+                hora_inicio: horaInicio,
+                minutos_restantes: minutosRestantes,
+                acciones: [
+                  {
+                    tipo: 'aceptar_consentimiento',
+                    label: 'Aceptar',
+                    endpoint: `/api/clases/${clase.id_clase}/consentimiento/aceptar`,
+                    metodo: 'POST'
+                  },
+                  {
+                    tipo: 'rechazar_consentimiento',
+                    label: 'Rechazar',
+                    endpoint: `/api/clases/${clase.id_clase}/consentimiento/rechazar`,
+                    metodo: 'POST'
+                  }
+                ]
+              },
+              creadoPor: null
+            });
+            this.notificacionesEnviadas.add(claveConsentimiento);
+            logger.info(`📋 Notificación de consentimiento enviada: Clase ${clase.id_clase}`, {
+              id_clase: clase.id_clase,
+              instructor: clase.instructor_nombre,
+              minutos_restantes: minutosRestantes
+            });
+          }
 
-          this.notificacionesEnviadas.add(claveConsentimiento);
           resultado.notificaciones += 1;
-          
-          logger.info(`📋 Notificación de consentimiento enviada: Clase ${clase.id_clase}`, {
-            id_clase: clase.id_clase,
-            instructor: clase.instructor_nombre,
-            minutos_restantes: minutosRestantes
-          });
         } catch (err) {
-          logger.error(`Error al enviar notificación de consentimiento para clase ${clase.id_clase}`, { error: err.message });
+          logger.error(`Error al enviar notificación para clase ${clase.id_clase}`, { error: err.message });
           resultado.errores.push({ id_clase: clase.id_clase, error: err.message });
         }
       }

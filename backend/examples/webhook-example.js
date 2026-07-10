@@ -18,11 +18,16 @@ const API_KEY = 'tu-token-secreto-aqui'; // Debe coincidir con WEBHOOK_SECRET en
 
 /**
  * Función para enviar datos al webhook
- * @param {Object} datos - Objeto con los campos requeridos
+ * @param {Object} datos - Objeto con los campos requeridos y opcionales
  * @param {string} datos.usuario - Usuario que realiza el pedido
  * @param {number} datos.ambiente - ID del ambiente (número entero)
  * @param {string} datos.ficha - Ficha asociada al pedido
  * @param {string} datos.estado - Estado del pedido
+ * @param {string} [datos.jornada] - Opcional: 'Mañana' | 'Tarde' | 'Noche'
+ * @param {string[]|number[]} [datos.dias_semana] - Opcional: ej. ["Lunes","Martes"] o [1,2,3] (1=Lunes, 7=Domingo)
+ * @param {string} [datos.hora] - Opcional: hora en formato HH:mm o HH:mm:ss (se guarda como hora_inicio)
+ * @param {string} [datos.hora_inicio] - Opcional: hora inicio HH:mm o HH:mm:ss
+ * @param {string} [datos.hora_fin] - Opcional: hora fin HH:mm o HH:mm:ss
  */
 async function enviarWebhook(datos) {
   try {
@@ -57,7 +62,7 @@ async function enviarWebhook(datos) {
 // Descomenta la siguiente función y ejecuta: ejemplo();
 // eslint-disable-next-line no-unused-vars
 async function ejemplo() {
-  // Ejemplo 1: Envío exitoso
+  // Ejemplo 1: Envío exitoso (con jornada, días y hora desde formulario SGI-SENA_DATA)
   console.warn('\n📤 Ejemplo 1: Envío de datos válidos');
   try {
     await enviarWebhook({
@@ -65,6 +70,10 @@ async function ejemplo() {
       ambiente: 1, // Debe ser un número entero (ID del ambiente)
       ficha: 'FICHA-12345',
       estado: 'pendiente',
+      jornada: 'Mañana',
+      dias_semana: ['Lunes', 'Martes', 'Miércoles'],
+      hora_inicio: '07:00',
+      hora_fin: '12:00',
     });
   } catch (error) {
     console.error('Error en ejemplo 1:', error.message);

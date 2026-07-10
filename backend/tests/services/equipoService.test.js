@@ -251,7 +251,8 @@ describe('EquipoService', () => {
         .mockResolvedValueOnce(true);
       mockRepository.db.execute
         .mockResolvedValueOnce([])
-        .mockResolvedValueOnce([[{ id_tipo: 3 }]]);
+        .mockResolvedValueOnce([[{ id_tipo: 3 }]])
+        .mockResolvedValueOnce([[{ nombre_usuario: 'Cuentadante Nueve' }]]); // SELECT nombre_usuario (cuentadante_principal)
       mockRepository.create.mockResolvedValue({ insertId: 55 });
 
       const result = await service.registrarEquipo({
@@ -298,6 +299,8 @@ describe('EquipoService', () => {
       mockRepository.columnExists
         .mockResolvedValueOnce(true)
         .mockResolvedValueOnce(false);
+      mockRepository.db.execute
+        .mockResolvedValueOnce([[{ nombre_usuario: 'Usuario 44' }]]); // SELECT nombre_usuario (cuentadante_principal)
       mockRepository.create.mockResolvedValue({ insertId: 77 });
 
       await service.registrarEquipo({

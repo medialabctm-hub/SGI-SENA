@@ -166,6 +166,41 @@ export function requireAnyPermission(permissions) {
 }
 
 /**
+ * Igual que requireAnyPermission pero solo aplica si el usuario está autenticado.
+ * Si no hay req.user, continúa sin exigir permiso (para rutas públicas con auth opcional).
+ */
+export function requireAnyPermissionIfAuthenticated(permissions) {
+  return async (req, res, next) => {
+    if (!req.user || !req.user.rol) return next()
+    try {
+      const userRole = req.user.rol
+      if (isAdmin(userRole)) return next()
+      let hasAccess = false
+      for (const permission of permissions) {
+        if (await hasPermissionFromDB(defaultDb, userRole, permission)) {
+          hasAccess = true
+          break
+        }
+      }
+      if (!hasAccess) {
+        return res.status(403).json({
+          error: 'Acceso denegado',
+          message: 'No tiene permisos suficientes para realizar esta acción',
+          userRole: userRole,
+          requiredPermissions: permissions,
+        })
+      }
+      next()
+    } catch (error) {
+      return res.status(500).json({
+        error: 'Error al validar permisos',
+        details: error.message,
+      })
+    }
+  }
+}
+
+/**
  * Middleware para verificar propiedad de recurso
  * Permite acceso si:
  * - El usuario es administrador (acceso total), O
@@ -302,6 +337,7 @@ export default {
   requireRole,
   requirePermission,
   requireAnyPermission,
+  requireAnyPermissionIfAuthenticated,
   requireOwnership,
   requireAssignedEquipos,
   requirePermissionAndOwnership,

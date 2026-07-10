@@ -5,11 +5,12 @@ import Toast from '../components/Toast'
 import ConfirmModal from '../components/ConfirmModal'
 import CustomSelect from '../components/CustomSelect'
 import { FiCheckCircle, FiXCircle, FiAlertCircle, FiPackage, FiMapPin, FiRefreshCw } from 'react-icons/fi'
-import { parseApiResponse, buildErrorMessage } from '../utils/api'
+import { parseApiResponse, buildErrorMessage, descargarPDFNovedadRoboPerdida } from '../utils/api'
 import { useNavigate } from 'react-router-dom'
 import { useSocket } from '../contexts/SocketContext'
 import '../styles/pages/equipos.css'
 import '../styles/pages/verificaciones.css'
+import { LoadingScreen } from './LoadingDemo'
 
 export default function VerificarInventario() {
   const [user, setUser] = useState(null)
@@ -175,15 +176,27 @@ export default function VerificarInventario() {
           descripcion: descripcionTrimmed
         })
       })
-      await parseApiResponse(res, 'No se pudo reportar la novedad')
+      const data = await parseApiResponse(res, 'No se pudo reportar la novedad')
       
       // Marcar como verificado con novedad
       await handleVerificar(selectedEquipo.codigo_equipo, 'Con Novedad', descripcionTrimmed)
       
       setShowNovedadModal(false)
       setSelectedEquipo(null)
+      const tipoNovedad = novedadForm.tipo_novedad || ''
+      const esRoboOPerdida = tipoNovedad === 'Pérdida' || tipoNovedad === 'Robo'
       setNovedadForm({ tipo_novedad: 'Mal Funcionamiento', descripcion: '' })
       setToast({ message: 'Novedad reportada y verificación registrada correctamente', type: 'success' })
+      // Descargar PDF de acta si es robo o pérdida
+      if (data?.id && esRoboOPerdida) {
+        try {
+          await descargarPDFNovedadRoboPerdida(data.id)
+          setToast({ message: 'Novedad registrada. Se descargó el acta en PDF.', type: 'success' })
+        } catch (e) {
+          console.error('Error al descargar PDF acta:', e)
+          setToast({ message: buildErrorMessage(e, 'Acta descargada; si necesitas el PDF, descárgalo desde el detalle de la novedad.'), type: 'warning' })
+        }
+      }
     } catch (err) {
       console.error('Error al reportar novedad:', err)
       setToast({ message: buildErrorMessage(err, 'No se pudo reportar la novedad'), type: 'error' })
@@ -368,8 +381,7 @@ export default function VerificarInventario() {
 
             {loading && ambientes.length === 0 ? (
               <div className="verificar-inventario-loading">
-                <div className="loading-spinner verificar-inventario-loading-spinner"></div>
-                <p>Cargando equipos...</p>
+                <LoadingScreen message="Cargando equipos" />
               </div>
             ) : ambientes.length === 0 ? (
               <div className="empty-state">

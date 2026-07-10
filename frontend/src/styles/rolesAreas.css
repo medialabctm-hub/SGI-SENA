@@ -104,7 +104,7 @@
 }
 
 .role-item:hover {
-  border-color: var(--success-300);
+  border-color: var(--success-700);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
   transform: translateY(-1px);
 }
@@ -142,7 +142,6 @@
 }
 
 .role-status-badge.active {
-  background: var(--success-100);
   color: var(--success-800);
 }
 
@@ -197,7 +196,7 @@
 }
 
 .role-edit-btn:hover {
-  background: var(--success-100);
+  background: var(--success-700);
   color: var(--success-800);
 }
 
@@ -277,8 +276,8 @@
 }
 
 .permission-item:hover {
-  border-color: var(--success-300);
-  background: var(--success-50);
+  border-color: var(--success-700);
+  background: var(--success-700);
 }
 
 .permission-checkbox {
@@ -308,7 +307,7 @@
 .permission-admin-badge {
   font-size: 0.7rem;
   color: var(--success-700);
-  background: var(--success-100);
+  background: var(--success-700);
   padding: 2px 6px;
   border-radius: 4px;
   font-weight: 600;

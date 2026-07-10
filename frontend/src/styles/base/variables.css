@@ -5,9 +5,9 @@
 :root {
   --muted: #777;
   --card-shadow: 0 6px 18px rgba(17, 17, 17, 0.06);
-  
+
   /* Neutral */
-  --neutral-50: #f2f1f0;
+  --neutral-50: #ffffff;
   --neutral-100: #e6e4e2;
   --neutral-200: #dad6d3;
   --neutral-300: #cdc8c4;
@@ -45,12 +45,12 @@
   /* Success */
   --success-50: #f0fdf4;
   --success-100: #dcfce7;
-  --success-200: #bbf7d0;
+  --success-700: #bbf7d0;
   --success-300: #86efac;
   --success-400: #4ade80;
   --success-500: #22c55e;
   --success-600: #16a34a;
-  --success-700: #15c415;
+  --success-700: #01AF00;
   --success-800: #01af00;
   --success-900: #0E6E29;
 
@@ -81,4 +81,3 @@
   /* otros */
   --purple-700: #6e06b3;
 }
-

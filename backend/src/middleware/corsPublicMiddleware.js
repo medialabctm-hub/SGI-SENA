@@ -1,7 +1,7 @@
 /**
  * Middleware de CORS para endpoints públicos
  * Permite orígenes específicos para endpoints que no requieren autenticación
- * como /api/equipos/uso/registro-externo
+ * como verificación de ambiente (uso/registro-externo)
  */
 import cors from 'cors';
 

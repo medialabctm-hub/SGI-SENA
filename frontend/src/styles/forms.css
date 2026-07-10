@@ -208,7 +208,7 @@ select.form-select.equipos-style:focus {
 
 .form-input-disabled {
   background-color: var(--neutral-100) !important;
-  cursor: not-allowed !important;
+  cursor: default !important;
 }
 
 .form-help-text {

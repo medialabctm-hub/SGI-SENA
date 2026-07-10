@@ -33,7 +33,7 @@ export default function RevisarDuplicados({ idImportacion, onProcesarCompleto })
       const duplicadosPendientes = (data.duplicados || []).filter(d => d.estado === 'Pendiente')
       setDuplicados(duplicadosPendientes)
     } catch (err) {
-      handleError(err, (msg) => setError(msg), 'Error al cargar duplicados')
+      handleError(err, (errObj) => setError(typeof errObj === 'string' ? errObj : errObj?.message ?? 'Error al cargar duplicados'), 'Error al cargar duplicados')
     } finally {
       setLoading(false)
     }
@@ -84,7 +84,7 @@ export default function RevisarDuplicados({ idImportacion, onProcesarCompleto })
         return nuevas
       })
     } catch (err) {
-      handleError(err, (msg) => setError(msg), 'Error al procesar duplicado')
+      handleError(err, (errObj) => setError(typeof errObj === 'string' ? errObj : errObj?.message ?? 'Error al procesar duplicado'), 'Error al procesar duplicado')
     } finally {
       setProcesandoId(null)
     }
@@ -135,7 +135,7 @@ export default function RevisarDuplicados({ idImportacion, onProcesarCompleto })
         title: 'Procesamiento completado'
       })
     } catch (err) {
-      handleError(err, (msg) => setError(msg), 'Error al procesar duplicados')
+      handleError(err, (errObj) => setError(typeof errObj === 'string' ? errObj : errObj?.message ?? 'Error al procesar duplicados'), 'Error al procesar duplicados')
     } finally {
       setProcesando(false)
     }

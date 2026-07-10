@@ -34,8 +34,8 @@ body.image-viewer-open .app-sidebar {
 /* Contenedor principal del contenido */
 .image-viewer-content {
   position: relative;
-  max-width: 95vw; 
-  max-height: 95vh; 
+  max-width: 95vw;
+  max-height: 95vh;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -44,6 +44,7 @@ body.image-viewer-open .app-sidebar {
   box-sizing: border-box;
   overflow: hidden;
 }
+
 /* Botón cerrar */
 .image-viewer-close {
   position: fixed;
@@ -121,7 +122,8 @@ body.image-viewer-open .app-sidebar {
   height: auto;
   max-width: 100%;
   max-height: 100%;
-  object-fit: contain; /* mantiene proporción */
+  object-fit: contain;
+  /* mantiene proporción */
   display: block;
   cursor: zoom-in;
   transition: transform 0.3s ease;
@@ -175,7 +177,7 @@ body.image-viewer-open .app-sidebar {
 }
 
 .image-viewer-badge {
-  background: linear-gradient(135deg, var(--success-800) 0%, var(--success-900) 100%);
+  background: var(--success-800);
   color: white;
   padding: 6px 12px;
   border-radius: 20px;
@@ -206,7 +208,8 @@ body.image-viewer-open .app-sidebar {
 }
 
 .image-viewer-image.zoomed {
-  transform: scale(2); /* amplía 2x */
+  transform: scale(2);
+  /* amplía 2x */
   cursor: zoom-out;
 }
 
@@ -215,6 +218,7 @@ body.image-viewer-open .app-sidebar {
   from {
     opacity: 0;
   }
+
   to {
     opacity: 1;
   }
@@ -290,4 +294,3 @@ body.image-viewer-open .app-sidebar {
     margin: 10px 0;
   }
 }
-

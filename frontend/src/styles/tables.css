@@ -36,7 +36,7 @@
   color: var(--neutral-800);
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  border-bottom: 2px solid var(--success-200);
+  border-bottom: 2px solid var(--success-700);
   white-space: nowrap;
 }
 
@@ -89,7 +89,7 @@
 
 /* Celda destacada */
 .table-cell-highlight {
-  background: var(--success-100);
+  background: var(--success-700);
   font-weight: 600;
   color: var(--success-900);
 }
@@ -102,6 +102,7 @@
 
 /* Responsive */
 @media (max-width: 768px) {
+
   .table thead th,
   .table tbody td {
     padding: 12px 8px;
@@ -112,4 +113,3 @@
     font-size: 0.8rem;
   }
 }
-

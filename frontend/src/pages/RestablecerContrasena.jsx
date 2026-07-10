@@ -109,7 +109,7 @@ export default function RestablecerContrasena() {
       <div className="page login-page animated-bg">
         <div className="login-card">
           <div className="logo-box">
-            <div className="logo"><img src='/public/images/logoSena.png' alt="Logo SENA" /></div>
+            <div className="logo"><img src='/images/logoSena.png' alt="Logo SENA" /></div>
           </div>
           <h1 className="title">Validando...</h1>
           <p className="subtitle">Por favor espera</p>
