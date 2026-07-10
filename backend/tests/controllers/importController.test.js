@@ -327,6 +327,7 @@ describe('procesarDuplicado', () => {
         datos_bd: JSON.stringify({ placa: 'A' })
       }]])
       .mockResolvedValueOnce([[{ nombre_rol: 'Cuentadante' }]]) // user rol
+      .mockResolvedValueOnce([[{ nombre_usuario: 'Cuentadante Tres' }]]) // SELECT nombre_usuario (cuentadante_principal)
       .mockResolvedValueOnce([{ insertId: 10 }])                // INSERT
       .mockResolvedValueOnce([{ affectedRows: 1 }]);            // UPDATE Aprobado
     const req = mockReq({

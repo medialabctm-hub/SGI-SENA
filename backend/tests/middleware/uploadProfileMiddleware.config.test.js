@@ -41,8 +41,8 @@ describe('uploadProfileMiddleware config', () => {
     jest.clearAllMocks();
   });
 
-  it('debe configurar límite de 2MB', () => {
-    expect(uploadProfileImage.__options.limits.fileSize).toBe(2 * 1024 * 1024);
+  it('debe configurar límite de 10MB', () => {
+    expect(uploadProfileImage.__options.limits.fileSize).toBe(10 * 1024 * 1024);
   });
 
   it('filename debe priorizar req.user.id_usuario y sanitizar nombre', () => {

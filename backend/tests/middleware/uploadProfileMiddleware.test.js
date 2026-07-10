@@ -16,7 +16,7 @@ function mockRes() {
 }
 
 describe('uploadProfileMiddleware.handleProfileUploadError', () => {
-  it('debe responder 400 para LIMIT_FILE_SIZE con mensaje de 2MB', () => {
+  it('debe responder 400 para LIMIT_FILE_SIZE con mensaje de 10MB', () => {
     const err = new multer.MulterError('LIMIT_FILE_SIZE');
     const req = {};
     const res = {
@@ -29,7 +29,7 @@ describe('uploadProfileMiddleware.handleProfileUploadError', () => {
 
     expect(res.status).toHaveBeenCalledWith(400);
     expect(res.json).toHaveBeenCalledWith({
-      error: 'El archivo es demasiado grande. Tamaño máximo: 2MB',
+      error: 'El archivo es demasiado grande. Tamaño máximo: 10MB',
     });
     expect(next).not.toHaveBeenCalled();
   });
