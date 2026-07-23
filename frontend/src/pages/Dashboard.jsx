@@ -14,6 +14,7 @@ export default function Dashboard() {
   const [stats, setStats] = useState(null)
   const [loading, setLoading] = useState(false)
   const [statsLoaded, setStatsLoaded] = useState(false)
+  const [statsAttempted, setStatsAttempted] = useState(false)
   const [toast, setToast] = useState(null)
   const [pendientesAutorizacion, setPendientesAutorizacion] = useState(0)
   const nav = useNavigate()
@@ -63,18 +64,19 @@ export default function Dashboard() {
       handleError(error, setToast, 'No se pudieron cargar las estadísticas');
     } finally {
       setLoading(false)
+      setStatsAttempted(true)
     }
   }, [statsLoaded, loading])
 
   // Cargar estadísticas después de un pequeño delay para mejorar rendimiento inicial
   useEffect(() => {
-    if (shouldShowStats && !statsLoaded) {
+    if (shouldShowStats && !statsLoaded && !statsAttempted) {
       const timer = setTimeout(() => {
         cargarEstadisticas()
       }, 300)
       return () => clearTimeout(timer)
     }
-  }, [user, statsLoaded, cargarEstadisticas, shouldShowStats])
+  }, [user, statsLoaded, statsAttempted, cargarEstadisticas, shouldShowStats])
 
   // Contador de solicitudes de autorización pendientes (Administrador y Cuentadante)
   useEffect(() => {
