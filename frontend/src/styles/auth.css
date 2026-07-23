@@ -417,6 +417,7 @@
   .links {
     font-size: 13px;
   }
+}
 
 /* Checkbox de términos y condiciones en el registro */
 .terms-checkbox {
@@ -492,6 +493,7 @@
 @media (max-width: 768px) {
   .terms-checkbox-text {
     white-space: normal;
+  }
   .btn {
     width: 100%;
     justify-content: center;
