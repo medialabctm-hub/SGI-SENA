@@ -144,6 +144,49 @@ const getUserFriendlyError = (error, status, originalMessage) => {
   return 'Ocurrió un problema. Por favor intenta de nuevo más tarde';
 };
 
+// Frases de errores 401 que NO son sesión expirada (login / cambio de contraseña)
+const CREDENTIAL_ERROR_HINTS = [
+  'credenciales inválidas',
+  'credenciales invalidas',
+  'usuario o contraseña incorrectos',
+  'contraseña incorrecta',
+  'contraseña actual',
+  'usuario no encontrado',
+];
+
+// Rutas de autenticación donde NO se debe redirigir (ya estamos ahí)
+const AUTH_PATHS = ['/login', '/register', '/olvidar-contrasena', '/restablecer-contrasena'];
+
+let sessionExpirationTriggered = false;
+
+/**
+ * Determina si un 401 corresponde a una sesión expirada (token vencido),
+ * excluyendo los 401 de credenciales inválidas del login o cambio de contraseña.
+ */
+const isSessionExpired = (status, message = '') => {
+  if (status !== 401) return false;
+  const lower = message.toLowerCase();
+  return !CREDENTIAL_ERROR_HINTS.some((hint) => lower.includes(hint));
+};
+
+/**
+ * Limpia la sesión y redirige al login. Se ejecuta una sola vez y nunca desde
+ * las pantallas de autenticación. Es el manejo global de sesión expirada.
+ */
+export const handleSessionExpiration = () => {
+  if (typeof window === 'undefined' || sessionExpirationTriggered) return;
+  if (AUTH_PATHS.some((path) => window.location.pathname.startsWith(path))) return;
+  if (!localStorage.getItem('token')) return;
+
+  sessionExpirationTriggered = true;
+  localStorage.removeItem('token');
+  localStorage.removeItem('user');
+  // Delay corto para que el usuario alcance a ver el toast "Tu sesión expiró"
+  setTimeout(() => {
+    window.location.href = '/login';
+  }, 1500);
+};
+
 /**
  * Parsea la respuesta de la API y lanza un error si no es exitosa
  */
@@ -160,15 +203,17 @@ export const parseApiResponse = async (
         .filter(Boolean)
         .join('. ');
       const message = validationMessages || data?.error || data?.message || defaultErrorMessage;
+      if (isSessionExpired(response.status, message)) handleSessionExpiration();
       throw new ApiError(message, response.status, data);
     }
-    
+
     const message =
       data?.error ||
       data?.message ||
       data?.detalle ||
       defaultErrorMessage;
 
+    if (isSessionExpired(response.status, message)) handleSessionExpiration();
     throw new ApiError(message, response.status, data);
   }
   return data;
