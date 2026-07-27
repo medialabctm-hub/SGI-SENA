@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import Header from '../components/Header'
-import Sidebar from '../components/Sidebar'
+import AppLayout from '../components/AppLayout'
 import Toast from '../components/Toast'
 import ConfirmModal from '../components/ConfirmModal'
 import InfoModal from '../components/InfoModal'
@@ -795,10 +794,7 @@ export default function Horarios() {
   if (!user) return null
 
   return (
-    <div className="dashboard-layout">
-      <Sidebar user={user} />
-      <main className="dashboard-main">
-        <Header user={user} />
+    <AppLayout user={user}>
         {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
 
         <ConfirmModal
@@ -1467,8 +1463,7 @@ export default function Horarios() {
             </div>
           )}
         </div>
-      </main>
-    </div>
+    </AppLayout>
   )
 }
 

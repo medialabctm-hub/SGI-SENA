@@ -1,5 +1,6 @@
 import defaultDb from '../config/dbconfig.js'
 import { logger } from '../utils/logger.js'
+import { handleControllerError } from '../utils/controllerHelpers.js';
 
 export async function ensureAprendicesTable() {
   try {
@@ -88,10 +89,7 @@ export async function listarAprendices(req, res) {
     })
   } catch (error) {
     logger.error('Error al listar aprendices', { error: error.message, stack: error.stack })
-    return res.status(500).json({
-      error: 'Error al obtener aprendices',
-      detalle: error.message,
-    })
+    return handleControllerError(error, res, 'listarAprendices', 'Error al obtener aprendices');
   }
 }
 
@@ -188,7 +186,7 @@ export async function actualizarAprendiz(req, res) {
     return res.json({ ok: true, aprendiz: actualizado })
   } catch (error) {
     logger.error('Error al actualizar aprendiz', { error: error.message, stack: error.stack })
-    return res.status(500).json({ error: 'Error al actualizar aprendiz', detalle: error.message })
+    return handleControllerError(error, res, 'actualizarAprendiz', 'Error al actualizar aprendiz');
   }
 }
 
@@ -226,6 +224,6 @@ export async function eliminarAprendiz(req, res) {
     return res.json({ ok: true })
   } catch (error) {
     logger.error('Error al eliminar aprendiz', { error: error.message, stack: error.stack })
-    return res.status(500).json({ error: 'Error al eliminar aprendiz', detalle: error.message })
+    return handleControllerError(error, res, 'eliminarAprendiz', 'Error al eliminar aprendiz');
   }
 }

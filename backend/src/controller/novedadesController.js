@@ -12,6 +12,7 @@ import PDFDocument from 'pdfkit'
 import path from 'path'
 import { fileURLToPath } from 'url'
 import fs from 'fs'
+import { handleControllerError } from '../utils/controllerHelpers.js';
 
 /**
  * Crear una nueva novedad
@@ -783,7 +784,7 @@ export async function crearNovedad(req, res) {
     })
   } catch (err) {
     logger.error('Error al crear novedad', { error: err.message, stack: err.stack })
-    return res.status(500).json({ error: 'Error al registrar la novedad', details: err.message })
+    return handleControllerError(err, res, 'crearNovedad', 'Error al registrar la novedad');
   }
 }
 
@@ -840,7 +841,7 @@ export async function listarNovedades(req, res) {
     return res.json(rows)
   } catch (err) {
     logger.error('Error al listar novedades', { error: err.message, stack: err.stack })
-    return res.status(500).json({ error: 'Error al obtener novedades', details: err.message })
+    return handleControllerError(err, res, 'listarNovedades', 'Error al obtener novedades');
   }
 }
 
@@ -892,7 +893,7 @@ export async function obtenerNovedadPorId(req, res) {
     return res.json(novedad)
   } catch (err) {
     logger.error('Error al obtener novedad', { error: err.message, stack: err.stack })
-    return res.status(500).json({ error: 'Error al obtener detalle de la novedad', details: err.message })
+    return handleControllerError(err, res, 'obtenerNovedadPorId', 'Error al obtener detalle de la novedad');
   }
 }
 
@@ -1219,7 +1220,7 @@ export async function generarPDFNovedadRoboPerdida(req, res) {
   } catch (err) {
     logger.error('Error al generar PDF novedad robo/pérdida', { error: err.message, stack: err.stack })
     if (!res.headersSent) {
-      return res.status(500).json({ error: 'Error al generar el PDF', details: err.message })
+      return handleControllerError(err, res, 'generarPDFNovedadRoboPerdida', 'No se pudo generar el PDF del acta')
     }
   }
 }
@@ -1303,7 +1304,7 @@ export async function actualizarEstadoNovedad(req, res) {
     })
   } catch (err) {
     logger.error('Error al actualizar estado de novedad', { error: err.message, stack: err.stack })
-    return res.status(500).json({ error: 'Error al actualizar el estado de la novedad', details: err.message })
+    return handleControllerError(err, res, 'actualizarEstadoNovedad', 'Error al actualizar el estado de la novedad');
   }
 }
 

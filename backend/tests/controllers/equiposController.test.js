@@ -435,6 +435,27 @@ describe('asignarEquipo', () => {
     expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ ok: true, id: 100 }));
   });
 
+  // BUG-01: la visibilidad en "Mis Equipos" depende de estado_responsabilidad = 'Activo'.
+  // Dejarlo al DEFAULT de la columna hace que la habilitación dependa del esquema desplegado.
+  it('escribe estado_responsabilidad = Activo de forma explicita en el INSERT', async () => {
+    mockObtenerEquipoPorCodigo.mockResolvedValueOnce({ codigo_equipo: 1, tipo: 'Laptop', modelo: 'Dell' });
+    mockExecute
+      .mockResolvedValueOnce([[{ id_usuario: 2, nombre_usuario: 'Juan', nombre_rol: 'Aprendiz' }]])
+      .mockResolvedValueOnce([[undefined]])
+      .mockResolvedValueOnce([[undefined]])
+      .mockResolvedValueOnce([{ insertId: 100 }]);
+    mockVerificarAmbienteEquipoAprendiz.mockResolvedValueOnce({ valido: true });
+    mockVerificarDisponibilidad.mockResolvedValueOnce({ disponible: true });
+    const req = mockReq({ body: { codigo_equipo: 1, id_usuario: 2 } });
+    const res = mockRes();
+    await asignarEquipo(req, res);
+
+    const insertCall = mockExecute.mock.calls.find(([sql]) => /INSERT INTO Responsables_Equipo/i.test(sql));
+    expect(insertCall).toBeDefined();
+    expect(insertCall[0]).toMatch(/estado_responsabilidad/);
+    expect(insertCall[0]).toMatch(/'Activo'/);
+  });
+
   it('returns 500 on DB error', async () => {
     mockObtenerEquipoPorCodigo.mockRejectedValueOnce(new Error('DB fail'));
     const req = mockReq({ body: { codigo_equipo: 1, id_usuario: 2 } });
@@ -457,6 +478,22 @@ describe('obtenerMisEquipos', () => {
     const res = mockRes();
     await obtenerMisEquipos(req, res);
     expect(res.json).toHaveBeenCalledWith(fakeEquipos);
+  });
+
+  // BUG-01: solo habilitaciones de uso personal, sin las asignaciones temporales de clase
+  it('consulta solo habilitaciones activas del usuario y excluye las temporales de clase', async () => {
+    mockExecute.mockResolvedValueOnce([[]]);
+    const req = mockReq({ user: { id: 7, rol: 'Instructor' } });
+    const res = mockRes();
+    await obtenerMisEquipos(req, res);
+
+    const [sql, params] = mockExecute.mock.calls[0];
+    expect(sql).toMatch(/re\.id_usuario = \?/);
+    expect(sql).toMatch(/re\.estado_responsabilidad = 'Activo'/);
+    expect(sql).toMatch(/re\.fecha_desvinculacion IS NULL/);
+    expect(sql).toMatch(/inicio de clase #/);
+    expect(sql).not.toMatch(/id_cuentadante/);
+    expect(params).toEqual([7]);
   });
 
   it('returns 500 on DB error', async () => {

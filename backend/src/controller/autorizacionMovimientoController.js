@@ -1,19 +1,120 @@
 import defaultDb from '../config/dbconfig.js';
 import { logger } from '../utils/logger.js';
+import { handleControllerError } from '../utils/controllerHelpers.js';
+
+/**
+ * Resuelve a quién debe dirigirse la autorización de movimiento de un equipo.
+ *
+ * La autorización NO es global: la recibe quien responde por el equipo. Cascada:
+ *   1. Cuentadante asignado al equipo (Elementos.id_cuentadante), si sigue activo.
+ *   2. Responsable Principal activo del ambiente de origen (Responsabilidades_Ambiente).
+ *   3. Administrador activo (respaldo, cuando el equipo no tiene cuentadante).
+ *
+ * @param {number} codigoEquipo
+ * @param {number} [idAmbienteOrigen] Ambiente actual del equipo, para el paso 2
+ * @returns {Promise<{id_usuario:number, nombre_usuario:string, nombre_rol:string, motivo:string}|null>}
+ */
+export async function resolverAutorizador(codigoEquipo, idAmbienteOrigen = null) {
+  // 1. Cuentadante asignado al equipo
+  const [[cuentadante]] = await defaultDb.execute(
+    `SELECT u.id_usuario, u.nombre_usuario, r.nombre_rol
+     FROM Elementos e
+     INNER JOIN Usuarios u ON u.id_usuario = e.id_cuentadante
+     INNER JOIN Roles r ON r.id_rol = u.id_rol
+     WHERE e.codigo_equipo = ? AND u.estado = 'Activo'`,
+    [codigoEquipo]
+  );
+  if (cuentadante) {
+    return { ...cuentadante, motivo: 'Cuentadante asignado al equipo' };
+  }
+
+  // 2. Responsable Principal activo del ambiente de origen
+  if (idAmbienteOrigen) {
+    const [[responsableAmbiente]] = await defaultDb.execute(
+      `SELECT u.id_usuario, u.nombre_usuario, r.nombre_rol
+       FROM Responsabilidades_Ambiente ra
+       INNER JOIN Usuarios u ON u.id_usuario = ra.id_usuario
+       INNER JOIN Roles r ON r.id_rol = u.id_rol
+       WHERE ra.id_ambiente = ?
+         AND ra.tipo_responsabilidad = 'Principal'
+         AND ra.estado_responsabilidad = 'Activa'
+         AND u.estado = 'Activo'
+         AND r.nombre_rol IN ('Administrador', 'Cuentadante')
+       ORDER BY ra.fecha_inicio DESC
+       LIMIT 1`,
+      [idAmbienteOrigen]
+    );
+    if (responsableAmbiente) {
+      return { ...responsableAmbiente, motivo: 'Responsable principal del ambiente' };
+    }
+  }
+
+  // 3. Respaldo: administrador activo
+  const [[administrador]] = await defaultDb.execute(
+    `SELECT u.id_usuario, u.nombre_usuario, r.nombre_rol
+     FROM Usuarios u
+     INNER JOIN Roles r ON r.id_rol = u.id_rol
+     WHERE r.nombre_rol = 'Administrador' AND u.estado = 'Activo'
+     ORDER BY u.id_usuario
+     LIMIT 1`
+  );
+  if (administrador) {
+    return { ...administrador, motivo: 'Administrador (el equipo no tiene cuentadante asignado)' };
+  }
+
+  return null;
+}
+
+/**
+ * Consultar a quién se enviará la autorización de un equipo, sin crearla.
+ * Permite mostrar el destinatario en el formulario en modo lectura.
+ */
+export async function obtenerAutorizadorParaEquipo(req, res) {
+  try {
+    const codigoEquipo = Number(req.query.codigo_equipo);
+    if (!codigoEquipo) {
+      return res.status(400).json({ error: 'Se requiere codigo_equipo' });
+    }
+
+    const [[equipo]] = await defaultDb.execute(
+      'SELECT codigo_equipo, id_ambiente FROM Elementos WHERE codigo_equipo = ?',
+      [codigoEquipo]
+    );
+    if (!equipo) {
+      return res.status(404).json({ error: 'Equipo no encontrado' });
+    }
+
+    const autorizador = await resolverAutorizador(codigoEquipo, equipo.id_ambiente);
+    if (!autorizador) {
+      return res.status(409).json({
+        error: 'No hay ningún usuario disponible para autorizar el movimiento de este equipo',
+        detalle: 'El equipo no tiene cuentadante asignado y no hay administradores activos.'
+      });
+    }
+
+    return res.json({ autorizador });
+  } catch (err) {
+    logger.error('Error al resolver autorizador', { error: err.message, stack: err.stack });
+    return handleControllerError(err, res, 'obtenerAutorizadorParaEquipo', 'Error al resolver el autorizador');
+  }
+}
 
 /**
  * Crear solicitud de autorización para mover equipo verificado.
- * Body: codigo_equipo, id_ambiente_destino, motivo (obligatorio), id_autorizador
+ * Body: codigo_equipo, id_ambiente_destino, motivo (obligatorio)
+ *
+ * El destinatario NO lo elige el solicitante: se deriva del equipo con
+ * resolverAutorizador(). Un `id_autorizador` en el body se ignora.
  */
 export async function crearSolicitud(req, res) {
   try {
     const userId = req.user?.id;
-    const { codigo_equipo, id_ambiente_destino, motivo, id_autorizador } = req.body;
+    const { codigo_equipo, id_ambiente_destino, motivo } = req.body;
 
-    if (!codigo_equipo || !id_ambiente_destino || !motivo || !id_autorizador) {
+    if (!codigo_equipo || !id_ambiente_destino || !motivo) {
       return res.status(400).json({
         error: 'Faltan campos obligatorios',
-        detalle: 'Se requieren: codigo_equipo, id_ambiente_destino, motivo, id_autorizador'
+        detalle: 'Se requieren: codigo_equipo, id_ambiente_destino, motivo'
       });
     }
 
@@ -24,7 +125,6 @@ export async function crearSolicitud(req, res) {
 
     const codigoEq = Number(codigo_equipo);
     const idDestino = Number(id_ambiente_destino);
-    const idAut = Number(id_autorizador);
 
     const [[equipo]] = await defaultDb.execute(
       `SELECT e.codigo_equipo, e.id_ambiente, COALESCE(e.verificado_ambiente, 0) AS verificado_ambiente
@@ -54,15 +154,19 @@ export async function crearSolicitud(req, res) {
       return res.status(400).json({ error: 'Ambiente destino no válido' });
     }
 
-    const [[autorizador]] = await defaultDb.execute(
-      `SELECT u.id_usuario, r.nombre_rol FROM Usuarios u
-       INNER JOIN Roles r ON r.id_rol = u.id_rol
-       WHERE u.id_usuario = ? AND u.estado = 'Activo'`,
-      [idAut]
-    );
-    if (!autorizador || !['Administrador', 'Cuentadante'].includes(autorizador.nombre_rol)) {
-      return res.status(400).json({
-        error: 'El autorizador debe ser un Administrador o Cuentadante activo'
+    // El destinatario se deriva del equipo, no lo elige el solicitante
+    const autorizador = await resolverAutorizador(codigoEq, equipo.id_ambiente);
+    if (!autorizador) {
+      return res.status(409).json({
+        error: 'No hay ningún usuario disponible para autorizar el movimiento de este equipo',
+        detalle: 'El equipo no tiene cuentadante asignado y no hay administradores activos.'
+      });
+    }
+
+    if (Number(autorizador.id_usuario) === Number(userId)) {
+      return res.status(409).json({
+        error: 'Ya eres la persona responsable de autorizar este equipo, no necesitas solicitar permiso',
+        detalle: 'Puedes cambiar el ambiente del equipo directamente desde Consultar Inventario.'
       });
     }
 
@@ -70,18 +174,23 @@ export async function crearSolicitud(req, res) {
       `INSERT INTO Solicitudes_Autorizacion_Movimiento
        (codigo_equipo, id_ambiente_origen, id_ambiente_destino, motivo, id_solicitante, id_autorizador, estado)
        VALUES (?, ?, ?, ?, ?, ?, 'Pendiente')`,
-      [codigoEq, equipo.id_ambiente, idDestino, motivoTrim, userId, idAut]
+      [codigoEq, equipo.id_ambiente, idDestino, motivoTrim, userId, autorizador.id_usuario]
     );
 
     const idSolicitud = result.insertId;
     return res.status(201).json({
       ok: true,
       id_solicitud: idSolicitud,
-      message: 'Solicitud de autorización creada. El autorizador deberá aprobarla o rechazarla.'
+      autorizador: {
+        id_usuario: autorizador.id_usuario,
+        nombre_usuario: autorizador.nombre_usuario,
+        motivo: autorizador.motivo
+      },
+      message: `Solicitud enviada a ${autorizador.nombre_usuario}, responsable de este equipo. Deberá aprobarla o rechazarla.`
     });
   } catch (err) {
     logger.error('Error al crear solicitud de autorización', { error: err.message, stack: err.stack });
-    return res.status(500).json({ error: 'Error al crear solicitud', detalle: err.message });
+    return handleControllerError(err, res, 'crearSolicitud', 'Error al crear solicitud');
   }
 }
 
@@ -112,7 +221,7 @@ export async function listarPendientesParaAutorizador(req, res) {
     return res.json({ solicitudes });
   } catch (err) {
     logger.error('Error al listar solicitudes pendientes', { error: err.message, stack: err.stack });
-    return res.status(500).json({ error: 'Error al listar solicitudes', detalle: err.message });
+    return handleControllerError(err, res, 'listarPendientesParaAutorizador', 'Error al listar solicitudes');
   }
 }
 
@@ -149,7 +258,7 @@ export async function listarMisSolicitudes(req, res) {
     return res.json({ solicitudes });
   } catch (err) {
     logger.error('Error al listar mis solicitudes', { error: err.message, stack: err.stack });
-    return res.status(500).json({ error: 'Error al listar solicitudes', detalle: err.message });
+    return handleControllerError(err, res, 'listarMisSolicitudes', 'Error al listar solicitudes');
   }
 }
 
@@ -188,7 +297,7 @@ export async function aprobarSolicitud(req, res) {
     return res.json({ ok: true, message: 'Solicitud aprobada. El solicitante puede ejecutar el movimiento.' });
   } catch (err) {
     logger.error('Error al aprobar solicitud', { error: err.message, stack: err.stack });
-    return res.status(500).json({ error: 'Error al aprobar', detalle: err.message });
+    return handleControllerError(err, res, 'aprobarSolicitud', 'Error al aprobar');
   }
 }
 
@@ -229,7 +338,7 @@ export async function rechazarSolicitud(req, res) {
     return res.json({ ok: true, message: 'Solicitud rechazada' });
   } catch (err) {
     logger.error('Error al rechazar solicitud', { error: err.message, stack: err.stack });
-    return res.status(500).json({ error: 'Error al rechazar', detalle: err.message });
+    return handleControllerError(err, res, 'rechazarSolicitud', 'Error al rechazar');
   }
 }
 
@@ -248,7 +357,7 @@ export async function contarPendientesParaAutorizador(req, res) {
     return res.json({ count: row?.total ?? 0 });
   } catch (err) {
     logger.error('Error al contar pendientes', { error: err.message, stack: err.stack });
-    return res.status(500).json({ error: 'Error al contar', detalle: err.message });
+    return handleControllerError(err, res, 'contarPendientesParaAutorizador', 'Error al contar');
   }
 }
 
@@ -286,7 +395,7 @@ export async function listarHistorialAutorizador(req, res) {
     return res.json({ solicitudes });
   } catch (err) {
     logger.error('Error al listar historial de autorizaciones', { error: err.message, stack: err.stack });
-    return res.status(500).json({ error: 'Error al listar historial', detalle: err.message });
+    return handleControllerError(err, res, 'listarHistorialAutorizador', 'Error al listar historial');
   }
 }
 
@@ -296,6 +405,7 @@ export async function listarHistorialAutorizador(req, res) {
  */
 export async function listarDisponiblesParaMovimiento(req, res) {
   try {
+    const userId = req.user?.id;
     const codigo_equipo = Number(req.query.codigo_equipo);
     const id_ambiente_destino = Number(req.query.id_ambiente_destino);
     if (!codigo_equipo || !id_ambiente_destino) {
@@ -304,6 +414,8 @@ export async function listarDisponiblesParaMovimiento(req, res) {
       });
     }
 
+    // Solo se exponen las autorizaciones en las que el usuario participa:
+    // las que solicitó o las que le corresponde autorizar.
     const [lista] = await defaultDb.execute(
       `SELECT
         s.id_solicitud, s.motivo, s.fecha_solicitud, s.fecha_resolucion,
@@ -314,13 +426,14 @@ export async function listarDisponiblesParaMovimiento(req, res) {
        INNER JOIN Ambientes a2 ON s.id_ambiente_destino = a2.id_ambiente
        LEFT JOIN Usuarios u_aut ON s.id_autorizador = u_aut.id_usuario
        WHERE s.codigo_equipo = ? AND s.id_ambiente_destino = ? AND s.estado = 'Aprobada' AND s.fecha_uso IS NULL
+         AND (s.id_solicitante = ? OR s.id_autorizador = ?)
        ORDER BY s.fecha_resolucion DESC`,
-      [codigo_equipo, id_ambiente_destino]
+      [codigo_equipo, id_ambiente_destino, userId, userId]
     );
 
     return res.json({ autorizaciones: lista });
   } catch (err) {
     logger.error('Error al listar autorizaciones disponibles', { error: err.message, stack: err.stack });
-    return res.status(500).json({ error: 'Error al listar autorizaciones', detalle: err.message });
+    return handleControllerError(err, res, 'listarDisponiblesParaMovimiento', 'Error al listar autorizaciones');
   }
 }

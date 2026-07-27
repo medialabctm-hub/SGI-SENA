@@ -21,7 +21,7 @@ import {
 } from '../../src/utils/controllerHelpers.js';
 
 describe('utils/controllerHelpers', () => {
-  it('handleControllerError debe registrar y devolver respuesta 500', () => {
+  it('handleControllerError debe registrar y devolver respuesta 500 sin exponer el detalle tecnico', () => {
     const err = new Error('falló');
     const res = {
       status: jest.fn().mockReturnThis(),
@@ -31,9 +31,10 @@ describe('utils/controllerHelpers', () => {
     const result = handleControllerError(err, res, 'contexto', 'Mensaje por defecto');
 
     expect(res.status).toHaveBeenCalledWith(500);
+    // El mensaje tecnico ('falló') queda solo en los logs, nunca en la respuesta
     expect(res.json).toHaveBeenCalledWith({
       error: 'Mensaje por defecto',
-      detalle: 'falló',
+      userMessage: 'Mensaje por defecto',
     });
     expect(result).toBe(res);
   });
@@ -49,6 +50,7 @@ describe('utils/controllerHelpers', () => {
     expect(res.status).toHaveBeenCalledWith(400);
     expect(res.json).toHaveBeenCalledWith({
       error: 'mensaje',
+      userMessage: 'mensaje',
       detalle: 'detalle',
     });
   });
@@ -78,8 +80,8 @@ describe('utils/controllerHelpers', () => {
     handleControllerError(err, res, 'ctx'); // sin defaultMessage
 
     expect(res.json).toHaveBeenCalledWith({
-      error: 'Error en el servidor',
-      detalle: 'internal',
+      error: 'No se pudo completar la operación. Inténtalo de nuevo.',
+      userMessage: 'No se pudo completar la operación. Inténtalo de nuevo.',
     });
   });
 
@@ -92,7 +94,7 @@ describe('utils/controllerHelpers', () => {
     sendErrorResponse(res, 404, 'no encontrado'); // sin details
 
     expect(res.status).toHaveBeenCalledWith(404);
-    expect(res.json).toHaveBeenCalledWith({ error: 'no encontrado' });
+    expect(res.json).toHaveBeenCalledWith({ error: 'no encontrado', userMessage: 'no encontrado' });
   });
 
   it('sendSuccessResponse sin message no debe agregar la clave message', () => {

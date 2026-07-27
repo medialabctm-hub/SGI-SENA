@@ -23,7 +23,68 @@ import {
   ConflictError,
   DatabaseError,
   errorHandler,
+  translateDbError,
 } from '../../src/utils/errors.js';
+
+// ERR-02: los errores de la base de datos deben llegar al usuario como reglas de
+// negocio comprensibles, no como fallos genéricos del servidor.
+describe('translateDbError', () => {
+  const fkError = (tabla) => ({
+    code: 'ER_ROW_IS_REFERENCED_2',
+    sqlMessage: `Cannot delete or update a parent row: a foreign key constraint fails (\`sgi\`.\`${tabla}\`, CONSTRAINT \`fk_1\` FOREIGN KEY (\`id_usuario\`) REFERENCES \`Usuarios\` (\`id_usuario\`))`,
+  });
+
+  it('convierte una restriccion de clave foranea en 409 nombrando la entidad', () => {
+    const traducido = translateDbError(fkError('Clases'));
+    expect(traducido.statusCode).toBe(409);
+    expect(traducido.message).toContain('clases');
+    expect(traducido.message).not.toMatch(/foreign key|constraint/i);
+  });
+
+  // Al insertar, el dato que falta es el PADRE referenciado, no la tabla hija
+  it('convierte una referencia inexistente en 400 nombrando la entidad que falta', () => {
+    const traducido = translateDbError({
+      code: 'ER_NO_REFERENCED_ROW_2',
+      sqlMessage: 'Cannot add or update a child row: a foreign key constraint fails (`sgi`.`Elementos`, CONSTRAINT `fk_amb` FOREIGN KEY (`id_ambiente`) REFERENCES `Ambientes` (`id_ambiente`))',
+    });
+    expect(traducido.statusCode).toBe(400);
+    expect(traducido.message).toContain('ambientes');
+  });
+
+  it('convierte un duplicado en 409', () => {
+    expect(translateDbError({ code: 'ER_DUP_ENTRY', sqlMessage: 'Duplicate entry' }).statusCode).toBe(409);
+  });
+
+  it('nombra la columna en un valor demasiado largo', () => {
+    const traducido = translateDbError({
+      code: 'ER_DATA_TOO_LONG',
+      sqlMessage: "Data too long for column 'nombre_usuario' at row 1",
+    });
+    expect(traducido.statusCode).toBe(400);
+    expect(traducido.message).toContain('nombre_usuario');
+  });
+
+  it('nombra la columna en un campo obligatorio vacio', () => {
+    const traducido = translateDbError({
+      code: 'ER_BAD_NULL_ERROR',
+      sqlMessage: "Column 'correo' cannot be null",
+    });
+    expect(traducido.statusCode).toBe(400);
+    expect(traducido.message).toContain('correo');
+  });
+
+  it('convierte la indisponibilidad de la base de datos en 503', () => {
+    expect(translateDbError({ code: 'ECONNREFUSED', message: 'connect ECONNREFUSED' }).statusCode).toBe(503);
+    expect(translateDbError({ code: 'ER_LOCK_WAIT_TIMEOUT', message: 'lock timeout' }).statusCode).toBe(503);
+  });
+
+  it('deja intacto un error desconocido para que siga siendo 500', () => {
+    const original = new Error('fallo inesperado');
+    expect(translateDbError(original)).toBe(original);
+    const conCodigoDesconocido = { code: 'ER_ALGO_RARO', message: 'x' };
+    expect(translateDbError(conCodigoDesconocido)).toBe(conCodigoDesconocido);
+  });
+});
 
 describe('utils/errors', () => {
   it('debe crear AppError con statusCode y flags correctos', () => {
@@ -96,7 +157,9 @@ describe('utils/errors', () => {
 
     expect(res.status).toHaveBeenCalledWith(409);
     const payload = res.json.mock.calls[0][0];
-    expect(payload.error).toBe('El recurso ya existe');
+    expect(payload.error).toBe('Ya existe un registro con esos datos.');
+    // Mensaje apto para mostrarse tal cual en la interfaz
+    expect(payload.userMessage).toBe('Ya existe un registro con esos datos.');
   });
 
   it('errorHandler debe mapear TokenExpiredError a AuthenticationError', () => {

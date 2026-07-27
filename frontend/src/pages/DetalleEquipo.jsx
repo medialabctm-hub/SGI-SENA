@@ -68,15 +68,9 @@ export default function DetalleEquipo() {
       const res = await fetch(`/api/equipos/${encodeURIComponent(codigoEquipo)}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/4fca1e6c-7d65-41f5-87f3-c0784e21a846', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'DetalleEquipo.jsx:fetchEquipo', message: 'GET equipo response', data: { codigoEquipo, status: res.status, ok: res.ok }, timestamp: Date.now(), hypothesisId: 'H1' }) }).catch(() => {});
-      // #endregion
       const data = await parseApiResponse(res, 'No se pudo cargar el equipo');
       setEquipo(data);
     } catch (err) {
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/4fca1e6c-7d65-41f5-87f3-c0784e21a846', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'DetalleEquipo.jsx:fetchEquipo catch', message: 'GET equipo failed', data: { codigoEquipo, errStatus: err?.status }, timestamp: Date.now(), hypothesisId: 'H3' }) }).catch(() => {});
-      // #endregion
       setToast({ message: buildErrorMessage(err, 'No se pudo cargar el equipo'), type: 'error' });
     } finally {
       setLoading(false);

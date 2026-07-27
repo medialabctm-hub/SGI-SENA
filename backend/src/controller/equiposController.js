@@ -9,6 +9,8 @@ import {
   verificarAmbienteEquipoAprendiz
 } from '../utils/sqlQueries.js';
 import { getImagePath, deleteImageFile } from '../middleware/uploadMiddleware.js';
+import { handleControllerError } from '../utils/controllerHelpers.js';
+import { AppError, translateDbError } from '../utils/errors.js';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
@@ -76,7 +78,7 @@ export async function listarEquipos(req, res) {
     return res.json(result);
   } catch (err) {
     logger.error('Error al listar equipos', { error: err.message });
-    return res.status(500).json({ error: 'Error al listar equipos', detalle: err.message });
+    return handleControllerError(err, res, 'listarEquipos', 'Error al listar equipos');
   }
 }
 
@@ -163,7 +165,7 @@ export async function registrarEquipo(req, res) {
       return res.status(400).json({ error: 'Error de referencia: el ambiente o categoría no existe', detalle: err.message });
     }
     
-    return res.status(500).json({ error: 'Error al registrar equipo', detalle: err.message });
+    return handleControllerError(err, res, 'registrarEquipo', 'Error al registrar equipo');
   }
 }
 
@@ -279,10 +281,7 @@ export async function obtenerEquipoPorCodigo(req, res) {
     }
 
     if (!equipoData) {
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/4fca1e6c-7d65-41f5-87f3-c0784e21a846', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'equiposController.js:obtenerEquipoPorCodigo', message: '404 equipo no encontrado', data: { codigoParam: codigo, userRole }, timestamp: Date.now(), hypothesisId: 'H1' }) }).catch(() => {});
-    // #endregion
-    return res.status(404).json({ error: 'Equipo no encontrado' });
+      return res.status(404).json({ error: 'Equipo no encontrado' });
     }
 
     // Obtener responsables/usuarios asignados al equipo
@@ -422,7 +421,7 @@ export async function obtenerEquipoPorCodigo(req, res) {
 
     return res.json(equipoConResponsables);
   } catch (err) {
-    return res.status(500).json({ error: 'Error al consultar equipo', detalle: err.message });
+    return handleControllerError(err, res, 'obtenerEquipoPorCodigo', 'Error al consultar equipo');
   }
 }
 
@@ -623,7 +622,7 @@ export async function actualizarEquipo(req, res) {
 
     return res.json({ ok: true, updated: affectedRows });
   } catch (err) {
-    return res.status(500).json({ error: 'Error al actualizar equipo', detalle: err.message });
+    return handleControllerError(err, res, 'actualizarEquipo', 'Error al actualizar equipo');
   }
 }
 
@@ -666,7 +665,7 @@ export async function eliminarEquipo(req, res) {
 
     return res.json({ ok: true, deleted: result.affectedRows });
   } catch (err) {
-    return res.status(500).json({ error: 'Error al eliminar equipo', detalle: err.message });
+    return handleControllerError(err, res, 'eliminarEquipo', 'Error al eliminar equipo');
   }
 }
 
@@ -779,10 +778,13 @@ export async function asignarEquipo(req, res) {
     // Insertar la habilitación (NO es asignación de inventario, solo habilitación para uso)
     // La tabla Responsables_Equipo se usa para habilitaciones de uso, no para asignación de inventario
     // Los días habilitados se calculan automáticamente desde fecha_asignacion hasta la fecha actual
+    // IMPORTANTE: estado_responsabilidad se escribe de forma explícita. Si se deja al DEFAULT de la
+    // columna, la fila depende del esquema desplegado; cuando ese default no es 'Activo' la
+    // habilitación se crea correctamente pero nunca aparece en "Mis Equipos" (ver BUG-01).
     const [result] = await defaultDb.execute(
-      `INSERT INTO Responsables_Equipo 
-       (codigo_equipo, id_usuario, tipo_responsabilidad, observaciones, asignado_por, fecha_asignacion, fecha_desvinculacion) 
-       VALUES (?, ?, ?, ?, ?, NOW(), NULL)`,
+      `INSERT INTO Responsables_Equipo
+       (codigo_equipo, id_usuario, tipo_responsabilidad, estado_responsabilidad, observaciones, asignado_por, fecha_asignacion, fecha_desvinculacion)
+       VALUES (?, ?, ?, 'Activo', ?, ?, NOW(), NULL)`,
       [codigo_equipo, id_usuario, tipo_responsabilidad, observaciones || null, asignadoPor]
     )
 
@@ -811,19 +813,28 @@ export async function asignarEquipo(req, res) {
     })
   } catch (err) {
     logger.error('Error al habilitar equipo', { error: err.message, stack: err.stack })
-    return res.status(500).json({ error: 'Error al habilitar el equipo', details: err.message })
+    return handleControllerError(err, res, 'asignarEquipo', 'Error al habilitar el equipo');
   }
 }
 
 /**
- * Obtener equipos asignados al usuario actual
+ * Obtener las habilitaciones de uso personal del usuario actual ("Mis Equipos").
+ *
+ * ALCANCE: solo habilitaciones de uso (Responsables_Equipo). El inventario a cargo
+ * de un cuentadante (Elementos.id_cuentadante) NO pertenece a esta pantalla; se
+ * consulta desde "Inventario".
+ *
+ * Se excluyen las asignaciones temporales generadas al iniciar una clase. El criterio
+ * es estructural —esas filas nacen con fecha_desvinculacion programada, mientras que
+ * una habilitación manual la tiene en NULL— y se mantiene el filtro por texto como
+ * respaldo para las filas históricas anteriores a esta corrección.
  */
 export async function obtenerMisEquipos(req, res) {
   try {
     const userId = req.user?.id
 
     const [equipos] = await defaultDb.execute(
-      `SELECT 
+      `SELECT
         e.codigo_equipo,
         e.placa AS codigo_inventario,
         e.tipo,
@@ -842,10 +853,11 @@ export async function obtenerMisEquipos(req, res) {
       INNER JOIN Elementos e ON re.codigo_equipo = e.codigo_equipo
       LEFT JOIN Ambientes a ON e.id_ambiente = a.id_ambiente
       LEFT JOIN Usuarios u_asignado ON re.asignado_por = u_asignado.id_usuario
-      WHERE re.id_usuario = ? 
+      WHERE re.id_usuario = ?
         AND re.estado_responsabilidad = 'Activo'
-        -- EXCLUIR asignaciones temporales por clases (solo mostrar asignaciones permanentes)
-        -- Los equipos asignados por clases aparecen en "Consultar Inventario", no aquí
+        -- Excluir asignaciones temporales por clase: criterio estructural
+        AND re.fecha_desvinculacion IS NULL
+        -- Respaldo para filas históricas creadas antes del criterio estructural
         AND (re.observaciones IS NULL OR re.observaciones NOT LIKE '%inicio de clase #%')
       ORDER BY re.fecha_asignacion DESC`,
       [userId]
@@ -853,8 +865,7 @@ export async function obtenerMisEquipos(req, res) {
 
     return res.json(equipos)
   } catch (err) {
-    logger.error('Error al obtener equipos asignados', { error: err.message, stack: err.stack })
-    return res.status(500).json({ error: 'Error al obtener equipos asignados', details: err.message })
+    return handleControllerError(err, res, 'obtenerMisEquipos', 'No se pudieron cargar tus equipos habilitados')
   }
 }
 
@@ -910,7 +921,7 @@ export async function listarAsignaciones(req, res) {
     return res.json(rows)
   } catch (err) {
     logger.error('Error al listar habilitaciones', { error: err.message, stack: err.stack })
-    return res.status(500).json({ error: 'Error al obtener habilitaciones', details: err.message })
+    return handleControllerError(err, res, 'listarAsignaciones', 'Error al obtener habilitaciones');
   }
 }
 
@@ -990,7 +1001,7 @@ export async function eliminarAsignacion(req, res) {
     })
   } catch (err) {
     logger.error('Error al eliminar asignación', { error: err.message, stack: err.stack })
-    return res.status(500).json({ error: 'Error al eliminar la asignación', details: err.message })
+    return handleControllerError(err, res, 'eliminarAsignacion', 'Error al eliminar la asignación');
   }
 }
 
@@ -1220,7 +1231,7 @@ export async function actualizarAsignacionEquipo(req, res) {
     });
   } catch (err) {
     logger.error('Error al actualizar asignación', { error: err.message, stack: err.stack });
-    return res.status(500).json({ error: 'Error al actualizar la asignación', details: err.message });
+    return handleControllerError(err, res, 'actualizarAsignacionEquipo', 'Error al actualizar la asignación');
   }
 }
 
@@ -1359,10 +1370,7 @@ export async function obtenerEquiposAmbientesInstructor(req, res) {
       error: err.message,
       stack: process.env.NODE_ENV === 'development' ? err.stack : undefined,
     });
-    return res.status(500).json({ 
-      error: 'Error al obtener equipos de ambientes', 
-      details: err.message 
-    })
+    return handleControllerError(err, res, 'obtenerEquiposAmbientesInstructor', 'Error al obtener equipos de ambientes');
   }
 }
 
@@ -1497,10 +1505,7 @@ export async function registrarVerificacionInventario(req, res) {
     })
   } catch (err) {
     logger.error('Error al registrar verificación', { error: err.message, stack: err.stack })
-    return res.status(500).json({ 
-      error: 'Error al registrar verificación', 
-      details: err.message 
-    })
+    return handleControllerError(err, res, 'registrarVerificacionInventario', 'Error al registrar verificación');
   }
 }
 
@@ -1664,10 +1669,7 @@ export async function consultarHistorialVerificaciones(req, res) {
     })
   } catch (err) {
     logger.error('Error al consultar historial de verificaciones', { error: err.message, stack: err.stack })
-    return res.status(500).json({
-      error: 'Error al consultar historial',
-      details: err.message
-    })
+    return handleControllerError(err, res, 'consultarHistorialVerificaciones', 'Error al consultar historial');
   }
 }
 
@@ -1732,10 +1734,7 @@ export async function obtenerHistorialMovimientos(req, res) {
     })
   } catch (err) {
     logger.error('Error al obtener historial de movimientos', { error: err.message, stack: err.stack })
-    return res.status(500).json({
-      error: 'Error al obtener historial de movimientos',
-      details: err.message
-    })
+    return handleControllerError(err, res, 'obtenerHistorialMovimientos', 'Error al obtener historial de movimientos');
   }
 }
 
@@ -1807,10 +1806,7 @@ export async function obtenerHistorialEquipo(req, res) {
     })
   } catch (err) {
     logger.error('Error al obtener historial del equipo', { error: err.message, stack: err.stack })
-    return res.status(500).json({
-      error: 'Error al obtener historial del equipo',
-      details: err.message
-    })
+    return handleControllerError(err, res, 'obtenerHistorialEquipo', 'Error al obtener historial del equipo');
   }
 }
 
@@ -1951,10 +1947,7 @@ export async function actualizarCuentadantePrincipal(req, res) {
     })
   } catch (err) {
     logger.error('Error al actualizar cuentadante principal', { error: err.message, stack: err.stack })
-    return res.status(500).json({
-      error: 'Error al actualizar el cuentadante principal',
-      details: err.message
-    })
+    return handleControllerError(err, res, 'actualizarCuentadantePrincipal', 'Error al actualizar el cuentadante principal');
   }
 }
 
@@ -2006,10 +1999,7 @@ export async function obtenerCuentadantePrincipal(req, res) {
     })
   } catch (err) {
     logger.error('Error al obtener cuentadante principal', { error: err.message, stack: err.stack })
-    return res.status(500).json({
-      error: 'Error al obtener el cuentadante principal',
-      details: err.message
-    })
+    return handleControllerError(err, res, 'obtenerCuentadantePrincipal', 'Error al obtener el cuentadante principal');
   }
 }
 
@@ -2064,9 +2054,6 @@ export async function buscarCuentadantePorDocumento(req, res) {
     // Obtener inventario del cuentadante
     // OPTIMIZACIÓN: Separar consultas para evitar GROUP BY costoso con múltiples JOINs
     // Primero obtener equipos básicos
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/4fca1e6c-7d65-41f5-87f3-c0784e21a846',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'equiposController.js:inventario',message:'Antes consulta inventario',data:{id_cuentadante:cuentadante.id_usuario},timestamp:Date.now(),hypothesisId:'B'})}).catch(()=>{});
-    // #endregion
     const [inventario] = await defaultDb.execute(
       `SELECT 
         e.codigo_equipo,
@@ -2094,9 +2081,6 @@ export async function buscarCuentadantePorDocumento(req, res) {
     if (inventario.length > 0) {
       const codigosEquipos = inventario.map(e => e.codigo_equipo);
       const placeholders = codigosEquipos.map(() => '?').join(',');
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/4fca1e6c-7d65-41f5-87f3-c0784e21a846',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'equiposController.js:conteos',message:'Antes consulta conteos',data:{numEquipos:codigosEquipos.length},timestamp:Date.now(),hypothesisId:'A'})}).catch(()=>{});
-      // #endregion
       const [conteos] = await defaultDb.execute(
         `SELECT 
           e.codigo_equipo,
@@ -2126,9 +2110,6 @@ export async function buscarCuentadantePorDocumento(req, res) {
     }
 
     // Obtener estadísticas del inventario
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/4fca1e6c-7d65-41f5-87f3-c0784e21a846',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'equiposController.js:estadisticas',message:'Antes consulta estadisticas',data:{},timestamp:Date.now(),hypothesisId:'D'})}).catch(()=>{});
-    // #endregion
     const [[estadisticas]] = await defaultDb.execute(
       `SELECT 
         COUNT(*) AS total_equipos,
@@ -2164,14 +2145,8 @@ export async function buscarCuentadantePorDocumento(req, res) {
       }
     })
   } catch (err) {
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/4fca1e6c-7d65-41f5-87f3-c0784e21a846',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'equiposController.js:catch buscarCuentadante',message:'Error capturado',data:{errorMessage:err.message},timestamp:Date.now(),hypothesisId:'A'})}).catch(()=>{});
-    // #endregion
     logger.error('Error al buscar cuentadante por documento', { error: err.message, stack: err.stack })
-    return res.status(500).json({
-      error: 'Error al buscar cuentadante',
-      details: err.message
-    })
+    return handleControllerError(err, res, 'buscarCuentadantePorDocumento', 'Error al buscar cuentadante');
   }
 }
 
@@ -2186,10 +2161,7 @@ export async function listarCategorias(req, res) {
     return res.json(rows)
   } catch (err) {
     logger.error('Error al listar categorías', { error: err.message, stack: err.stack })
-    return res.status(500).json({
-      error: 'Error al listar categorías',
-      detalle: err.message
-    })
+    return handleControllerError(err, res, 'listarCategorias', 'Error al listar categorías');
   }
 }
 
@@ -2249,10 +2221,7 @@ export async function crearCategoria(req, res) {
       })
     }
 
-    return res.status(500).json({
-      error: 'Error al crear categoría',
-      detalle: err.message
-    })
+    return handleControllerError(err, res, 'crearCategoria', 'Error al crear categoría');
   }
 }
 
@@ -2354,10 +2323,7 @@ export async function actualizarCategoria(req, res) {
       })
     }
 
-    return res.status(500).json({
-      error: 'Error al actualizar categoría',
-      detalle: err.message
-    })
+    return handleControllerError(err, res, 'actualizarCategoria', 'Error al actualizar categoría');
   }
 }
 
@@ -2423,10 +2389,7 @@ export async function eliminarCategoria(req, res) {
       })
     }
 
-    return res.status(500).json({
-      error: 'Error al eliminar categoría',
-      detalle: err.message
-    })
+    return handleControllerError(err, res, 'eliminarCategoria', 'Error al eliminar categoría');
   }
 }
 
@@ -2515,10 +2478,7 @@ export async function registrarInicioUso(req, res) {
     });
   } catch (err) {
     logger.error('Error al registrar inicio de uso', { error: err.message, stack: err.stack });
-    return res.status(500).json({
-      error: 'Error al registrar inicio de uso',
-      detalle: err.message
-    });
+    return handleControllerError(err, res, 'registrarInicioUso', 'Error al registrar inicio de uso');
   }
 }
 
@@ -2594,10 +2554,7 @@ export async function registrarFinUso(req, res) {
     });
   } catch (err) {
     logger.error('Error al registrar fin de uso', { error: err.message, stack: err.stack });
-    return res.status(500).json({
-      error: 'Error al registrar fin de uso',
-      detalle: err.message
-    });
+    return handleControllerError(err, res, 'registrarFinUso', 'Error al registrar fin de uso');
   }
 }
 
@@ -2725,9 +2682,10 @@ export async function consultarHistorialUso(req, res) {
         query: query.substring(0, 300),
         params
       });
+      // El detalle técnico ya quedó en el log anterior; al usuario no se le expone
       return res.status(500).json({
-        error: 'Error interno: desajuste de parámetros en la consulta',
-        detalle: `Se esperaban ${placeholderCount} parámetros pero se recibieron ${params.length}`
+        error: 'No se pudo consultar el historial de uso. Inténtalo de nuevo.',
+        userMessage: 'No se pudo consultar el historial de uso. Inténtalo de nuevo.'
       });
     }
 
@@ -2804,11 +2762,7 @@ export async function consultarHistorialUso(req, res) {
       });
     }
     
-    return res.status(500).json({
-      error: 'Error al consultar historial de uso',
-      detalle: err.message,
-      code: err.code
-    });
+    return handleControllerError(err, res, 'consultarHistorialUso', 'No se pudo consultar el historial de uso');
   }
 }
 
@@ -2891,10 +2845,7 @@ export async function obtenerHistorialEquipoUso(req, res) {
     });
   } catch (err) {
     logger.error('Error al obtener historial del equipo', { error: err.message, stack: err.stack });
-    return res.status(500).json({
-      error: 'Error al obtener historial del equipo',
-      detalle: err.message
-    });
+    return handleControllerError(err, res, 'obtenerHistorialEquipoUso', 'Error al obtener historial del equipo');
   }
 }
 
@@ -2954,10 +2905,7 @@ export async function obtenerSesionesActivas(req, res) {
     });
   } catch (err) {
     logger.error('Error al obtener sesiones activas', { error: err.message, stack: err.stack });
-    return res.status(500).json({
-      error: 'Error al obtener sesiones activas',
-      detalle: err.message
-    });
+    return handleControllerError(err, res, 'obtenerSesionesActivas', 'Error al obtener sesiones activas');
   }
 }
 
@@ -4043,10 +3991,17 @@ export async function registrarUsoEquipoExterno(req, res) {
       stack: err.stack,
       body: req.body 
     });
-    return res.status(500).json({
+    const errorTraducido = translateDbError(err);
+    const esErrorDeNegocio = errorTraducido instanceof AppError && errorTraducido.isOperational;
+    const mensajeUsuario = esErrorDeNegocio
+      ? errorTraducido.message
+      : 'No se pudo completar la verificación. Inténtalo de nuevo.';
+
+    return res.status(esErrorDeNegocio ? errorTraducido.statusCode : 500).json({
       success: false,
-      error: 'Error en la verificación de ambiente o asignación de uso',
-      message: 'Ocurrió un error interno. Por favor intenta nuevamente más tarde.',
+      error: mensajeUsuario,
+      userMessage: mensajeUsuario,
+      message: mensajeUsuario,
       detalle: process.env.NODE_ENV === 'development' ? err.message : undefined
     });
   }

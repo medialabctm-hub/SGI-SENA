@@ -1,5 +1,6 @@
 import defaultDb from '../config/dbconfig.js';
 import { logger } from '../utils/logger.js';
+import { handleControllerError } from '../utils/controllerHelpers.js';
 import {
   expandirAsignacionesPorFechas,
   convertirNombresDiasANumeros,
@@ -61,7 +62,7 @@ export async function listarAmbientes(req, res) {
     return res.json(rows);
   } catch (err) {
     logger.error('Error al listar ambientes', { error: err.message, stack: err.stack });
-    return res.status(500).json({ error: 'Error al listar ambientes', detalle: err.message });
+    return handleControllerError(err, res, 'listarAmbientes', 'Error al listar ambientes');
   }
 }
 
@@ -199,7 +200,7 @@ export async function obtenerAmbiente(req, res) {
     });
   } catch (err) {
     logger.error('Error al obtener ambiente', { error: err.message, stack: err.stack });
-    return res.status(500).json({ error: 'Error al obtener el ambiente', detalle: err.message });
+    return handleControllerError(err, res, 'obtenerAmbiente', 'Error al obtener el ambiente');
   }
 }
 
@@ -356,7 +357,7 @@ export async function crearAmbiente(req, res) {
     if (err.code === 'ER_DUP_ENTRY') {
       return res.status(409).json({ error: 'El código de ambiente ya existe' });
     }
-    return res.status(500).json({ error: 'Error al crear el ambiente', detalle: err.message });
+    return handleControllerError(err, res, 'crearAmbiente', 'Error al crear el ambiente');
   }
 }
 
@@ -464,7 +465,7 @@ export async function actualizarAmbiente(req, res) {
     if (err.code === 'ER_DUP_ENTRY') {
       return res.status(409).json({ error: 'El código de ambiente ya está en uso' });
     }
-    return res.status(500).json({ error: 'Error al actualizar el ambiente', detalle: err.message });
+    return handleControllerError(err, res, 'actualizarAmbiente', 'Error al actualizar el ambiente');
   }
 }
 
@@ -544,7 +545,7 @@ export async function eliminarAmbiente(req, res) {
     });
   } catch (err) {
     logger.error('Error al eliminar ambiente', { error: err.message, stack: err.stack });
-    return res.status(500).json({ error: 'Error al eliminar el ambiente', detalle: err.message });
+    return handleControllerError(err, res, 'eliminarAmbiente', 'Error al eliminar el ambiente');
   }
 }
 
@@ -553,9 +554,9 @@ export async function listarAmbientesActivos(req, res) {
     const [rows] = await defaultDb.execute(
       'SELECT id_ambiente, nombre_ambiente, codigo_ambiente FROM Ambientes WHERE estado_ambiente = "Activo" ORDER BY codigo_ambiente ASC'
     );
-    res.json(rows);
+    return res.json(rows);
   } catch (err) {
-    res.status(500).json({ error: 'Error al obtener ambientes', detalle: err.message });
+    return handleControllerError(err, res, 'listarAmbientesActivos', 'Error al obtener ambientes');
   }
 }
 
@@ -751,10 +752,7 @@ export async function asignarAmbienteInstructor(req, res) {
     });
   } catch (err) {
     logger.error('Error al asignar ambiente a instructor', { error: err.message, stack: err.stack });
-    return res.status(500).json({
-      error: 'Error al asignar ambiente',
-      detalle: err.message
-    });
+    return handleControllerError(err, res, 'asignarAmbienteInstructor', 'Error al asignar ambiente');
   }
 }
 
@@ -798,10 +796,7 @@ export async function desasignarAmbienteInstructor(req, res) {
     });
   } catch (err) {
     logger.error('Error al desasignar ambiente', { error: err.message, stack: err.stack });
-    return res.status(500).json({
-      error: 'Error al desasignar ambiente',
-      detalle: err.message
-    });
+    return handleControllerError(err, res, 'desasignarAmbienteInstructor', 'Error al desasignar ambiente');
   }
 }
 
@@ -898,10 +893,7 @@ export async function listarAsignacionesAmbientes(req, res) {
     return res.json(rowsFormateados);
   } catch (err) {
     logger.error('Error al listar asignaciones de ambientes', { error: err.message, stack: err.stack });
-    return res.status(500).json({
-      error: 'Error al listar asignaciones',
-      detalle: err.message
-    });
+    return handleControllerError(err, res, 'listarAsignacionesAmbientes', 'Error al listar asignaciones');
   }
 }
 
@@ -1013,10 +1005,7 @@ export async function obtenerInstructoresAmbiente(req, res) {
     return res.json(instructoresConInfo);
   } catch (err) {
     logger.error('Error al obtener instructores del ambiente', { error: err.message, stack: err.stack });
-    return res.status(500).json({
-      error: 'Error al obtener instructores del ambiente',
-      detalle: err.message
-    });
+    return handleControllerError(err, res, 'obtenerInstructoresAmbiente', 'Error al obtener instructores del ambiente');
   }
 }
 
@@ -1153,10 +1142,7 @@ export async function cambiarInstructorACuentadanteSecundario(req, res) {
     });
   } catch (err) {
     logger.error('Error al cambiar instructor a cuentadante secundario', { error: err.message, stack: err.stack });
-    return res.status(500).json({
-      error: 'Error al cambiar instructor a cuentadante secundario',
-      detalle: err.message
-    });
+    return handleControllerError(err, res, 'cambiarInstructorACuentadanteSecundario', 'Error al cambiar instructor a cuentadante secundario');
   }
 }
 

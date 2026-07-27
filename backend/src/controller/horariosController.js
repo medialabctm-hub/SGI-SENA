@@ -3,6 +3,7 @@ import multer from 'multer';
 import xlsx from 'xlsx';
 import { crearClase } from './clasesController.js';
 import { logger } from '../utils/logger.js';
+import { handleControllerError } from '../utils/controllerHelpers.js';
 
 /**
  * Mapeo de días de la semana en español a números (0=Domingo, 1=Lunes, etc.)
@@ -477,10 +478,7 @@ export async function importarHorariosExcel(req, res) {
     }
   } catch (err) {
     logger.error('Error al importar horarios', { error: err.message, stack: err.stack });
-    return res.status(500).json({
-      error: 'Error al importar horarios',
-      detalle: err.message
-    });
+    return handleControllerError(err, res, 'importarHorariosExcel', 'Error al importar horarios');
   }
 }
 
@@ -526,10 +524,7 @@ export async function descargarPlantillaHorarios(req, res) {
     res.send(buffer);
   } catch (err) {
     logger.error('Error al generar plantilla', { error: err.message, stack: err.stack });
-    return res.status(500).json({
-      error: 'Error al generar plantilla',
-      detalle: err.message
-    });
+    return handleControllerError(err, res, 'descargarPlantillaHorarios', 'Error al generar plantilla');
   }
 }
 

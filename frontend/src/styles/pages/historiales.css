@@ -897,6 +897,17 @@
   margin-right: 8px;
 }
 
+/* Texto auxiliar del destinatario de la autorización (derivado del equipo) */
+.autorizaciones-destinatario-hint {
+  color: var(--muted);
+  font-size: 0.9rem;
+  margin: 0;
+  padding: 10px 12px;
+  background: var(--neutral-50, #f8f9fa);
+  border: 1px dashed var(--neutral-200, #e9ecef);
+  border-radius: 8px;
+}
+
 .autorizaciones-gestion-toolbar {
   margin-bottom: 1rem;
 }

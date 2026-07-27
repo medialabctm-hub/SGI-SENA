@@ -3,6 +3,7 @@ import Header from '../components/Header'
 import Sidebar from '../components/Sidebar'
 import Toast from '../components/Toast'
 import { FiPackage, FiInbox } from 'react-icons/fi'
+import { parseApiResponse, buildErrorMessage } from '../utils/api'
 import { useSocket } from '../contexts/SocketContext'
 import '../styles/pages/equipos.css'
 import '../styles/misEquipos.css'
@@ -62,19 +63,11 @@ export default function MisEquipos() {
       const res = await fetch('/api/equipos/mis-equipos/asignados', {
         headers: { Authorization: `Bearer ${token}` }
       })
-
-      if (res.ok) {
-        const data = await res.json()
-        setEquipos(data)
-      } else {
-        const error = await res.json()
-        setToast({ 
-          message: error.error || 'Error al cargar equipos asignados', 
-          type: 'error' 
-        })
-      }
+      const data = await parseApiResponse(res, 'No se pudieron cargar tus equipos habilitados')
+      setEquipos(Array.isArray(data) ? data : [])
     } catch (err) {
-      setToast({ message: 'Error de conexión con el servidor', type: 'error' })
+      setToast({ message: buildErrorMessage(err, 'No se pudieron cargar tus equipos habilitados'), type: 'error' })
+      setEquipos([])
     } finally {
       setLoading(false)
     }
@@ -121,9 +114,8 @@ export default function MisEquipos() {
                   <tr>
                     <th>Código Inventario</th>
                     <th>Tipo</th>
-                    <th>Marca</th>
                     <th>Modelo</th>
-                    <th>N° Serie</th>
+                    <th>Consecutivo</th>
                     <th>Estado</th>
                     <th>Ambiente</th>
                     <th>Responsabilidad</th>
@@ -136,11 +128,10 @@ export default function MisEquipos() {
                 <tbody>
                   {equipos.map(eq => (
                     <tr key={eq.codigo_equipo}>
-                      <td>{eq.codigo_inventario}</td>
+                      <td>{eq.codigo_inventario || '-'}</td>
                       <td>{eq.tipo}</td>
-                      <td>{eq.marca}</td>
-                      <td>{eq.modelo}</td>
-                      <td>{eq.consecutivo}</td>
+                      <td>{eq.modelo || '-'}</td>
+                      <td>{eq.consecutivo || '-'}</td>
                       <td>
                         <span className={`badge ${
                           eq.estado_fisico === 'Nuevo' ? 'badge-success' :

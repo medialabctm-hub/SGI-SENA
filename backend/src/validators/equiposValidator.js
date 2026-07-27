@@ -146,7 +146,12 @@ export const solicitudAutorizacionMovimientoSchema = z.object({
   codigo_equipo: z.union([z.number().int().positive(), z.string().transform(v => (v ? parseInt(v, 10) : 0))]),
   id_ambiente_destino: z.union([z.number().int().positive(), z.string().transform(v => (v ? parseInt(v, 10) : 0))]),
   motivo: z.string().min(1, 'El motivo es obligatorio').max(2000),
-  id_autorizador: z.union([z.number().int().positive(), z.string().transform(v => (v ? parseInt(v, 10) : 0))]),
+  // Opcional y IGNORADO: el destinatario se deriva del equipo en el backend
+  // (resolverAutorizador). Se acepta solo para no romper clientes antiguos.
+  id_autorizador: z.union([
+    z.number().int().positive(),
+    z.string().transform(v => (v ? parseInt(v, 10) : 0)),
+  ]).optional().nullable(),
 });
 
 export const crearCategoriaSchema = z.object({

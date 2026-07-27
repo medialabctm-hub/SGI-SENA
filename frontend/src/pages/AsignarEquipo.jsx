@@ -618,7 +618,7 @@ export default function AsignarEquipo() {
                           <td>{asig.id_responsable}</td>
                           <td>
                             <div>
-                              <strong>{asig.equipo_tipo} {asig.equipo_marca} {asig.equipo_modelo}</strong>
+                              <strong>{[asig.equipo_tipo, asig.equipo_modelo].filter(Boolean).join(' ')}</strong>
                               <div className="asignar-equipo-equipo-info">
                                 Código: {asig.codigo_inventario || asig.codigo_equipo}
                                 {asig.consecutivo && <span> | Consecutivo: {asig.consecutivo}</span>}
@@ -654,7 +654,7 @@ export default function AsignarEquipo() {
                               className="btn danger asignar-equipo-delete-btn"
                               onClick={() => confirmDelete(
                                 asig.id_responsable,
-                                `la habilitación del equipo "${asig.equipo_tipo} ${asig.equipo_marca} ${asig.equipo_modelo}" a "${asig.usuario_nombre}"`
+                                `la habilitación del equipo "${[asig.equipo_tipo, asig.equipo_modelo].filter(Boolean).join(' ')}" a "${asig.usuario_nombre}"`
                               )}
                               disabled={loadingAsignaciones}
                             >

@@ -3,6 +3,7 @@ import { createForUsers } from '../services/notificationService.js'
 import { logger } from '../utils/logger.js'
 import { obtenerEquipoPorCodigo } from '../utils/sqlQueries.js'
 import PDFDocument from 'pdfkit'
+import { handleControllerError } from '../utils/controllerHelpers.js';
 
 /**
  * Crear un nuevo reporte
@@ -119,7 +120,7 @@ export async function crearReporte(req, res) {
     })
   } catch (err) {
     logger.error('Error al crear reporte', { error: err.message, stack: err.stack })
-    return res.status(500).json({ error: 'Error al crear el reporte', details: err.message })
+    return handleControllerError(err, res, 'crearReporte', 'Error al crear el reporte');
   }
 }
 
@@ -179,7 +180,7 @@ export async function listarReportes(req, res) {
     return res.json(rows)
   } catch (err) {
     logger.error('Error al listar reportes', { error: err.message, stack: err.stack })
-    return res.status(500).json({ error: 'Error al obtener reportes', details: err.message })
+    return handleControllerError(err, res, 'listarReportes', 'Error al obtener reportes');
   }
 }
 
@@ -244,7 +245,7 @@ export async function obtenerReportePorId(req, res) {
     return res.json(reporte)
   } catch (err) {
     logger.error('Error al obtener reporte', { error: err.message, stack: err.stack })
-    return res.status(500).json({ error: 'Error al obtener detalle del reporte', details: err.message })
+    return handleControllerError(err, res, 'obtenerReportePorId', 'Error al obtener detalle del reporte');
   }
 }
 
@@ -327,7 +328,7 @@ export async function actualizarReporte(req, res) {
     })
   } catch (err) {
     logger.error('Error al actualizar reporte', { error: err.message, stack: err.stack })
-    return res.status(500).json({ error: 'Error al actualizar el reporte', details: err.message })
+    return handleControllerError(err, res, 'actualizarReporte', 'Error al actualizar el reporte');
   }
 }
 
@@ -377,7 +378,7 @@ export async function eliminarReporte(req, res) {
     })
   } catch (err) {
     logger.error('Error al eliminar reporte', { error: err.message, stack: err.stack })
-    return res.status(500).json({ error: 'Error al eliminar el reporte', details: err.message })
+    return handleControllerError(err, res, 'eliminarReporte', 'Error al eliminar el reporte');
   }
 }
 
@@ -747,10 +748,7 @@ export async function generarReportePDF(req, res) {
   } catch (err) {
     logger.error('Error al generar reporte PDF', { error: err.message, stack: err.stack });
     if (!res.headersSent) {
-      return res.status(500).json({
-        error: 'Error al generar reporte PDF',
-        detalle: err.message
-      });
+      return handleControllerError(err, res, 'generarReportePDF', 'No se pudo generar el reporte en PDF');
     }
   }
 }
