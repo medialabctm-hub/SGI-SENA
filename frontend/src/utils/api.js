@@ -4,6 +4,10 @@ export class ApiError extends Error {
     this.name = 'ApiError';
     this.status = status;
     this.payload = payload;
+    // Mensaje que el backend marcó como apto para mostrar tal cual al usuario.
+    // Lo emiten errorHandler y handleControllerError solo para errores de dominio
+    // controlados, nunca para fallos técnicos inesperados.
+    this.userMessage = payload?.userMessage || null;
   }
 }
 
@@ -18,6 +22,27 @@ const extractJson = async (response) => {
 };
 
 /**
+ * Patrones que delatan un detalle de implementación del backend.
+ * Un mensaje que los contenga nunca se muestra al usuario.
+ */
+const TECHNICAL_PATTERNS = [
+  /exception/i,
+  /stack/i,
+  /\btrace\b/i,
+  /\bsql\b/i,
+  /database/i,
+  /\bquery\b/i,
+  /undefined/i,
+  /cannot read/i,
+  /typeerror/i,
+  /referenceerror/i,
+  /constraint/i,
+  /foreign key/i,
+  /\bER_[A-Z_]+/,
+  /at row \d+/i,
+];
+
+/**
  * Mapea errores técnicos a mensajes amigables para el usuario
  * No revela información sensible del backend
  */
@@ -27,7 +52,17 @@ const getUserFriendlyError = (error, status, originalMessage) => {
     return 'No pudimos conectar con el servidor. Verifica tu conexión a internet';
   }
 
-  // Errores del servidor (500, 502, 503, 504) - NO revelar detalles técnicos
+  // El backend marcó explícitamente este mensaje como apto para el usuario:
+  // es una regla de negocio, no un detalle técnico. Se muestra tal cual.
+  // Sin esto, el motivo real ("tiene equipos asociados") se perdía y el usuario
+  // solo veía un error de servidor genérico.
+  if (error?.userMessage) {
+    return error.userMessage;
+  }
+
+  // Errores del servidor (500, 502, 504) - NO revelar detalles técnicos
+  // El 503 lo emite el backend cuando la base de datos está ocupada o caída,
+  // siempre con userMessage; si llega sin él, se usa el genérico.
   if (status >= 500) {
     return 'Ocurrió un problema en el servidor. Por favor intenta de nuevo más tarde';
   }
@@ -64,7 +99,7 @@ const getUserFriendlyError = (error, status, originalMessage) => {
   // Recurso no encontrado: mostrar mensaje del backend si es amigable (ej. aprendiz no existe)
   if (status === 404) {
     const msg = (originalMessage || '').trim();
-    if (msg.length > 0 && msg.length < 120 && !/error|exception|sql|query|undefined/i.test(msg)) {
+    if (msg.length > 0 && msg.length <= 300 && !TECHNICAL_PATTERNS.some(p => p.test(msg))) {
       return msg;
     }
     return 'No se encontró el recurso solicitado';
@@ -75,24 +110,10 @@ const getUserFriendlyError = (error, status, originalMessage) => {
     // Si el mensaje original es amigable y no técnico, usarlo
     const message = originalMessage || error?.message || '';
     
-    // Lista de mensajes técnicos que NO deben mostrarse
-    const technicalPatterns = [
-      /error/i,
-      /exception/i,
-      /stack/i,
-      /trace/i,
-      /sql/i,
-      /database/i,
-      /query/i,
-      /undefined/i,
-      /null/i,
-      /cannot read/i,
-      /typeerror/i,
-      /referenceerror/i,
-      /\d{3}/, // Códigos HTTP
-      /code \d+/i,
-      /status \d+/i,
-    ];
+    // Patrones que delatan un detalle de implementación y NO deben mostrarse.
+    // Se excluyeron a propósito /error/i, /null/i y /\d{3}/: descartaban mensajes
+    // de negocio legítimos ("Error de validación", "No hay 100 cupos disponibles").
+    const technicalPatterns = TECHNICAL_PATTERNS;
 
     // Si el mensaje parece técnico, usar uno genérico
     if (technicalPatterns.some(pattern => pattern.test(message))) {
@@ -134,7 +155,7 @@ const getUserFriendlyError = (error, status, originalMessage) => {
   // Errores de conflicto (409): mostrar mensaje del backend si viene (ej. sesión activa, equipo no disponible)
   if (status === 409) {
     const msg = (originalMessage || '').trim();
-    if (msg.length > 0 && msg.length < 150 && !/error|exception|sql|query|undefined/i.test(msg)) {
+    if (msg.length > 0 && msg.length <= 300 && !TECHNICAL_PATTERNS.some(p => p.test(msg))) {
       return msg;
     }
     return 'Ya existe un registro con estos datos';
@@ -207,7 +228,9 @@ export const parseApiResponse = async (
       throw new ApiError(message, response.status, data);
     }
 
+    // userMessage tiene prioridad: es el texto que el backend redactó para el usuario
     const message =
+      data?.userMessage ||
       data?.error ||
       data?.message ||
       data?.detalle ||

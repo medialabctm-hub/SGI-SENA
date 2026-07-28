@@ -69,11 +69,6 @@ function normalizarBodyReportes(body) {
 }
 
 export const validate = (schema) => (req, res, next) => {
-  // #region agent log
-  try {
-    fetch('http://127.0.0.1:7242/ingest/4fca1e6c-7d65-41f5-87f3-c0784e21a846',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'reportesValidator.js:validate',message:'body antes de parse',data:{codigo_equipo:req.body?.codigo_equipo,codigo_equipo_type:typeof req.body?.codigo_equipo,codigo_equipo_length:typeof req.body?.codigo_equipo==='string'?req.body.codigo_equipo.length:null},timestamp:Date.now(),hypothesisId:'H1'})}).catch(()=>{});
-  } catch (_) {}
-  // #endregion
   try {
     const body = normalizarBodyReportes(req.body);
     const validated = schema.parse(body);

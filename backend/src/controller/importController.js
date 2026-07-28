@@ -4,6 +4,7 @@ import bcrypt from 'bcrypt';
 import emailService from '../services/emailService.js';
 import { ensureAprendicesTable } from './aprendicesController.js';
 import { logger } from '../utils/logger.js';
+import { handleControllerError } from '../utils/controllerHelpers.js';
 
 /**
  * Store en memoria para jobs de importación de equipos (progreso real).
@@ -525,11 +526,12 @@ export async function importarEquipos(req, res) {
     return res.status(202).json({ job_id: jobId });
   } catch (error) {
     logger.error('Error en importarEquipos', { error: error.message, stack: error.stack });
-    return res.status(500).json({ 
+    const mensajeUsuario = 'No se pudo completar la importación. Verifica el formato del archivo e inténtalo de nuevo.';
+    return res.status(500).json({
       success: false,
-      error: 'Error al procesar el archivo Excel', 
-      detalle: error.message,
-      message: 'No se pudo completar la importación. Verifique el formato del archivo e intente nuevamente.'
+      error: mensajeUsuario,
+      userMessage: mensajeUsuario,
+      message: mensajeUsuario
     });
   }
 }
@@ -569,7 +571,7 @@ export async function obtenerEstadoImportacionEquipos(req, res) {
     return res.status(200).json(payload);
   } catch (error) {
     logger.error('Error en obtenerEstadoImportacionEquipos', { error: error.message });
-    return res.status(500).json({ error: 'Error al obtener estado de la importación' });
+    return handleControllerError(error, res, 'obtenerEstadoImportacionEquipos', 'Error al obtener estado de la importación');
   }
 }
 
@@ -635,10 +637,7 @@ export async function obtenerDuplicadosPendientes(req, res) {
     });
   } catch (error) {
     logger.error('Error al obtener duplicados pendientes', { error: error.message, stack: error.stack });
-    return res.status(500).json({
-      error: 'Error al obtener duplicados pendientes',
-      detalle: error.message
-    });
+    return handleControllerError(error, res, 'obtenerDuplicadosPendientes', 'Error al obtener duplicados pendientes');
   }
 }
 
@@ -796,10 +795,7 @@ export async function procesarDuplicado(req, res) {
     }
   } catch (error) {
     logger.error('Error al procesar duplicado', { error: error.message, stack: error.stack });
-    return res.status(500).json({
-      error: 'Error al procesar duplicado',
-      detalle: error.message
-    });
+    return handleControllerError(error, res, 'procesarDuplicado', 'Error al procesar duplicado');
   }
 }
 
@@ -976,10 +972,7 @@ export async function procesarDuplicadosMasivo(req, res) {
     });
   } catch (error) {
     logger.error('Error al procesar duplicados masivo', { error: error.message, stack: error.stack });
-    return res.status(500).json({
-      error: 'Error al procesar duplicados',
-      detalle: error.message
-    });
+    return handleControllerError(error, res, 'procesarDuplicadosMasivo', 'Error al procesar duplicados');
   }
 }
 
@@ -1190,7 +1183,7 @@ export async function importarUsuarios(req, res) {
     });
   } catch (error) {
     logger.error('Error en importarUsuarios', { error: error.message, stack: error.stack });
-    return res.status(500).json({ error: 'Error al procesar el archivo Excel', detalle: error.message });
+    return handleControllerError(error, res, 'importarUsuarios', 'Error al procesar el archivo Excel');
   }
 }
 
@@ -1293,7 +1286,7 @@ export async function importarAprendices(req, res) {
     return res.json({ message: mensaje, resultados });
   } catch (error) {
     logger.error('Error en importarAprendices', { error: error.message, stack: error.stack });
-    return res.status(500).json({ error: 'Error al procesar el archivo Excel', detalle: error.message });
+    return handleControllerError(error, res, 'importarAprendices', 'Error al procesar el archivo Excel');
   }
 }
 

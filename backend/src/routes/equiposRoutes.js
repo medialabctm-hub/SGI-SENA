@@ -1,6 +1,6 @@
 import express from 'express';
 import { registrarEquipo, obtenerEquipoPorCodigo, listarEquipos, actualizarEquipo, eliminarEquipo, asignarEquipo, obtenerMisEquipos, listarAsignaciones, eliminarAsignacion, actualizarAsignacionEquipo, obtenerEquiposAmbientesInstructor, registrarVerificacionInventario, consultarHistorialVerificaciones, obtenerHistorialEquipo, obtenerHistorialMovimientos, actualizarCuentadantePrincipal, obtenerCuentadantePrincipal, buscarCuentadantePorDocumento, listarCategorias, crearCategoria, actualizarCategoria, eliminarCategoria, registrarInicioUso, registrarFinUso, consultarHistorialUso, obtenerHistorialEquipoUso, obtenerSesionesActivas, registrarUsoEquipoExterno } from '../controller/equiposController.js';
-import { crearSolicitud, listarPendientesParaAutorizador, contarPendientesParaAutorizador, listarHistorialAutorizador, listarMisSolicitudes, aprobarSolicitud, rechazarSolicitud, listarDisponiblesParaMovimiento } from '../controller/autorizacionMovimientoController.js';
+import { crearSolicitud, listarPendientesParaAutorizador, contarPendientesParaAutorizador, listarHistorialAutorizador, listarMisSolicitudes, aprobarSolicitud, rechazarSolicitud, listarDisponiblesParaMovimiento, obtenerAutorizadorParaEquipo } from '../controller/autorizacionMovimientoController.js';
 import { authenticate, optionalAuthenticate } from '../middleware/authMiddleware.js';
 import { requirePermission, requireAnyPermission, requireAnyPermissionIfAuthenticated } from '../middleware/authorization.js';
 import { PERMISSIONS } from '../config/permissions.js';
@@ -148,6 +148,13 @@ router.post('/autorizacion-movimiento',
   validate(solicitudAutorizacionMovimientoSchema),
   requireAnyPermission([PERMISSIONS.EQUIPOS.VIEW, PERMISSIONS.EQUIPOS.UPDATE]),
   crearSolicitud
+);
+// Consultar a quién se enviará la autorización de un equipo (destinatario derivado del equipo)
+router.get('/autorizacion-movimiento/autorizador',
+  authenticate,
+  readLimiter,
+  requireAnyPermission([PERMISSIONS.EQUIPOS.VIEW, PERMISSIONS.EQUIPOS.UPDATE]),
+  obtenerAutorizadorParaEquipo
 );
 router.get('/autorizacion-movimiento/pendientes/count',
   authenticate,

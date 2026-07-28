@@ -302,6 +302,59 @@ export class UserRepository extends BaseRepository {
   }
 
   /**
+   * Cuenta los registros que impiden eliminar un usuario.
+   *
+   * Solo se listan las relaciones cuya clave foránea es RESTRICT (sin ON DELETE
+   * CASCADE ni SET NULL): son las que hacen fallar el DELETE en la base de datos.
+   * Devolver este detalle permite explicar el motivo real al usuario en vez de
+   * dejar que la restricción de integridad se manifieste como un error de servidor.
+   *
+   * @param {number} userId - ID del usuario
+   * @returns {Promise<Array<{cantidad:number, etiqueta:string, etiquetaPlural:string}>>}
+   */
+  async getBlockingDependencies(userId) {
+    const relaciones = [
+      { tabla: 'Elementos', columna: 'registrado_por', etiqueta: 'equipo registrado', etiquetaPlural: 'equipos registrados' },
+      { tabla: 'Clases', columna: 'id_instructor', etiqueta: 'clase asignada', etiquetaPlural: 'clases asignadas' },
+      { tabla: 'Clases', columna: 'creado_por', etiqueta: 'clase creada', etiquetaPlural: 'clases creadas' },
+      { tabla: 'Responsables_Equipo', columna: 'asignado_por', etiqueta: 'habilitación de equipo otorgada', etiquetaPlural: 'habilitaciones de equipo otorgadas' },
+      { tabla: 'Responsabilidades_Ambiente', columna: 'creado_por', etiqueta: 'asignación de ambiente creada', etiquetaPlural: 'asignaciones de ambiente creadas' },
+      { tabla: 'Mantenimiento', columna: 'realizado_por', etiqueta: 'mantenimiento realizado', etiquetaPlural: 'mantenimientos realizados' },
+      { tabla: 'Mantenimiento', columna: 'id_usuario_tecnico', etiqueta: 'mantenimiento como técnico', etiquetaPlural: 'mantenimientos como técnico' },
+      { tabla: 'Novedades', columna: 'reportado_por', etiqueta: 'novedad reportada', etiquetaPlural: 'novedades reportadas' },
+      { tabla: 'Novedades', columna: 'resuelto_por', etiqueta: 'novedad resuelta', etiquetaPlural: 'novedades resueltas' },
+      { tabla: 'Historial_Equipos', columna: 'registrado_por', etiqueta: 'movimiento de equipo registrado', etiquetaPlural: 'movimientos de equipo registrados' },
+      { tabla: 'Estado_Equipo', columna: 'actualizado_por', etiqueta: 'cambio de estado de equipo', etiquetaPlural: 'cambios de estado de equipo' },
+      { tabla: 'Imagenes_Equipo', columna: 'subida_por', etiqueta: 'imagen de equipo subida', etiquetaPlural: 'imágenes de equipo subidas' },
+      { tabla: 'Imagenes_Ambiente', columna: 'subida_por', etiqueta: 'imagen de ambiente subida', etiquetaPlural: 'imágenes de ambiente subidas' },
+      { tabla: 'Auditoria', columna: 'usuario_accion', etiqueta: 'registro de auditoría', etiquetaPlural: 'registros de auditoría' },
+      { tabla: 'Nombres_Clases', columna: 'creado_por', etiqueta: 'nombre de clase creado', etiquetaPlural: 'nombres de clase creados' },
+    ];
+
+    const conteos = await Promise.all(
+      relaciones.map(async (relacion) => {
+        try {
+          const fila = await this.findOne(
+            `SELECT COUNT(*) AS total FROM ${relacion.tabla} WHERE ${relacion.columna} = ?`,
+            [userId]
+          );
+          return { ...relacion, cantidad: Number(fila?.total ?? 0) };
+        } catch (err) {
+          // Tabla o columna ausente en este despliegue: no puede bloquear el borrado
+          if (err?.code === 'ER_NO_SUCH_TABLE' || err?.code === 'ER_BAD_FIELD_ERROR') {
+            return { ...relacion, cantidad: 0 };
+          }
+          throw err;
+        }
+      })
+    );
+
+    return conteos
+      .filter((r) => r.cantidad > 0)
+      .map(({ cantidad, etiqueta, etiquetaPlural }) => ({ cantidad, etiqueta, etiquetaPlural }));
+  }
+
+  /**
    * Obtiene los equipos asignados a un usuario
    * @param {number} userId - ID del usuario
    * @returns {Promise<Array>} Lista de equipos asignados

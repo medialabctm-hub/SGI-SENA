@@ -1,5 +1,6 @@
 import defaultDb from '../config/dbconfig.js'
 import { createForUsers } from '../services/notificationService.js'
+import { handleControllerError } from '../utils/controllerHelpers.js';
 
 const MAX_LIMIT = 50
 
@@ -61,7 +62,7 @@ export async function listNotifications(req, res) {
         generatedAt: new Date().toISOString(),
       })
     }
-    return res.status(500).json({ error: 'Error al obtener notificaciones', details: err.message })
+    return handleControllerError(err, res, 'listNotifications', 'Error al obtener notificaciones');
   }
 }
 
@@ -91,7 +92,7 @@ export async function markNotificationRead(req, res) {
 
     return res.json({ ok: true })
   } catch (err) {
-    return res.status(500).json({ error: 'Error al actualizar notificación', details: err.message })
+    return handleControllerError(err, res, 'markNotificationRead', 'Error al actualizar notificación');
   }
 }
 
@@ -115,7 +116,7 @@ export async function markAllNotificationsRead(req, res) {
     if (err && err.code === 'ER_NO_SUCH_TABLE') {
       return res.json({ ok: true, updated: 0 })
     }
-    return res.status(500).json({ error: 'Error al actualizar notificaciones', details: err.message })
+    return handleControllerError(err, res, 'markAllNotificationsRead', 'Error al actualizar notificaciones');
   }
 }
 
@@ -157,6 +158,6 @@ export async function createNotification(req, res) {
     if (err && err.code === 'ER_NO_SUCH_TABLE') {
       return res.status(400).json({ error: 'Tabla Notificaciones no creada aún' })
     }
-    return res.status(500).json({ error: 'Error al crear la notificación', details: err.message })
+    return handleControllerError(err, res, 'createNotification', 'Error al crear la notificación');
   }
 }

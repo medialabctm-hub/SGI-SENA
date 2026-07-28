@@ -37,15 +37,16 @@ export default function AutorizacionesMovimiento() {
   // Sección solicitar
   const [equiposVerificados, setEquiposVerificados] = useState([])
   const [ambientes, setAmbientes] = useState([])
-  const [autorizadores, setAutorizadores] = useState([])
+  // Destinatario derivado del equipo (no lo elige el solicitante)
+  const [autorizador, setAutorizador] = useState(null)
+  const [cargandoAutorizador, setCargandoAutorizador] = useState(false)
   const [busquedaPlaca, setBusquedaPlaca] = useState('')
   const [mostrarResultadosPlaca, setMostrarResultadosPlaca] = useState(false)
   const [errores, setErrores] = useState({})
   const [form, setForm] = useState({
     codigo_equipo: '',
     id_ambiente_destino: '',
-    motivo: '',
-    id_autorizador: ''
+    motivo: ''
   })
 
   // Sección gestionar (pendientes / historial)
@@ -90,14 +91,43 @@ export default function AutorizacionesMovimiento() {
     const token = localStorage.getItem('token')
     Promise.all([
       fetch('/api/equipos?limit=5000', { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()).then(d => d.equipos || d || []).catch(() => []),
-      fetch('/api/ambientes/activos', { headers: { Authorization: `Bearer ${token}` } }).then(r => parseApiResponse(r, 'Ambientes')).then(d => (Array.isArray(d) ? d : [])).catch(() => []),
-      fetch('/api/auth/users', { headers: { Authorization: `Bearer ${token}` } }).then(r => parseApiResponse(r, 'Usuarios')).then(d => (Array.isArray(d) ? d : [])).catch(() => [])
-    ]).then(([equipos, ambs, users]) => {
+      fetch('/api/ambientes/activos', { headers: { Authorization: `Bearer ${token}` } }).then(r => parseApiResponse(r, 'Ambientes')).then(d => (Array.isArray(d) ? d : [])).catch(() => [])
+    ]).then(([equipos, ambs]) => {
       setEquiposVerificados((equipos || []).filter(e => e.status_verificacion === 'Verificado'))
       setAmbientes(ambs || [])
-      setAutorizadores((users || []).filter(u => u.nombre_rol === 'Administrador' || u.nombre_rol === 'Cuentadante'))
     }).catch(() => setToast({ message: 'Error al cargar datos', type: 'error' }))
   }, [user, puedeSolicitar])
+
+  // El destinatario de la autorización lo determina el backend a partir del equipo:
+  // es el cuentadante que lo tiene asignado, no un usuario elegido a mano.
+  useEffect(() => {
+    if (!form.codigo_equipo) {
+      setAutorizador(null)
+      return
+    }
+    let cancelado = false
+    setCargandoAutorizador(true)
+    setAutorizador(null)
+    const token = localStorage.getItem('token')
+    fetch(`/api/equipos/autorizacion-movimiento/autorizador?codigo_equipo=${encodeURIComponent(form.codigo_equipo)}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+      .then(r => parseApiResponse(r, 'No se pudo determinar el responsable del equipo'))
+      .then(data => {
+        if (cancelado) return
+        setAutorizador(data?.autorizador || null)
+        setErrores(prev => ({ ...prev, autorizador: '' }))
+      })
+      .catch(err => {
+        if (cancelado) return
+        setAutorizador(null)
+        setErrores(prev => ({ ...prev, autorizador: buildErrorMessage(err, 'No se pudo determinar el responsable del equipo') }))
+      })
+      .finally(() => {
+        if (!cancelado) setCargandoAutorizador(false)
+      })
+    return () => { cancelado = true }
+  }, [form.codigo_equipo])
 
   const equiposPorPlaca = useMemo(() => {
     const t = (busquedaPlaca || '').trim().toLowerCase()
@@ -134,7 +164,7 @@ export default function AutorizacionesMovimiento() {
     if (!form.codigo_equipo) nuevoErrores.codigo_equipo = 'Seleccione un equipo (busque por placa).'
     if (!form.id_ambiente_destino) nuevoErrores.id_ambiente_destino = 'Seleccione el ambiente destino.'
     if (!form.motivo?.trim()) nuevoErrores.motivo = 'El motivo es obligatorio.'
-    if (!form.id_autorizador) nuevoErrores.id_autorizador = 'Seleccione a quién solicitar la autorización.'
+    if (!autorizador) nuevoErrores.autorizador = 'No se pudo determinar el responsable del equipo. Verifique que el equipo tenga cuentadante asignado.'
     setErrores(nuevoErrores)
     if (Object.keys(nuevoErrores).length > 0) {
       setToast({ message: 'Complete todos los campos obligatorios marcados.', type: 'error' })
@@ -150,13 +180,13 @@ export default function AutorizacionesMovimiento() {
         body: JSON.stringify({
           codigo_equipo: Number(form.codigo_equipo),
           id_ambiente_destino: Number(form.id_ambiente_destino),
-          motivo: form.motivo.trim(),
-          id_autorizador: Number(form.id_autorizador)
+          motivo: form.motivo.trim()
         })
       })
       const data = await parseApiResponse(res, 'No se pudo crear la solicitud')
-      setToast({ message: data?.message || 'Solicitud creada. El autorizador deberá aprobarla o rechazarla.', type: 'success' })
-      setForm({ codigo_equipo: '', id_ambiente_destino: '', motivo: '', id_autorizador: '' })
+      setToast({ message: data?.message || 'Solicitud creada. El responsable del equipo deberá aprobarla o rechazarla.', type: 'success' })
+      setForm({ codigo_equipo: '', id_ambiente_destino: '', motivo: '' })
+      setAutorizador(null)
       setBusquedaPlaca('')
       setErrores({})
     } catch (err) {
@@ -387,15 +417,29 @@ export default function AutorizacionesMovimiento() {
                       Autorizador
                     </h3>
                     <div className="form-group">
-                      <label>Solicitar autorización a <span className="required">*</span></label>
-                      <CustomSelect
-                        name="id_autorizador"
-                        value={form.id_autorizador}
-                        onChange={e => { setForm({ ...form, id_autorizador: e.target.value }); setErrores(prev => ({ ...prev, id_autorizador: '' })) }}
-                        options={[{ value: '', label: 'Seleccionar autorizador' }, ...autorizadores.map(u => ({ value: String(u.id_usuario), label: `${u.nombre_usuario} (${u.nombre_rol})` }))]}
-                        placeholder="Seleccionar autorizador"
-                        error={errores.id_autorizador}
-                      />
+                      <label>Esta solicitud se enviará a</label>
+                      {!form.codigo_equipo ? (
+                        <p className="autorizaciones-destinatario-hint">
+                          Selecciona primero el equipo. La solicitud se envía al responsable de ese equipo.
+                        </p>
+                      ) : cargandoAutorizador ? (
+                        <p className="autorizaciones-destinatario-hint">Determinando el responsable del equipo...</p>
+                      ) : autorizador ? (
+                        <div className="equipo-found-card">
+                          <div className="equipo-found-header">
+                            <FiCheck size={20} color="#43a047" />
+                            <span>{autorizador.nombre_usuario}</span>
+                          </div>
+                          <div className="equipo-found-info">
+                            <div><strong>Rol:</strong> {autorizador.nombre_rol}</div>
+                            <div><strong>Motivo:</strong> {autorizador.motivo}</div>
+                          </div>
+                        </div>
+                      ) : (
+                        <p className="form-error">
+                          {errores.autorizador || 'No se pudo determinar el responsable de este equipo.'}
+                        </p>
+                      )}
                     </div>
                   </div>
                   <button type="submit" className="btn btn-verde" disabled={loadingSolicitud}>

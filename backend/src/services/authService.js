@@ -432,11 +432,31 @@ export class AuthService {
   }
 
   /**
-   * Elimina un usuario (borrado lógico)
+   * Elimina un usuario.
+   *
+   * Antes de intentar el borrado se comprueban las dependencias que la base de datos
+   * bloquearía por clave foránea. Así el usuario recibe el motivo concreto
+   * ("tiene 3 equipos registrados y 2 clases asignadas") en lugar de un error de
+   * servidor provocado por la restricción de integridad.
+   *
    * @param {number} userId - ID del usuario
    * @returns {Promise<Object>} Resultado de la eliminación
    */
   async deleteUser(userId) {
+    const dependencias = await this.userRepository.getBlockingDependencies(userId);
+
+    if (dependencias.length > 0) {
+      const detalle = dependencias
+        .map(({ cantidad, etiqueta, etiquetaPlural }) =>
+          `${cantidad} ${cantidad === 1 ? etiqueta : etiquetaPlural}`)
+        .join(', ');
+
+      throw new ConflictError(
+        `No se puede eliminar este usuario porque tiene ${detalle} en el sistema. ` +
+        `Reasigna o elimina esos registros antes de continuar.`
+      );
+    }
+
     const result = await this.userRepository.delete(userId);
 
     if (result.affectedRows === 0) {

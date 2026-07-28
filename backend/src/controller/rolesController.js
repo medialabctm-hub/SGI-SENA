@@ -1,5 +1,6 @@
 import defaultDb from '../config/dbconfig.js'
 import { PERMISSIONS } from '../config/permissions.js'
+import { handleControllerError } from '../utils/controllerHelpers.js';
 
 /**
  * Obtener todos los roles con sus permisos
@@ -62,10 +63,7 @@ export async function listarRoles(req, res) {
     })
   } catch (error) {
     console.error('Error al listar roles:', error)
-    return res.status(500).json({
-      error: 'Error al obtener roles',
-      details: error.message
-    })
+    return handleControllerError(error, res, 'listarRoles', 'Error al obtener roles');
   }
 }
 
@@ -111,10 +109,7 @@ export async function obtenerRol(req, res) {
     })
   } catch (error) {
     console.error('Error al obtener rol:', error)
-    return res.status(500).json({
-      error: 'Error al obtener el rol',
-      details: error.message
-    })
+    return handleControllerError(error, res, 'obtenerRol', 'Error al obtener el rol');
   }
 }
 
@@ -185,10 +180,7 @@ export async function crearRol(req, res) {
     })
   } catch (error) {
     console.error('Error al crear rol:', error)
-    return res.status(500).json({
-      error: 'Error al crear el rol',
-      details: error.message
-    })
+    return handleControllerError(error, res, 'crearRol', 'Error al crear el rol');
   }
 }
 
@@ -266,10 +258,7 @@ export async function actualizarRol(req, res) {
     })
   } catch (error) {
     console.error('Error al actualizar rol:', error)
-    return res.status(500).json({
-      error: 'Error al actualizar el rol',
-      details: error.message
-    })
+    return handleControllerError(error, res, 'actualizarRol', 'Error al actualizar el rol');
   }
 }
 
@@ -325,10 +314,7 @@ export async function eliminarRol(req, res) {
     })
   } catch (error) {
     console.error('Error al eliminar rol:', error)
-    return res.status(500).json({
-      error: 'Error al eliminar el rol',
-      details: error.message
-    })
+    return handleControllerError(error, res, 'eliminarRol', 'Error al eliminar el rol');
   }
 }
 
@@ -434,10 +420,7 @@ export async function actualizarPermisosRol(req, res) {
     })
   } catch (error) {
     console.error('Error al actualizar permisos:', error)
-    return res.status(500).json({
-      error: 'Error al actualizar permisos',
-      details: error.message
-    })
+    return handleControllerError(error, res, 'actualizarPermisosRol', 'Error al actualizar permisos');
   }
 }
 
@@ -514,10 +497,7 @@ export async function togglePermisoRol(req, res) {
     })
   } catch (error) {
     console.error('Error al toggle permiso:', error)
-    return res.status(500).json({
-      error: 'Error al actualizar el permiso',
-      details: error.message
-    })
+    return handleControllerError(error, res, 'togglePermisoRol', 'Error al actualizar el permiso');
   }
 }
 
@@ -546,10 +526,7 @@ export async function listarPermisos(req, res) {
     })
   } catch (error) {
     console.error('Error al listar permisos:', error)
-    return res.status(500).json({
-      error: 'Error al obtener permisos',
-      details: error.message
-    })
+    return handleControllerError(error, res, 'listarPermisos', 'Error al obtener permisos');
   }
 }
 

@@ -33,6 +33,7 @@ const mockUserRepository = {
   getAssignedEquipos: jest.fn(),
   update: jest.fn(),
   delete: jest.fn(),
+  getBlockingDependencies: jest.fn().mockResolvedValue([]),
   findOne: jest.fn(),
   db: {
     execute: jest.fn().mockResolvedValue([{ affectedRows: 1 }]),
@@ -480,14 +481,30 @@ describe('AuthService', () => {
   // ─── deleteUser ─────────────────────────────────────────────────────────────
   describe('deleteUser', () => {
     it('debe eliminar usuario correctamente', async () => {
+      mockUserRepository.getBlockingDependencies.mockResolvedValue([]);
       mockUserRepository.delete.mockResolvedValue({ affectedRows: 1 });
       const result = await authService.deleteUser(1);
       expect(result.message).toContain('eliminado');
     });
 
     it('debe lanzar NotFoundError si el usuario no existe', async () => {
+      mockUserRepository.getBlockingDependencies.mockResolvedValue([]);
       mockUserRepository.delete.mockResolvedValue({ affectedRows: 0 });
       await expect(authService.deleteUser(999)).rejects.toThrow(NotFoundError);
+    });
+
+    // ERR-02: el motivo real llega al usuario en vez de un error de servidor
+    it('debe explicar el motivo cuando el usuario tiene registros asociados', async () => {
+      mockUserRepository.getBlockingDependencies.mockResolvedValue([
+        { cantidad: 3, etiqueta: 'equipo registrado', etiquetaPlural: 'equipos registrados' },
+        { cantidad: 1, etiqueta: 'clase asignada', etiquetaPlural: 'clases asignadas' },
+      ]);
+
+      await expect(authService.deleteUser(5)).rejects.toThrow(ConflictError);
+      await expect(authService.deleteUser(5)).rejects.toThrow(/3 equipos registrados/);
+      await expect(authService.deleteUser(5)).rejects.toThrow(/1 clase asignada/);
+      // No se intenta el borrado si hay dependencias
+      expect(mockUserRepository.delete).not.toHaveBeenCalled();
     });
   });
 

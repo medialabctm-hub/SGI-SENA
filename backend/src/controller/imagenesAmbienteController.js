@@ -1,6 +1,7 @@
 import defaultDb from '../config/dbconfig.js';
 import { logger } from '../utils/logger.js';
 import { getImagePath, deleteImageFile } from '../middleware/uploadAmbienteMiddleware.js';
+import { handleControllerError } from '../utils/controllerHelpers.js';
 
 /**
  * Subir una o más imágenes para un ambiente
@@ -86,7 +87,7 @@ export async function subirImagenesAmbiente(req, res) {
       deleteImageFile(req.file.filename);
     }
 
-    return res.status(500).json({ error: 'Error al subir las imágenes', detalle: err.message });
+    return handleControllerError(err, res, 'subirImagenesAmbiente', 'Error al subir las imágenes');
   }
 }
 
@@ -118,7 +119,7 @@ export async function listarImagenesAmbiente(req, res) {
     return res.json(imagenes);
   } catch (err) {
     logger.error('Error al listar imágenes de ambiente', { error: err.message, stack: err.stack });
-    return res.status(500).json({ error: 'Error al listar las imágenes', detalle: err.message });
+    return handleControllerError(err, res, 'listarImagenesAmbiente', 'Error al listar las imágenes');
   }
 }
 
@@ -154,7 +155,7 @@ export async function obtenerImagenAmbiente(req, res) {
     return res.json(imagen);
   } catch (err) {
     logger.error('Error al obtener imagen de ambiente', { error: err.message, stack: err.stack });
-    return res.status(500).json({ error: 'Error al obtener la imagen', detalle: err.message });
+    return handleControllerError(err, res, 'obtenerImagenAmbiente', 'Error al obtener la imagen');
   }
 }
 
@@ -217,7 +218,7 @@ export async function actualizarImagenAmbiente(req, res) {
     return res.json({ message: 'Imagen actualizada correctamente' });
   } catch (err) {
     logger.error('Error al actualizar imagen de ambiente', { error: err.message, stack: err.stack });
-    return res.status(500).json({ error: 'Error al actualizar la imagen', detalle: err.message });
+    return handleControllerError(err, res, 'actualizarImagenAmbiente', 'Error al actualizar la imagen');
   }
 }
 
@@ -253,7 +254,7 @@ export async function marcarImagenPrincipal(req, res) {
     return res.json({ message: 'Imagen marcada como principal correctamente' });
   } catch (err) {
     logger.error('Error al marcar imagen como principal', { error: err.message, stack: err.stack });
-    return res.status(500).json({ error: 'Error al marcar la imagen como principal', detalle: err.message });
+    return handleControllerError(err, res, 'marcarImagenPrincipal', 'Error al marcar la imagen como principal');
   }
 }
 
@@ -289,7 +290,7 @@ export async function eliminarImagenAmbiente(req, res) {
     return res.json({ message: 'Imagen eliminada correctamente' });
   } catch (err) {
     logger.error('Error al eliminar imagen de ambiente', { error: err.message, stack: err.stack });
-    return res.status(500).json({ error: 'Error al eliminar la imagen', detalle: err.message });
+    return handleControllerError(err, res, 'eliminarImagenAmbiente', 'Error al eliminar la imagen');
   }
 }
 

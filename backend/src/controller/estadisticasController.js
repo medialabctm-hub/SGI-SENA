@@ -1,5 +1,6 @@
 import defaultDb from '../config/dbconfig.js';
 import { logger } from '../utils/logger.js';
+import { handleControllerError } from '../utils/controllerHelpers.js';
 
 /**
  * Obtener estadísticas generales del sistema
@@ -215,10 +216,7 @@ export async function obtenerEstadisticas(req, res) {
     });
   } catch (err) {
     logger.error('Error al obtener estadísticas de Administrador', { error: err.message, stack: err.stack });
-    return res.status(500).json({ 
-      error: 'Error al obtener estadísticas', 
-      details: err.message 
-    });
+    return handleControllerError(err, res, 'obtenerEstadisticas', 'Error al obtener estadísticas');
   }
 }
         
@@ -320,10 +318,7 @@ export async function obtenerEstadisticasInstructor(req, res) {
     });
     } catch (err) {
     logger.error('Error al obtener estadísticas de Instructor', { error: err.message, stack: err.stack });
-    return res.status(500).json({ 
-      error: 'Error al obtener estadísticas', 
-      details: err.message 
-    });
+    return handleControllerError(err, res, 'obtenerEstadisticasInstructor', 'Error al obtener estadísticas');
   }
 }
 
@@ -367,10 +362,7 @@ export async function obtenerEstadisticasCuentadante(req, res) {
     });
   } catch (err) {
     logger.error('Error al obtener estadísticas de Cuentadante', { error: err.message, stack: err.stack });
-    return res.status(500).json({ 
-      error: 'Error al obtener estadísticas', 
-      details: err.message 
-    });
+    return handleControllerError(err, res, 'obtenerEstadisticasCuentadante', 'Error al obtener estadísticas');
   }
 }
 

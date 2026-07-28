@@ -3,6 +3,7 @@ import { logger } from '../utils/logger.js';
 import schedulerService from '../services/schedulerService.js';
 import { obtenerFechasPorRangoYDias } from './horariosController.js';
 import { getColombiaDateTimeString, toColombiaDateTimeString } from '../utils/timezone.js';
+import { handleControllerError } from '../utils/controllerHelpers.js';
 
 /** Indica si la fecha y hora de inicio de clase ya pasaron (en zona Colombia). */
 function esFechaHoraPasada(fechaYYYYMMDD, horaInicioHHMMSS) {
@@ -396,7 +397,7 @@ export async function crearClase(req, res) {
     }
   } catch (err) {
     logger.error('Error al crear clase', { error: err.message, stack: err.stack });
-    return res.status(500).json({ error: 'Error al crear la clase', detalle: err.message });
+    return handleControllerError(err, res, 'crearClase', 'Error al crear la clase');
   }
 }
 
@@ -516,7 +517,7 @@ export async function listarClases(req, res) {
     });
   } catch (err) {
     logger.error('Error al listar clases', { error: err.message, stack: err.stack });
-    return res.status(500).json({ error: 'Error al listar clases', detalle: err.message });
+    return handleControllerError(err, res, 'listarClases', 'Error al listar clases');
   }
 }
 
@@ -586,7 +587,7 @@ export async function obtenerClase(req, res) {
     });
   } catch (err) {
     logger.error('Error al obtener clase', { error: err.message, stack: err.stack });
-    return res.status(500).json({ error: 'Error al obtener la clase', detalle: err.message });
+    return handleControllerError(err, res, 'obtenerClase', 'Error al obtener la clase');
   }
 }
 
@@ -714,7 +715,7 @@ export async function iniciarClase(req, res) {
     });
   } catch (err) {
     logger.error('Error al iniciar clase', { error: err.message, stack: err.stack });
-    return res.status(500).json({ error: 'Error al iniciar la clase', detalle: err.message });
+    return handleControllerError(err, res, 'iniciarClase', 'Error al iniciar la clase');
   }
 }
 
@@ -847,7 +848,7 @@ export async function finalizarClase(req, res) {
     });
   } catch (err) {
     logger.error('Error al finalizar clase', { error: err.message, stack: err.stack });
-    return res.status(500).json({ error: 'Error al finalizar la clase', detalle: err.message });
+    return handleControllerError(err, res, 'finalizarClase', 'Error al finalizar la clase');
   }
 }
 
@@ -926,7 +927,7 @@ export async function agregarParticipantes(req, res) {
     });
   } catch (err) {
     logger.error('Error al agregar participantes', { error: err.message, stack: err.stack });
-    return res.status(500).json({ error: 'Error al agregar participantes', detalle: err.message });
+    return handleControllerError(err, res, 'agregarParticipantes', 'Error al agregar participantes');
   }
 }
 
@@ -953,7 +954,7 @@ export async function obtenerResponsablesAmbiente(req, res) {
     return res.json(responsables);
   } catch (err) {
     logger.error('Error al obtener responsables', { error: err.message, stack: err.stack });
-    return res.status(500).json({ error: 'Error al obtener responsables del ambiente', detalle: err.message });
+    return handleControllerError(err, res, 'obtenerResponsablesAmbiente', 'Error al obtener responsables del ambiente');
   }
 }
 
@@ -1100,7 +1101,7 @@ export async function actualizarClase(req, res) {
     return res.json({ ok: true, message: 'Clase actualizada correctamente' });
   } catch (err) {
     logger.error('Error al actualizar clase', { error: err.message, stack: err.stack });
-    return res.status(500).json({ error: 'Error al actualizar la clase', detalle: err.message });
+    return handleControllerError(err, res, 'actualizarClase', 'Error al actualizar la clase');
   }
 }
 
@@ -1173,7 +1174,7 @@ export async function aceptarConsentimiento(req, res) {
     });
   } catch (err) {
     logger.error('Error al aceptar consentimiento', { error: err.message, stack: err.stack });
-    return res.status(500).json({ error: 'Error al aceptar consentimiento', detalle: err.message });
+    return handleControllerError(err, res, 'aceptarConsentimiento', 'Error al aceptar consentimiento');
   }
 }
 
@@ -1247,7 +1248,7 @@ export async function rechazarConsentimiento(req, res) {
     });
   } catch (err) {
     logger.error('Error al rechazar consentimiento', { error: err.message, stack: err.stack });
-    return res.status(500).json({ error: 'Error al rechazar consentimiento', detalle: err.message });
+    return handleControllerError(err, res, 'rechazarConsentimiento', 'Error al rechazar consentimiento');
   }
 }
 
@@ -1355,7 +1356,7 @@ export async function cancelarClase(req, res) {
     return res.json({ ok: true, message: 'Clase cancelada correctamente' });
   } catch (err) {
     logger.error('Error al cancelar clase', { error: err.message, stack: err.stack });
-    return res.status(500).json({ error: 'Error al cancelar la clase', detalle: err.message });
+    return handleControllerError(err, res, 'cancelarClase', 'Error al cancelar la clase');
   }
 }
 
@@ -1507,10 +1508,7 @@ export async function consultarResponsablesTiempoReal(req, res) {
     });
   } catch (err) {
     logger.error('Error al consultar responsables en tiempo real', { error: err.message, stack: err.stack });
-    return res.status(500).json({
-      error: 'Error al consultar responsables',
-      detalle: err.message
-    });
+    return handleControllerError(err, res, 'consultarResponsablesTiempoReal', 'Error al consultar responsables');
   }
 }
 
@@ -1539,10 +1537,7 @@ export async function sincronizarResponsabilidadesHorarios(req, res) {
     });
   } catch (err) {
     logger.error('Error al monitorear clases', { error: err.message, stack: err.stack });
-    return res.status(500).json({
-      error: 'Error al monitorear clases',
-      detalle: err.message
-    });
+    return handleControllerError(err, res, 'sincronizarResponsabilidadesHorarios', 'Error al monitorear clases');
   }
 }
 
@@ -1618,10 +1613,7 @@ export async function obtenerNombresClases(req, res) {
     });
   } catch (err) {
     logger.error('Error al obtener nombres de clases', { error: err.message, stack: err.stack });
-    return res.status(500).json({ 
-      error: 'Error al obtener nombres de clases', 
-      detalle: err.message 
-    });
+    return handleControllerError(err, res, 'obtenerNombresClases', 'Error al obtener nombres de clases');
   }
 }
 
@@ -1710,10 +1702,7 @@ export async function crearNombreClase(req, res) {
     });
   } catch (err) {
     logger.error('Error al crear nombre de clase', { error: err.message, stack: err.stack });
-    return res.status(500).json({ 
-      error: 'Error al guardar nombre de clase', 
-      detalle: err.message 
-    });
+    return handleControllerError(err, res, 'crearNombreClase', 'Error al guardar nombre de clase');
   }
 }
 

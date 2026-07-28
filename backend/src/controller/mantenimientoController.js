@@ -1,8 +1,9 @@
 import defaultDb from '../config/dbconfig.js'
 import { createForUsers, createForRole } from '../services/notificationService.js'
 import { logger } from '../utils/logger.js'
-import { 
-  obtenerEquipoPorCodigo, 
+import { handleControllerError } from '../utils/controllerHelpers.js';
+import {
+  obtenerEquipoPorCodigo,
   obtenerUsuarioActivo,
   deshabilitarAsignacionesActivas
 } from '../utils/sqlQueries.js'
@@ -249,7 +250,7 @@ export async function crearMantenimiento(req, res) {
     })
   } catch (err) {
     logger.error('Error al crear mantenimiento', { error: err.message, stack: err.stack })
-    return res.status(500).json({ error: 'Error al registrar el mantenimiento', details: err.message })
+    return handleControllerError(err, res, 'crearMantenimiento', 'Error al registrar el mantenimiento');
   }
 }
 
@@ -310,7 +311,7 @@ export async function listarMantenimientos(req, res) {
     return res.json(rows)
   } catch (err) {
     logger.error('Error al listar mantenimientos', { error: err.message, stack: err.stack })
-    return res.status(500).json({ error: 'Error al obtener mantenimientos', details: err.message })
+    return handleControllerError(err, res, 'listarMantenimientos', 'Error al obtener mantenimientos');
   }
 }
 
@@ -365,7 +366,7 @@ export async function obtenerMantenimientoPorId(req, res) {
     return res.json(mantenimiento)
   } catch (err) {
     logger.error('Error al obtener mantenimiento', { error: err.message, stack: err.stack })
-    return res.status(500).json({ error: 'Error al obtener detalle del mantenimiento', details: err.message })
+    return handleControllerError(err, res, 'obtenerMantenimientoPorId', 'Error al obtener detalle del mantenimiento');
   }
 }
 
@@ -425,7 +426,7 @@ export async function actualizarFechaProximo(req, res) {
     })
   } catch (err) {
     logger.error('Error al actualizar fecha_proximo', { error: err.message, stack: err.stack })
-    return res.status(500).json({ error: 'Error al actualizar la fecha del próximo mantenimiento', details: err.message })
+    return handleControllerError(err, res, 'actualizarFechaProximo', 'Error al actualizar la fecha del próximo mantenimiento');
   }
 }
 
@@ -485,7 +486,7 @@ export async function actualizarFechaMantenimiento(req, res) {
     })
   } catch (err) {
     logger.error('Error al actualizar fecha_mantenimiento', { error: err.message, stack: err.stack })
-    return res.status(500).json({ error: 'Error al actualizar la fecha de mantenimiento', details: err.message })
+    return handleControllerError(err, res, 'actualizarFechaMantenimiento', 'Error al actualizar la fecha de mantenimiento');
   }
 }
 
@@ -603,7 +604,7 @@ export async function actualizarEstadoMantenimiento(req, res) {
     })
   } catch (err) {
     logger.error('Error al actualizar estado de mantenimiento', { error: err.message, stack: err.stack })
-    return res.status(500).json({ error: 'Error al actualizar el estado del mantenimiento', details: err.message })
+    return handleControllerError(err, res, 'actualizarEstadoMantenimiento', 'Error al actualizar el estado del mantenimiento');
   }
 }
 
@@ -654,7 +655,7 @@ export async function eliminarMantenimiento(req, res) {
     })
   } catch (err) {
     logger.error('Error al eliminar mantenimiento', { error: err.message, stack: err.stack })
-    return res.status(500).json({ error: 'Error al eliminar el mantenimiento', details: err.message })
+    return handleControllerError(err, res, 'eliminarMantenimiento', 'Error al eliminar el mantenimiento');
   }
 }
 
