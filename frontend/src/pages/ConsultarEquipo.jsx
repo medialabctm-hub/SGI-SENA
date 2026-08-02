@@ -150,13 +150,17 @@ export default function ConsultarEquipo() {
     return () => { isMounted = false }
   }, [user])
 
-  // Construir URL de listado para Cuentadante con ambientes (vista_inventario)
-  function urlListadoEquipos() {
-    const base = '/api/equipos'
+  // Construir URL de listado para Cuentadante con ambientes (vista_inventario) y búsqueda por texto opcional
+  function urlListadoEquipos(searchTerm) {
+    const params = new URLSearchParams()
     if (mostrarSelectorVistaInventario && vistaInventario) {
-      return `${base}?vista_inventario=${encodeURIComponent(vistaInventario)}`
+      params.set('vista_inventario', vistaInventario)
     }
-    return base
+    if (searchTerm && searchTerm.trim()) {
+      params.set('search', searchTerm.trim())
+    }
+    const query = params.toString()
+    return query ? `/api/equipos?${query}` : '/api/equipos'
   }
 
   // Cargar todos los equipos automáticamente al montar y al cambiar vista (Cuentadante)
@@ -187,19 +191,19 @@ export default function ConsultarEquipo() {
     e.preventDefault()
     setToast(null)
     setEquipos([])
-    if (!codigo) {
-      setToast({ message: 'Ingresa el código de inventario a consultar.', type: 'error' })
+    if (!codigo.trim()) {
+      setToast({ message: 'Ingresa un código, nombre o modelo para buscar.', type: 'error' })
       return
     }
     setLoading(true)
     try {
       const token = localStorage.getItem('token')
-      const res = await fetch(`/api/equipos/${encodeURIComponent(codigo)}`, {
+      const res = await fetch(urlListadoEquipos(codigo), {
         headers: { Authorization: `Bearer ${token}` }
       })
       const data = await parseApiResponse(res, 'No se pudo consultar el equipo')
-      // Si es un array, usar directamente; si es un objeto, convertirlo a array
-      setEquipos(Array.isArray(data) ? data : [data])
+      const equiposList = data?.equipos || (Array.isArray(data) ? data : [])
+      setEquipos(equiposList)
     } catch (err) {
       setEquipos([])
       setToast({ message: buildErrorMessage(err, 'No se pudo consultar el equipo'), type: 'error' })
@@ -682,7 +686,7 @@ export default function ConsultarEquipo() {
               <form onSubmit={handleBuscar} className="consultar-equipo-search-form">
                 <input
                   type="text"
-                  placeholder="Buscar por código de inventario..."
+                  placeholder="Buscar por código, nombre, modelo o categoría..."
                   value={codigo}
                   onChange={e => setCodigo(e.target.value)}
                   className="search-input"
@@ -1052,7 +1056,7 @@ export default function ConsultarEquipo() {
               <div className="users-empty">
                 <div>
                   <strong>No hay equipos para mostrar</strong>
-                  <div className="consultar-equipo-help-text">Busca un equipo por código de inventario o haz clic en "Mostrar todos" para ver todos los equipos.</div>
+                  <div className="consultar-equipo-help-text">Busca un equipo por código, nombre, modelo o categoría, o haz clic en "Mostrar todos" para ver todos los equipos.</div>
                 </div>
               </div>
             )}
