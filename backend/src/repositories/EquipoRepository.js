@@ -106,17 +106,18 @@ export class EquipoRepository extends BaseRepository {
       }
     }
 
-    // Filtro por búsqueda de texto (placa, modelo, consecutivo, descripción)
+    // Filtro por búsqueda de texto (placa, modelo, consecutivo, descripción, tipo, categoría)
     if (filters.search && filters.search.trim()) {
       const searchTerm = `%${filters.search.trim()}%`;
       conditions.push(`(
-        e.placa LIKE ? OR 
-        e.modelo LIKE ? OR 
-        e.consecutivo LIKE ? OR 
+        e.placa LIKE ? OR
+        e.modelo LIKE ? OR
+        e.consecutivo LIKE ? OR
         e.descripcion LIKE ? OR
-        e.tipo LIKE ?
+        e.tipo LIKE ? OR
+        c.nombre_categoria LIKE ?
       )`);
-      params.push(searchTerm, searchTerm, searchTerm, searchTerm, searchTerm);
+      params.push(searchTerm, searchTerm, searchTerm, searchTerm, searchTerm, searchTerm);
     }
 
     // Filtro por estado físico
