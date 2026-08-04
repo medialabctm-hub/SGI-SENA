@@ -123,6 +123,18 @@ export default function Login() {
               Regístrate
             </a>
           </div>
+          <div>
+            ¿Eres aprendiz y necesitas un equipo?{' '}
+            <a
+              href="#"
+              onClick={(e) => {
+                e.preventDefault();
+                navigate('/solicitar-equipo');
+              }}
+            >
+              Solicítalo aquí
+            </a>
+          </div>
         </div>
       </div>
     </div>

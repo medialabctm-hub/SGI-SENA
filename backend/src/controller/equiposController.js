@@ -4006,3 +4006,316 @@ export async function registrarUsoEquipoExterno(req, res) {
     });
   }
 }
+
+// ============================================
+// AUTOSERVICIO DE APRENDICES (SIN CUENTA)
+// ============================================
+
+let autoservicioSchemaListo = false;
+
+/**
+ * Asegura que el schema soporte préstamos de autoservicio para aprendices sin cuenta:
+ * - Historial_Uso_Equipos.id_usuario debe permitir NULL
+ * - Columnas documento_externo / nombre_externo / id_aprendiz
+ * - sp_finalizar_clase debe cerrar también estos préstamos al finalizar la clase
+ * Idempotente: se ejecuta una sola vez por arranque del proceso.
+ */
+export async function ensureAutoservicioSchema(db) {
+  if (autoservicioSchemaListo) return;
+
+  try {
+    const [[colIdUsuario]] = await db.execute(
+      `SELECT IS_NULLABLE FROM INFORMATION_SCHEMA.COLUMNS
+       WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'Historial_Uso_Equipos' AND COLUMN_NAME = 'id_usuario'`
+    );
+    if (colIdUsuario && colIdUsuario.IS_NULLABLE === 'NO') {
+      await db.execute(`ALTER TABLE Historial_Uso_Equipos MODIFY COLUMN id_usuario INT NULL`);
+      logger.info('Historial_Uso_Equipos.id_usuario actualizado a NULL (autoservicio)');
+    }
+
+    const [[colDocExterno]] = await db.execute(
+      `SELECT COUNT(*) AS cnt FROM INFORMATION_SCHEMA.COLUMNS
+       WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'Historial_Uso_Equipos' AND COLUMN_NAME = 'documento_externo'`
+    );
+    if (colDocExterno.cnt === 0) {
+      await db.execute(
+        `ALTER TABLE Historial_Uso_Equipos
+         ADD COLUMN documento_externo VARCHAR(50) NULL COMMENT 'Documento del aprendiz (autoservicio, sin cuenta)' AFTER id_usuario,
+         ADD COLUMN nombre_externo VARCHAR(200) NULL COMMENT 'Nombre del aprendiz (autoservicio, sin cuenta)' AFTER documento_externo,
+         ADD COLUMN id_aprendiz INT NULL COMMENT 'Referencia al roster de Aprendices (autoservicio)' AFTER nombre_externo,
+         ADD INDEX idx_documento_externo (documento_externo),
+         ADD INDEX idx_id_aprendiz (id_aprendiz)`
+      );
+      logger.info('Columnas de autoservicio agregadas a Historial_Uso_Equipos');
+    }
+
+    // Las columnas ya están listas: el endpoint de autoservicio puede funcionar aunque
+    // el paso siguiente (redefinir el stored procedure) falle por permisos.
+    autoservicioSchemaListo = true;
+  } catch (error) {
+    logger.error('Error al asegurar schema de autoservicio', { error: error.message, stack: error.stack });
+    throw error;
+  }
+
+  // Redefinir sp_finalizar_clase para que también cierre los préstamos de autoservicio,
+  // solo si la versión instalada todavía no lo hace (detectado por el marcador AUTOSERVICIO_CIERRE_V1).
+  // OJO: esto requiere privilegios de administrador (el procedimiento original fue creado por root
+  // al inicializar la BD; en MySQL 8, un usuario de aplicación sin el privilegio SYSTEM_USER no puede
+  // reemplazar rutinas cuyo DEFINER sí lo tiene). Si falla por permisos, no se bloquea el resto:
+  // hay que ejecutar backend/scripts/migrate-autoservicio-cierre-clase.sql una vez con un usuario admin.
+  try {
+    // Se usa ROUTINE_COMMENT (no ROUTINE_DEFINITION): desde MySQL 8.0.20 leer el cuerpo de una
+    // rutina requiere el privilegio SHOW_ROUTINE o ser su definer, y devuelve NULL en silencio si
+    // no se tiene; ROUTINE_COMMENT es metadata simple y sí es visible para el usuario de la app.
+    const [[rutina]] = await db.execute(
+      `SELECT ROUTINE_COMMENT FROM INFORMATION_SCHEMA.ROUTINES
+       WHERE ROUTINE_SCHEMA = DATABASE() AND ROUTINE_NAME = 'sp_finalizar_clase'`
+    );
+    const comentarioActual = rutina?.ROUTINE_COMMENT || '';
+    if (!comentarioActual.includes('AUTOSERVICIO_CIERRE_V1')) {
+      await pool.query('DROP PROCEDURE IF EXISTS sp_finalizar_clase');
+      await pool.query(`
+CREATE PROCEDURE sp_finalizar_clase(IN p_id_clase INT, IN p_fecha_fin_real DATETIME)
+COMMENT 'AUTOSERVICIO_CIERRE_V1'
+BEGIN
+    DECLARE v_id_ambiente INT;
+    DECLARE v_id_instructor INT;
+    DECLARE v_fecha_fin DATETIME;
+    DECLARE v_detalles_uso JSON;
+    DECLARE v_array_length INT;
+    DECLARE v_index INT DEFAULT 0;
+    DECLARE v_registro JSON;
+    DECLARE v_id_clase_registro INT;
+
+    SELECT id_ambiente, id_instructor INTO v_id_ambiente, v_id_instructor
+    FROM Clases WHERE id_clase = p_id_clase;
+
+    IF v_id_ambiente IS NULL THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Clase no encontrada';
+    END IF;
+
+    IF p_fecha_fin_real IS NULL THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'fecha_fin_real es obligatoria. El sistema es 100% manual.';
+    END IF;
+
+    SET v_fecha_fin = p_fecha_fin_real;
+
+    UPDATE Responsabilidades_Ambiente
+    SET estado_responsabilidad = 'Finalizada',
+        fecha_fin = v_fecha_fin
+    WHERE id_clase = p_id_clase
+      AND estado_responsabilidad = 'Activa';
+
+    UPDATE Responsables_Equipo re
+    INNER JOIN Elementos e ON re.codigo_equipo = e.codigo_equipo
+    SET re.estado_responsabilidad = 'Finalizado',
+        re.fecha_desvinculacion = v_fecha_fin
+    WHERE re.id_usuario = v_id_instructor
+      AND re.estado_responsabilidad = 'Activo'
+      AND re.observaciones LIKE CONCAT('%inicio de clase #', p_id_clase, '%')
+      AND e.id_ambiente = v_id_ambiente;
+
+    SELECT COALESCE(detalles_uso, JSON_ARRAY()) INTO v_detalles_uso
+    FROM Ambientes WHERE id_ambiente = v_id_ambiente;
+
+    SET v_array_length = JSON_LENGTH(v_detalles_uso);
+
+    buscar_loop: WHILE v_index < v_array_length DO
+        SET v_registro = JSON_EXTRACT(v_detalles_uso, CONCAT('$[', v_index, ']'));
+        SET v_id_clase_registro = JSON_UNQUOTE(JSON_EXTRACT(v_registro, '$.id_clase'));
+
+        IF v_id_clase_registro = p_id_clase THEN
+            SET v_registro = JSON_SET(
+                v_registro,
+                '$.estado', 'Finalizada',
+                '$.fecha_fin_real', DATE_FORMAT(v_fecha_fin, '%Y-%m-%d %H:%i:%s')
+            );
+            SET v_detalles_uso = JSON_SET(v_detalles_uso, CONCAT('$[', v_index, ']'), v_registro);
+            LEAVE buscar_loop;
+        END IF;
+
+        SET v_index = v_index + 1;
+    END WHILE buscar_loop;
+
+    UPDATE Ambientes
+    SET detalles_uso = v_detalles_uso
+    WHERE id_ambiente = v_id_ambiente;
+
+    UPDATE Clases SET estado_clase = 'Finalizada', fecha_fin_real = v_fecha_fin WHERE id_clase = p_id_clase;
+
+    UPDATE Historial_Uso_Equipos
+    SET estado = 'Finalizado',
+        fecha_hora_fin = v_fecha_fin
+    WHERE id_clase = p_id_clase
+      AND estado = 'En Uso';
+
+    SELECT 'Clase finalizada correctamente. Responsabilidades y asignaciones de equipos revertidas.' AS mensaje;
+END`);
+      logger.info('sp_finalizar_clase actualizado para cerrar préstamos de autoservicio (AUTOSERVICIO_CIERRE_V1)');
+    }
+  } catch (procError) {
+    if (/SYSTEM_USER/i.test(procError.message || '')) {
+      logger.warn(
+        'sp_finalizar_clase no se pudo actualizar: el usuario de la app no tiene privilegios sobre este stored procedure ' +
+        '(fue creado por un usuario administrador). Los préstamos de autoservicio funcionan igual, pero NO se cerrarán ' +
+        'automáticamente al finalizar la clase hasta que se ejecute manualmente, una sola vez y con un usuario con ' +
+        'privilegios de administrador (ej. root), el script backend/scripts/migrate-autoservicio-cierre-clase.sql',
+        { error: procError.message }
+      );
+    } else {
+      logger.error('Error al actualizar sp_finalizar_clase para autoservicio', { error: procError.message, stack: procError.stack });
+    }
+  }
+}
+
+/**
+ * Autoservicio: el aprendiz (sin cuenta, cargado previamente desde Excel) ingresa su documento
+ * y la placa del equipo para tomarlo en préstamo. No requiere autenticación.
+ *
+ * Reglas:
+ * - El documento debe existir en el roster de Aprendices.
+ * - Debe existir una clase 'En Curso' en el ambiente donde está el equipo (el préstamo queda ligado a ella).
+ * - El equipo no debe estar dañado/en mantenimiento/de baja, ni en uso por otra persona.
+ * - El préstamo se cierra automáticamente (sp_finalizar_clase) cuando la clase termina.
+ */
+export async function iniciarUsoAutoservicio(req, res) {
+  try {
+    const documentoNormalizado = String(req.body?.documento || '').trim();
+    const placaNormalizada = String(req.body?.placa || '').trim();
+
+    if (!documentoNormalizado || !placaNormalizada) {
+      return res.status(400).json({
+        success: false,
+        error: 'Documento y placa son obligatorios'
+      });
+    }
+
+    await ensureAutoservicioSchema(defaultDb);
+
+    const [[aprendiz]] = await defaultDb.execute(
+      'SELECT id_aprendiz, nombre, documento, ficha FROM Aprendices WHERE documento = ? LIMIT 1',
+      [documentoNormalizado]
+    );
+    if (!aprendiz) {
+      return res.status(404).json({
+        success: false,
+        error: 'Documento no encontrado',
+        message: 'No encontramos tu documento en la lista de aprendices. Verifica con tu instructor que ya te hayan cargado.'
+      });
+    }
+
+    const [[equipo]] = await defaultDb.execute(
+      `SELECT codigo_equipo, placa, tipo, modelo, id_ambiente FROM Elementos WHERE placa = ? LIMIT 1`,
+      [placaNormalizada]
+    );
+    if (!equipo) {
+      return res.status(404).json({
+        success: false,
+        error: 'Equipo no encontrado',
+        message: `No se encontró un equipo con la placa "${placaNormalizada}"`
+      });
+    }
+
+    const disponibilidad = await verificarDisponibilidadEquipo(defaultDb, equipo.codigo_equipo);
+    if (!disponibilidad.disponible) {
+      return res.status(409).json({
+        success: false,
+        error: disponibilidad.razon,
+        message: `El equipo con placa "${placaNormalizada}" no está disponible en este momento. Estado: ${disponibilidad.estado_operativo || 'N/A'}`
+      });
+    }
+
+    if (!equipo.id_ambiente) {
+      return res.status(409).json({
+        success: false,
+        error: 'Equipo sin ambiente asignado',
+        message: 'Este equipo no tiene un ambiente asignado, no se puede validar la clase en curso.'
+      });
+    }
+
+    const [[claseActiva]] = await defaultDb.execute(
+      `SELECT id_clase, nombre_clase FROM Clases
+       WHERE id_ambiente = ? AND estado_clase = 'En Curso'
+       ORDER BY fecha_inicio_real DESC LIMIT 1`,
+      [equipo.id_ambiente]
+    );
+    if (!claseActiva) {
+      return res.status(409).json({
+        success: false,
+        error: 'Sin clase en curso',
+        message: 'No hay una clase en curso en el ambiente de este equipo. No puedes tomarlo prestado en este momento.'
+      });
+    }
+
+    const [[usoActivo]] = await defaultDb.execute(
+      `SELECT id_historial, documento_externo FROM Historial_Uso_Equipos
+       WHERE codigo_equipo = ? AND estado = 'En Uso'
+       ORDER BY fecha_hora_inicio DESC LIMIT 1`,
+      [equipo.codigo_equipo]
+    );
+    if (usoActivo) {
+      if (usoActivo.documento_externo === documentoNormalizado) {
+        return res.status(200).json({
+          success: true,
+          message: 'Ya tienes este equipo en uso',
+          data: {
+            id_historial: usoActivo.id_historial,
+            equipo: { codigo_equipo: equipo.codigo_equipo, placa: equipo.placa, tipo: equipo.tipo, modelo: equipo.modelo },
+            clase: { id_clase: claseActiva.id_clase, nombre_clase: claseActiva.nombre_clase }
+          }
+        });
+      }
+      return res.status(409).json({
+        success: false,
+        error: 'Equipo en uso',
+        message: 'Este equipo ya está siendo usado por otra persona en este momento.'
+      });
+    }
+
+    const [result] = await defaultDb.execute(
+      `INSERT INTO Historial_Uso_Equipos
+       (codigo_equipo, id_usuario, nombre_usuario, documento_externo, nombre_externo, id_aprendiz, fecha_hora_inicio, estado, id_clase, observaciones)
+       VALUES (?, NULL, ?, ?, ?, ?, NOW(), 'En Uso', ?, ?)`,
+      [
+        equipo.codigo_equipo,
+        aprendiz.nombre,
+        documentoNormalizado,
+        aprendiz.nombre,
+        aprendiz.id_aprendiz,
+        claseActiva.id_clase,
+        `Autoservicio: solicitado por el aprendiz (documento ${documentoNormalizado})`
+      ]
+    );
+
+    logger.info('Autoservicio: préstamo de equipo registrado', {
+      id_historial: result.insertId,
+      codigo_equipo: equipo.codigo_equipo,
+      id_clase: claseActiva.id_clase
+    });
+
+    try {
+      const socketService = (await import('../services/socketService.js')).default;
+      socketService.emitToAll('equipo:autoservicio_iniciado', {
+        codigo_equipo: equipo.codigo_equipo,
+        id_clase: claseActiva.id_clase,
+        timestamp: new Date().toISOString()
+      });
+    } catch (socketErr) {
+      logger.warn('Error al emitir evento Socket.io de autoservicio', { error: socketErr.message });
+    }
+
+    return res.status(201).json({
+      success: true,
+      message: `Equipo "${equipo.placa}" asignado. Se liberará automáticamente cuando termine la clase.`,
+      data: {
+        id_historial: result.insertId,
+        equipo: { codigo_equipo: equipo.codigo_equipo, placa: equipo.placa, tipo: equipo.tipo, modelo: equipo.modelo },
+        aprendiz: { nombre: aprendiz.nombre, documento: aprendiz.documento },
+        clase: { id_clase: claseActiva.id_clase, nombre_clase: claseActiva.nombre_clase }
+      }
+    });
+  } catch (err) {
+    logger.error('Error en iniciarUsoAutoservicio', { error: err.message, stack: err.stack });
+    return handleControllerError(err, res, 'iniciarUsoAutoservicio', 'No se pudo registrar el préstamo del equipo');
+  }
+}

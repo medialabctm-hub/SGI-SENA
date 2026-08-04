@@ -404,6 +404,14 @@ export const registrarUsoEquipoExternoSchema = z.union([
 });
 
 /**
+ * Autoservicio: aprendiz sin cuenta ingresa su documento y la placa del equipo.
+ */
+export const autoservicioIniciarUsoSchema = z.object({
+  documento: z.string({ error: 'El documento es obligatorio' }).trim().min(1, 'El documento es obligatorio').max(50),
+  placa: z.string({ error: 'La placa es obligatoria' }).trim().min(1, 'La placa es obligatoria').max(100),
+});
+
+/**
  * Middleware de validación genérico
  */
 export const validate = (schema) => (req, res, next) => {

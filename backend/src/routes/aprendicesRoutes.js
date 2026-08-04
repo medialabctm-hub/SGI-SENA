@@ -1,10 +1,26 @@
 import express from 'express'
-import { listarAprendices, actualizarAprendiz, eliminarAprendiz } from '../controller/aprendicesController.js'
+import { listarAprendices, actualizarAprendiz, eliminarAprendiz, verificarAprendizPorDocumento } from '../controller/aprendicesController.js'
 import { authenticate } from '../middleware/authMiddleware.js'
 import { requirePermission } from '../middleware/authorization.js'
 import { PERMISSIONS } from '../config/permissions.js'
+import { webhookLimiter } from '../middleware/rateLimiter.js'
 
 const router = express.Router()
+
+// ============================================
+// RUTAS PÚBLICAS (sin autenticación) - Autoservicio
+// ============================================
+
+// Verificar documento de aprendiz (público) - usado antes de solicitar un equipo por autoservicio
+router.get(
+  '/verificar/:documento',
+  webhookLimiter,
+  verificarAprendizPorDocumento
+)
+
+// ============================================
+// RUTAS PROTEGIDAS
+// ============================================
 
 router.get(
   '/',

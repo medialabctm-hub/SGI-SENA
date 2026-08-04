@@ -36,6 +36,8 @@ import imagenesEquipoRoutes from './src/routes/imagenesEquipoRoutes.js';
 import imagenesAmbienteRoutes from './src/routes/imagenesAmbienteRoutes.js';
 import schedulerService from './src/services/schedulerService.js';
 import socketService from './src/services/socketService.js';
+import { ensureAutoservicioSchema } from './src/controller/equiposController.js';
+import defaultDb from './src/config/dbconfig.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
@@ -178,6 +180,11 @@ app.get('/health', (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/equipos', equiposRoutes);
 app.use('/api/equipos', imagenesEquipoRoutes);
+// aprendicesRoutes debe montarse ANTES que los routers genéricos de /api
+// (ambientesRoutes, imagenesAmbienteRoutes, clasesRoutes, horariosRoutes) porque estos usan
+// router.use(authenticate) sin restricción de ruta: si se montan primero, interceptan
+// (con 401) cualquier request bajo /api/*, incluidas las rutas públicas de aprendicesRoutes.
+app.use('/api/aprendices', aprendicesRoutes);
 app.use('/api', imagenesAmbienteRoutes);
 app.use('/api', ambientesRoutes);
 app.use('/api/notifications', notificationsRoutes);
@@ -189,7 +196,6 @@ app.use('/api/estadisticas', estadisticasRoutes);
 app.use('/api', clasesRoutes);
 app.use('/api', horariosRoutes);
 app.use('/api/import', importRoutes);
-app.use('/api/aprendices', aprendicesRoutes);
 app.use('/api/invitation-codes', invitationCodeRoutes);
 app.use('/api/preferences', preferencesRoutes);
 app.use('/webhook', webhookRoutes);
@@ -217,22 +223,30 @@ const maxPort = 65535;
 
 const startServer = (port) => {
   try {
-    const server = app.listen(port, () => {
+    const server = app.listen(port, async () => {
       logger.info(`Servidor corriendo en puerto ${port}`, {
         mode: config.server.mode || 'development',
         env: process.env.NODE_ENV || 'development',
       });
-      
+
       // Inicializar Socket.io para actualizaciones en tiempo real
       socketService.initialize(server);
-      
+
       // Verificar y reinicializar servicio de email si es necesario
       // (por si las variables de entorno se cargaron después de la importación)
       if (process.env.BREVO_SMTP_KEY && !emailService.transporter) {
         logger.info('BREVO_SMTP_KEY detectada al iniciar servidor. Inicializando servicio de email SMTP...');
         emailService.reinitialize();
       }
-      
+
+      // Asegurar schema de autoservicio (préstamos de aprendices sin cuenta) ANTES de que el
+      // scheduler empiece a finalizar clases, para que sp_finalizar_clase ya sepa cerrarlos.
+      try {
+        await ensureAutoservicioSchema(defaultDb);
+      } catch (schemaErr) {
+        logger.error('No se pudo asegurar el schema de autoservicio al iniciar', { error: schemaErr.message });
+      }
+
       // Scheduler ACTIVADO para automatización de clases
       // El scheduler AUTOMÁTICAMENTE:
       // - Inicia clases cuando llega la hora de inicio programada (margen ±2 min)

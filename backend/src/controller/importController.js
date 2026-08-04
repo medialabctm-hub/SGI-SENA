@@ -1209,6 +1209,7 @@ export async function importarAprendices(req, res) {
     const resultados = {
       total: data.length,
       exitosos: 0,
+      actualizados: 0,
       fallidos: 0,
       errores: []
     };
@@ -1258,22 +1259,28 @@ export async function importarAprendices(req, res) {
           else jornada = null;
         }
 
-        // Verificar documento único dentro de Aprendices
+        // Upsert por documento: si ya existe en Aprendices, actualizar sus datos en vez de fallar la fila.
+        // Necesario porque Zajuna reexporta la misma ficha en cortes sucesivos (nombre/jornada pueden cambiar).
         const [[existAprendiz]] = await defaultDb.execute(
           'SELECT id_aprendiz FROM Aprendices WHERE documento = ? LIMIT 1',
           [documento]
         );
-        if (existAprendiz) {
-          resultados.errores.push({ fila: numeroFila, documento, error: 'El documento ya está registrado en aprendices' });
-          resultados.fallidos++;
-          continue;
-        }
 
-        // Insertar registro de aprendiz (sin crear cuenta de usuario)
-        await defaultDb.execute(
-          'INSERT INTO Aprendices (ficha, nombre, documento, tipo_documento, tipo_documento_otro, jornada, creado_por) VALUES (?, ?, ?, ?, ?, ?, ?)',
-          [ficha, nombre, documento, tipoDocumento, tipoDocumento === 'Otro' ? tipoDocumentoOtro : null, jornada, userId]
-        );
+        if (existAprendiz) {
+          await defaultDb.execute(
+            `UPDATE Aprendices
+             SET ficha = ?, nombre = ?, tipo_documento = ?, tipo_documento_otro = ?, jornada = ?
+             WHERE id_aprendiz = ?`,
+            [ficha, nombre, tipoDocumento, tipoDocumento === 'Otro' ? tipoDocumentoOtro : null, jornada, existAprendiz.id_aprendiz]
+          );
+          resultados.actualizados++;
+        } else {
+          // Insertar registro de aprendiz (sin crear cuenta de usuario)
+          await defaultDb.execute(
+            'INSERT INTO Aprendices (ficha, nombre, documento, tipo_documento, tipo_documento_otro, jornada, creado_por) VALUES (?, ?, ?, ?, ?, ?, ?)',
+            [ficha, nombre, documento, tipoDocumento, tipoDocumento === 'Otro' ? tipoDocumentoOtro : null, jornada, userId]
+          );
+        }
 
         resultados.exitosos++;
       } catch (error) {
@@ -1282,7 +1289,16 @@ export async function importarAprendices(req, res) {
       }
     }
 
-    const mensaje = `Importación aprendices: ${resultados.exitosos} exitosos, ${resultados.fallidos} fallidos`;
+    if (resultados.exitosos > 0) {
+      try {
+        const socketService = (await import('../services/socketService.js')).default;
+        socketService.emitToAll('aprendiz:updated', { timestamp: new Date().toISOString() });
+      } catch (socketErr) {
+        logger.warn('Error al emitir evento Socket.io tras importar aprendices', { error: socketErr.message });
+      }
+    }
+
+    const mensaje = `Importación aprendices: ${resultados.exitosos} exitosos (${resultados.actualizados} actualizados, ${resultados.exitosos - resultados.actualizados} nuevos), ${resultados.fallidos} fallidos`;
     return res.json({ message: mensaje, resultados });
   } catch (error) {
     logger.error('Error en importarAprendices', { error: error.message, stack: error.stack });

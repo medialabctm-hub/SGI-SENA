@@ -687,8 +687,11 @@ COMMENT = 'Tabla para almacenar pedidos recibidos de sistemas externos (SGI-SENA
 CREATE TABLE Historial_Uso_Equipos (
   id_historial INT PRIMARY KEY AUTO_INCREMENT,
   codigo_equipo INT NOT NULL,
-  id_usuario INT NOT NULL,
+  id_usuario INT NULL COMMENT 'NULL si es autoservicio de aprendiz sin cuenta (ver documento_externo)',
   nombre_usuario VARCHAR(100) NULL COMMENT 'Nombre del usuario en el momento del registro',
+  documento_externo VARCHAR(50) NULL COMMENT 'Documento del aprendiz cuando el préstamo se hizo por autoservicio (sin cuenta)',
+  nombre_externo VARCHAR(200) NULL COMMENT 'Nombre del aprendiz cuando el préstamo se hizo por autoservicio (sin cuenta)',
+  id_aprendiz INT NULL COMMENT 'Referencia al roster de Aprendices cuando el préstamo se hizo por autoservicio',
   fecha_hora_inicio DATETIME NOT NULL COMMENT 'Fecha y hora en que el usuario inició sesión',
   fecha_hora_fin DATETIME NULL COMMENT 'Fecha y hora en que el usuario cerró sesión. NULL si aún está en uso',
   estado ENUM('En Uso', 'Finalizado') DEFAULT 'En Uso' COMMENT 'Estado de la sesión',
@@ -705,7 +708,9 @@ CREATE TABLE Historial_Uso_Equipos (
   INDEX idx_estado (estado),
   INDEX idx_equipo_fecha (codigo_equipo, fecha_hora_inicio DESC),
   INDEX idx_usuario_fecha (id_usuario, fecha_hora_inicio DESC),
-  INDEX idx_clase (id_clase)
+  INDEX idx_clase (id_clase),
+  INDEX idx_documento_externo (documento_externo),
+  INDEX idx_id_aprendiz (id_aprendiz)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
 COMMENT = 'Historial de uso de equipos: registra quién inició sesión y de qué hora a qué hora';
 
@@ -1262,6 +1267,7 @@ END;
 -- CORRECCIÓN: Usa JOIN en lugar de subconsulta IN para evitar errores de MySQL
 DROP PROCEDURE IF EXISTS sp_finalizar_clase//
 CREATE PROCEDURE sp_finalizar_clase(IN p_id_clase INT, IN p_fecha_fin_real DATETIME)
+COMMENT 'AUTOSERVICIO_CIERRE_V1'
 BEGIN
     DECLARE v_id_ambiente INT;
     DECLARE v_id_instructor INT;
@@ -1342,7 +1348,14 @@ BEGIN
     
     -- 4. Actualizar estado de la clase
     UPDATE Clases SET estado_clase = 'Finalizada', fecha_fin_real = v_fecha_fin WHERE id_clase = p_id_clase;
-    
+
+    -- 5. Cerrar préstamos de autoservicio de aprendices (Historial_Uso_Equipos) ligados a esta clase
+    UPDATE Historial_Uso_Equipos
+    SET estado = 'Finalizado',
+        fecha_hora_fin = v_fecha_fin
+    WHERE id_clase = p_id_clase
+      AND estado = 'En Uso';
+
     SELECT 'Clase finalizada correctamente. Responsabilidades y asignaciones de equipos revertidas.' AS mensaje;
 END;
 //

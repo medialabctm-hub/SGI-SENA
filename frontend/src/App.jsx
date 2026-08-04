@@ -27,6 +27,7 @@ import Horarios from './pages/Horarios';
 import HistorialVerificaciones from './pages/HistorialVerificaciones';
 import HistorialVerificacionesGeneral from './pages/HistorialVerificacionesGeneral';
 import TerminosCondiciones from './pages/TerminosCondiciones';
+import SolicitarEquipo from './pages/SolicitarEquipo';
 import HistorialMovimientos from './pages/HistorialMovimientos';
 import AutorizacionesMovimiento from './pages/AutorizacionesMovimiento';
 import LoadingDemo from './pages/LoadingDemo';
@@ -67,6 +68,10 @@ export default function App() {
           <Route
             path="/terminos-condiciones"
             element={<TerminosCondiciones />}
+          />
+          <Route
+            path="/solicitar-equipo"
+            element={<SolicitarEquipo />}
           />
           <Route
             path="/olvidar-contrasena"

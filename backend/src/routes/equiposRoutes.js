@@ -1,11 +1,11 @@
 import express from 'express';
-import { registrarEquipo, obtenerEquipoPorCodigo, listarEquipos, actualizarEquipo, eliminarEquipo, asignarEquipo, obtenerMisEquipos, listarAsignaciones, eliminarAsignacion, actualizarAsignacionEquipo, obtenerEquiposAmbientesInstructor, registrarVerificacionInventario, consultarHistorialVerificaciones, obtenerHistorialEquipo, obtenerHistorialMovimientos, actualizarCuentadantePrincipal, obtenerCuentadantePrincipal, buscarCuentadantePorDocumento, listarCategorias, crearCategoria, actualizarCategoria, eliminarCategoria, registrarInicioUso, registrarFinUso, consultarHistorialUso, obtenerHistorialEquipoUso, obtenerSesionesActivas, registrarUsoEquipoExterno } from '../controller/equiposController.js';
+import { registrarEquipo, obtenerEquipoPorCodigo, listarEquipos, actualizarEquipo, eliminarEquipo, asignarEquipo, obtenerMisEquipos, listarAsignaciones, eliminarAsignacion, actualizarAsignacionEquipo, obtenerEquiposAmbientesInstructor, registrarVerificacionInventario, consultarHistorialVerificaciones, obtenerHistorialEquipo, obtenerHistorialMovimientos, actualizarCuentadantePrincipal, obtenerCuentadantePrincipal, buscarCuentadantePorDocumento, listarCategorias, crearCategoria, actualizarCategoria, eliminarCategoria, registrarInicioUso, registrarFinUso, consultarHistorialUso, obtenerHistorialEquipoUso, obtenerSesionesActivas, registrarUsoEquipoExterno, iniciarUsoAutoservicio } from '../controller/equiposController.js';
 import { crearSolicitud, listarPendientesParaAutorizador, contarPendientesParaAutorizador, listarHistorialAutorizador, listarMisSolicitudes, aprobarSolicitud, rechazarSolicitud, listarDisponiblesParaMovimiento, obtenerAutorizadorParaEquipo } from '../controller/autorizacionMovimientoController.js';
 import { authenticate, optionalAuthenticate } from '../middleware/authMiddleware.js';
 import { requirePermission, requireAnyPermission, requireAnyPermissionIfAuthenticated } from '../middleware/authorization.js';
 import { PERMISSIONS } from '../config/permissions.js';
 import { writeLimiter, readLimiter, strictLimiter, webhookLimiter, searchLimiter } from '../middleware/rateLimiter.js';
-import { validate, registrarEquipoSchema, actualizarEquipoSchema, asignarEquipoSchema, verificarInventarioSchema, solicitudAutorizacionMovimientoSchema, crearCategoriaSchema, actualizarCategoriaSchema, registrarUsoEquipoSchema, actualizarUsoEquipoSchema, registrarUsoEquipoExternoSchema, actualizarAsignacionEquipoSchema } from '../validators/equiposValidator.js';
+import { validate, registrarEquipoSchema, actualizarEquipoSchema, asignarEquipoSchema, verificarInventarioSchema, solicitudAutorizacionMovimientoSchema, crearCategoriaSchema, actualizarCategoriaSchema, registrarUsoEquipoSchema, actualizarUsoEquipoSchema, registrarUsoEquipoExternoSchema, actualizarAsignacionEquipoSchema, autoservicioIniciarUsoSchema } from '../validators/equiposValidator.js';
 import { uploadEquipoImagePublico, handleUploadError } from '../middleware/uploadMiddleware.js';
 import { parseFormData } from '../middleware/parseFormData.js';
 import { corsPublic } from '../middleware/corsPublicMiddleware.js';
@@ -31,6 +31,14 @@ router.post('/uso/registro-externo',
   requireAnyPermissionIfAuthenticated([PERMISSIONS.EQUIPOS.ASSIGN, PERMISSIONS.EQUIPOS.ASSIGN_TO_APRENDIZ]),
   validate(registrarUsoEquipoExternoSchema),
   registrarUsoEquipoExterno
+);
+
+// Autoservicio: aprendiz sin cuenta ingresa documento + placa para tomar un equipo en préstamo (público)
+// Requiere clase En Curso en el ambiente del equipo; se libera automáticamente al finalizar la clase.
+router.post('/autoservicio/iniciar-uso',
+  webhookLimiter,
+  validate(autoservicioIniciarUsoSchema),
+  iniciarUsoAutoservicio
 );
 
 // ============================================

@@ -119,6 +119,11 @@ app.get('/health', (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/equipos', equiposRoutes);
 app.use('/api/equipos', imagenesEquipoRoutes);
+// aprendicesRoutes debe montarse ANTES que los routers genéricos de /api
+// (ambientesRoutes, imagenesAmbienteRoutes, clasesRoutes, horariosRoutes) porque estos usan
+// router.use(authenticate) sin restricción de ruta: si se montan primero, interceptan
+// (con 401) cualquier request bajo /api/*, incluidas las rutas públicas de aprendicesRoutes.
+app.use('/api/aprendices', aprendicesRoutes);
 app.use('/api', imagenesAmbienteRoutes);
 app.use('/api', ambientesRoutes);
 app.use('/api/notifications', notificationsRoutes);
@@ -130,7 +135,6 @@ app.use('/api/estadisticas', estadisticasRoutes);
 app.use('/api', clasesRoutes);
 app.use('/api', horariosRoutes);
 app.use('/api/import', importRoutes);
-app.use('/api/aprendices', aprendicesRoutes);
 app.use('/api/invitation-codes', invitationCodeRoutes);
 app.use('/api/preferences', preferencesRoutes);
 app.use('/webhook', webhookRoutes);

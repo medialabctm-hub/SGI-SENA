@@ -43,6 +43,8 @@ services:
       COOKIE_SECRET: ${COOKIE_SECRET:-your-cookie-secret-change-in-production}
       EMAIL_USER: ${EMAIL_USER}
       EMAIL_PASSWORD: ${EMAIL_PASSWORD}
+      BREVO_API_KEY: ${BREVO_API_KEY}
+      BREVO_SENDER_EMAIL: ${BREVO_SENDER_EMAIL}
       CORS_ORIGIN: ${CORS_ORIGIN:-https://sgi-sena.up.railway.app}
       FRONTEND_URL: ${FRONTEND_URL:-https://sgi-sena.up.railway.app}
       JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-24h}

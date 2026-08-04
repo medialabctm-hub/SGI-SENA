@@ -73,6 +73,42 @@ export async function ensureAprendicesTable() {
   }
 }
 
+/**
+ * Verificar si un documento existe en el roster de Aprendices (público, sin autenticación).
+ * Usado por el autoservicio: el aprendiz solo confirma su documento antes de pedir un equipo.
+ * Devuelve el mínimo necesario (nombre y ficha) para no exponer más datos de los indispensables.
+ */
+export async function verificarAprendizPorDocumento(req, res) {
+  const { documento } = req.params
+  const documentoNormalizado = typeof documento === 'string' ? documento.trim() : ''
+
+  if (!documentoNormalizado) {
+    return res.status(400).json({ ok: false, error: 'El documento es obligatorio' })
+  }
+
+  try {
+    await ensureAprendicesTable()
+
+    const [[aprendiz]] = await defaultDb.execute(
+      'SELECT nombre, ficha FROM Aprendices WHERE documento = ? LIMIT 1',
+      [documentoNormalizado]
+    )
+
+    if (!aprendiz) {
+      return res.status(404).json({
+        ok: false,
+        existe: false,
+        message: 'No encontramos tu documento en la lista de aprendices. Verifica con tu instructor que ya te hayan cargado.'
+      })
+    }
+
+    return res.json({ ok: true, existe: true, nombre: aprendiz.nombre, ficha: aprendiz.ficha })
+  } catch (error) {
+    logger.error('Error al verificar aprendiz por documento', { error: error.message, stack: error.stack })
+    return handleControllerError(error, res, 'verificarAprendizPorDocumento', 'Error al verificar el documento');
+  }
+}
+
 export async function listarAprendices(req, res) {
   try {
     await ensureAprendicesTable()

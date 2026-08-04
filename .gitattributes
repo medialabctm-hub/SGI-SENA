@@ -1,0 +1,5 @@
+# Los scripts de shell deben mantener saltos de línea LF siempre (incluso en checkouts
+# de Windows con core.autocrlf=true) porque se ejecutan dentro de contenedores Linux vía
+# shebang (#!/bin/sh); con CRLF el shebang queda corrupto y el contenedor no arranca
+# ("exec /docker-entrypoint.sh: no such file or directory").
+*.sh text eol=lf

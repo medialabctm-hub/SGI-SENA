@@ -25,8 +25,11 @@ RUN apk add --no-cache gettext
 # Copiar archivos construidos
 COPY --from=builder /app/dist /usr/share/nginx/html
 
-# Copiar configuración personalizada de nginx
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+# Copiar configuración principal de nginx (worker_processes, events, http)
+COPY nginx.conf /etc/nginx/nginx.conf
+
+# Copiar configuración del servidor virtual (se incluye dentro de conf.d)
+COPY nginx-server.conf /etc/nginx/conf.d/default.conf
 
 # Copiar script de entrada
 COPY docker-entrypoint.sh /docker-entrypoint.sh
