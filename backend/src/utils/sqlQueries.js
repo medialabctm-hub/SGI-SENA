@@ -54,32 +54,6 @@ export async function obtenerUsuarioPorCedula(db, cedula) {
 }
 
 /**
- * Obtener equipos asignados a un usuario
- * @param {Object} db - Instancia de la base de datos
- * @param {number} userId - ID del usuario
- * @returns {Promise<Array>} Lista de equipos asignados
- */
-export async function obtenerEquiposAsignados(db, userId) {
-  const [equipos] = await db.execute(
-    `SELECT 
-       e.codigo_equipo, e.r_centro, e.consecutivo, e.tipo, e.placa, e.modelo, 
-       e.estado_fisico, e.descripcion,
-       a.nombre_ambiente, a.codigo_ambiente,
-       re.fecha_asignacion, re.tipo_responsabilidad, re.observaciones,
-       DATEDIFF(NOW(), re.fecha_asignacion) AS dias_asignado,
-       u_asignado.nombre_usuario AS asignado_por_nombre
-     FROM Responsables_Equipo re
-     INNER JOIN Elementos e ON re.codigo_equipo = e.codigo_equipo
-     LEFT JOIN Ambientes a ON e.id_ambiente = a.id_ambiente
-     LEFT JOIN Usuarios u_asignado ON re.asignado_por = u_asignado.id_usuario
-     WHERE re.id_usuario = ? AND re.estado_responsabilidad = 'Activo'
-     ORDER BY re.fecha_asignacion DESC`,
-    [userId]
-  );
-  return equipos || [];
-}
-
-/**
  * Obtener un equipo por código (inventario o ID)
  * @param {Object} db - Instancia de la base de datos
  * @param {string|number} codigo - Código de inventario o ID del equipo
@@ -112,61 +86,6 @@ export async function obtenerEquipoPorCodigo(db, codigo) {
   const [[row]] = await db.execute(query, params);
   
   return row || null;
-}
-
-/**
- * Verificar si un equipo está asignado a un usuario
- * @param {Object} db - Instancia de la base de datos
- * @param {number} codigoEquipo - Código del equipo
- * @param {number} userId - ID del usuario
- * @returns {Promise<boolean>} true si está asignado, false en caso contrario
- */
-export async function verificarAsignacionEquipo(db, codigoEquipo, userId) {
-  const [[asignacion]] = await db.execute(
-    `SELECT id_responsable FROM Responsables_Equipo 
-     WHERE codigo_equipo = ? AND id_usuario = ? AND estado_responsabilidad = 'Activo'`,
-    [codigoEquipo, userId]
-  );
-  return !!asignacion;
-}
-
-/**
- * Obtener el rol de un usuario por ID
- * @param {Object} db - Instancia de la base de datos
- * @param {number} userId - ID del usuario
- * @returns {Promise<string|null>} Nombre del rol o null
- */
-export async function obtenerRolUsuario(db, userId) {
-  const [[rol]] = await db.execute(
-    `SELECT r.nombre_rol 
-     FROM Usuarios u
-     LEFT JOIN Roles r ON r.id_rol = u.id_rol
-     WHERE u.id_usuario = ? AND u.estado = 'Activo'`,
-    [userId]
-  );
-  return rol?.nombre_rol || null;
-}
-
-/**
- * Contar usuarios activos
- * @param {Object} db - Instancia de la base de datos
- * @returns {Promise<number>} Número de usuarios activos
- */
-export async function contarUsuariosActivos(db) {
-  const [[result]] = await db.execute(
-    'SELECT COUNT(*) AS total FROM Usuarios WHERE estado = "Activo"'
-  );
-  return Number(result?.total) || 0;
-}
-
-/**
- * Contar equipos totales
- * @param {Object} db - Instancia de la base de datos
- * @returns {Promise<number>} Número total de equipos
- */
-export async function contarEquipos(db) {
-  const [[result]] = await db.execute('SELECT COUNT(*) AS total FROM Elementos');
-  return Number(result?.total) || 0;
 }
 
 /**

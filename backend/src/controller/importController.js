@@ -5,6 +5,7 @@ import emailService from '../services/emailService.js';
 import { ensureAprendicesTable } from './aprendicesController.js';
 import { logger } from '../utils/logger.js';
 import { handleControllerError } from '../utils/controllerHelpers.js';
+import { TIPOS_DOCUMENTO } from '../config/documentTypes.js';
 
 /**
  * Store en memoria para jobs de importación de equipos (progreso real).
@@ -1103,8 +1104,7 @@ export async function importarUsuarios(req, res) {
         const requiereCambio = !contrasena || !contrasena.trim();
 
         // Validar tipo de documento
-        const tiposValidos = ['TI', 'CC', 'CE', 'PPT', 'Otro'];
-        const tipoDocValido = tiposValidos.includes(tipoDocumento) ? tipoDocumento : 'CC';
+        const tipoDocValido = TIPOS_DOCUMENTO.includes(tipoDocumento) ? tipoDocumento : 'CC';
         const tipoDocOtroValido = tipoDocValido === 'Otro' ? (tipoDocumentoOtro || null) : null;
 
         // Insertar usuario
@@ -1237,9 +1237,8 @@ export async function importarAprendices(req, res) {
         }
 
         // Normalizar tipo de documento
-        const TIPOS_DOCUMENTO_VALIDOS = ['TI', 'CC', 'CE', 'PPT', 'Otro'];
         tipoDocumento = tipoDocumento.toUpperCase();
-        if (!TIPOS_DOCUMENTO_VALIDOS.includes(tipoDocumento)) {
+        if (!TIPOS_DOCUMENTO.includes(tipoDocumento)) {
           tipoDocumento = 'CC'; // Valor por defecto
         }
 

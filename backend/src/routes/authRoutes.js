@@ -17,7 +17,7 @@ import {
 } from '../controller/authController.js';
 import express from 'express';
 import { authenticate } from '../middleware/authMiddleware.js';
-import { requirePermission, requireOwnership } from '../middleware/authorization.js';
+import { requirePermission, requireOwnership, requireAnyPermissionOrOwnership } from '../middleware/authorization.js';
 import { PERMISSIONS } from '../config/permissions.js';
 import { validate, registerSchema, loginSchema, updateUserSchema } from '../validators/authValidator.js';
 import { authLimiter, registerLimiter, passwordResetLimiter } from '../middleware/rateLimiter.js';
@@ -77,12 +77,11 @@ router.get('/user/cedula/:cedula',
 );
 
 // Obtener detalle de usuario
-// Admin: puede ver cualquier usuario
-// Instructor: puede ver cualquier usuario
+// Admin, Instructor y Cuentadante: pueden ver cualquier usuario (tienen USERS.VIEW_DETAIL)
 // Aprendiz: solo su propio perfil
-router.get('/user/:id', 
+router.get('/user/:id',
   authenticate,
-  requireOwnership((req) => req.params.id),
+  requireAnyPermissionOrOwnership([PERMISSIONS.USERS.VIEW_DETAIL], (req) => req.params.id),
   getUserDetails
 );
 

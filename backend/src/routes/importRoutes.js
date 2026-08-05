@@ -10,7 +10,7 @@ import {
   procesarDuplicadosMasivo 
 } from '../controller/importController.js';
 import { authenticate } from '../middleware/authMiddleware.js';
-import { requirePermission } from '../middleware/authorization.js';
+import { requirePermission, requireRole } from '../middleware/authorization.js';
 import { PERMISSIONS } from '../config/permissions.js';
 import { validateExcelFile } from '../middleware/fileValidation.js';
 
@@ -67,18 +67,21 @@ router.post('/aprendices',
 // Obtener duplicados pendientes de revisión - Admin y Cuentadante
 router.get('/duplicados',
   authenticate,
+  requireRole(['Administrador', 'Cuentadante']),
   obtenerDuplicadosPendientes
 );
 
 // Procesar un duplicado (aprobar o rechazar) - Admin y Cuentadante
 router.post('/duplicados/procesar',
   authenticate,
+  requireRole(['Administrador', 'Cuentadante']),
   procesarDuplicado
 );
 
 // Procesar múltiples duplicados - Admin y Cuentadante
 router.post('/duplicados/procesar-masivo',
   authenticate,
+  requireRole(['Administrador', 'Cuentadante']),
   procesarDuplicadosMasivo
 );
 

@@ -1,6 +1,7 @@
 import defaultDb from '../config/dbconfig.js'
 import { logger } from '../utils/logger.js'
 import { handleControllerError } from '../utils/controllerHelpers.js';
+import { TIPOS_DOCUMENTO } from '../config/documentTypes.js';
 
 export async function ensureAprendicesTable() {
   try {
@@ -149,11 +150,10 @@ export async function actualizarAprendiz(req, res) {
     ? (typeof tipo_documento_otro === 'string' ? tipo_documento_otro.trim() : null)
     : null
 
-  const TIPOS_DOCUMENTO_VALIDOS = ['TI', 'CC', 'CE', 'PPT', 'Otro']
-  if (!TIPOS_DOCUMENTO_VALIDOS.includes(tipoDocumentoNormalizado)) {
+  if (!TIPOS_DOCUMENTO.includes(tipoDocumentoNormalizado)) {
     return res.status(400).json({
       error: 'Tipo de documento inválido',
-      detalle: `Los tipos permitidos son: ${TIPOS_DOCUMENTO_VALIDOS.join(', ')}`,
+      detalle: `Los tipos permitidos son: ${TIPOS_DOCUMENTO.join(', ')}`,
     })
   }
 

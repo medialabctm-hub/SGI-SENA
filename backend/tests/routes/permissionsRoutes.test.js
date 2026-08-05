@@ -1,4 +1,12 @@
 import { describe, it, expect, jest, beforeEach } from '@jest/globals';
+import { fileURLToPath } from 'url';
+import path from 'path';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+const authPath = path.resolve(__dirname, '../../src/middleware/authMiddleware.js');
+const authzPath = path.resolve(__dirname, '../../src/middleware/authorization.js');
+const rolesPath = path.resolve(__dirname, '../../src/controller/rolesController.js');
 
 const mockAuth = jest.fn((req, res, next) => next());
 const mockRequirePermission = jest.fn(() => (req, res, next) => next());
@@ -12,15 +20,15 @@ const eliminarRolMock = jest.fn();
 const actualizarPermisosRolMock = jest.fn();
 const togglePermisoRolMock = jest.fn();
 
-jest.mock('../../src/middleware/authMiddleware.js', () => ({
+await jest.unstable_mockModule(authPath, () => ({
   authenticate: mockAuth,
-}), { virtual: true });
+}));
 
-jest.mock('../../src/middleware/authorization.js', () => ({
+await jest.unstable_mockModule(authzPath, () => ({
   requirePermission: mockRequirePermission,
-}), { virtual: true });
+}));
 
-jest.mock('../../src/controller/rolesController.js', () => ({
+await jest.unstable_mockModule(rolesPath, () => ({
   listarRoles: listarRolesMock,
   obtenerRol: obtenerRolMock,
   listarPermisos: listarPermisosMock,
@@ -29,14 +37,16 @@ jest.mock('../../src/controller/rolesController.js', () => ({
   eliminarRol: eliminarRolMock,
   actualizarPermisosRol: actualizarPermisosRolMock,
   togglePermisoRol: togglePermisoRolMock,
-}), { virtual: true });
+}));
+
+const { default: router } = await import('../../src/routes/permissionsRoutes.js');
 
 const mockRes = () => ({
   status: jest.fn().mockReturnThis(),
   json: jest.fn().mockReturnThis(),
 });
 
-const getRouteHandler = (router, path, method, index = 0) => {
+const getRouteHandler = (path, method, index = 0) => {
   const layer = router.stack.find((entry) => entry.route?.path === path && entry.route.methods[method]);
   return layer.route.stack[index].handle;
 };
@@ -46,9 +56,8 @@ describe('permissionsRoutes', () => {
     jest.clearAllMocks();
   });
 
-  it('GET / debe listar permisos aplanados', async () => {
-    const { default: router } = await import('../../src/routes/permissionsRoutes.js');
-    const handler = getRouteHandler(router, '/', 'get');
+  it('GET / debe listar permisos aplanados', () => {
+    const handler = getRouteHandler('/', 'get');
     const res = mockRes();
 
     handler({}, res);
@@ -62,10 +71,8 @@ describe('permissionsRoutes', () => {
     }));
   });
 
-  it('POST /check debe responder 400 si no se envía permission', async () => {
-    const { default: router } = await import('../../src/routes/permissionsRoutes.js');
-
-    const handler = getRouteHandler(router, '/check', 'post');
+  it('POST /check debe responder 400 si no se envía permission', () => {
+    const handler = getRouteHandler('/check', 'post');
 
     const req = {
       user: { rol: 'Administrador' },
@@ -82,20 +89,18 @@ describe('permissionsRoutes', () => {
     });
   });
 
-  it('GET /roles debe usar fallback ROLE_PERMISSIONS cuando listarRoles falla', async () => {
-    listarRolesMock.mockImplementation(() => {
-      throw new Error('BD no disponible');
+  it('GET /roles debe delegar en rolesController.listarRoles', () => {
+    listarRolesMock.mockImplementation((req, res) => {
+      res.json({ total: 1, roles: [{ rol: 'Administrador' }] });
     });
 
-    const { default: router } = await import('../../src/routes/permissionsRoutes.js');
-
-    const handler = getRouteHandler(router, '/roles', 'get');
-
+    const handler = getRouteHandler('/roles', 'get');
     const req = {};
     const res = mockRes();
 
-    await handler(req, res);
+    handler(req, res);
 
+    expect(listarRolesMock).toHaveBeenCalledWith(req, res);
     expect(res.json).toHaveBeenCalledWith(
       expect.objectContaining({
         total: expect.any(Number),
@@ -106,26 +111,26 @@ describe('permissionsRoutes', () => {
     );
   });
 
-  it('GET /roles/:roleName debe responder 404 en fallback cuando el rol no existe', async () => {
-    obtenerRolMock.mockImplementation(() => {
-      throw new Error('BD no disponible');
+  it('GET /roles/:roleName debe delegar en rolesController.obtenerRol', () => {
+    obtenerRolMock.mockImplementation((req, res) => {
+      res.status(404).json({ error: 'Rol no encontrado' });
     });
 
-    const { default: router } = await import('../../src/routes/permissionsRoutes.js');
-    const handler = getRouteHandler(router, '/roles/:roleName', 'get');
+    const handler = getRouteHandler('/roles/:roleName', 'get');
+    const req = { params: { roleName: 'RolInexistente' } };
     const res = mockRes();
 
-    await handler({ params: { roleName: 'RolInexistente' } }, res);
+    handler(req, res);
 
+    expect(obtenerRolMock).toHaveBeenCalledWith(req, res);
     expect(res.status).toHaveBeenCalledWith(404);
     expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
       error: 'Rol no encontrado',
     }));
   });
 
-  it('GET /me debe retornar el usuario y sus permisos', async () => {
-    const { default: router } = await import('../../src/routes/permissionsRoutes.js');
-    const handler = getRouteHandler(router, '/me', 'get');
+  it('GET /me debe retornar el usuario y sus permisos', () => {
+    const handler = getRouteHandler('/me', 'get');
     const res = mockRes();
 
     handler({ user: { id: 1, nombre: 'Admin', rol: 'Administrador' } }, res);
@@ -136,9 +141,8 @@ describe('permissionsRoutes', () => {
     }));
   });
 
-  it('POST /check debe responder tiene=true cuando el permiso existe en el rol', async () => {
-    const { default: router } = await import('../../src/routes/permissionsRoutes.js');
-    const handler = getRouteHandler(router, '/check', 'post');
+  it('POST /check debe responder tiene=true cuando el permiso existe en el rol', () => {
+    const handler = getRouteHandler('/check', 'post');
     const res = mockRes();
 
     handler({
@@ -153,8 +157,7 @@ describe('permissionsRoutes', () => {
     });
   });
 
-  it('debe registrar las rutas de gestion de roles y permisos', async () => {
-    const { default: router } = await import('../../src/routes/permissionsRoutes.js');
+  it('debe registrar las rutas de gestion de roles y permisos', () => {
     const routeKeys = router.stack
       .filter((layer) => layer.route)
       .map((layer) => `${Object.keys(layer.route.methods)[0]} ${layer.route.path}`);

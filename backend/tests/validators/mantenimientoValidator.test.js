@@ -29,10 +29,14 @@ function makeReqRes(body) {
 // crearMantenimientoSchema
 // ──────────────────────────────────────────────
 describe('crearMantenimientoSchema', () => {
+  // Campos y ENUM alineados con el controller real (mantenimientoController.js)
+  // y con la tabla Mantenimiento (BD/SGI_SENA.sql): antes este schema exigía un
+  // campo "descripcion" (min 10) que el controller nunca leía (usa
+  // descripcion_trabajo, opcional) y aceptaba "Predictivo", un valor que no
+  // existe en el ENUM real de la BD ('Preventivo','Correctivo','Actualización').
   const base = {
     codigo_equipo: 'EQ-001',
     tipo_mantenimiento: 'Preventivo',
-    descripcion: 'Revisión completa del equipo de cómputo.',
     fecha_mantenimiento: '2026-03-10',
   };
 
@@ -52,6 +56,24 @@ describe('crearMantenimientoSchema', () => {
     ).not.toThrow();
   });
 
+  it('debe aceptar descripcion_trabajo, costo, id_usuario_tecnico y observaciones opcionales', () => {
+    expect(() =>
+      crearMantenimientoSchema.parse({
+        ...base,
+        descripcion_trabajo: 'Limpieza y calibración',
+        costo: 50000,
+        id_usuario_tecnico: 3,
+        observaciones: 'Sin novedades',
+      })
+    ).not.toThrow();
+  });
+
+  it('debe aceptar fecha_mantenimiento en formato datetime-local (YYYY-MM-DDTHH:mm)', () => {
+    expect(() =>
+      crearMantenimientoSchema.parse({ ...base, fecha_mantenimiento: '2026-03-10T14:30' })
+    ).not.toThrow();
+  });
+
   it('debe asignar "Programado" como estado por defecto', () => {
     const result = crearMantenimientoSchema.parse(base);
     expect(result.estado_mantenimiento).toBe('Programado');
@@ -68,7 +90,13 @@ describe('crearMantenimientoSchema', () => {
     ).toThrow('Tipo de mantenimiento inválido');
   });
 
-  it.each(['Preventivo', 'Correctivo', 'Predictivo'])(
+  it('debe fallar con "Predictivo" (no existe en el ENUM real de la BD)', () => {
+    expect(() =>
+      crearMantenimientoSchema.parse({ ...base, tipo_mantenimiento: 'Predictivo' })
+    ).toThrow('Tipo de mantenimiento inválido');
+  });
+
+  it.each(['Preventivo', 'Correctivo', 'Actualización'])(
     'debe aceptar el tipo "%s"',
     (tipo) => {
       expect(() =>
@@ -77,15 +105,9 @@ describe('crearMantenimientoSchema', () => {
     }
   );
 
-  it('debe fallar si la descripción tiene menos de 10 caracteres', () => {
+  it('debe fallar si descripcion_trabajo supera 2000 caracteres', () => {
     expect(() =>
-      crearMantenimientoSchema.parse({ ...base, descripcion: 'Corto' })
-    ).toThrow('al menos 10 caracteres');
-  });
-
-  it('debe fallar si la descripción supera 2000 caracteres', () => {
-    expect(() =>
-      crearMantenimientoSchema.parse({ ...base, descripcion: 'A'.repeat(2001) })
+      crearMantenimientoSchema.parse({ ...base, descripcion_trabajo: 'A'.repeat(2001) })
     ).toThrow();
   });
 
@@ -189,7 +211,7 @@ describe('Middleware validate() de mantenimiento', () => {
     const { req, res, next } = makeReqRes({
       codigo_equipo: 'EQ-001',
       tipo_mantenimiento: 'Correctivo',
-      descripcion: 'Reparación del teclado dañado por líquido.',
+      descripcion_trabajo: 'Reparación del teclado dañado por líquido.',
       fecha_mantenimiento: '2026-03-10',
     });
 
@@ -199,11 +221,10 @@ describe('Middleware validate() de mantenimiento', () => {
     expect(res.status).not.toHaveBeenCalled();
   });
 
-  it('debe retornar 400 si la descripción es muy corta', () => {
+  it('debe retornar 400 si tipo_mantenimiento no es válido', () => {
     const { req, res, next } = makeReqRes({
       codigo_equipo: 'EQ-001',
-      tipo_mantenimiento: 'Correctivo',
-      descripcion: 'Corta',
+      tipo_mantenimiento: 'Predictivo',
       fecha_mantenimiento: '2026-03-10',
     });
 
@@ -218,7 +239,6 @@ describe('Middleware validate() de mantenimiento', () => {
   it('la respuesta 400 debe incluir detalles del error', () => {
     const { req, res, next } = makeReqRes({
       tipo_mantenimiento: 'Invalido',
-      descripcion: 'Muy corta',
       fecha_mantenimiento: 'no-es-fecha',
     });
 

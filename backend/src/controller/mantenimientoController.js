@@ -7,6 +7,7 @@ import {
   obtenerUsuarioActivo,
   deshabilitarAsignacionesActivas
 } from '../utils/sqlQueries.js'
+import { obtenerValoresEnumColumna } from '../utils/enumSchemaUtils.js'
 
 /**
  * Actualiza automáticamente el estado de mantenimientos programados a "En Proceso"
@@ -664,47 +665,12 @@ export async function eliminarMantenimiento(req, res) {
  * Consulta los valores ENUM de la columna tipo_mantenimiento
  */
 export async function obtenerTiposMantenimiento(req, res) {
-  try {
-    const [rows] = await defaultDb.execute(
-      `SELECT COLUMN_TYPE 
-       FROM INFORMATION_SCHEMA.COLUMNS 
-       WHERE TABLE_SCHEMA = DATABASE() 
-       AND TABLE_NAME = 'Mantenimiento' 
-       AND COLUMN_NAME = 'tipo_mantenimiento'`
-    )
-
-    if (!rows || rows.length === 0) {
-      logger.warn('No se encontró información del ENUM tipo_mantenimiento en INFORMATION_SCHEMA')
-      // Si no se puede obtener de INFORMATION_SCHEMA, retornar valores por defecto
-      return res.json(['Preventivo', 'Correctivo', 'Actualización'])
-    }
-
-    // Extraer valores del ENUM: ENUM('Preventivo','Correctivo','Actualización')
-    const enumString = rows[0].COLUMN_TYPE
-    if (!enumString || !enumString.toLowerCase().startsWith('enum')) {
-      logger.warn('El tipo de columna no es un ENUM:', enumString)
-      return res.json(['Preventivo', 'Correctivo', 'Actualización'])
-    }
-
-    const valores = enumString
-      .replace(/^enum\(/i, '')
-      .replace(/\)$/i, '')
-      .split(',')
-      .map(val => val.trim().replace(/^'|'$/g, ''))
-      .filter(val => val.length > 0)
-
-    if (valores.length === 0) {
-      logger.warn('No se pudieron extraer valores del ENUM')
-      return res.json(['Preventivo', 'Correctivo', 'Actualización'])
-    }
-
-    logger.info('Tipos de mantenimiento cargados desde BD', { tipos: valores })
-    return res.json(valores)
-  } catch (err) {
-    logger.error('Error al obtener tipos de mantenimiento', { error: err.message, stack: err.stack })
-    // En caso de error, retornar valores por defecto
-    return res.json(['Preventivo', 'Correctivo', 'Actualización'])
-  }
+  const valores = await obtenerValoresEnumColumna(
+    defaultDb, 'Mantenimiento', 'tipo_mantenimiento',
+    ['Preventivo', 'Correctivo', 'Actualización'],
+    { logger, logLabel: 'tipo_mantenimiento' }
+  )
+  return res.json(valores)
 }
 
 /**
@@ -712,46 +678,11 @@ export async function obtenerTiposMantenimiento(req, res) {
  * Consulta los valores ENUM de la columna estado_mantenimiento
  */
 export async function obtenerEstadosMantenimiento(req, res) {
-  try {
-    const [rows] = await defaultDb.execute(
-      `SELECT COLUMN_TYPE 
-       FROM INFORMATION_SCHEMA.COLUMNS 
-       WHERE TABLE_SCHEMA = DATABASE() 
-       AND TABLE_NAME = 'Mantenimiento' 
-       AND COLUMN_NAME = 'estado_mantenimiento'`
-    )
-
-    if (!rows || rows.length === 0) {
-      logger.warn('No se encontró información del ENUM estado_mantenimiento en INFORMATION_SCHEMA')
-      // Si no se puede obtener de INFORMATION_SCHEMA, retornar valores por defecto
-      return res.json(['Programado', 'En Proceso', 'Completado', 'Cancelado'])
-    }
-
-    // Extraer valores del ENUM: ENUM('Programado','En Proceso','Completado','Cancelado')
-    const enumString = rows[0].COLUMN_TYPE
-    if (!enumString || !enumString.toLowerCase().startsWith('enum')) {
-      logger.warn('El tipo de columna no es un ENUM:', enumString)
-      return res.json(['Programado', 'En Proceso', 'Completado', 'Cancelado'])
-    }
-
-    const valores = enumString
-      .replace(/^enum\(/i, '')
-      .replace(/\)$/i, '')
-      .split(',')
-      .map(val => val.trim().replace(/^'|'$/g, ''))
-      .filter(val => val.length > 0)
-
-    if (valores.length === 0) {
-      logger.warn('No se pudieron extraer valores del ENUM')
-      return res.json(['Programado', 'En Proceso', 'Completado', 'Cancelado'])
-    }
-
-    logger.info('Estados de mantenimiento cargados desde BD', { estados: valores })
-    return res.json(valores)
-  } catch (err) {
-    logger.error('Error al obtener estados de mantenimiento', { error: err.message, stack: err.stack })
-    // En caso de error, retornar valores por defecto
-    return res.json(['Programado', 'En Proceso', 'Completado', 'Cancelado'])
-  }
+  const valores = await obtenerValoresEnumColumna(
+    defaultDb, 'Mantenimiento', 'estado_mantenimiento',
+    ['Programado', 'En Proceso', 'Completado', 'Cancelado'],
+    { logger, logLabel: 'estado_mantenimiento' }
+  )
+  return res.json(valores)
 }
 

@@ -7,6 +7,7 @@ const __dirname = path.dirname(__filename);
 
 const noop = jest.fn((req, res, next) => next && next());
 const requirePermissionMock = jest.fn(() => noop);
+const requireRoleMock = jest.fn(() => noop);
 const validateExcelFileMock = jest.fn();
 const singleMock = jest.fn(() => noop);
 const multerState = { options: null };
@@ -39,6 +40,7 @@ jest.unstable_mockModule(path.resolve(__dirname, '../../src/middleware/authMiddl
 
 jest.unstable_mockModule(path.resolve(__dirname, '../../src/middleware/authorization.js'), () => ({
   requirePermission: requirePermissionMock,
+  requireRole: requireRoleMock,
 }));
 
 jest.unstable_mockModule(path.resolve(__dirname, '../../src/config/permissions.js'), () => ({
@@ -53,6 +55,17 @@ jest.unstable_mockModule(path.resolve(__dirname, '../../src/middleware/fileValid
 }));
 
 const { default: router } = await import(path.resolve(__dirname, '../../src/routes/importRoutes.js'));
+
+// Nota: tests/setup.js corre `jest.clearAllMocks()` en un afterEach global,
+// así que el historial de llamadas de requireRoleMock/requirePermissionMock
+// (invocadas una sola vez, al construir las rutas al importar el módulo) solo
+// sobrevive para el primer test que se ejecute. Por eso, para verificar que
+// una ruta quedó protegida, se inspecciona la longitud de su cadena de
+// middlewares en router.stack en vez de aserciones sobre `.mock.calls`.
+const getRouteMiddlewareCount = (path, method) => {
+  const layer = router.stack.find((entry) => entry.route?.path === path && entry.route.methods[method]);
+  return layer.route.stack.length;
+};
 
 describe('importRoutes', () => {
   beforeEach(() => {
@@ -73,6 +86,13 @@ describe('importRoutes', () => {
       'post /duplicados/procesar',
       'post /duplicados/procesar-masivo',
     ]));
+  });
+
+  it('debe proteger los 3 endpoints de duplicados con un middleware de rol además de authenticate', () => {
+    // authenticate + requireRole(...) + handler = 3 capas (antes del fix eran solo 2: authenticate + handler)
+    expect(getRouteMiddlewareCount('/duplicados', 'get')).toBe(3);
+    expect(getRouteMiddlewareCount('/duplicados/procesar', 'post')).toBe(3);
+    expect(getRouteMiddlewareCount('/duplicados/procesar-masivo', 'post')).toBe(3);
   });
 
   it('debe configurar multer con memoryStorage y límite de 50MB', () => {

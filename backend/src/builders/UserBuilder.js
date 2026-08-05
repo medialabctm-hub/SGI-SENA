@@ -1,9 +1,11 @@
+import { TIPOS_DOCUMENTO } from '../config/documentTypes.js';
+
 /**
  * UserBuilder - Builder para construir objetos de usuario
- * 
+ *
  * Patrón: Builder Pattern
  * Principio: Single Responsibility Principle (SRP)
- * 
+ *
  * Permite construir objetos de usuario de forma fluida y validada,
  * separando la construcción de la representación.
  */
@@ -44,9 +46,8 @@ export class UserBuilder {
    * @returns {UserBuilder} Instancia del builder para method chaining
    */
   withTipoDocumento(tipoDocumento) {
-    const tiposValidos = ['TI', 'CC', 'CE', 'PPT', 'Otro'];
-    if (tipoDocumento && !tiposValidos.includes(tipoDocumento)) {
-      throw new Error(`Tipo de documento inválido. Debe ser uno de: ${tiposValidos.join(', ')}`);
+    if (tipoDocumento && !TIPOS_DOCUMENTO.includes(tipoDocumento)) {
+      throw new Error(`Tipo de documento inválido. Debe ser uno de: ${TIPOS_DOCUMENTO.join(', ')}`);
     }
     this.user.tipo_documento = tipoDocumento || 'CC';
     return this;

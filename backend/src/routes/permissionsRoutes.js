@@ -10,7 +10,8 @@
 import express from 'express'
 import { authenticate } from '../middleware/authMiddleware.js'
 import { requirePermission } from '../middleware/authorization.js'
-import { PERMISSIONS, ROLE_PERMISSIONS, getRolePermissions } from '../config/permissions.js'
+import { PERMISSIONS, getRolePermissions } from '../config/permissions.js'
+import * as rolesController from '../controller/rolesController.js'
 
 const router = express.Router()
 
@@ -52,76 +53,18 @@ router.get('/', (req, res) => {
 
 /**
  * GET /api/permissions/roles
- * Obtiene todos los roles y sus permisos asignados
- * Intenta obtener desde BD, si falla usa el sistema estático
+ * Obtiene todos los roles y sus permisos asignados desde la BD.
+ * rolesController.listarRoles ya maneja sus propios errores de BD
+ * (responde 500 con mensaje traducido), así que no hace falta un
+ * fallback aquí: nunca llegaría a activarse.
  */
-router.get('/roles', async (req, res) => {
-  try {
-    // Intentar obtener desde BD primero
-    const rolesController = await import('../controller/rolesController.js')
-    return rolesController.listarRoles(req, res)
-  } catch (error) {
-    // Fallback al sistema estático si la BD no tiene las tablas
-    try {
-      const rolesWithPermissions = []
-
-      for (const [roleName, permissions] of Object.entries(ROLE_PERMISSIONS)) {
-        rolesWithPermissions.push({
-          rol: roleName,
-          totalPermisos: permissions.length,
-          permisos: permissions,
-        })
-      }
-
-      return res.json({
-        total: rolesWithPermissions.length,
-        roles: rolesWithPermissions,
-      })
-    } catch (fallbackError) {
-      return res.status(500).json({
-        error: 'Error al obtener roles y permisos',
-        details: error.message,
-      })
-    }
-  }
-})
+router.get('/roles', (req, res) => rolesController.listarRoles(req, res))
 
 /**
  * GET /api/permissions/roles/:roleName
- * Obtiene los permisos de un rol específico
- * Intenta obtener desde BD, si falla usa el sistema estático
+ * Obtiene los permisos de un rol específico desde la BD.
  */
-router.get('/roles/:roleName', async (req, res) => {
-  try {
-    // Intentar obtener desde BD primero
-    const rolesController = await import('../controller/rolesController.js')
-    return rolesController.obtenerRol(req, res)
-  } catch (error) {
-    // Fallback al sistema estático
-    try {
-      const { roleName } = req.params
-      const permissions = getRolePermissions(roleName)
-
-      if (permissions.length === 0) {
-        return res.status(404).json({
-          error: 'Rol no encontrado',
-          message: `El rol "${roleName}" no existe en el sistema`,
-        })
-      }
-
-      return res.json({
-        rol: roleName,
-        totalPermisos: permissions.length,
-        permisos: permissions,
-      })
-    } catch (fallbackError) {
-      return res.status(500).json({
-        error: 'Error al obtener permisos del rol',
-        details: error.message,
-      })
-    }
-  }
-})
+router.get('/roles/:roleName', (req, res) => rolesController.obtenerRol(req, res))
 
 /**
  * GET /api/permissions/me
@@ -185,8 +128,6 @@ router.post('/check', (req, res) => {
 // ============================================
 // RUTAS DE GESTIÓN DE ROLES Y PERMISOS
 // ============================================
-
-import * as rolesController from '../controller/rolesController.js'
 
 /**
  * GET /api/permissions/permisos

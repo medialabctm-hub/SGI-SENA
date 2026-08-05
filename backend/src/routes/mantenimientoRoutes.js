@@ -3,7 +3,7 @@ import { authenticate } from '../middleware/authMiddleware.js'
 import { requireAnyPermission, requirePermission } from '../middleware/authorization.js'
 import { PERMISSIONS } from '../config/permissions.js'
 import { crearMantenimiento, listarMantenimientos, obtenerMantenimientoPorId, actualizarEstadoMantenimiento, actualizarFechaProximo, actualizarFechaMantenimiento, eliminarMantenimiento, obtenerTiposMantenimiento, obtenerEstadosMantenimiento } from '../controller/mantenimientoController.js'
-import { validate, actualizarEstadoMantenimientoSchema, actualizarFechaProximoSchema, actualizarFechaMantenimientoSchema } from '../validators/mantenimientoValidator.js'
+import { validate, crearMantenimientoSchema, actualizarEstadoMantenimientoSchema, actualizarFechaProximoSchema, actualizarFechaMantenimientoSchema } from '../validators/mantenimientoValidator.js'
 
 const router = express.Router()
 
@@ -13,6 +13,7 @@ router.use(authenticate)
 // Crear mantenimiento
 router.post('/',
   requirePermission(PERMISSIONS.MANTENIMIENTO.CREATE),
+  validate(crearMantenimientoSchema),
   crearMantenimiento
 )
 

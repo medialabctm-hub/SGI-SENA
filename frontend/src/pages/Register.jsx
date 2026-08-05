@@ -21,7 +21,7 @@ export default function Register() {
   const [aceptaTerminos, setAceptaTerminos] = useState(false)
   const [mostrarPassword, setMostrarPassword] = useState(false)
   const [mostrarConfirmPassword, setMostrarConfirmPassword] = useState(false)
-  const [rol, setRol] = useState('Aprendiz')
+  const [rol, setRol] = useState('')
   const [codigoInvitacion, setCodigoInvitacion] = useState('')
   const [rolesDisponibles, setRolesDisponibles] = useState([])
   const [errores, setErrores] = useState({})
@@ -39,7 +39,8 @@ export default function Register() {
       try {
         const res = await fetch('/api/auth/roles')
         const data = await parseApiResponse(res, 'No se pudieron cargar los roles')
-        setRolesDisponibles(data.roles || [])
+        // Los aprendices ya no se autorregistran aquí: usan el autoservicio sin cuenta (/solicitar-equipo)
+        setRolesDisponibles((data.roles || []).filter(r => r.nombre_rol !== 'Aprendiz'))
       } catch {
         setRolesDisponibles([])
       }
@@ -80,6 +81,11 @@ export default function Register() {
     } else if (validarCaracteresEspeciales(cedula, 'Documento')) {
       nuevosErrores.cedula_usuario = validarCaracteresEspeciales(cedula, 'Documento')
     }
+    if (!rol) {
+      nuevosErrores.rol_usuario = 'Debes seleccionar un rol'
+    } else if (!codigoInvitacion.trim()) {
+      nuevosErrores.codigo_invitacion = `El código de invitación es requerido para registrarte como ${rol}`
+    }
     if (!aceptaTerminos) {
       nuevosErrores.acepta_terminos = 'Debes aceptar los términos y el tratamiento de datos para registrarte'
     }
@@ -100,7 +106,7 @@ export default function Register() {
           telefono,
           contrasena: password,
           rol,
-          codigo_invitacion: rol !== 'Aprendiz' ? codigoInvitacion.trim() : null
+          codigo_invitacion: codigoInvitacion.trim() || null
         })
       })
       const data = await parseApiResponse(res, 'No se pudo completar el registro')
@@ -226,18 +232,14 @@ export default function Register() {
             <CustomSelect
               name="rol"
               value={rol}
-              onChange={e => {
-                setRol(e.target.value);
-                if (e.target.value === 'Aprendiz') {
-                  setCodigoInvitacion('');
-                }
-              }}
+              onChange={e => setRol(e.target.value)}
               options={rolesDisponibles.map(r => r.nombre_rol)}
               placeholder="Seleccionar rol"
               className="auth-select-input"
             />
           </label>
-          {rol !== 'Aprendiz' && rol && (
+          {errores.rol_usuario && <div className="error-msg">{errores.rol_usuario}</div>}
+          {rol && (
             <>
               <label className="input">
                 <span className="icon"><FiLock /></span>
