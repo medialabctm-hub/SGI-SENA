@@ -30,12 +30,9 @@ export default function ImageViewer({ images = [], currentIndex = 0, onClose, on
   }, [currentIndex]);
 
   useEffect(() => {
-    // Ocultar header y sidebar cuando el viewer está abierto
+    // Ocultar header y sidebar cuando el viewer está abierto (ver regla
+    // `body.image-viewer-open` en styles/components/imageViewer.css)
     document.body.classList.add('image-viewer-open');
-    const header = document.querySelector('.app-header-wrapper');
-    const sidebar = document.querySelector('.app-sidebar');
-    if (header) header.style.display = 'none';
-    if (sidebar) sidebar.style.display = 'none';
 
     // Manejar teclado
     const handleKeyPress = (e) => {
@@ -52,8 +49,6 @@ export default function ImageViewer({ images = [], currentIndex = 0, onClose, on
 
     return () => {
       document.body.classList.remove('image-viewer-open');
-      if (header) header.style.display = '';
-      if (sidebar) sidebar.style.display = '';
       window.removeEventListener('keydown', handleKeyPress);
     };
   }, [images.length]);

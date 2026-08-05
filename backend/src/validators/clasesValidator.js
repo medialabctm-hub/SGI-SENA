@@ -182,41 +182,5 @@ export const agregarParticipantesSchema = z.object({
     .max(50, 'No se pueden agregar más de 50 participantes a la vez'),
 });
 
-/**
- * Middleware de validación genérico
- */
-export const validate = (schema) => (req, res, next) => {
-  try {
-    const validated = schema.parse(req.body);
-    req.body = validated;
-    next();
-  } catch (error) {
-    if (error instanceof z.ZodError && error.issues && Array.isArray(error.issues)) {
-      const details = error.issues.map((e) => ({
-        path: e.path && Array.isArray(e.path) ? e.path.join('.') : 'unknown',
-        message: e.message || 'Error de validación',
-        code: e.code || 'invalid_type',
-      }));
-      
-      // Log detallado para debugging
-      console.error('Validation error details:', {
-        body: req.body,
-        errors: details
-      });
-      
-      return res.status(400).json({
-        success: false,
-        error: 'Error de validación',
-        details: details.length > 0 ? details : [{ path: 'unknown', message: 'Error de validación desconocido' }],
-      });
-    }
-    // Si no es un ZodError o no tiene errors, loguear y pasar al siguiente middleware
-    console.error('Validation middleware error:', {
-      error: error.message,
-      stack: error.stack,
-      body: req.body
-    });
-    next(error);
-  }
-};
+export { validate } from '../middleware/validate.js';
 

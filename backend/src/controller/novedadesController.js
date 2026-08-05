@@ -1,11 +1,12 @@
 import defaultDb from '../config/dbconfig.js'
 import { createForUsers, createForRole } from '../services/notificationService.js'
 import { logger } from '../utils/logger.js'
-import { 
-  obtenerEquipoPorCodigo, 
+import {
+  obtenerEquipoPorCodigo,
   obtenerUsuarioActivo,
   deshabilitarAsignacionesActivas
 } from '../utils/sqlQueries.js'
+import { obtenerValoresEnumColumna } from '../utils/enumSchemaUtils.js'
 import emailService from '../services/emailService.js'
 import { config } from '../config/config.js'
 import PDFDocument from 'pdfkit'
@@ -1313,44 +1314,12 @@ export async function actualizarEstadoNovedad(req, res) {
  * Consulta los valores ENUM de la columna tipo_novedad
  */
 export async function obtenerTiposNovedad(req, res) {
-  try {
-    const [rows] = await defaultDb.execute(
-      `SELECT COLUMN_TYPE 
-       FROM INFORMATION_SCHEMA.COLUMNS 
-       WHERE TABLE_SCHEMA = DATABASE() 
-       AND TABLE_NAME = 'Novedades' 
-       AND COLUMN_NAME = 'tipo_novedad'`
-    )
-
-    if (!rows || rows.length === 0) {
-      logger.warn('No se encontró información del ENUM tipo_novedad en INFORMATION_SCHEMA')
-      return res.json(['Daño', 'Pérdida', 'Robo', 'Mal Funcionamiento', 'Daño Físico', 'Falta de Componente', 'Otro'])
-    }
-
-    const enumString = rows[0].COLUMN_TYPE
-    if (!enumString || !enumString.toLowerCase().startsWith('enum')) {
-      logger.warn('El tipo de columna no es un ENUM:', enumString)
-      return res.json(['Daño', 'Pérdida', 'Robo', 'Mal Funcionamiento', 'Daño Físico', 'Falta de Componente', 'Otro'])
-    }
-
-    const valores = enumString
-      .replace(/^enum\(/i, '')
-      .replace(/\)$/i, '')
-      .split(',')
-      .map(val => val.trim().replace(/^'|'$/g, ''))
-      .filter(val => val.length > 0)
-
-    if (valores.length === 0) {
-      logger.warn('No se pudieron extraer valores del ENUM')
-      return res.json(['Daño', 'Pérdida', 'Robo', 'Mal Funcionamiento', 'Daño Físico', 'Falta de Componente', 'Otro'])
-    }
-
-    logger.info('Tipos de novedad cargados desde BD', { tipos: valores })
-    return res.json(valores)
-  } catch (err) {
-    logger.error('Error al obtener tipos de novedad', { error: err.message, stack: err.stack })
-    return res.json(['Daño', 'Pérdida', 'Robo', 'Mal Funcionamiento', 'Daño Físico', 'Falta de Componente', 'Otro'])
-  }
+  const valores = await obtenerValoresEnumColumna(
+    defaultDb, 'Novedades', 'tipo_novedad',
+    ['Daño', 'Pérdida', 'Robo', 'Mal Funcionamiento', 'Daño Físico', 'Falta de Componente', 'Otro'],
+    { logger, logLabel: 'tipo_novedad' }
+  )
+  return res.json(valores)
 }
 
 /**
@@ -1358,43 +1327,11 @@ export async function obtenerTiposNovedad(req, res) {
  * Consulta los valores ENUM de la columna estado_resolucion
  */
 export async function obtenerEstadosNovedad(req, res) {
-  try {
-    const [rows] = await defaultDb.execute(
-      `SELECT COLUMN_TYPE 
-       FROM INFORMATION_SCHEMA.COLUMNS 
-       WHERE TABLE_SCHEMA = DATABASE() 
-       AND TABLE_NAME = 'Novedades' 
-       AND COLUMN_NAME = 'estado_resolucion'`
-    )
-
-    if (!rows || rows.length === 0) {
-      logger.warn('No se encontró información del ENUM estado_resolucion en INFORMATION_SCHEMA')
-      return res.json(['Pendiente', 'En Proceso', 'Resuelto', 'No Resuelto'])
-    }
-
-    const enumString = rows[0].COLUMN_TYPE
-    if (!enumString || !enumString.toLowerCase().startsWith('enum')) {
-      logger.warn('El tipo de columna no es un ENUM:', enumString)
-      return res.json(['Pendiente', 'En Proceso', 'Resuelto', 'No Resuelto'])
-    }
-
-    const valores = enumString
-      .replace(/^enum\(/i, '')
-      .replace(/\)$/i, '')
-      .split(',')
-      .map(val => val.trim().replace(/^'|'$/g, ''))
-      .filter(val => val.length > 0)
-
-    if (valores.length === 0) {
-      logger.warn('No se pudieron extraer valores del ENUM')
-      return res.json(['Pendiente', 'En Proceso', 'Resuelto', 'No Resuelto'])
-    }
-
-    logger.info('Estados de novedad cargados desde BD', { estados: valores })
-    return res.json(valores)
-  } catch (err) {
-    logger.error('Error al obtener estados de novedad', { error: err.message, stack: err.stack })
-    return res.json(['Pendiente', 'En Proceso', 'Resuelto', 'No Resuelto'])
-  }
+  const valores = await obtenerValoresEnumColumna(
+    defaultDb, 'Novedades', 'estado_resolucion',
+    ['Pendiente', 'En Proceso', 'Resuelto', 'No Resuelto'],
+    { logger, logLabel: 'estado_resolucion' }
+  )
+  return res.json(valores)
 }
 

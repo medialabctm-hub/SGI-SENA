@@ -333,6 +333,47 @@ export function requirePermissionAndOwnership(permission, getResourceOwnerId) {
   }
 }
 
+/**
+ * Middleware combinado: permite acceso si el usuario tiene alguno de los
+ * permisos indicados, O si es el propietario del recurso (a diferencia de
+ * requirePermissionAndOwnership, aquí basta con cumplir una de las dos).
+ *
+ * @param {string[]} permissions - Permisos que, de tenerse alguno, dan acceso sin importar el propietario
+ * @param {Function} getResourceOwnerId - Función para obtener el ID del propietario del recurso
+ * @returns {Function} Middleware de Express
+ *
+ * @example
+ * router.get('/user/:id', requireAnyPermissionOrOwnership(
+ *   [PERMISSIONS.USERS.VIEW_DETAIL],
+ *   (req) => req.params.id
+ * ), controller)
+ */
+export function requireAnyPermissionOrOwnership(permissions, getResourceOwnerId) {
+  return async (req, res, next) => {
+    if (!req.user || !req.user.rol || !req.user.id) {
+      return res.status(401).json({
+        error: 'No autorizado',
+        message: 'Debe iniciar sesión para acceder a este recurso',
+      })
+    }
+
+    const userRole = req.user.rol
+
+    if (isAdmin(userRole)) {
+      return next()
+    }
+
+    for (const permission of permissions) {
+      if (await hasPermissionFromDB(defaultDb, userRole, permission)) {
+        return next()
+      }
+    }
+
+    // Ningún permiso otorgado: solo queda permitir acceso al propio recurso
+    return requireOwnership(getResourceOwnerId)(req, res, next)
+  }
+}
+
 export default {
   requireRole,
   requirePermission,
@@ -341,5 +382,6 @@ export default {
   requireOwnership,
   requireAssignedEquipos,
   requirePermissionAndOwnership,
+  requireAnyPermissionOrOwnership,
 }
 

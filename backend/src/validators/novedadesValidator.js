@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { createValidator } from '../middleware/validate.js';
 
 /**
  * Validadores para las rutas de novedades
@@ -34,29 +35,5 @@ export const actualizarEstadoNovedadSchema = z.object({
   observaciones_resolucion: z.string().max(1000).optional().nullable(),
 });
 
-/**
- * Middleware de validación genérico
- */
-export const validate = (schema) => (req, res, next) => {
-  try {
-    const validated = schema.parse(req.body);
-    req.body = validated;
-    next();
-  } catch (error) {
-    if (error instanceof z.ZodError && error.issues && Array.isArray(error.issues)) {
-      const details = error.issues.map((e) => ({
-        path: e.path && Array.isArray(e.path) ? e.path.join('.') : 'unknown',
-        message: e.message || 'Error de validación desconocido',
-        code: e.code || 'invalid_type',
-      }));
-      
-      return res.status(400).json({
-        success: false,
-        error: 'Error de validación',
-        details: details.length > 0 ? details : [{ path: 'unknown', message: 'Error de validación desconocido' }],
-      });
-    }
-    next(error);
-  }
-};
+export const validate = createValidator({ fallbackIssueMessage: 'Error de validación desconocido' });
 

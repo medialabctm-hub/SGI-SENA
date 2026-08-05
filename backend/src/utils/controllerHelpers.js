@@ -37,19 +37,3 @@ export const handleControllerError = (err, res, context, defaultMessage) => {
     userMessage: defaultMessage || 'No se pudo completar la operación. Inténtalo de nuevo.',
   });
 };
-
-export const sendErrorResponse = (res, statusCode, message, details = null) => {
-  const response = { error: message, userMessage: message };
-  if (details) {
-    response.detalle = details;
-  }
-  return res.status(statusCode).json(response);
-};
-
-export const sendSuccessResponse = (res, statusCode, data, message = null) => {
-  const response = { ...data };
-  if (message) {
-    response.message = message;
-  }
-  return res.status(statusCode).json(response);
-};

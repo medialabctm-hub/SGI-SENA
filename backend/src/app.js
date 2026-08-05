@@ -63,8 +63,6 @@ const corsOptions = {
     const normalized = normalizeOrigin(origin);
     const allowedOrigins = getAllowedOrigins();
     if (allowedOrigins.some((o) => normalizeOrigin(o) === normalized)) return callback(null, true);
-    const isLocalhost = normalized.startsWith('http://localhost:') || normalized.startsWith('http://127.0.0.1:');
-    if (isLocalhost && process.env.NODE_ENV === 'development') return callback(null, true);
     if (process.env.NODE_ENV === 'development') return callback(null, true);
     callback(new Error('No permitido por CORS'));
   },

@@ -2,14 +2,13 @@
  * Tests para utils/timezone
  *
  * Cubre: getColombiaDateTimeString, toColombiaDateTimeString,
- *        getColombiaDateString y la constante COLOMBIA_OFFSET_MS
+ *        y la constante COLOMBIA_OFFSET_MS
  */
 
 import { describe, it, expect } from '@jest/globals';
 import {
   getColombiaDateTimeString,
   toColombiaDateTimeString,
-  getColombiaDateString,
 } from '../../src/utils/timezone.js';
 
 // ──────────────────────────────────────────────
@@ -112,32 +111,5 @@ describe('toColombiaDateTimeString()', () => {
     const badDate = { getTime: () => { throw new Error('fecha inválida'); } };
     const result = toColombiaDateTimeString(badDate);
     expect(result).toBeNull();
-  });
-});
-
-// ──────────────────────────────────────────────
-// getColombiaDateString
-// ──────────────────────────────────────────────
-describe('getColombiaDateString()', () => {
-  it('debe retornar formato YYYY-MM-DD', () => {
-    const date = new Date('2024-06-15T10:00:00Z');
-    const result = getColombiaDateString(date);
-    expect(result).toMatch(/^\d{4}-\d{2}-\d{2}$/);
-  });
-
-  it('debe retornar la fecha Colombia correcta', () => {
-    const date = new Date('2024-01-01T10:00:00Z'); // UTC → COL 05:00 → mismo día
-    expect(getColombiaDateString(date)).toBe('2024-01-01');
-  });
-
-  it('debe ajustar la fecha cuando UTC es madrugada (día anterior en Colombia)', () => {
-    // UTC 02:00 → COL 21:00 del día anterior
-    const date = new Date('2024-03-10T02:00:00Z');
-    expect(getColombiaDateString(date)).toBe('2024-03-09');
-  });
-
-  it('sin argumento, usa new Date() y devuelve formato correcto', () => {
-    const result = getColombiaDateString();
-    expect(result).toMatch(/^\d{4}-\d{2}-\d{2}$/);
   });
 });

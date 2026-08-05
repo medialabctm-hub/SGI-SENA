@@ -1,7 +1,6 @@
 import express from 'express';
 import { authenticate } from '../middleware/authMiddleware.js';
-import { requireRole } from '../middleware/authorization.js';
-import { 
+import {
   obtenerEstadisticas, 
   obtenerEstadisticasInstructor, 
   obtenerEstadisticasCuentadante 

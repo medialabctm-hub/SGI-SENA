@@ -2,22 +2,14 @@
  * Tests para utils/sqlQueries
  *
  * Cubre: obtenerUsuarioActivo, obtenerUsuarioPorCedula,
- *        obtenerEquiposAsignados, obtenerEquipoPorCodigo,
- *        verificarAsignacionEquipo, obtenerRolUsuario,
- *        contarUsuariosActivos, contarEquipos,
- *        verificarDisponibilidadEquipo
+ *        obtenerEquipoPorCodigo, verificarDisponibilidadEquipo
  */
 
 import { describe, it, expect, jest, beforeEach } from '@jest/globals';
 import {
   obtenerUsuarioActivo,
   obtenerUsuarioPorCedula,
-  obtenerEquiposAsignados,
   obtenerEquipoPorCodigo,
-  verificarAsignacionEquipo,
-  obtenerRolUsuario,
-  contarUsuariosActivos,
-  contarEquipos,
   verificarDisponibilidadEquipo,
   deshabilitarAsignacionesActivas,
   obtenerAmbientesValidosAprendiz,
@@ -91,42 +83,6 @@ describe('obtenerUsuarioPorCedula()', () => {
 });
 
 // ──────────────────────────────────────────────
-// obtenerEquiposAsignados
-// ──────────────────────────────────────────────
-describe('obtenerEquiposAsignados()', () => {
-  let db;
-  beforeEach(() => { db = makeMockDb(); });
-
-  it('debe retornar lista de equipos asignados', async () => {
-    const equipos = [
-      { codigo_equipo: 10, tipo: 'Laptop' },
-      { codigo_equipo: 11, tipo: 'Tablet' },
-    ];
-    db.execute.mockResolvedValue([equipos]);
-
-    const result = await obtenerEquiposAsignados(db, 1);
-
-    expect(result).toEqual(equipos);
-  });
-
-  it('debe retornar array vacío si no hay equipos', async () => {
-    db.execute.mockResolvedValue([[]]);
-
-    const result = await obtenerEquiposAsignados(db, 99);
-
-    expect(result).toEqual([]);
-  });
-
-  it('debe retornar array vacío si el resultado es null/undefined', async () => {
-    db.execute.mockResolvedValue([null]);
-
-    const result = await obtenerEquiposAsignados(db, 1);
-
-    expect(Array.isArray(result)).toBe(true);
-  });
-});
-
-// ──────────────────────────────────────────────
 // obtenerEquipoPorCodigo
 // ──────────────────────────────────────────────
 describe('obtenerEquipoPorCodigo()', () => {
@@ -165,141 +121,6 @@ describe('obtenerEquipoPorCodigo()', () => {
   });
 });
 
-// ──────────────────────────────────────────────
-// verificarAsignacionEquipo
-// ──────────────────────────────────────────────
-describe('verificarAsignacionEquipo()', () => {
-  let db;
-  beforeEach(() => { db = makeMockDb(); });
-
-  it('debe retornar true si existe asignación activa', async () => {
-    db.execute.mockResolvedValue([[{ id_responsable: 1 }]]);
-
-    const result = await verificarAsignacionEquipo(db, 10, 5);
-
-    expect(result).toBe(true);
-  });
-
-  it('debe retornar false si no hay asignación activa', async () => {
-    db.execute.mockResolvedValue([[undefined]]);
-
-    const result = await verificarAsignacionEquipo(db, 10, 5);
-
-    expect(result).toBe(false);
-  });
-
-  it('debe pasar los parámetros correctos', async () => {
-    db.execute.mockResolvedValue([[undefined]]);
-
-    await verificarAsignacionEquipo(db, 42, 7);
-
-    expect(db.execute).toHaveBeenCalledWith(expect.any(String), [42, 7]);
-  });
-});
-
-// ──────────────────────────────────────────────
-// obtenerRolUsuario
-// ──────────────────────────────────────────────
-describe('obtenerRolUsuario()', () => {
-  let db;
-  beforeEach(() => { db = makeMockDb(); });
-
-  it('debe retornar el nombre del rol del usuario', async () => {
-    db.execute.mockResolvedValue([[{ nombre_rol: 'Instructor' }]]);
-
-    const result = await obtenerRolUsuario(db, 1);
-
-    expect(result).toBe('Instructor');
-  });
-
-  it('debe retornar null si el usuario no tiene rol', async () => {
-    db.execute.mockResolvedValue([[undefined]]);
-
-    const result = await obtenerRolUsuario(db, 99);
-
-    expect(result).toBeNull();
-  });
-
-  it('debe retornar null si nombre_rol es undefined', async () => {
-    db.execute.mockResolvedValue([[{ nombre_rol: undefined }]]);
-
-    const result = await obtenerRolUsuario(db, 1);
-
-    expect(result).toBeNull();
-  });
-});
-
-// ──────────────────────────────────────────────
-// contarUsuariosActivos
-// ──────────────────────────────────────────────
-describe('contarUsuariosActivos()', () => {
-  let db;
-  beforeEach(() => { db = makeMockDb(); });
-
-  it('debe retornar el número de usuarios activos', async () => {
-    db.execute.mockResolvedValue([[{ total: 42 }]]);
-
-    const result = await contarUsuariosActivos(db);
-
-    expect(result).toBe(42);
-  });
-
-  it('debe retornar 0 si no hay usuarios activos', async () => {
-    db.execute.mockResolvedValue([[{ total: 0 }]]);
-
-    const result = await contarUsuariosActivos(db);
-
-    expect(result).toBe(0);
-  });
-
-  it('debe retornar 0 si el resultado es null/undefined', async () => {
-    db.execute.mockResolvedValue([[undefined]]);
-
-    const result = await contarUsuariosActivos(db);
-
-    expect(result).toBe(0);
-  });
-
-  it('debe convertir resultado string a número', async () => {
-    db.execute.mockResolvedValue([[{ total: '15' }]]);
-
-    const result = await contarUsuariosActivos(db);
-
-    expect(result).toBe(15);
-  });
-});
-
-// ──────────────────────────────────────────────
-// contarEquipos
-// ──────────────────────────────────────────────
-describe('contarEquipos()', () => {
-  let db;
-  beforeEach(() => { db = makeMockDb(); });
-
-  it('debe retornar el número total de equipos', async () => {
-    db.execute.mockResolvedValue([[{ total: 150 }]]);
-
-    const result = await contarEquipos(db);
-
-    expect(result).toBe(150);
-  });
-
-  it('debe retornar 0 si no hay equipos', async () => {
-    db.execute.mockResolvedValue([[{ total: 0 }]]);
-
-    const result = await contarEquipos(db);
-
-    expect(result).toBe(0);
-  });
-
-  it('debe retornar 0 si el resultado es undefined', async () => {
-    db.execute.mockResolvedValue([[undefined]]);
-
-    const result = await contarEquipos(db);
-
-    expect(result).toBe(0);
-  });
-});
 
 // ──────────────────────────────────────────────
 // verificarDisponibilidadEquipo
