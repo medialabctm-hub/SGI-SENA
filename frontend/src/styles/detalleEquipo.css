@@ -470,7 +470,11 @@
   position: absolute;
   top: 12px;
   right: 12px;
-  background: linear-gradient(135deg, var(--success-700) 0%, var(--success-800) 100%);
+  background: linear-gradient(
+    135deg,
+    var(--success-700) 0%,
+    var(--success-800) 100%
+  );
   color: white;
   padding: 6px 12px;
   border-radius: 20px;
@@ -692,6 +696,36 @@
   display: none;
 }
 
+.detalle-equipo-modal-desktop-camera-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 44px;
+  margin-top: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--success-800);
+  border-radius: 8px;
+  background: #f0fdf4;
+  color: var(--success-900);
+  cursor: pointer;
+  font-weight: 600;
+  transition:
+    background 0.2s ease,
+    border-color 0.2s ease;
+}
+
+.detalle-equipo-modal-desktop-camera-button:hover:not(:disabled) {
+  background: #dcfce7;
+  border-color: var(--success-900);
+}
+
+.detalle-equipo-modal-desktop-camera-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
 .detalle-equipo-modal-camera-input {
   position: absolute;
   width: 1px;
@@ -702,6 +736,66 @@
   clip: rect(0, 0, 0, 0);
   white-space: nowrap;
   border: 0;
+}
+
+.detalle-equipo-modal-camera-preview {
+  margin-top: 16px;
+  overflow: hidden;
+  border: 1px solid #bbf7d0;
+  border-radius: 10px;
+  background: #052e16;
+  color: #fff;
+}
+
+.detalle-equipo-modal-camera-video {
+  display: block;
+  width: 100%;
+  max-height: min(42vh, 360px);
+  background: #111827;
+  object-fit: contain;
+}
+
+.detalle-equipo-modal-camera-canvas {
+  display: none;
+}
+
+.detalle-equipo-modal-camera-help {
+  margin: 12px 12px 0;
+  color: #dcfce7;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.detalle-equipo-modal-camera-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 12px;
+}
+
+.detalle-equipo-modal-camera-capture,
+.detalle-equipo-modal-camera-cancel {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.detalle-equipo-modal-camera-capture {
+  border: 1px solid #86efac;
+  background: var(--success-800);
+  color: #fff;
+}
+
+.detalle-equipo-modal-camera-cancel {
+  border: 1px solid #bbf7d0;
+  background: transparent;
+  color: #fff;
 }
 
 .detalle-equipo-modal-file-selected {
@@ -970,6 +1064,19 @@
     font-weight: 600;
   }
 
+  .detalle-equipo-modal-desktop-camera-button {
+    display: none;
+  }
+
+  .detalle-equipo-modal-camera-actions {
+    flex-direction: column;
+  }
+
+  .detalle-equipo-modal-camera-capture,
+  .detalle-equipo-modal-camera-cancel {
+    width: 100%;
+  }
+
   .detalle-equipo-modal-actions {
     flex-direction: column;
     gap: 8px;
@@ -1021,7 +1128,9 @@
   transition: transform 0.3s ease;
 }
 
-.detalle-equipo-gallery-thumbnail:hover .detalle-equipo-gallery-thumbnail-image img {
+.detalle-equipo-gallery-thumbnail:hover
+  .detalle-equipo-gallery-thumbnail-image
+  img {
   transform: scale(1.1);
 }
 
@@ -1067,7 +1176,8 @@
   z-index: 10;
 }
 
-.detalle-equipo-gallery-thumbnail:hover .detalle-equipo-gallery-thumbnail-overlay {
+.detalle-equipo-gallery-thumbnail:hover
+  .detalle-equipo-gallery-thumbnail-overlay {
   opacity: 1;
 }
 
@@ -1690,7 +1800,11 @@ body.lightbox-open .app-sidebar {
   width: 48px;
   height: 48px;
   border-radius: 50%;
-  background: linear-gradient(135deg, var(--success-800) 0%, var(--success-600) 100%);
+  background: linear-gradient(
+    135deg,
+    var(--success-800) 0%,
+    var(--success-600) 100%
+  );
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2037,4 +2151,169 @@ body.lightbox-open .app-sidebar {
 
 .detalle-equipo-responsable-action-btn-delete-inline:hover {
   background: #dc2626;
+}
+
+/* Ajustes de composición para pantallas pequeñas. Estas reglas usan los
+   contenedores que realmente renderiza la vista de detalle, no las variantes
+   heredadas de la primera versión del componente. */
+@media (max-width: 768px) {
+  .detalle-equipo-header-container {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 16px;
+    margin-bottom: 16px;
+    padding-bottom: 16px;
+  }
+
+  .detalle-equipo-header-container .detalle-equipo-header-left {
+    width: 100%;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .detalle-equipo-header-container .detalle-equipo-back-button {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .detalle-equipo-title-section {
+    min-width: 0;
+  }
+
+  .detalle-equipo-title-section h2,
+  .detalle-equipo-title-section p {
+    overflow-wrap: anywhere;
+  }
+
+  .detalle-equipo-header-actions {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    width: 100%;
+    gap: 8px;
+  }
+
+  .detalle-equipo-header-actions .detalle-equipo-upload-button {
+    width: 100%;
+    min-width: 0;
+    justify-content: center;
+    padding: 12px;
+    white-space: normal;
+    text-align: center;
+  }
+
+  .detalle-equipo-info-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 16px;
+    margin-bottom: 20px;
+  }
+
+  .detalle-equipo-info-card,
+  .detalle-equipo-image-card,
+  .detalle-equipo-gallery-section,
+  .detalle-equipo-responsables-section {
+    padding: 16px;
+  }
+
+  .detalle-equipo-image-wrapper,
+  .detalle-equipo-image-empty {
+    height: min(62vw, 280px);
+  }
+
+  .detalle-equipo-image-info-meta {
+    flex-wrap: wrap;
+    gap: 6px 12px;
+  }
+
+  .detalle-equipo-modal-overlay,
+  .detalle-equipo-edit-modal-overlay {
+    align-items: flex-start;
+    overflow-y: auto;
+    padding: 12px;
+  }
+
+  .detalle-equipo-modal,
+  .detalle-equipo-edit-modal {
+    width: 100%;
+    max-width: 600px;
+    max-height: none;
+    margin: auto;
+  }
+
+  .detalle-equipo-edit-modal-dias-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .detalle-equipo-edit-modal-horario-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .detalle-equipo-responsable-card,
+  .detalle-equipo-responsable-header-row {
+    align-items: flex-start;
+  }
+
+  .detalle-equipo-responsable-card {
+    flex-direction: column;
+  }
+
+  .detalle-equipo-responsable-header-row,
+  .detalle-equipo-responsable-name-row,
+  .detalle-equipo-responsable-actions {
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 480px) {
+  .detalle-equipo-container,
+  .detalle-equipo-panel {
+    border-radius: 10px;
+  }
+
+  .detalle-equipo-info-card,
+  .detalle-equipo-image-card,
+  .detalle-equipo-gallery-section,
+  .detalle-equipo-responsables-section {
+    padding: 12px;
+  }
+
+  .detalle-equipo-card-header,
+  .detalle-equipo-image-card-header,
+  .detalle-equipo-gallery-section-header,
+  .detalle-equipo-responsables-header {
+    margin-bottom: 12px;
+    padding-bottom: 12px;
+  }
+
+  .detalle-equipo-gallery-empty-state {
+    padding: 36px 16px;
+  }
+
+  .detalle-equipo-modal,
+  .detalle-equipo-edit-modal {
+    padding: 16px;
+  }
+
+  .detalle-equipo-modal-header,
+  .detalle-equipo-edit-modal-header {
+    gap: 12px;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+  }
+
+  .detalle-equipo-modal-checkbox-label {
+    align-items: flex-start;
+  }
+
+  .detalle-equipo-modal-checkbox-description {
+    margin-left: 0;
+  }
+
+  .detalle-equipo-edit-modal-actions {
+    flex-direction: column-reverse;
+  }
+
+  .detalle-equipo-edit-modal-btn {
+    width: 100%;
+  }
 }

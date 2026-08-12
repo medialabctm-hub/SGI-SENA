@@ -85,3 +85,90 @@
   margin-top: 24px;
 }
 
+@media (max-width: 768px) {
+  .mis-equipos-title {
+    font-size: 1.4rem;
+  }
+
+  .mis-equipos-subtitle {
+    margin-bottom: 0;
+  }
+
+  .mis-equipos-table-wrapper {
+    overflow: visible;
+  }
+
+  .mis-equipos-table.consulta-table,
+  .mis-equipos-table.consulta-table tbody {
+    display: block;
+    min-width: 0;
+    width: 100%;
+  }
+
+  .mis-equipos-table.consulta-table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  .mis-equipos-table.consulta-table tbody tr {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0;
+    margin-bottom: 12px;
+    overflow: hidden;
+    background: #fff;
+    border: 1px solid var(--neutral-200);
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  }
+
+  .mis-equipos-table.consulta-table tbody tr:hover {
+    transform: none;
+  }
+
+  .mis-equipos-table.consulta-table td {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+    min-width: 0;
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--neutral-100);
+    overflow-wrap: anywhere;
+  }
+
+  .mis-equipos-table.consulta-table td::before {
+    content: attr(data-label);
+    color: var(--neutral-600);
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  .mis-equipos-table.consulta-table td:last-child {
+    grid-column: 1 / -1;
+    border-bottom: 0;
+  }
+
+  .mis-equipos-observaciones {
+    max-width: none;
+  }
+}
+
+@media (max-width: 420px) {
+  .mis-equipos-table.consulta-table tbody tr {
+    grid-template-columns: 1fr;
+  }
+
+  .mis-equipos-table.consulta-table td:last-child {
+    grid-column: auto;
+  }
+}

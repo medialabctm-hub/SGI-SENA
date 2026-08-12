@@ -25,10 +25,16 @@
 
 .prestados-table-wrapper {
   overflow-x: auto;
+  overscroll-behavior-inline: contain;
+  border: 1px solid var(--neutral-200);
+  border-radius: 12px;
+  background: white;
 }
 
 .prestados-table {
   min-width: 920px;
+  margin: 0;
+  box-shadow: none;
 }
 
 .prestados-icon-text {
@@ -63,6 +69,11 @@
   font-weight: 600;
 }
 
+.prestados-table td,
+.prestados-table th {
+  vertical-align: top;
+}
+
 .prestados-elapsed {
   margin-top: 4px;
   color: var(--info-700);
@@ -75,20 +86,221 @@
 }
 
 @keyframes prestados-spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
-@media (max-width: 768px) {
+@media (max-width: 900px) {
   .prestados-page {
-    padding: 1.5rem 1rem;
+    margin-top: 1rem;
+    padding: 1.25rem 1rem;
   }
 
   .prestados-page .form-header {
-    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.875rem;
+    margin-bottom: 1.25rem;
+  }
+
+  .prestados-page .form-header-content {
+    width: 100%;
+  }
+
+  .prestados-page .form-header-title {
+    font-size: 1.45rem;
+    line-height: 1.2;
+  }
+
+  .prestados-page .form-header-subtitle {
+    margin: 0.45rem 0 0;
+    font-size: 0.9rem;
+    line-height: 1.45;
   }
 
   .prestados-refresh-button {
     width: 100%;
     margin-left: 0;
+    justify-content: center;
+    min-height: 44px;
+  }
+
+  .prestados-summary {
+    align-items: flex-start;
+    gap: 0.625rem;
+    margin-bottom: 1rem;
+    padding: 0.875rem 1rem;
+    font-size: 0.9rem;
+    line-height: 1.4;
+  }
+
+  /* En pantallas pequeñas cada préstamo se muestra como una tarjeta legible. */
+  .prestados-table-wrapper {
+    overflow: visible;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+  }
+
+  .prestados-table,
+  .prestados-table tbody,
+  .prestados-table tr,
+  .prestados-table td {
+    display: block;
+    width: 100%;
+  }
+
+  .prestados-table {
+    min-width: 0;
+    background: transparent;
+  }
+
+  .prestados-table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+  }
+
+  .prestados-table tbody {
+    display: grid;
+    gap: 0.875rem;
+  }
+
+  .prestados-table tbody tr,
+  .prestados-table tbody tr:nth-child(even),
+  .prestados-table tbody tr:hover {
+    overflow: hidden;
+    border: 1px solid var(--neutral-200);
+    border-radius: 12px;
+    background: white;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    transform: none;
+  }
+
+  .prestados-table td {
+    display: grid;
+    grid-template-columns: minmax(104px, 0.8fr) minmax(0, 1.35fr);
+    gap: 0.75rem;
+    padding: 0.875rem 1rem;
+    border-bottom: 1px solid var(--neutral-100);
+    font-size: 0.9rem;
+    text-align: right;
+    overflow-wrap: anywhere;
+  }
+
+  .prestados-table td:last-child {
+    border-bottom: 0;
+  }
+
+  .prestados-table td::before {
+    content: attr(data-label);
+    color: var(--neutral-600);
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-align: left;
+    text-transform: uppercase;
+  }
+
+  .prestados-table td > * {
+    grid-column: 2;
+    min-width: 0;
+    text-align: left;
+  }
+
+  .prestados-table td > strong {
+    justify-self: end;
+  }
+
+  .prestados-table .prestados-muted,
+  .prestados-table .prestados-elapsed {
+    margin-top: 0.25rem;
+  }
+
+  .prestados-table .prestados-icon-text,
+  .prestados-table .prestados-schedule-class {
+    justify-content: flex-end;
+    text-align: right;
+  }
+
+  .prestados-table .prestados-schedule {
+    justify-items: end;
+    min-width: 0;
+    text-align: right;
+  }
+
+  .prestados-page .empty-state,
+  .prestados-page .loading-state {
+    padding: 2.5rem 1rem;
+  }
+
+  .prestados-page .empty-icon-wrapper {
+    width: 72px;
+    height: 72px;
+    margin-bottom: 1rem;
+  }
+
+  .prestados-page .empty-state h3 {
+    font-size: 1.25rem;
+  }
+}
+
+@media (min-width: 769px) and (max-width: 900px) {
+  .prestados-page {
+    padding: 1.5rem;
+  }
+
+  .prestados-page .form-header {
+    flex-direction: row;
+    align-items: flex-start;
+    text-align: left;
+  }
+
+  .prestados-page .form-header-content {
+    width: auto;
+  }
+
+  .prestados-page .form-header-title {
+    font-size: 1.6rem;
+  }
+
+  .prestados-refresh-button {
+    width: auto;
+    margin-left: auto;
+  }
+}
+
+@media (max-width: 390px) {
+  .prestados-page {
+    padding: 1rem 0.75rem;
+  }
+
+  .prestados-table td {
+    grid-template-columns: 1fr;
+    gap: 0.35rem;
+    text-align: left;
+  }
+
+  .prestados-table td > * {
+    grid-column: auto;
+  }
+
+  .prestados-table td > strong {
+    justify-self: start;
+  }
+
+  .prestados-table .prestados-icon-text,
+  .prestados-table .prestados-schedule-class {
+    justify-content: flex-start;
+    text-align: left;
+  }
+
+  .prestados-table .prestados-schedule {
+    justify-items: start;
+    text-align: left;
   }
 }

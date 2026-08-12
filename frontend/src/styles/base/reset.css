@@ -33,11 +33,27 @@ body::before {
   left: 0;
   right: 0;
   bottom: 0;
-  background-image: 
-    radial-gradient(circle at 10% 20%, rgba(1, 175, 0, 0.04) 0%, transparent 40%),
-    radial-gradient(circle at 90% 60%, rgba(1, 175, 0, 0.03) 0%, transparent 40%),
-    radial-gradient(circle at 50% 80%, rgba(1, 175, 0, 0.02) 0%, transparent 40%),
-    radial-gradient(circle at 30% 40%, rgba(1, 175, 0, 0.02) 0%, transparent 40%);
+  background-image:
+    radial-gradient(
+      circle at 10% 20%,
+      rgba(1, 175, 0, 0.04) 0%,
+      transparent 40%
+    ),
+    radial-gradient(
+      circle at 90% 60%,
+      rgba(1, 175, 0, 0.03) 0%,
+      transparent 40%
+    ),
+    radial-gradient(
+      circle at 50% 80%,
+      rgba(1, 175, 0, 0.02) 0%,
+      transparent 40%
+    ),
+    radial-gradient(
+      circle at 30% 40%,
+      rgba(1, 175, 0, 0.02) 0%,
+      transparent 40%
+    );
   background-size: 100% 100%;
   pointer-events: none;
   z-index: 0;
@@ -50,9 +66,21 @@ body::after {
   left: 0;
   right: 0;
   bottom: 0;
-  background-image: 
-    repeating-linear-gradient(0deg, transparent, transparent 50px, rgba(1, 175, 0, 0.015) 50px, rgba(1, 175, 0, 0.015) 51px),
-    repeating-linear-gradient(90deg, transparent, transparent 50px, rgba(1, 175, 0, 0.015) 50px, rgba(1, 175, 0, 0.015) 51px);
+  background-image:
+    repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 50px,
+      rgba(1, 175, 0, 0.015) 50px,
+      rgba(1, 175, 0, 0.015) 51px
+    ),
+    repeating-linear-gradient(
+      90deg,
+      transparent,
+      transparent 50px,
+      rgba(1, 175, 0, 0.015) 50px,
+      rgba(1, 175, 0, 0.015) 51px
+    );
   background-size: 100px 100px;
   pointer-events: none;
   z-index: 0;
@@ -60,7 +88,8 @@ body::after {
 }
 
 @keyframes bodyGradientShift {
-  0%, 100% {
+  0%,
+  100% {
     background-position: 0% 50%;
   }
   50% {
@@ -106,7 +135,10 @@ body::after {
   gap: 12px;
   background: linear-gradient(180deg, #fff, var(--neutral-50));
   border: 1px solid var(--neutral-200);
-  transition: transform 0.12s ease, box-shadow 0.12s ease, background 0.12s ease;
+  transition:
+    transform 0.12s ease,
+    box-shadow 0.12s ease,
+    background 0.12s ease;
 }
 
 .sidebar .big-card:hover {
@@ -121,7 +153,11 @@ body::after {
 
 .sidebar .big-card.active-card {
   border-left: 8px solid var(--success-800);
-  background: linear-gradient(90deg, rgba(67, 160, 71, 0.06), rgba(255, 255, 255, 0));
+  background: linear-gradient(
+    90deg,
+    rgba(67, 160, 71, 0.06),
+    rgba(255, 255, 255, 0)
+  );
 }
 
 .sidebar .big-card div {
@@ -132,9 +168,13 @@ body::after {
   color: var(--success-800);
 }
 
-@media(max-width:800px){
-  .sidebar{width:100% !important}
-  .page.simple-page > h2{font-size:18px}
+@media (max-width: 800px) {
+  .sidebar {
+    width: 100% !important;
+  }
+  .page.simple-page > h2 {
+    font-size: 18px;
+  }
 }
 
 /* Responsive general para móviles */
@@ -145,6 +185,11 @@ body::after {
 
   .page {
     padding: 12px;
+  }
+
+  /* El encabezado y el panel principal ya administran su propio espaciado. */
+  .page:not(.login-page) {
+    padding: 0;
   }
 
   .page.simple-page > h2 {
@@ -160,6 +205,10 @@ body::after {
 
   .page {
     padding: 8px;
+  }
+
+  .page:not(.login-page) {
+    padding: 0;
   }
 
   .page.simple-page > h2 {
@@ -243,13 +292,13 @@ body::after {
   font-weight: 600;
   text-decoration: none;
   transition: background 0.2s;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
   display: inline-block;
 }
 
 .pagina-no-encontrada__boton:hover {
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(28, 185, 129, 0.3); 
+  box-shadow: 0 4px 12px rgba(28, 185, 129, 0.3);
 }
 
 .carrito-burbuja-cantidad {
@@ -266,10 +315,9 @@ body::after {
   justify-content: center;
   font-size: 1.1rem;
   font-weight: 700;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
   z-index: 10;
   padding: 0 0.4rem;
   pointer-events: none;
   transition: background 0.18s;
 }
-

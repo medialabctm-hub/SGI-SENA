@@ -13,6 +13,7 @@
 
 .dashboard-main {
   flex: 1;
+  min-width: 0;
   padding: 18px;
   overflow-y: auto;
   background: transparent;
@@ -31,7 +32,9 @@
   overflow-y: auto;
   overflow-x: hidden;
   box-shadow: 2px 0 8px rgba(0, 0, 0, 0.04);
-  transition: transform 0.3s ease, width 0.3s ease;
+  transition:
+    transform 0.3s ease,
+    width 0.3s ease;
   position: relative;
   z-index: 10;
   flex-shrink: 0;
@@ -186,7 +189,9 @@
 .sidebar-chevron-wrapper svg {
   font-size: 16px;
   color: var(--muted);
-  transition: transform 0.3s ease, opacity 0.2s ease;
+  transition:
+    transform 0.3s ease,
+    opacity 0.2s ease;
 }
 
 .sidebar-section-items {
@@ -199,7 +204,11 @@
   max-height: 0;
   overflow: hidden;
   opacity: 0;
-  transition: max-height 0.3s ease, opacity 0.3s ease, margin-top 0.3s ease, margin-bottom 0.3s ease;
+  transition:
+    max-height 0.3s ease,
+    opacity 0.3s ease,
+    margin-top 0.3s ease,
+    margin-bottom 0.3s ease;
 }
 
 .sidebar-section-items.expanded {
@@ -223,12 +232,16 @@
 @media (max-width: 768px) {
   .dashboard-layout {
     position: relative;
+    height: auto;
+    min-height: calc(100dvh - 96px);
+    overflow: visible;
   }
 
   .dashboard-main {
-    padding: 12px;
+    padding: 16px 12px;
     width: 100%;
     margin-left: 0;
+    overflow: visible;
   }
 
   .sidebar-overlay {
@@ -298,7 +311,11 @@
     max-height: 0;
     overflow: hidden;
     opacity: 0;
-    transition: max-height 0.3s ease, opacity 0.3s ease, margin-top 0.3s ease, margin-bottom 0.3s ease;
+    transition:
+      max-height 0.3s ease,
+      opacity 0.3s ease,
+      margin-top 0.3s ease,
+      margin-bottom 0.3s ease;
   }
 
   .sidebar-section-items.expanded {
@@ -345,4 +362,3 @@
     font-size: 14px;
   }
 }
-
