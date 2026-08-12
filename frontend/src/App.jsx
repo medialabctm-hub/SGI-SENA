@@ -30,6 +30,7 @@ import TerminosCondiciones from './pages/TerminosCondiciones';
 import SolicitarEquipo from './pages/SolicitarEquipo';
 import HistorialMovimientos from './pages/HistorialMovimientos';
 import AutorizacionesMovimiento from './pages/AutorizacionesMovimiento';
+import EquiposPrestados from './pages/EquiposPrestados';
 import LoadingDemo from './pages/LoadingDemo';
 // PÁGINAS DESACTIVADAS
 // import HistorialUsoEquipos from './pages/HistorialUsoEquipos';
@@ -313,6 +314,14 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <AutorizacionesMovimiento />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/equipos/prestados"
+            element={
+              <ProtectedRoute>
+                <EquiposPrestados />
               </ProtectedRoute>
             }
           />

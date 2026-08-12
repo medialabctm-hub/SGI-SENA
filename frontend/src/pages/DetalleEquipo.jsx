@@ -7,7 +7,7 @@ import ConfirmModal from '../components/ConfirmModal';
 import ImageViewer from '../components/ImageViewer';
 import CustomSelect from '../components/CustomSelect';
 import { parseApiResponse, buildErrorMessage } from '../utils/api';
-import { FiArrowLeft, FiUpload, FiTrash2, FiStar, FiImage, FiX, FiInfo, FiPackage, FiMapPin, FiCalendar, FiDollarSign, FiUsers, FiUser, FiEdit2, FiUserPlus } from 'react-icons/fi';
+import { FiArrowLeft, FiUpload, FiTrash2, FiStar, FiImage, FiX, FiInfo, FiPackage, FiMapPin, FiCalendar, FiDollarSign, FiUsers, FiUser, FiEdit2, FiUserPlus, FiCamera } from 'react-icons/fi';
 import '../styles/pages/equipos.css';
 import '../styles/detalleEquipo.css';
 import '../styles/pages/ambientes.css';
@@ -221,8 +221,8 @@ export default function DetalleEquipo() {
     }
   }
 
-  function handleFileSelect(e) {
-    const files = Array.from(e.target.files);
+  function selectFilesForUpload(fileList, append = false) {
+    const files = Array.from(fileList || []);
     const validFiles = files.filter(file => {
       const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
       return validTypes.includes(file.type);
@@ -232,12 +232,24 @@ export default function DetalleEquipo() {
       setToast({ message: 'Algunos archivos no son imágenes válidas', type: 'error' });
     }
 
-    if (validFiles.length > 10) {
+    const filesForUpload = append ? [...selectedFiles, ...validFiles] : validFiles;
+
+    if (filesForUpload.length > 10) {
       setToast({ message: 'Máximo 10 imágenes a la vez', type: 'error' });
-      setSelectedFiles(validFiles.slice(0, 10));
+      setSelectedFiles(filesForUpload.slice(0, 10));
     } else {
-      setSelectedFiles(validFiles);
+      setSelectedFiles(filesForUpload);
     }
+  }
+
+  function handleFileSelect(e) {
+    selectFilesForUpload(e.target.files);
+    e.target.value = '';
+  }
+
+  function handleCameraCapture(e) {
+    selectFilesForUpload(e.target.files, true);
+    e.target.value = '';
   }
 
   async function handleUpload() {
@@ -488,14 +500,7 @@ export default function DetalleEquipo() {
                       e.preventDefault();
                       e.currentTarget.style.borderColor = '#d1d5db';
                       if (!uploading) {
-                        const files = Array.from(e.dataTransfer.files);
-                        const validFiles = files.filter(file => file.type.startsWith('image/'));
-                        if (validFiles.length > 10) {
-                          setToast({ message: 'Máximo 10 imágenes', type: 'error' });
-                          setSelectedFiles(validFiles.slice(0, 10));
-                        } else {
-                          setSelectedFiles(validFiles);
-                        }
+                        selectFilesForUpload(e.dataTransfer.files);
                       }
                     }}
                   >
@@ -507,6 +512,18 @@ export default function DetalleEquipo() {
                       disabled={uploading}
                       className="detalle-equipo-modal-file-input"
                     />
+                    <label className="detalle-equipo-modal-camera-button">
+                      <FiCamera size={18} />
+                      Tomar foto
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/png,image/gif,image/webp"
+                        capture="environment"
+                        onChange={handleCameraCapture}
+                        disabled={uploading}
+                        className="detalle-equipo-modal-camera-input"
+                      />
+                    </label>
                     {selectedFiles.length > 0 && (
                       <div className="detalle-equipo-modal-file-selected">
                         <div className="detalle-equipo-modal-file-selected-title">

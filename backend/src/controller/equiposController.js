@@ -2865,17 +2865,46 @@ export async function obtenerSesionesActivas(req, res) {
         e.placa AS codigo_inventario,
         e.tipo AS equipo_tipo,
         e.modelo AS equipo_modelo,
+        e.consecutivo,
+        a.nombre_ambiente,
+        a.codigo_ambiente,
         hu.id_usuario,
-        u.nombre_usuario,
-        u.cedula AS usuario_cedula,
+        COALESCE(u.nombre_usuario, hu.nombre_usuario, re.nombre_externo, 'Usuario no identificado') AS usuario_nombre,
+        COALESCE(u.cedula, re.documento_externo) AS usuario_cedula,
         u.correo AS usuario_correo,
         hu.fecha_hora_inicio,
         hu.estado,
         TIMESTAMPDIFF(MINUTE, hu.fecha_hora_inicio, NOW()) AS minutos_transcurridos,
-        hu.observaciones
+        hu.observaciones,
+        CAST(re.dias_semana AS CHAR) AS dias_semana,
+        re.hora_inicio,
+        re.hora_fin,
+        c.nombre_clase,
+        c.codigo_ficha AS ficha_clase,
+        c.fecha_clase,
+        c.hora_inicio AS clase_hora_inicio,
+        c.hora_fin AS clase_hora_fin
       FROM Historial_Uso_Equipos hu
       INNER JOIN Elementos e ON hu.codigo_equipo = e.codigo_equipo
-      INNER JOIN Usuarios u ON hu.id_usuario = u.id_usuario
+      LEFT JOIN Ambientes a ON e.id_ambiente = a.id_ambiente
+      LEFT JOIN Usuarios u ON hu.id_usuario = u.id_usuario
+      LEFT JOIN Responsables_Equipo re ON re.id_responsable = (
+        SELECT re2.id_responsable
+        FROM Responsables_Equipo re2
+        WHERE re2.codigo_equipo = hu.codigo_equipo
+          AND re2.estado_responsabilidad = 'Activo'
+          AND (
+            (hu.id_usuario IS NOT NULL AND re2.id_usuario = hu.id_usuario)
+            OR (
+              hu.id_usuario IS NULL
+              AND re2.id_usuario IS NULL
+              AND re2.nombre_externo = hu.nombre_usuario
+            )
+          )
+        ORDER BY re2.fecha_asignacion DESC
+        LIMIT 1
+      )
+      LEFT JOIN Clases c ON hu.id_clase = c.id_clase
       WHERE hu.estado = 'En Uso'
     `;
 
