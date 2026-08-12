@@ -688,6 +688,22 @@
   cursor: pointer;
 }
 
+.detalle-equipo-modal-camera-button {
+  display: none;
+}
+
+.detalle-equipo-modal-camera-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 .detalle-equipo-modal-file-selected {
   margin-top: 12px;
   padding: 12px;
@@ -935,6 +951,23 @@
 
   .detalle-equipo-modal-header h3 {
     font-size: 20px;
+  }
+
+  .detalle-equipo-modal-camera-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    min-height: 44px;
+    margin-top: 12px;
+    padding: 10px 12px;
+    border: 1px solid var(--success-800);
+    border-radius: 8px;
+    background: #f0fdf4;
+    color: var(--success-900);
+    cursor: pointer;
+    font-weight: 600;
   }
 
   .detalle-equipo-modal-actions {

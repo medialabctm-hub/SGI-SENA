@@ -21,7 +21,8 @@ import {
   FiCheckCircle,
   FiCalendar,
   FiClock,
-  FiClipboard
+  FiClipboard,
+  FiMonitor
 } from 'react-icons/fi'
 import { useSidebar } from '../contexts/SidebarContext'
 import { useBlockedNavigate } from '../hooks/useBlockedNavigate'
@@ -135,6 +136,7 @@ export default function Sidebar({ user }) {
       { title: 'Consultar Inventario', path: '/equipos/consultar', icon: <FiSearch />, roles: ['all'] },
       { title: 'Mis Equipos', path: '/mis-equipos', icon: <FiPackage />, roles: ['all'] },
       { title: 'Asignar Equipo', path: '/equipos/asignar', icon: <FiUsers />, roles: ['Administrador', 'Instructor', 'Cuentadante'] },
+      { title: 'Equipos Prestados', path: '/equipos/prestados', icon: <FiMonitor />, roles: ['Administrador', 'Instructor', 'Cuentadante'] },
       { title: 'Verificar Inventario', path: '/equipos/verificar', icon: <FiCheckCircle />, roles: ['Instructor', 'Cuentadante'] },
       { title: 'Autorizaciones', path: '/equipos/autorizaciones', icon: <FiClipboard />, roles: ['Administrador', 'Instructor', 'Cuentadante'] },
       { title: 'Buscar Cuentadante', path: '/equipos/cuentadantes/buscar', icon: <FiSearch />, roles: ['Administrador'] },

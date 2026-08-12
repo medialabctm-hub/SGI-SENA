@@ -797,6 +797,8 @@ describe('obtenerSesionesActivas', () => {
     const req = mockReq({ query: {}, user: { id: 1, rol: 'Administrador' } });
     const res = mockRes();
     await obtenerSesionesActivas(req, res);
+    expect(mockExecute).toHaveBeenCalledWith(expect.stringContaining('LEFT JOIN Ambientes'), []);
+    expect(mockExecute).toHaveBeenCalledWith(expect.stringContaining('LEFT JOIN Usuarios'), []);
     expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ total: 1 }));
   });
 

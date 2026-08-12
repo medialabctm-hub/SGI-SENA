@@ -1,0 +1,94 @@
+.prestados-header-icon {
+  background: var(--info-600);
+}
+
+.prestados-refresh-button {
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.prestados-summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 20px;
+  padding: 12px 16px;
+  border: 1px solid var(--info-200);
+  border-radius: 10px;
+  background: var(--info-50);
+  color: var(--info-900);
+}
+
+.prestados-summary strong {
+  font-size: 1.1rem;
+}
+
+.prestados-table-wrapper {
+  overflow-x: auto;
+}
+
+.prestados-table {
+  min-width: 920px;
+}
+
+.prestados-icon-text {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+}
+
+.prestados-icon-text svg,
+.prestados-schedule-class svg {
+  flex-shrink: 0;
+  color: var(--success-800);
+}
+
+.prestados-muted {
+  margin-top: 4px;
+  color: var(--neutral-600);
+  font-size: 0.85rem;
+}
+
+.prestados-schedule {
+  display: grid;
+  gap: 4px;
+  min-width: 180px;
+}
+
+.prestados-schedule-class {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+}
+
+.prestados-elapsed {
+  margin-top: 4px;
+  color: var(--info-700);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.prestados-spin {
+  animation: prestados-spin 0.9s linear infinite;
+}
+
+@keyframes prestados-spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (max-width: 768px) {
+  .prestados-page {
+    padding: 1.5rem 1rem;
+  }
+
+  .prestados-page .form-header {
+    flex-wrap: wrap;
+  }
+
+  .prestados-refresh-button {
+    width: 100%;
+    margin-left: 0;
+  }
+}
