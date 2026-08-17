@@ -17,7 +17,7 @@ import {
 } from '../controller/authController.js';
 import express from 'express';
 import { authenticate } from '../middleware/authMiddleware.js';
-import { requirePermission, requireOwnership, requireAnyPermissionOrOwnership } from '../middleware/authorization.js';
+import { requirePermission, requireOwnership, requireAnyPermissionOrOwnership, requireAdminForRoleChange } from '../middleware/authorization.js';
 import { PERMISSIONS } from '../config/permissions.js';
 import { validate, registerSchema, loginSchema, updateUserSchema } from '../validators/authValidator.js';
 import { authLimiter, registerLimiter, passwordResetLimiter } from '../middleware/rateLimiter.js';
@@ -90,6 +90,7 @@ router.get('/user/:id',
 // Usuario: solo puede actualizar su propio perfil
 router.put('/user/:id', 
   authenticate,
+  requireAdminForRoleChange,
   requireOwnership((req) => req.params.id),
   validate(updateUserSchema),
   updateUser

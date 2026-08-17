@@ -5,6 +5,10 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// Esta suite necesita una instancia aislada de multer y de los middlewares
+// para no reutilizar mocks registrados por otras suites de rutas.
+jest.resetModules();
+
 const noop = jest.fn((req, res, next) => next && next());
 const requirePermissionMock = jest.fn(() => noop);
 const requireRoleMock = jest.fn(() => noop);
@@ -54,7 +58,9 @@ jest.unstable_mockModule(path.resolve(__dirname, '../../src/middleware/fileValid
   validateExcelFile: validateExcelFileMock,
 }));
 
-const { default: router } = await import(path.resolve(__dirname, '../../src/routes/importRoutes.js'));
+// El query string fuerza una instancia ESM nueva cuando otra suite ya cargó
+// importRoutes con un mock distinto de multer.
+const { default: router } = await import(`${path.resolve(__dirname, '../../src/routes/importRoutes.js')}?config-test`);
 
 // Nota: tests/setup.js corre `jest.clearAllMocks()` en un afterEach global,
 // así que el historial de llamadas de requireRoleMock/requirePermissionMock

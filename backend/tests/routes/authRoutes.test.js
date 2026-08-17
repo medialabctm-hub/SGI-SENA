@@ -31,6 +31,7 @@ jest.mock('../../src/middleware/authMiddleware.js', () => ({
 jest.mock('../../src/middleware/authorization.js', () => ({
   requirePermission: jest.fn(() => (req, res, next) => next()),
   requireOwnership: jest.fn(() => (req, res, next) => next()),
+  requireAdminForRoleChange: jest.fn((req, res, next) => next()),
 }), { virtual: true });
 
 jest.mock('../../src/config/permissions.js', () => ({

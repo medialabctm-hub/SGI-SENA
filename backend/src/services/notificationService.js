@@ -225,6 +225,10 @@ export async function createForRole({ rolNombre, titulo, cuerpo = '', tipo = 'in
 }
 
 export async function createBroadcast({ titulo, cuerpo = '', tipo = 'info', metadata = null, creadoPor = null }) {
+  if (!titulo) {
+    return { inserted: 0, insertId: null }
+  }
+
   let userIds = await fetchAllActiveUserIds()
   
   // Excluir al usuario que creó la notificación (no debe recibir notificación de sus propias acciones)

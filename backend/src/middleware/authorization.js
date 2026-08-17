@@ -261,6 +261,37 @@ export function requireOwnership(getResourceOwnerId) {
 }
 
 /**
+ * Impide que un usuario cambie su propio rol mediante la ruta de perfil.
+ * La ruta de actualización sigue permitiendo a un Administrador editar roles
+ * de cualquier usuario.
+ */
+export function requireAdminForRoleChange(req, res, next) {
+  try {
+    if (!req.user || !req.user.rol) {
+      return res.status(401).json({
+        error: 'No autorizado',
+        message: 'Debe iniciar sesión para acceder a este recurso',
+      })
+    }
+
+    const hasRoleField = req.body && Object.prototype.hasOwnProperty.call(req.body, 'rol')
+    if (hasRoleField && !isAdmin(req.user.rol)) {
+      return res.status(403).json({
+        error: 'Acceso denegado',
+        message: 'Solo un Administrador puede cambiar el rol de un usuario',
+      })
+    }
+
+    return next()
+  } catch (error) {
+    return res.status(500).json({
+      error: 'Error al validar autorización',
+      details: error.message,
+    })
+  }
+}
+
+/**
  * Middleware para verificar que el usuario tiene equipos asignados
  * Útil para rutas que requieren que el usuario tenga al menos un equipo
  * 
@@ -380,6 +411,7 @@ export default {
   requireAnyPermission,
   requireAnyPermissionIfAuthenticated,
   requireOwnership,
+  requireAdminForRoleChange,
   requireAssignedEquipos,
   requirePermissionAndOwnership,
   requireAnyPermissionOrOwnership,

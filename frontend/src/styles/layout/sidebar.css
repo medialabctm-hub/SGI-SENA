@@ -234,7 +234,8 @@
   .sidebar-overlay {
     display: block;
     position: fixed;
-    top: 0;
+    /* Keep the mobile drawer below the header so its first action remains clickable. */
+    top: 110px;
     left: 0;
     right: 0;
     bottom: 0;
@@ -256,9 +257,9 @@
     max-width: 85vw;
     position: fixed;
     left: 0;
-    top: 0;
-    bottom: 0;
-    height: 100vh;
+    top: 110px;
+    bottom: auto;
+    height: calc(100vh - 110px);
     z-index: 1000;
     transform: translateX(-100%);
     transition: transform 0.3s ease;

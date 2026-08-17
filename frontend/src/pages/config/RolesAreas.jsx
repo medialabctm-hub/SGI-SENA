@@ -8,7 +8,6 @@ import { LoadingScreen } from '../LoadingDemo'
 
 export default function RolesAreas() {
   const [roles, setRoles] = useState([])
-  const [permisos, setPermisos] = useState([])
   const [permisosPorModulo, setPermisosPorModulo] = useState({})
   const [loading, setLoading] = useState(true)
   const [toast, setToast] = useState(null)
@@ -41,11 +40,9 @@ export default function RolesAreas() {
     try {
       const res = await fetch('/api/permissions/permisos', { headers: getAuthHeaders() })
       const data = await parseApiResponse(res, 'No se pudieron cargar los permisos')
-      setPermisos(data.permisos || [])
       setPermisosPorModulo(data.permisosPorModulo || {})
     } catch (err) {
       setToast({ message: buildErrorMessage(err, 'Error al cargar permisos'), type: 'error' })
-      setPermisos([])
       setPermisosPorModulo({})
     }
   }, [])
@@ -288,6 +285,7 @@ export default function RolesAreas() {
                           className="btn-icon role-action-btn"
                           onClick={() => toggleRoleExpanded(role.rol)}
                           title="Ver/ocultar permisos"
+                          aria-label={`${expandedRoles[role.rol] ? 'Ocultar' : 'Ver'} permisos del rol ${role.rol}`}
                         >
                           {expandedRoles[role.rol] ? <FiChevronDown size={20} /> : <FiChevronRight size={20} />}
                         </button>
@@ -295,6 +293,7 @@ export default function RolesAreas() {
                           className="btn-icon role-action-btn role-edit-btn"
                           onClick={() => handleEditRole(role)}
                           title="Editar rol"
+                          aria-label={`Editar rol ${role.rol}`}
                         >
                           <FiEdit2 size={18} />
                         </button>
@@ -303,6 +302,7 @@ export default function RolesAreas() {
                             className="btn-icon role-action-btn role-toggle-btn"
                             onClick={() => handleToggleEstado(role.rol, role.estado === 'Activo' ? 'Inactivo' : 'Activo')}
                             title={role.estado === 'Activo' ? 'Desactivar rol' : 'Activar rol'}
+                            aria-label={`${role.estado === 'Activo' ? 'Desactivar' : 'Activar'} rol ${role.rol}`}
                           >
                             {role.estado === 'Activo' ? <FiX size={18} /> : <FiCheck size={18} />}
                           </button>
@@ -311,6 +311,7 @@ export default function RolesAreas() {
                           className="btn-icon role-action-btn role-delete-btn"
                           onClick={() => handleDeleteRole(role.rol)}
                           title="Eliminar rol"
+                          aria-label={`Eliminar rol ${role.rol}`}
                         >
                           <FiTrash2 size={18} />
                         </button>

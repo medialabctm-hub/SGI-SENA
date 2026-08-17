@@ -37,6 +37,7 @@ const {
   requireAssignedEquipos,
   requireAnyPermission,
   requirePermissionAndOwnership,
+  requireAdminForRoleChange,
 } = await import(resolve(__dirname, '../../src/middleware/authorization.js'));
 
 function makeContext(userOverrides = {}) {
@@ -415,5 +416,37 @@ describe('requireAssignedEquipos()', () => {
     const getEquipos = jest.fn().mockResolvedValue(equipos);
     await requireAssignedEquipos(getEquipos)(req, res, next);
     expect(req.userEquipos).toEqual(equipos);
+  });
+});
+
+describe('requireAdminForRoleChange()', () => {
+  it('debe bloquear que un usuario no administrador cambie el rol', () => {
+    const { req, res, next } = makeContext({ rol: 'Aprendiz' });
+    req.body = { rol: 'Administrador' };
+
+    requireAdminForRoleChange(req, res, next);
+
+    expect(res.status).toHaveBeenCalledWith(403);
+    expect(next).not.toHaveBeenCalled();
+  });
+
+  it('debe permitir que un administrador cambie el rol', () => {
+    mockIsAdmin.mockReturnValue(true);
+    const { req, res, next } = makeContext({ rol: 'Administrador' });
+    req.body = { rol: 'Instructor' };
+
+    requireAdminForRoleChange(req, res, next);
+
+    expect(next).toHaveBeenCalledWith();
+    expect(res.status).not.toHaveBeenCalled();
+  });
+
+  it('debe permitir actualizaciones de perfil que no incluyen rol', () => {
+    const { req, res, next } = makeContext({ rol: 'Aprendiz' });
+    req.body = { nombre: 'Nuevo nombre' };
+
+    requireAdminForRoleChange(req, res, next);
+
+    expect(next).toHaveBeenCalledWith();
   });
 });

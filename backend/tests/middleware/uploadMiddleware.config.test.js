@@ -6,6 +6,10 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const middlewarePath = path.resolve(__dirname, '../../src/middleware/uploadMiddleware.js');
 const fileValidationPath = path.resolve(__dirname, '../../src/middleware/fileValidation.js');
 
+// Estas pruebas cambian el mock ESM de multer; limpiar el registro evita que
+// otra suite de rutas deje cacheada una implementación incompatible.
+jest.resetModules();
+
 const mockValidateImageFile = jest.fn();
 const mockExistsSync = jest.fn(() => false);
 const mockMkdirSync = jest.fn();

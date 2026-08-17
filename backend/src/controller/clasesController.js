@@ -25,6 +25,19 @@ function crearDateTime(fecha, hora) {
   return new Date(`${fecha}T${horaNormalizada}`);
 }
 
+function puedeGestionarClase(req, clase) {
+  const role = req.user?.rol;
+  if (role !== 'Instructor' && role !== 'Cuentadante') return true;
+  return Number(clase.id_instructor) === Number(req.user?.id);
+}
+
+function responderClaseNoAutorizada(res) {
+  return res.status(403).json({
+    error: 'No autorizado',
+    detalle: 'Solo puedes acceder o modificar tus propias clases'
+  });
+}
+
 /**
  * Crear una nueva clase/programación
  */
@@ -547,6 +560,10 @@ export async function obtenerClase(req, res) {
       return res.status(404).json({ error: 'Clase no encontrada' });
     }
 
+    if (!puedeGestionarClase(req, clase)) {
+      return responderClaseNoAutorizada(res);
+    }
+
     // Obtener participantes
     const [participantes] = await defaultDb.execute(
       `SELECT 
@@ -618,6 +635,10 @@ export async function iniciarClase(req, res) {
     if (!clase) {
       logger.warn('⚠️ INICIAR CLASE - Clase no encontrada', { id_clase: id });
       return res.status(404).json({ error: 'Clase no encontrada' });
+    }
+
+    if (!puedeGestionarClase(req, clase)) {
+      return responderClaseNoAutorizada(res);
     }
 
     logger.info('🟢 INICIAR CLASE - Estado actual', {
@@ -742,13 +763,17 @@ export async function finalizarClase(req, res) {
 
     // Validar que la clase existe y está en estado "En Curso"
     const [[clase]] = await defaultDb.execute(
-      'SELECT id_clase, estado_clase, fecha_clase, hora_inicio, hora_fin, fecha_inicio_real FROM Clases WHERE id_clase = ?',
+      'SELECT id_clase, estado_clase, fecha_clase, hora_inicio, hora_fin, fecha_inicio_real, id_instructor FROM Clases WHERE id_clase = ?',
       [id]
     );
 
     if (!clase) {
       logger.warn('⚠️ FINALIZAR CLASE - Clase no encontrada', { id_clase: id });
       return res.status(404).json({ error: 'Clase no encontrada' });
+    }
+
+    if (!puedeGestionarClase(req, clase)) {
+      return responderClaseNoAutorizada(res);
     }
 
     logger.warn('🔴 FINALIZAR CLASE - Estado actual de la clase', {
@@ -867,12 +892,16 @@ export async function agregarParticipantes(req, res) {
 
     // Validar que la clase existe
     const [[clase]] = await defaultDb.execute(
-      'SELECT id_clase, estado_clase FROM Clases WHERE id_clase = ?',
+      'SELECT id_clase, estado_clase, id_instructor FROM Clases WHERE id_clase = ?',
       [id]
     );
 
     if (!clase) {
       return res.status(404).json({ error: 'Clase no encontrada' });
+    }
+
+    if (!puedeGestionarClase(req, clase)) {
+      return responderClaseNoAutorizada(res);
     }
 
     // Validar que todos los participantes sean aprendices válidos

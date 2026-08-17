@@ -336,21 +336,23 @@ export async function hasPermissionFromDB(db, roleName, permission) {
       `SELECT rp.activo 
        FROM Rol_Permisos rp
        INNER JOIN Permisos p ON rp.id_permiso = p.id_permiso
-       WHERE rp.id_rol = ? AND p.codigo_permiso = ? AND rp.activo = 1`,
+       WHERE rp.id_rol = ? AND p.codigo_permiso = ?`,
       [idRol, permission]
     )
 
-    // Si está en la BD y está activo, retornar true
+    // Una asignación explícita en BD prevalece sobre los defaults, incluso
+    // cuando fue revocada con activo=0.
     if (permisos.length > 0) {
-      return true
+      return Number(permisos[0].activo) === 1
     }
 
     // Si no está en la BD, usar los defaults hardcodeados como fallback
     return hasPermission(roleName, permission)
   } catch (error) {
     console.error('Error al verificar permiso desde BD:', error)
-    // En caso de error, usar defaults
-    return hasPermission(roleName, permission)
+    // Ante una BD de permisos inaccesible se niega el acceso para evitar
+    // convertir un fallo de disponibilidad en una autorización implícita.
+    return false
   }
 }
 

@@ -32,7 +32,7 @@ jest.mock('../../src/config/permissions.js', () => ({
     CLASES: { VIEW: 'cl.v', CREATE: 'cl.c', UPDATE: 'cl.u', DELETE: 'cl.d' },
     HORARIOS: { VIEW: 'h.v', CREATE: 'h.c', UPDATE: 'h.u', DELETE: 'h.d' },
     IMPORT: { CREATE: 'i.c' },
-    REPORTES: { VIEW: 'r.v', CREATE: 'r.c', UPDATE: 'r.u', DELETE: 'r.d' },
+    REPORTES: { VIEW: 'r.v', CREATE: 'r.c', UPDATE: 'r.u', DELETE: 'r.d', EXPORT: 'r.export' },
     USERS: { VIEW: 'u.v', UPDATE: 'u.u' },
     ROLES: { VIEW: 'ro.v', UPDATE: 'ro.u' },
     ESTADISTICAS: { VIEW: 'st.v' },
@@ -107,18 +107,6 @@ jest.mock('../../src/validators/authValidator.js', () => ({
   validate: jest.fn(() => noop),
   registerSchema: {},
   loginSchema: {},
-}), { virtual: true });
-
-// ---- upload middleware ----
-jest.mock('../../src/middleware/uploadMiddleware.js', () => ({
-  uploadEquipoImagePublico: noop,
-  uploadEquipoImage: noop,
-  handleUploadError: noop,
-}), { virtual: true });
-
-jest.mock('../../src/middleware/uploadAmbienteMiddleware.js', () => ({
-  uploadAmbienteImage: noop,
-  handleUploadError: noop,
 }), { virtual: true });
 
 jest.mock('../../src/middleware/corsPublicMiddleware.js', () => ({
@@ -270,13 +258,6 @@ function isFunction(r) {
 // ------------------------------------------------------------------
 // Tests
 // ------------------------------------------------------------------
-describe('equiposRoutes', () => {
-  it('debe exportar un router', async () => {
-    const r = await loadRouter('../../src/routes/equiposRoutes.js');
-    expect(isFunction(r)).toBe(true);
-  });
-});
-
 describe('novedadesRoutes', () => {
   it('debe exportar un router', async () => {
     const r = await loadRouter('../../src/routes/novedadesRoutes.js');
@@ -312,13 +293,6 @@ describe('horariosRoutes', () => {
   });
 });
 
-describe('importRoutes', () => {
-  it('debe exportar un router', async () => {
-    const r = await loadRouter('../../src/routes/importRoutes.js');
-    expect(isFunction(r)).toBe(true);
-  });
-});
-
 describe('reportesRoutes', () => {
   it('debe exportar un router', async () => {
     const r = await loadRouter('../../src/routes/reportesRoutes.js');
@@ -343,20 +317,6 @@ describe('permissionsRoutes', () => {
 describe('estadisticasRoutes', () => {
   it('debe exportar un router', async () => {
     const r = await loadRouter('../../src/routes/estadisticasRoutes.js');
-    expect(isFunction(r)).toBe(true);
-  });
-});
-
-describe('imagenesAmbienteRoutes', () => {
-  it('debe exportar un router', async () => {
-    const r = await loadRouter('../../src/routes/imagenesAmbienteRoutes.js');
-    expect(isFunction(r)).toBe(true);
-  });
-});
-
-describe('imagenesEquipoRoutes', () => {
-  it('debe exportar un router', async () => {
-    const r = await loadRouter('../../src/routes/imagenesEquipoRoutes.js');
     expect(isFunction(r)).toBe(true);
   });
 });

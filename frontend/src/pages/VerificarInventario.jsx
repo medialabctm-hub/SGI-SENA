@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react'
 import Header from '../components/Header'
 import Sidebar from '../components/Sidebar'
 import Toast from '../components/Toast'
-import ConfirmModal from '../components/ConfirmModal'
 import CustomSelect from '../components/CustomSelect'
 import { FiCheckCircle, FiXCircle, FiAlertCircle, FiPackage, FiMapPin, FiRefreshCw } from 'react-icons/fi'
 import { parseApiResponse, buildErrorMessage, descargarPDFNovedadRoboPerdida } from '../utils/api'
@@ -30,8 +29,8 @@ export default function VerificarInventario() {
       if (userData) {
         const userObj = JSON.parse(userData)
         setUser(userObj)
-        if (userObj.nombre_rol !== 'Instructor') {
-          setToast({ message: 'Solo los instructores pueden acceder a esta funcionalidad', type: 'error' })
+        if (userObj.nombre_rol !== 'Instructor' && userObj.nombre_rol !== 'Cuentadante') {
+          setToast({ message: 'Solo instructores o cuentadantes pueden acceder a esta funcionalidad', type: 'error' })
           setTimeout(() => navigate('/dashboard'), 2000)
         }
       }
@@ -41,7 +40,7 @@ export default function VerificarInventario() {
   }, [navigate])
 
   useEffect(() => {
-    if (user?.nombre_rol === 'Instructor') {
+    if (user?.nombre_rol === 'Instructor' || user?.nombre_rol === 'Cuentadante') {
       fetchEquiposAmbientes()
     }
   }, [user])
@@ -49,7 +48,7 @@ export default function VerificarInventario() {
   // Suscribirse a actualizaciones en tiempo real de equipos y ambientes
   const { subscribe } = useSocket()
   useEffect(() => {
-    if (!subscribe || user?.nombre_rol !== 'Instructor') return
+    if (!subscribe || (user?.nombre_rol !== 'Instructor' && user?.nombre_rol !== 'Cuentadante')) return
     
     const unsubscribeEquipo = subscribe('equipo:updated', () => {
       fetchEquiposAmbientes()
@@ -131,8 +130,10 @@ export default function VerificarInventario() {
       }))
       
       setToast({ message: data.message || 'Verificación registrada correctamente', type: 'success' })
+      return true
     } catch (err) {
       setToast({ message: buildErrorMessage(err, 'No se pudo registrar la verificación'), type: 'error' })
+      return false
     } finally {
       setLoading(false)
     }
@@ -179,7 +180,12 @@ export default function VerificarInventario() {
       const data = await parseApiResponse(res, 'No se pudo reportar la novedad')
       
       // Marcar como verificado con novedad
-      await handleVerificar(selectedEquipo.codigo_equipo, 'Con Novedad', descripcionTrimmed)
+      const verificacionRegistrada = await handleVerificar(
+        selectedEquipo.codigo_equipo,
+        'Con Novedad',
+        descripcionTrimmed
+      )
+      if (!verificacionRegistrada) return
       
       setShowNovedadModal(false)
       setSelectedEquipo(null)
@@ -256,8 +262,24 @@ export default function VerificarInventario() {
     }
   }
 
-  if (user?.nombre_rol !== 'Instructor') {
-    return null
+  if (user?.nombre_rol !== 'Instructor' && user?.nombre_rol !== 'Cuentadante') {
+    return (
+      <div className="page simple-page">
+        <Header />
+        <div className="dashboard-layout">
+          <Sidebar user={user} />
+          <main className="dashboard-main">
+            <div className="card verificar-inventario-access-denied">
+              <h2>Acceso no disponible</h2>
+              <p>Solo instructores o cuentadantes pueden verificar inventario de sus ambientes.</p>
+              <button className="btn btn-secondary" onClick={() => navigate('/dashboard')}>
+                Volver al dashboard
+              </button>
+            </div>
+          </main>
+        </div>
+      </div>
+    )
   }
 
   return (

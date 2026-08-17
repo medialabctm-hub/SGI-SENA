@@ -315,6 +315,17 @@ describe('hasPermissionFromDB()', () => {
     expect(result).toBe(true);
   });
 
+  it('debe respetar un permiso explícitamente revocado aunque exista en defaults', async () => {
+    const db = makeDb(
+      [{ id_rol: 2 }],
+      [{ activo: 0 }]
+    );
+
+    const result = await hasPermissionFromDB(db, 'Instructor', PERMISSIONS.EQUIPOS.VIEW);
+
+    expect(result).toBe(false);
+  });
+
   it('debe usar fallback (hasPermission) al fallar la consulta → false', async () => {
     const db = { execute: jest.fn().mockRejectedValue(new Error('DB error')) };
     // Aprendiz no tiene 'users:delete' en defaults
@@ -322,10 +333,11 @@ describe('hasPermissionFromDB()', () => {
     expect(result).toBe(false);
   });
 
-  it('debe usar fallback (hasPermission) al fallar la consulta → true', async () => {
+  it('debe negar el permiso al fallar la consulta para evitar fail-open', async () => {
     const db = { execute: jest.fn().mockRejectedValue(new Error('DB error')) };
-    // Aprendiz sí tiene 'equipos:view_own' en defaults
+    // Aunque Aprendiz tenga 'equipos:view_own' en defaults, una BD
+    // inaccesible no debe convertir el error en una autorización.
     const result = await hasPermissionFromDB(db, 'Aprendiz', PERMISSIONS.EQUIPOS.VIEW_OWN);
-    expect(result).toBe(true);
+    expect(result).toBe(false);
   });
 });
