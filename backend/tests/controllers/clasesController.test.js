@@ -295,6 +295,17 @@ describe('obtenerClase', () => {
     }));
   });
 
+  it('returns 403 when Instructor requests another instructor class', async () => {
+    mockExecute.mockResolvedValueOnce([[{ id_clase: 1, id_instructor: 99 }]]);
+    const req = mockReq({ user: { id: 5, rol: 'Instructor' }, params: { id: '1' } });
+    const res = mockRes();
+
+    await obtenerClase(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(403);
+    expect(mockExecute).toHaveBeenCalledTimes(1);
+  });
+
   it('returns 500 on DB error', async () => {
     mockExecute.mockRejectedValueOnce(new Error('DB fail'));
     const req = mockReq({ params: { id: '1' } });
@@ -330,6 +341,17 @@ describe('iniciarClase', () => {
     expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ error: expect.stringContaining('iniciada') }));
   });
 
+  it('returns 403 when Instructor tries to start another instructor class', async () => {
+    mockExecute.mockResolvedValueOnce([[{ id_clase: 1, estado_clase: 'Programada', id_ambiente: 1, id_instructor: 99 }]]);
+    const req = mockReq({ user: { id: 5, rol: 'Instructor' }, params: { id: '1' } });
+    const res = mockRes();
+
+    await iniciarClase(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(403);
+    expect(mockExecute).toHaveBeenCalledTimes(1);
+  });
+
   it('returns 500 on DB error', async () => {
     mockExecute.mockRejectedValueOnce(new Error('DB fail'));
     const req = mockReq({ params: { id: '1' } });
@@ -360,6 +382,17 @@ describe('agregarParticipantes', () => {
     const res = mockRes();
     await agregarParticipantes(req, res);
     expect(res.status).toHaveBeenCalledWith(404);
+  });
+
+  it('returns 403 when Instructor adds participants to another instructor class', async () => {
+    mockExecute.mockResolvedValueOnce([[{ id_clase: 1, estado_clase: 'Programada', id_instructor: 99 }]]);
+    const req = mockReq({ user: { id: 5, rol: 'Instructor' }, params: { id: '1' }, body: { participantes: [7] } });
+    const res = mockRes();
+
+    await agregarParticipantes(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(403);
+    expect(mockExecute).toHaveBeenCalledTimes(1);
   });
 
   it('returns 500 on DB error', async () => {
@@ -504,6 +537,17 @@ describe('finalizarClase', () => {
     const res = mockRes();
     await finalizarClase(req, res);
     expect(res.status).toHaveBeenCalledWith(400);
+  });
+
+  it('returns 403 when Instructor finalizes another instructor class', async () => {
+    mockExecute.mockResolvedValueOnce([[{ id_clase: 1, estado_clase: 'En Curso', id_instructor: 99 }]]);
+    const req = mockReq({ user: { id: 5, rol: 'Instructor' }, params: { id: '1' } });
+    const res = mockRes();
+
+    await finalizarClase(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(403);
+    expect(mockExecute).toHaveBeenCalledTimes(1);
   });
 
   it('finalizes clase successfully', async () => {

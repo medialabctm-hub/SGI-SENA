@@ -38,7 +38,7 @@ router.get('/tipos', obtenerTiposReporte)
 // Solo Administradores y Cuentadantes pueden generar PDFs
 router.get('/pdf', 
   requireAnyPermission([
-    PERMISSIONS.REPORTES.VIEW
+    PERMISSIONS.REPORTES.EXPORT
   ]),
   generarReportePDF
 )
