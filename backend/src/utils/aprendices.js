@@ -44,14 +44,27 @@ function error(datos, mensaje) {
 }
 
 export function normalizarYValidarAprendiz(datos = {}) {
-  const tipoClave = normalizarClave(datos.tipo_aprendiz || 'Regular');
+  const tipoCrudo = texto(datos.tipo_aprendiz);
+  const tipoClave = normalizarClave(tipoCrudo || 'Regular');
   const tipoAprendiz = TIPOS_APRENDIZ[tipoClave];
   const normalizados = {
     ...datos,
-    tipo_aprendiz: tipoAprendiz || texto(datos.tipo_aprendiz),
+    tipo_aprendiz: tipoAprendiz || tipoCrudo,
     ficha: texto(datos.ficha),
     dias_semana: texto(datos.dias_semana),
   };
+
+  if (tipoCrudo.length > 20) {
+    return error(normalizados, 'El tipo de aprendiz no puede superar 20 caracteres.');
+  }
+
+  if (normalizados.ficha.length > 100) {
+    return error(normalizados, 'La ficha no puede superar 100 caracteres.');
+  }
+
+  if (normalizados.dias_semana.length > 255) {
+    return error(normalizados, 'Los días de asistencia no pueden superar 255 caracteres.');
+  }
 
   if (!tipoAprendiz) {
     return error(normalizados, 'El tipo de aprendiz debe ser Regular, Practicante o Semillero.');

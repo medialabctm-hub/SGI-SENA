@@ -1192,6 +1192,50 @@ export async function importarUsuarios(req, res) {
  * Importar aprendices desde archivo Excel
  * Columnas esperadas: Ficha, Nombre, Documento, Jornada
  */
+const ENCABEZADOS_TIPO_APRENDIZ = [
+  'Tipo Aprendiz',
+  'Tipo de aprendiz',
+  'tipo_aprendiz',
+  'TIPO_APRENDIZ',
+];
+const ENCABEZADOS_FICHA = ['Ficha', 'ficha', 'FICHA'];
+const ENCABEZADOS_JORNADA = ['Jornada', 'jornada'];
+
+function obtenerEncabezadosAprendices(worksheet, data) {
+  const filas = XLSX.utils.sheet_to_json(worksheet, {
+    header: 1,
+    range: 0,
+    blankrows: false,
+  });
+  if (Array.isArray(filas?.[0])) {
+    return filas[0].map((encabezado) => String(encabezado ?? '').trim());
+  }
+
+  return [...new Set(data.flatMap((row) => Object.keys(row)))];
+}
+
+function normalizarHoraImportada(valor) {
+  if (typeof valor !== 'number') {
+    return String(valor ?? '').trim();
+  }
+
+  if (!Number.isFinite(valor) || valor < 0 || valor >= 1) {
+    return null;
+  }
+
+  const minutosTotales = Math.min(Math.round(valor * 24 * 60), (24 * 60) - 1);
+  const horas = Math.floor(minutosTotales / 60);
+  const minutos = minutosTotales % 60;
+  return `${String(horas).padStart(2, '0')}:${String(minutos).padStart(2, '0')}`;
+}
+
+function normalizarHoraPersistida(valor) {
+  const hora = String(valor ?? '').trim();
+  const coincidencia = hora.match(/^(\d{1,2}):(\d{2})(?::\d{2})?$/);
+  if (!coincidencia) return hora;
+  return `${coincidencia[1].padStart(2, '0')}:${coincidencia[2]}`;
+}
+
 export async function importarAprendices(req, res) {
   try {
     if (!req.file) {
@@ -1206,6 +1250,14 @@ export async function importarAprendices(req, res) {
     if (!data || data.length === 0) {
       return res.status(400).json({ error: 'El archivo Excel está vacío' });
     }
+
+    const encabezados = obtenerEncabezadosAprendices(worksheet, data);
+    const encabezadoTipoAprendiz = ENCABEZADOS_TIPO_APRENDIZ.find((encabezado) => (
+      encabezados.includes(encabezado)
+    ));
+    const incluyeTipoAprendiz = Boolean(encabezadoTipoAprendiz);
+    const incluyeFicha = ENCABEZADOS_FICHA.some((encabezado) => encabezados.includes(encabezado));
+    const incluyeJornada = ENCABEZADOS_JORNADA.some((encabezado) => encabezados.includes(encabezado));
 
     const resultados = {
       total: data.length,
@@ -1229,15 +1281,19 @@ export async function importarAprendices(req, res) {
         const documento = String(row['Documento'] || row['documento'] || row['CEDULA'] || row['Documento Identidad'] || '').trim();
         let tipoDocumento = String(row['Tipo Documento'] || row['tipo_documento'] || row['TIPO_DOCUMENTO'] || row['Tipo de Documento'] || 'CC').trim();
         const tipoDocumentoOtro = String(row['Tipo Documento Otro'] || row['tipo_documento_otro'] || row['TIPO_DOCUMENTO_OTRO'] || '').trim() || null;
-        const tipoAprendiz = String(row['Tipo Aprendiz'] || row.tipo_aprendiz || row.TIPO_APRENDIZ || 'Regular').trim();
+        const tipoAprendiz = incluyeTipoAprendiz
+          ? String(row[encabezadoTipoAprendiz] ?? '').trim()
+          : null;
         const diasSemana = String(row['Días'] || row.Dias || row.dias_semana || row.DIAS_SEMANA || '').trim();
-        const horaInicio = String(row['Hora Inicio'] || row.hora_inicio || row.HORA_INICIO || '').trim();
-        const horaFin = String(row['Hora Fin'] || row.hora_fin || row.HORA_FIN || '').trim();
+        const horaInicioCruda = row['Hora Inicio'] ?? row.hora_inicio ?? row.HORA_INICIO ?? '';
+        const horaFinCruda = row['Hora Fin'] ?? row.hora_fin ?? row.HORA_FIN ?? '';
+        const horaInicio = normalizarHoraImportada(horaInicioCruda);
+        const horaFin = normalizarHoraImportada(horaFinCruda);
         const jornada = String(row.Jornada || row.jornada || '').trim();
 
         if (!nombre || !documento) {
           resultados.errores.push({ fila: numeroFila, documento: documento || 'N/A', error: 'Nombre y documento son obligatorios' });
-          resultados.fallidos++;
+          resultados.fallidos += 1;
           continue;
         }
 
@@ -1250,29 +1306,38 @@ export async function importarAprendices(req, res) {
         // Validar que si es "Otro", tenga especificación
         if (tipoDocumento === 'Otro' && (!tipoDocumentoOtro || tipoDocumentoOtro.trim().length === 0)) {
           resultados.errores.push({ fila: numeroFila, documento, error: 'Debe especificar el tipo de documento cuando selecciona "Otro"' });
-          resultados.fallidos++;
+          resultados.fallidos += 1;
           continue;
         }
 
-        const validacion = normalizarYValidarAprendiz({
-          ficha,
-          jornada,
-          tipo_aprendiz: tipoAprendiz,
-          dias_semana: diasSemana,
-          hora_inicio: horaInicio,
-          hora_fin: horaFin,
-        });
-        if (validacion.error) {
-          resultados.errores.push({ fila: numeroFila, documento, error: validacion.error });
-          resultados.fallidos++;
+        if (ficha && ficha.length > 100) {
+          resultados.errores.push({ fila: numeroFila, documento, error: 'La ficha no puede superar 100 caracteres.' });
+          resultados.fallidos += 1;
           continue;
         }
-        const datosAprendiz = validacion.datos;
 
-        if (datosAprendiz.tipo_aprendiz === 'Regular') {
-          datosAprendiz.dias_semana = null;
-          datosAprendiz.hora_inicio = null;
-          datosAprendiz.hora_fin = null;
+        if (incluyeTipoAprendiz && !tipoAprendiz) {
+          resultados.errores.push({ fila: numeroFila, documento, error: 'El tipo de aprendiz no puede estar vacío.' });
+          resultados.fallidos += 1;
+          continue;
+        }
+
+        let datosAprendiz = null;
+        if (incluyeTipoAprendiz) {
+          const validacion = normalizarYValidarAprendiz({
+            ficha,
+            jornada,
+            tipo_aprendiz: tipoAprendiz,
+            dias_semana: diasSemana,
+            hora_inicio: horaInicio,
+            hora_fin: horaFin,
+          });
+          if (validacion.error) {
+            resultados.errores.push({ fila: numeroFila, documento, error: validacion.error });
+            resultados.fallidos += 1;
+            continue;
+          }
+          datosAprendiz = validacion.datos;
         }
 
         // Upsert por documento: si ya existe en Aprendices, actualizar sus datos en vez de fallar la fila.
@@ -1284,37 +1349,90 @@ export async function importarAprendices(req, res) {
           [documento]
         );
 
-        if (existAprendiz) {
+        if (existAprendiz && !incluyeTipoAprendiz) {
+          const validacionLegacy = normalizarYValidarAprendiz({
+            ficha: incluyeFicha ? ficha : existAprendiz.ficha,
+            jornada: incluyeJornada ? jornada : existAprendiz.jornada,
+            tipo_aprendiz: existAprendiz.tipo_aprendiz || 'Regular',
+            dias_semana: existAprendiz.dias_semana,
+            hora_inicio: normalizarHoraPersistida(existAprendiz.hora_inicio),
+            hora_fin: normalizarHoraPersistida(existAprendiz.hora_fin),
+          });
+          if (validacionLegacy.error) {
+            resultados.errores.push({ fila: numeroFila, documento, error: validacionLegacy.error });
+            resultados.fallidos += 1;
+            continue;
+          }
+
+          // eslint-disable-next-line no-await-in-loop
           await defaultDb.execute(
             `UPDATE Aprendices
-             SET ficha = ?, nombre = ?, tipo_documento = ?, tipo_documento_otro = ?, tipo_aprendiz = ?,
-                 jornada = ?, dias_semana = ?, hora_inicio = ?, hora_fin = ?
+             SET ficha = ?, nombre = ?, tipo_documento = ?, tipo_documento_otro = ?, jornada = ?
              WHERE id_aprendiz = ?`,
             [
-              datosAprendiz.ficha || null, nombre, tipoDocumento, tipoDocumento === 'Otro' ? tipoDocumentoOtro : null,
-              datosAprendiz.tipo_aprendiz, datosAprendiz.jornada, datosAprendiz.dias_semana,
-              datosAprendiz.hora_inicio, datosAprendiz.hora_fin, existAprendiz.id_aprendiz,
+              validacionLegacy.datos.ficha || null, nombre, tipoDocumento,
+              tipoDocumento === 'Otro' ? tipoDocumentoOtro : null,
+              validacionLegacy.datos.jornada,
+              existAprendiz.id_aprendiz,
             ]
           );
-          resultados.actualizados++;
+          resultados.actualizados += 1;
         } else {
-          // Insertar registro de aprendiz (sin crear cuenta de usuario)
-          await defaultDb.execute(
-            `INSERT INTO Aprendices
-             (ficha, nombre, documento, tipo_documento, tipo_documento_otro, tipo_aprendiz, jornada, dias_semana, hora_inicio, hora_fin, creado_por)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-            [
-              datosAprendiz.ficha || null, nombre, documento, tipoDocumento, tipoDocumento === 'Otro' ? tipoDocumentoOtro : null,
-              datosAprendiz.tipo_aprendiz, datosAprendiz.jornada, datosAprendiz.dias_semana,
-              datosAprendiz.hora_inicio, datosAprendiz.hora_fin, userId,
-            ]
-          );
+          if (!datosAprendiz) {
+            const validacion = normalizarYValidarAprendiz({
+              ficha,
+              jornada,
+              tipo_aprendiz: 'Regular',
+              dias_semana: diasSemana,
+              hora_inicio: horaInicio,
+              hora_fin: horaFin,
+            });
+            if (validacion.error) {
+              resultados.errores.push({ fila: numeroFila, documento, error: validacion.error });
+              resultados.fallidos += 1;
+              continue;
+            }
+            datosAprendiz = validacion.datos;
+          }
+
+          if (datosAprendiz.tipo_aprendiz === 'Regular') {
+            datosAprendiz.dias_semana = null;
+            datosAprendiz.hora_inicio = null;
+            datosAprendiz.hora_fin = null;
+          }
+
+          if (existAprendiz) {
+            await defaultDb.execute(
+              `UPDATE Aprendices
+               SET ficha = ?, nombre = ?, tipo_documento = ?, tipo_documento_otro = ?, tipo_aprendiz = ?,
+                   jornada = ?, dias_semana = ?, hora_inicio = ?, hora_fin = ?
+               WHERE id_aprendiz = ?`,
+              [
+                datosAprendiz.ficha || null, nombre, tipoDocumento, tipoDocumento === 'Otro' ? tipoDocumentoOtro : null,
+                datosAprendiz.tipo_aprendiz, datosAprendiz.jornada, datosAprendiz.dias_semana,
+                datosAprendiz.hora_inicio, datosAprendiz.hora_fin, existAprendiz.id_aprendiz,
+              ]
+            );
+            resultados.actualizados += 1;
+          } else {
+            // Insertar registro de aprendiz (sin crear cuenta de usuario)
+            await defaultDb.execute(
+              `INSERT INTO Aprendices
+               (ficha, nombre, documento, tipo_documento, tipo_documento_otro, tipo_aprendiz, jornada, dias_semana, hora_inicio, hora_fin, creado_por)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+              [
+                datosAprendiz.ficha || null, nombre, documento, tipoDocumento, tipoDocumento === 'Otro' ? tipoDocumentoOtro : null,
+                datosAprendiz.tipo_aprendiz, datosAprendiz.jornada, datosAprendiz.dias_semana,
+                datosAprendiz.hora_inicio, datosAprendiz.hora_fin, userId,
+              ]
+            );
+          }
         }
 
-        resultados.exitosos++;
+        resultados.exitosos += 1;
       } catch (error) {
         resultados.errores.push({ fila: numeroFila, documento: row['Documento'] || 'N/A', error: error.message || 'Error desconocido' });
-        resultados.fallidos++;
+        resultados.fallidos += 1;
       }
     }
 

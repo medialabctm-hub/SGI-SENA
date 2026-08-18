@@ -64,11 +64,31 @@ export async function ensureAprendicesTable() {
            ADD COLUMN tipo_documento ENUM('TI', 'CC', 'CE', 'PPT', 'Otro') DEFAULT 'CC'
            COMMENT 'Tipo de documento de identidad' AFTER documento`
         );
+      }
+
+      const [[tipoDocumentoOtroExiste]] = await defaultDb.execute(
+        `SELECT COUNT(*) AS cnt FROM INFORMATION_SCHEMA.COLUMNS
+         WHERE TABLE_SCHEMA = DATABASE()
+         AND TABLE_NAME = 'Aprendices'
+         AND COLUMN_NAME = 'tipo_documento_otro'`
+      );
+
+      if (tipoDocumentoOtroExiste.cnt === 0) {
         await defaultDb.execute(
           `ALTER TABLE Aprendices
            ADD COLUMN tipo_documento_otro VARCHAR(50) NULL
            COMMENT 'Especificación cuando tipo_documento es "Otro"' AFTER tipo_documento`
         );
+      }
+
+      const [[indiceTipoDocumentoExiste]] = await defaultDb.execute(
+        `SELECT COUNT(*) AS cnt FROM INFORMATION_SCHEMA.STATISTICS
+         WHERE TABLE_SCHEMA = DATABASE()
+         AND TABLE_NAME = 'Aprendices'
+         AND INDEX_NAME = 'idx_tipo_documento'`
+      );
+
+      if (indiceTipoDocumentoExiste.cnt === 0) {
         await defaultDb.execute('ALTER TABLE Aprendices ADD INDEX idx_tipo_documento (tipo_documento)');
       }
 

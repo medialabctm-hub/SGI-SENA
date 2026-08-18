@@ -32,6 +32,8 @@ function stubEnsure() {
   mockExecute
     .mockResolvedValueOnce([[{ cnt: 1 }]]) // tabla existe
     .mockResolvedValueOnce([[{ cnt: 1 }]]) // tipo_documento existe
+    .mockResolvedValueOnce([[{ cnt: 1 }]]) // tipo_documento_otro existe
+    .mockResolvedValueOnce([[{ cnt: 1 }]]) // índice tipo_documento existe
     .mockResolvedValueOnce([[{ DATA_TYPE: 'varchar', CHARACTER_SET_NAME: 'utf8mb4' }]]) // jornada actual
     .mockResolvedValueOnce([[{ cnt: 1 }]]) // tipo_aprendiz existe
     .mockResolvedValueOnce([[{ cnt: 1 }]]) // dias_semana existe
@@ -51,10 +53,40 @@ describe('aprendicesController', () => {
   });
 
   describe('ensureAprendicesTable', () => {
+    it('repara tipo_documento_otro e índice sin volver a agregar tipo_documento', async () => {
+      mockExecute.mockImplementation(async (sql, params) => {
+        if (/INFORMATION_SCHEMA\.TABLES/.test(sql)) return [[{ cnt: 1 }]];
+        if (/INFORMATION_SCHEMA\.STATISTICS/.test(sql)) return [[{ cnt: 0 }]];
+        if (/COLUMN_NAME = 'tipo_documento'/.test(sql)) return [[{ cnt: 1 }]];
+        if (/COLUMN_NAME = 'tipo_documento_otro'/.test(sql)) return [[{ cnt: 0 }]];
+        if (/COLUMN_NAME = 'jornada'/.test(sql)) {
+          return [[{ DATA_TYPE: 'varchar', CHARACTER_SET_NAME: 'utf8mb4' }]];
+        }
+        if (/INFORMATION_SCHEMA\.COLUMNS/.test(sql) && params?.length) return [[{ cnt: 1 }]];
+        if (/SELECT EXISTS/.test(sql)) return [[{ hay_pendientes: 0 }]];
+        return [{}];
+      });
+
+      await ensureAprendicesTable();
+
+      const alteraciones = mockExecute.mock.calls
+        .map(([sql]) => sql)
+        .filter((sql) => /ALTER TABLE Aprendices/.test(sql));
+      expect(alteraciones).toEqual(expect.arrayContaining([
+        expect.stringContaining('ADD COLUMN tipo_documento_otro'),
+        expect.stringContaining('ADD INDEX idx_tipo_documento')
+      ]));
+      expect(alteraciones).not.toEqual(expect.arrayContaining([
+        expect.stringMatching(/ADD COLUMN tipo_documento\s+ENUM/)
+      ]));
+    });
+
     it('no emite ALTER ni UPDATE cuando el esquema ya está actualizado', async () => {
       mockExecute
         .mockResolvedValueOnce([[{ cnt: 1 }]]) // tabla existe
         .mockResolvedValueOnce([[{ cnt: 1 }]]) // tipo_documento existe
+        .mockResolvedValueOnce([[{ cnt: 1 }]]) // tipo_documento_otro existe
+        .mockResolvedValueOnce([[{ cnt: 1 }]]) // índice tipo_documento existe
         .mockResolvedValueOnce([[{ DATA_TYPE: 'varchar', CHARACTER_SET_NAME: 'utf8mb4' }]])
         .mockResolvedValueOnce([[{ cnt: 1 }]]) // tipo_aprendiz existe
         .mockResolvedValueOnce([[{ cnt: 1 }]]) // dias_semana existe
@@ -74,6 +106,8 @@ describe('aprendicesController', () => {
       mockExecute
         .mockResolvedValueOnce([[{ cnt: 1 }]]) // tabla existe
         .mockResolvedValueOnce([[{ cnt: 1 }]]) // tipo_documento existe
+        .mockResolvedValueOnce([[{ cnt: 1 }]]) // tipo_documento_otro existe
+        .mockResolvedValueOnce([[{ cnt: 1 }]]) // índice tipo_documento existe
         .mockResolvedValueOnce([[{ DATA_TYPE: 'enum', CHARACTER_SET_NAME: 'utf8mb4' }]])
         .mockResolvedValueOnce([{}]) // MODIFY jornada
         .mockResolvedValueOnce([[{ cnt: 1 }]]) // tipo_aprendiz existe
@@ -97,6 +131,8 @@ describe('aprendicesController', () => {
       mockExecute
         .mockResolvedValueOnce([[{ cnt: 1 }]]) // tabla existe
         .mockResolvedValueOnce([[{ cnt: 1 }]]) // tipo_documento existe
+        .mockResolvedValueOnce([[{ cnt: 1 }]]) // tipo_documento_otro existe
+        .mockResolvedValueOnce([[{ cnt: 1 }]]) // índice tipo_documento existe
         .mockResolvedValueOnce([[{ DATA_TYPE: 'varchar', CHARACTER_SET_NAME: 'utf8mb4' }]])
         .mockResolvedValueOnce([[{ cnt: 1 }]]) // tipo_aprendiz existe
         .mockResolvedValueOnce([[{ cnt: 1 }]]) // dias_semana existe
@@ -110,11 +146,11 @@ describe('aprendicesController', () => {
       await ensureAprendicesTable();
 
       expect(mockExecute).toHaveBeenNthCalledWith(
-        9,
+        11,
         expect.stringContaining("UPDATE Aprendices SET tipo_documento = 'CC'")
       );
       expect(mockExecute).toHaveBeenNthCalledWith(
-        11,
+        13,
         expect.stringContaining('CONVERT(0x4D61C383C2B1616E61 USING utf8mb4)')
       );
     });

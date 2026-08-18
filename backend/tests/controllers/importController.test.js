@@ -87,13 +87,15 @@ function mockRes() {
 }
 
 // Helper: create a fake xlsx workbook mock
-function fakeWorkbook(data = []) {
+function fakeWorkbook(data = [], headers = [...new Set(data.flatMap((row) => Object.keys(row)))]) {
   const worksheet = { fakeSheet: true };
   mockRead.mockReturnValueOnce({
     SheetNames: ['Sheet1'],
     Sheets: { Sheet1: worksheet }
   });
-  mockSheetToJson.mockReturnValueOnce(data);
+  mockSheetToJson.mockImplementation((_, options) => (
+    options?.header === 1 ? [headers] : data
+  ));
 }
 
 // ── importarEquipos ────────────────────────────────────────────────────────
@@ -580,7 +582,13 @@ describe('importarAprendices', () => {
   });
 
   it('updates rows with duplicate documento', async () => {
-    fakeWorkbook([{ Nombre: 'Ana', Documento: '9876', Ficha: '12345', Jornada: 'Mañana' }]);
+    fakeWorkbook([{
+      Nombre: 'Ana',
+      Documento: '9876',
+      Ficha: '12345',
+      Jornada: 'Mañana',
+      'Tipo Aprendiz': 'Regular'
+    }]);
     mockExecute
       .mockResolvedValueOnce([[{ id_aprendiz: 1 }]]) // doc ya existe
       .mockResolvedValueOnce([{ affectedRows: 1 }]); // UPDATE
@@ -594,6 +602,110 @@ describe('importarAprendices', () => {
       2,
       expect.stringContaining('UPDATE Aprendices'),
       ['12345', 'Ana', 'CC', null, 'Regular', 'Mañana', null, null, null, 1]
+    );
+  });
+
+  it('preserva tipo y horario al actualizar desde una plantilla antigua sin columna de tipo', async () => {
+    fakeWorkbook([{
+      Nombre: 'Ana Actualizada',
+      Documento: '9876',
+      Ficha: '54321',
+      Jornada: 'Mañana',
+      'Tipo Documento': 'TI'
+    }]);
+    mockExecute
+      .mockResolvedValueOnce([[
+        {
+          id_aprendiz: 1,
+          tipo_aprendiz: 'Practicante',
+          jornada: 'Completa',
+          dias_semana: 'Lunes a Viernes',
+          hora_inicio: '08:00:00',
+          hora_fin: '16:00:00'
+        }
+      ]])
+      .mockResolvedValueOnce([{ affectedRows: 1 }]);
+    const req = mockReq({ file: { buffer: Buffer.from('data') } });
+    const res = mockRes();
+
+    await importarAprendices(req, res);
+
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
+      resultados: expect.objectContaining({ exitosos: 1, actualizados: 1, fallidos: 0 })
+    }));
+    expect(mockExecute).toHaveBeenNthCalledWith(
+      2,
+      expect.not.stringContaining('tipo_aprendiz = ?'),
+      ['54321', 'Ana Actualizada', 'TI', null, 'Completa', 1]
+    );
+  });
+
+  it('rechaza una actualización legacy que dejaría a un aprendiz Regular sin ficha', async () => {
+    fakeWorkbook([{
+      Nombre: 'Ana Regular',
+      Documento: '9876',
+      Ficha: '',
+      Jornada: 'Tarde'
+    }]);
+    mockExecute.mockResolvedValueOnce([[
+      {
+        id_aprendiz: 1,
+        ficha: '12345',
+        tipo_aprendiz: 'Regular',
+        jornada: 'Mañana',
+        dias_semana: null,
+        hora_inicio: null,
+        hora_fin: null
+      }
+    ]]);
+    const req = mockReq({ file: { buffer: Buffer.from('data') } });
+    const res = mockRes();
+
+    await importarAprendices(req, res);
+
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
+      resultados: expect.objectContaining({
+        exitosos: 0,
+        actualizados: 0,
+        fallidos: 1,
+        errores: [expect.objectContaining({ error: expect.stringMatching(/ficha/i) })]
+      })
+    }));
+    expect(mockExecute).toHaveBeenCalledTimes(1);
+  });
+
+  it('aplica una Jornada legacy explícita después de validar el Regular resultante', async () => {
+    fakeWorkbook([{
+      Nombre: 'Ana Regular',
+      Documento: '9876',
+      Ficha: '54321',
+      Jornada: 'Tarde'
+    }]);
+    mockExecute
+      .mockResolvedValueOnce([[
+        {
+          id_aprendiz: 1,
+          ficha: '12345',
+          tipo_aprendiz: 'Regular',
+          jornada: 'Mañana',
+          dias_semana: null,
+          hora_inicio: null,
+          hora_fin: null
+        }
+      ]])
+      .mockResolvedValueOnce([{ affectedRows: 1 }]);
+    const req = mockReq({ file: { buffer: Buffer.from('data') } });
+    const res = mockRes();
+
+    await importarAprendices(req, res);
+
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
+      resultados: expect.objectContaining({ exitosos: 1, actualizados: 1, fallidos: 0 })
+    }));
+    expect(mockExecute).toHaveBeenNthCalledWith(
+      2,
+      expect.stringContaining('jornada = ?'),
+      ['54321', 'Ana Regular', 'CC', null, 'Tarde', 1]
     );
   });
 
@@ -630,6 +742,106 @@ describe('importarAprendices', () => {
       ] })
     }));
     expect(mockExecute).not.toHaveBeenCalled();
+  });
+
+  it('acepta el encabezado exportado Tipo de aprendiz', async () => {
+    fakeWorkbook([{
+      Nombre: 'Ana',
+      Documento: '9876',
+      'Tipo de aprendiz': 'Practicante',
+      'Días': 'Lunes a Viernes',
+      'Hora Inicio': '08:00',
+      'Hora Fin': '16:00'
+    }]);
+    mockExecute
+      .mockResolvedValueOnce([[undefined]])
+      .mockResolvedValueOnce([{ insertId: 5 }]);
+    const req = mockReq({ file: { buffer: Buffer.from('data') } });
+    const res = mockRes();
+
+    await importarAprendices(req, res);
+
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
+      resultados: expect.objectContaining({ exitosos: 1, fallidos: 0 })
+    }));
+    expect(mockExecute).toHaveBeenNthCalledWith(
+      2,
+      expect.stringContaining('INSERT INTO Aprendices'),
+      [null, 'Ana', '9876', 'CC', null, 'Practicante', 'Completa', 'Lunes a Viernes', '08:00', '16:00', 1]
+    );
+  });
+
+  it('rechaza una fila cuyo encabezado de tipo existe pero su valor está vacío', async () => {
+    fakeWorkbook([{
+      Nombre: 'Ana',
+      Documento: '9876',
+      Ficha: '1234',
+      Jornada: 'Mañana',
+      'Tipo Aprendiz': ''
+    }]);
+    const req = mockReq({ file: { buffer: Buffer.from('data') } });
+    const res = mockRes();
+
+    await importarAprendices(req, res);
+
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
+      resultados: expect.objectContaining({
+        exitosos: 0,
+        fallidos: 1,
+        errores: [expect.objectContaining({ error: expect.stringMatching(/tipo de aprendiz/i) })]
+      })
+    }));
+    expect(mockExecute).not.toHaveBeenCalled();
+  });
+
+  it('rechaza un tipo de aprendiz no reconocido sin consultar ni escribir en la base', async () => {
+    fakeWorkbook([{
+      Nombre: 'Ana',
+      Documento: '9876',
+      Ficha: '1234',
+      Jornada: 'Mañana',
+      'Tipo Aprendiz': 'Visitante'
+    }]);
+    const req = mockReq({ file: { buffer: Buffer.from('data') } });
+    const res = mockRes();
+
+    await importarAprendices(req, res);
+
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
+      resultados: expect.objectContaining({
+        exitosos: 0,
+        fallidos: 1,
+        errores: [expect.objectContaining({ error: expect.stringMatching(/tipo de aprendiz/i) })]
+      })
+    }));
+    expect(mockExecute).not.toHaveBeenCalled();
+  });
+
+  it('normaliza seriales de hora de Excel antes de insertar un practicante', async () => {
+    fakeWorkbook([{
+      Nombre: 'Ana',
+      Documento: '9876',
+      'Tipo Aprendiz': 'Practicante',
+      'Días': 'Lunes a Viernes',
+      'Hora Inicio': 1 / 3,
+      'Hora Fin': 2 / 3
+    }]);
+    mockExecute
+      .mockResolvedValueOnce([[undefined]])
+      .mockResolvedValueOnce([{ insertId: 5 }]);
+    const req = mockReq({ file: { buffer: Buffer.from('data') } });
+    const res = mockRes();
+
+    await importarAprendices(req, res);
+
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
+      resultados: expect.objectContaining({ exitosos: 1, fallidos: 0 })
+    }));
+    expect(mockExecute).toHaveBeenNthCalledWith(
+      2,
+      expect.stringContaining('INSERT INTO Aprendices'),
+      [null, 'Ana', '9876', 'CC', null, 'Practicante', 'Completa', 'Lunes a Viernes', '08:00', '16:00', 1]
+    );
   });
 
   it('normalizes jornada values correctly', async () => {

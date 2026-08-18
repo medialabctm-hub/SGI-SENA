@@ -45,6 +45,16 @@ describe('normalizarYValidarAprendiz()', () => {
     expect(resultado.error).toMatch(/mañana.*tarde.*noche/i);
   });
 
+  it('rechaza una ficha que excede 100 caracteres', () => {
+    const resultado = normalizarYValidarAprendiz({
+      tipo_aprendiz: 'Regular',
+      ficha: '1'.repeat(101),
+      jornada: 'Mañana',
+    });
+
+    expect(resultado.error).toMatch(/ficha.*100/i);
+  });
+
   it('rechaza un practicante con una duración menor a ocho horas', () => {
     const resultado = normalizarYValidarAprendiz({
       tipo_aprendiz: 'Practicante',
@@ -159,12 +169,31 @@ describe('normalizarYValidarAprendiz()', () => {
     expect(resultado.error).toMatch(/días.*horas/i);
   });
 
+  it('rechaza días de asistencia que exceden 255 caracteres', () => {
+    const resultado = normalizarYValidarAprendiz({
+      tipo_aprendiz: 'Semillero',
+      dias_semana: 'x'.repeat(256),
+      hora_inicio: '09:00',
+      hora_fin: '12:00',
+    });
+
+    expect(resultado.error).toMatch(/días.*255/i);
+  });
+
   it('rechaza un tipo de aprendiz no permitido', () => {
     const resultado = normalizarYValidarAprendiz({
       tipo_aprendiz: 'Visitante',
     });
 
     expect(resultado.error).toMatch(/tipo de aprendiz/i);
+  });
+
+  it('rechaza un tipo de aprendiz que excede 20 caracteres', () => {
+    const resultado = normalizarYValidarAprendiz({
+      tipo_aprendiz: 'x'.repeat(21),
+    });
+
+    expect(resultado.error).toMatch(/tipo de aprendiz.*20/i);
   });
 
   it('trata las filas de la plantilla anterior sin tipo como aprendices regulares', () => {
