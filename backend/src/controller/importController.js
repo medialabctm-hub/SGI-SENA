@@ -6,6 +6,7 @@ import { ensureAprendicesTable } from './aprendicesController.js';
 import { logger } from '../utils/logger.js';
 import { handleControllerError } from '../utils/controllerHelpers.js';
 import { TIPOS_DOCUMENTO } from '../config/documentTypes.js';
+import { normalizarYValidarAprendiz } from '../utils/aprendices.js';
 
 /**
  * Store en memoria para jobs de importación de equipos (progreso real).
@@ -1228,7 +1229,11 @@ export async function importarAprendices(req, res) {
         const documento = String(row['Documento'] || row['documento'] || row['CEDULA'] || row['Documento Identidad'] || '').trim();
         let tipoDocumento = String(row['Tipo Documento'] || row['tipo_documento'] || row['TIPO_DOCUMENTO'] || row['Tipo de Documento'] || 'CC').trim();
         const tipoDocumentoOtro = String(row['Tipo Documento Otro'] || row['tipo_documento_otro'] || row['TIPO_DOCUMENTO_OTRO'] || '').trim() || null;
-        let jornada = String(row['Jornada'] || row['jornada'] || '').trim() || null;
+        const tipoAprendiz = String(row['Tipo Aprendiz'] || row.tipo_aprendiz || row.TIPO_APRENDIZ || 'Regular').trim();
+        const diasSemana = String(row['Días'] || row.Dias || row.dias_semana || row.DIAS_SEMANA || '').trim();
+        const horaInicio = String(row['Hora Inicio'] || row.hora_inicio || row.HORA_INICIO || '').trim();
+        const horaFin = String(row['Hora Fin'] || row.hora_fin || row.HORA_FIN || '').trim();
+        const jornada = String(row.Jornada || row.jornada || '').trim();
 
         if (!nombre || !documento) {
           resultados.errores.push({ fila: numeroFila, documento: documento || 'N/A', error: 'Nombre y documento son obligatorios' });
@@ -1237,7 +1242,7 @@ export async function importarAprendices(req, res) {
         }
 
         // Normalizar tipo de documento
-        tipoDocumento = tipoDocumento.toUpperCase();
+        tipoDocumento = TIPOS_DOCUMENTO.find((tipo) => tipo.toLowerCase() === tipoDocumento.toLowerCase()) || 'CC';
         if (!TIPOS_DOCUMENTO.includes(tipoDocumento)) {
           tipoDocumento = 'CC'; // Valor por defecto
         }
@@ -1249,35 +1254,60 @@ export async function importarAprendices(req, res) {
           continue;
         }
 
-        // Normalizar jornada a valores válidos
-        if (jornada) {
-          const j = jornada.toLowerCase();
-          if (j.startsWith('m')) jornada = 'Mañana';
-          else if (j.startsWith('t')) jornada = 'Tarde';
-          else if (j.startsWith('n')) jornada = 'Noche';
-          else jornada = null;
+        const validacion = normalizarYValidarAprendiz({
+          ficha,
+          jornada,
+          tipo_aprendiz: tipoAprendiz,
+          dias_semana: diasSemana,
+          hora_inicio: horaInicio,
+          hora_fin: horaFin,
+        });
+        if (validacion.error) {
+          resultados.errores.push({ fila: numeroFila, documento, error: validacion.error });
+          resultados.fallidos++;
+          continue;
+        }
+        const datosAprendiz = validacion.datos;
+
+        if (datosAprendiz.tipo_aprendiz === 'Regular') {
+          datosAprendiz.dias_semana = null;
+          datosAprendiz.hora_inicio = null;
+          datosAprendiz.hora_fin = null;
         }
 
         // Upsert por documento: si ya existe en Aprendices, actualizar sus datos en vez de fallar la fila.
         // Necesario porque Zajuna reexporta la misma ficha en cortes sucesivos (nombre/jornada pueden cambiar).
         const [[existAprendiz]] = await defaultDb.execute(
-          'SELECT id_aprendiz FROM Aprendices WHERE documento = ? LIMIT 1',
+          `SELECT id_aprendiz, ficha, nombre, documento, tipo_documento, tipo_documento_otro,
+           tipo_aprendiz, jornada, dias_semana, hora_inicio, hora_fin, fecha_creacion
+           FROM Aprendices WHERE documento = ? LIMIT 1`,
           [documento]
         );
 
         if (existAprendiz) {
           await defaultDb.execute(
             `UPDATE Aprendices
-             SET ficha = ?, nombre = ?, tipo_documento = ?, tipo_documento_otro = ?, jornada = ?
+             SET ficha = ?, nombre = ?, tipo_documento = ?, tipo_documento_otro = ?, tipo_aprendiz = ?,
+                 jornada = ?, dias_semana = ?, hora_inicio = ?, hora_fin = ?
              WHERE id_aprendiz = ?`,
-            [ficha, nombre, tipoDocumento, tipoDocumento === 'Otro' ? tipoDocumentoOtro : null, jornada, existAprendiz.id_aprendiz]
+            [
+              datosAprendiz.ficha || null, nombre, tipoDocumento, tipoDocumento === 'Otro' ? tipoDocumentoOtro : null,
+              datosAprendiz.tipo_aprendiz, datosAprendiz.jornada, datosAprendiz.dias_semana,
+              datosAprendiz.hora_inicio, datosAprendiz.hora_fin, existAprendiz.id_aprendiz,
+            ]
           );
           resultados.actualizados++;
         } else {
           // Insertar registro de aprendiz (sin crear cuenta de usuario)
           await defaultDb.execute(
-            'INSERT INTO Aprendices (ficha, nombre, documento, tipo_documento, tipo_documento_otro, jornada, creado_por) VALUES (?, ?, ?, ?, ?, ?, ?)',
-            [ficha, nombre, documento, tipoDocumento, tipoDocumento === 'Otro' ? tipoDocumentoOtro : null, jornada, userId]
+            `INSERT INTO Aprendices
+             (ficha, nombre, documento, tipo_documento, tipo_documento_otro, tipo_aprendiz, jornada, dias_semana, hora_inicio, hora_fin, creado_por)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [
+              datosAprendiz.ficha || null, nombre, documento, tipoDocumento, tipoDocumento === 'Otro' ? tipoDocumentoOtro : null,
+              datosAprendiz.tipo_aprendiz, datosAprendiz.jornada, datosAprendiz.dias_semana,
+              datosAprendiz.hora_inicio, datosAprendiz.hora_fin, userId,
+            ]
           );
         }
 

@@ -1,5 +1,5 @@
 import express from 'express'
-import { listarAprendices, actualizarAprendiz, eliminarAprendiz, verificarAprendizPorDocumento } from '../controller/aprendicesController.js'
+import { listarAprendices, crearAprendiz, actualizarAprendiz, eliminarAprendiz, verificarAprendizPorDocumento } from '../controller/aprendicesController.js'
 import { authenticate } from '../middleware/authMiddleware.js'
 import { requirePermission } from '../middleware/authorization.js'
 import { PERMISSIONS } from '../config/permissions.js'
@@ -27,6 +27,13 @@ router.get(
   authenticate,
   requirePermission(PERMISSIONS.USERS.VIEW),
   listarAprendices
+)
+
+router.post(
+  '/',
+  authenticate,
+  requirePermission(PERMISSIONS.USERS.CREATE),
+  crearAprendiz
 )
 
 router.put(

@@ -580,7 +580,7 @@ describe('importarAprendices', () => {
   });
 
   it('updates rows with duplicate documento', async () => {
-    fakeWorkbook([{ Nombre: 'Ana', Documento: '9876' }]);
+    fakeWorkbook([{ Nombre: 'Ana', Documento: '9876', Ficha: '12345', Jornada: 'Mañana' }]);
     mockExecute
       .mockResolvedValueOnce([[{ id_aprendiz: 1 }]]) // doc ya existe
       .mockResolvedValueOnce([{ affectedRows: 1 }]); // UPDATE
@@ -593,7 +593,7 @@ describe('importarAprendices', () => {
     expect(mockExecute).toHaveBeenNthCalledWith(
       2,
       expect.stringContaining('UPDATE Aprendices'),
-      [null, 'Ana', 'CC', null, null, 1]
+      ['12345', 'Ana', 'CC', null, 'Regular', 'Mañana', null, null, null, 1]
     );
   });
 
@@ -610,10 +610,32 @@ describe('importarAprendices', () => {
     }));
   });
 
+  it('valida un practicante antes de consultar o insertar en la base de datos', async () => {
+    fakeWorkbook([{
+      Nombre: 'Ana',
+      Documento: '9876',
+      'Tipo Aprendiz': 'Practicante',
+      'Días': 'Lunes a Viernes',
+      'Hora Inicio': '08:00',
+      'Hora Fin': '15:00'
+    }]);
+    const req = mockReq({ file: { buffer: Buffer.from('data') } });
+    const res = mockRes();
+
+    await importarAprendices(req, res);
+
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
+      resultados: expect.objectContaining({ fallidos: 1, exitosos: 0, errores: [
+        expect.objectContaining({ error: expect.stringContaining('ocho horas') })
+      ] })
+    }));
+    expect(mockExecute).not.toHaveBeenCalled();
+  });
+
   it('normalizes jornada values correctly', async () => {
     fakeWorkbook([
-      { Nombre: 'Pedro', Documento: '1111', Jornada: 'tarde' },
-      { Nombre: 'Maria', Documento: '2222', Jornada: 'noche' }
+      { Nombre: 'Pedro', Documento: '1111', Ficha: '1234', Jornada: 'tarde' },
+      { Nombre: 'Maria', Documento: '2222', Ficha: '5678', Jornada: 'noche' }
     ]);
     mockExecute
       .mockResolvedValueOnce([[undefined]])        // doc 1 no existe

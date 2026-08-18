@@ -2,6 +2,20 @@ import defaultDb from '../config/dbconfig.js'
 import { logger } from '../utils/logger.js'
 import { handleControllerError } from '../utils/controllerHelpers.js';
 import { TIPOS_DOCUMENTO } from '../config/documentTypes.js';
+import { normalizarYValidarAprendiz } from '../utils/aprendices.js';
+
+const COLUMNAS_APRENDIZ = [
+  {
+    nombre: 'tipo_aprendiz',
+    definicion: "VARCHAR(20) NOT NULL DEFAULT 'Regular' AFTER tipo_documento_otro",
+  },
+  { nombre: 'dias_semana', definicion: 'VARCHAR(255) NULL AFTER tipo_aprendiz' },
+  { nombre: 'hora_inicio', definicion: 'TIME NULL AFTER dias_semana' },
+  { nombre: 'hora_fin', definicion: 'TIME NULL AFTER hora_inicio' },
+];
+
+const CAMPOS_APRENDIZ_SELECT = `id_aprendiz, ficha, nombre, documento, tipo_documento,
+  tipo_documento_otro, tipo_aprendiz, jornada, dias_semana, hora_inicio, hora_fin, fecha_creacion`;
 
 export async function ensureAprendicesTable() {
   try {
@@ -20,7 +34,11 @@ export async function ensureAprendicesTable() {
           documento VARCHAR(50) NOT NULL,
           tipo_documento ENUM('TI', 'CC', 'CE', 'PPT', 'Otro') DEFAULT 'CC' COMMENT 'Tipo de documento de identidad',
           tipo_documento_otro VARCHAR(50) NULL COMMENT 'Especificación cuando tipo_documento es "Otro"',
-          jornada ENUM('Mañana','Tarde','Noche') NULL,
+          tipo_aprendiz VARCHAR(20) NOT NULL DEFAULT 'Regular',
+          jornada VARCHAR(30) CHARACTER SET utf8mb4 NULL,
+          dias_semana VARCHAR(255) NULL,
+          hora_inicio TIME NULL,
+          hora_fin TIME NULL,
           creado_por INT NULL,
           fecha_creacion DATETIME DEFAULT NOW(),
           FOREIGN KEY (creado_por) REFERENCES Usuarios(id_usuario) ON DELETE SET NULL,
@@ -33,39 +51,74 @@ export async function ensureAprendicesTable() {
       )
       logger.info('Tabla Aprendices creada correctamente')
     } else {
-      // Verificar si las columnas tipo_documento existen, si no, agregarlas
-      try {
-        const [[colExists]] = await defaultDb.execute(
+      const [[tipoDocumentoExiste]] = await defaultDb.execute(
+        `SELECT COUNT(*) AS cnt FROM INFORMATION_SCHEMA.COLUMNS
+         WHERE TABLE_SCHEMA = DATABASE()
+         AND TABLE_NAME = 'Aprendices'
+         AND COLUMN_NAME = 'tipo_documento'`
+      );
+
+      if (tipoDocumentoExiste.cnt === 0) {
+        await defaultDb.execute(
+          `ALTER TABLE Aprendices
+           ADD COLUMN tipo_documento ENUM('TI', 'CC', 'CE', 'PPT', 'Otro') DEFAULT 'CC'
+           COMMENT 'Tipo de documento de identidad' AFTER documento`
+        );
+        await defaultDb.execute(
+          `ALTER TABLE Aprendices
+           ADD COLUMN tipo_documento_otro VARCHAR(50) NULL
+           COMMENT 'Especificación cuando tipo_documento es "Otro"' AFTER tipo_documento`
+        );
+        await defaultDb.execute('ALTER TABLE Aprendices ADD INDEX idx_tipo_documento (tipo_documento)');
+      }
+
+      const [[jornadaActual]] = await defaultDb.execute(
+        `SELECT DATA_TYPE, CHARACTER_SET_NAME FROM INFORMATION_SCHEMA.COLUMNS
+         WHERE TABLE_SCHEMA = DATABASE()
+         AND TABLE_NAME = 'Aprendices'
+         AND COLUMN_NAME = 'jornada'`
+      );
+      const jornadaRequiereMigracion = jornadaActual?.DATA_TYPE?.toLowerCase() !== 'varchar'
+        || jornadaActual?.CHARACTER_SET_NAME?.toLowerCase() !== 'utf8mb4';
+      if (jornadaRequiereMigracion) {
+        await defaultDb.execute('ALTER TABLE Aprendices MODIFY jornada VARCHAR(30) CHARACTER SET utf8mb4 NULL');
+      }
+
+      for (const columna of COLUMNAS_APRENDIZ) {
+        // Las columnas se agregan en orden porque cada definición usa AFTER.
+        // eslint-disable-next-line no-await-in-loop
+        const [[columnaExiste]] = await defaultDb.execute(
           `SELECT COUNT(*) AS cnt FROM INFORMATION_SCHEMA.COLUMNS
            WHERE TABLE_SCHEMA = DATABASE()
            AND TABLE_NAME = 'Aprendices'
-           AND COLUMN_NAME = 'tipo_documento'`
-        )
-        
-        if (colExists.cnt === 0) {
-          await defaultDb.execute(
-            `ALTER TABLE Aprendices
-             ADD COLUMN tipo_documento ENUM('TI', 'CC', 'CE', 'PPT', 'Otro') DEFAULT 'CC' 
-             COMMENT 'Tipo de documento de identidad'
-             AFTER documento`
-          )
-          await defaultDb.execute(
-            `ALTER TABLE Aprendices
-             ADD COLUMN tipo_documento_otro VARCHAR(50) NULL 
-             COMMENT 'Especificación cuando tipo_documento es "Otro"'
-             AFTER tipo_documento`
-          )
-          await defaultDb.execute(
-            `ALTER TABLE Aprendices
-             ADD INDEX idx_tipo_documento (tipo_documento)`
-          )
-          await defaultDb.execute(
-            `UPDATE Aprendices SET tipo_documento = 'CC' WHERE tipo_documento IS NULL`
-          )
-          logger.info('Columnas tipo_documento agregadas a tabla Aprendices existente')
+           AND COLUMN_NAME = ?`,
+          [columna.nombre]
+        );
+
+        if (columnaExiste.cnt === 0) {
+          // eslint-disable-next-line no-await-in-loop
+          await defaultDb.execute(`ALTER TABLE Aprendices ADD COLUMN ${columna.nombre} ${columna.definicion}`);
         }
-      } catch (migError) {
-        logger.warn('Error al verificar/agregar columnas tipo_documento en Aprendices', { error: migError.message })
+      }
+
+      const [[backfillPendiente]] = await defaultDb.execute(
+        `SELECT EXISTS(
+           SELECT 1 FROM Aprendices
+           WHERE tipo_documento IS NULL
+             OR tipo_aprendiz IS NULL
+             OR TRIM(tipo_aprendiz) = ''
+             OR jornada = CONVERT(0x4D61C383C2B1616E61 USING utf8mb4)
+         ) AS hay_pendientes`
+      );
+
+      if (backfillPendiente.hay_pendientes) {
+        await defaultDb.execute("UPDATE Aprendices SET tipo_documento = 'CC' WHERE tipo_documento IS NULL");
+        await defaultDb.execute("UPDATE Aprendices SET tipo_aprendiz = 'Regular' WHERE tipo_aprendiz IS NULL OR TRIM(tipo_aprendiz) = ''");
+        await defaultDb.execute(
+          `UPDATE Aprendices
+           SET jornada = CONVERT(0x4D61C3B1616E61 USING utf8mb4)
+           WHERE jornada = CONVERT(0x4D61C383C2B1616E61 USING utf8mb4)`
+        );
       }
     }
   } catch (error) {
@@ -91,7 +144,7 @@ export async function verificarAprendizPorDocumento(req, res) {
     await ensureAprendicesTable()
 
     const [[aprendiz]] = await defaultDb.execute(
-      'SELECT nombre, ficha FROM Aprendices WHERE documento = ? LIMIT 1',
+      `SELECT ${CAMPOS_APRENDIZ_SELECT} FROM Aprendices WHERE documento = ? LIMIT 1`,
       [documentoNormalizado]
     )
 
@@ -115,7 +168,7 @@ export async function listarAprendices(req, res) {
     await ensureAprendicesTable()
 
     const [rows] = await defaultDb.execute(
-      `SELECT id_aprendiz, ficha, nombre, documento, tipo_documento, tipo_documento_otro, jornada, fecha_creacion
+      `SELECT ${CAMPOS_APRENDIZ_SELECT}
        FROM Aprendices
        ORDER BY fecha_creacion DESC`
     )
@@ -130,55 +183,111 @@ export async function listarAprendices(req, res) {
   }
 }
 
-const JORNADAS_VALIDAS = ['Mañana', 'Tarde', 'Noche']
+function validarDatosAprendiz(body = {}) {
+  const nombre = typeof body.nombre === 'string' ? body.nombre.trim() : '';
+  const documento = typeof body.documento === 'string' ? body.documento.trim() : '';
+  const tipoDocumento = typeof body.tipo_documento === 'string' ? body.tipo_documento.trim() : 'CC';
+  const tipoDocumentoOtro = tipoDocumento === 'Otro' && typeof body.tipo_documento_otro === 'string'
+    ? body.tipo_documento_otro.trim()
+    : null;
+
+  if (!nombre || !documento) {
+    return { error: 'Nombre y documento son obligatorios' };
+  }
+
+  if (!TIPOS_DOCUMENTO.includes(tipoDocumento)) {
+    return { error: 'Tipo de documento inválido', detalle: `Los tipos permitidos son: ${TIPOS_DOCUMENTO.join(', ')}` };
+  }
+
+  if (tipoDocumento === 'Otro' && !tipoDocumentoOtro) {
+    return { error: 'Debe especificar el tipo de documento cuando selecciona "Otro"' };
+  }
+
+  const validacion = normalizarYValidarAprendiz(body);
+  if (validacion.error) {
+    return { error: validacion.error };
+  }
+
+  const datos = {
+    ...validacion.datos,
+    nombre,
+    documento,
+    tipo_documento: tipoDocumento,
+    tipo_documento_otro: tipoDocumento === 'Otro' ? tipoDocumentoOtro : null,
+  };
+
+  if (datos.tipo_aprendiz === 'Regular') {
+    datos.dias_semana = null;
+    datos.hora_inicio = null;
+    datos.hora_fin = null;
+  }
+
+  return { datos, error: null };
+}
+
+export async function crearAprendiz(req, res) {
+  const validacion = validarDatosAprendiz(req.body);
+  if (validacion.error) {
+    return res.status(400).json({ error: validacion.error, ...(validacion.detalle ? { detalle: validacion.detalle } : {}) });
+  }
+
+  const { datos } = validacion;
+
+  try {
+    await ensureAprendicesTable();
+
+    const [[duplicado]] = await defaultDb.execute(
+      'SELECT id_aprendiz, ficha, nombre, documento, tipo_documento, tipo_documento_otro, tipo_aprendiz, jornada, dias_semana, hora_inicio, hora_fin, fecha_creacion FROM Aprendices WHERE documento = ? LIMIT 1',
+      [datos.documento]
+    );
+    if (duplicado) {
+      return res.status(409).json({ error: 'El documento ya está registrado en otro aprendiz' });
+    }
+
+    const [resultado] = await defaultDb.execute(
+      `INSERT INTO Aprendices
+       (ficha, nombre, documento, tipo_documento, tipo_documento_otro, tipo_aprendiz, jornada, dias_semana, hora_inicio, hora_fin, creado_por)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        datos.ficha || null, datos.nombre, datos.documento, datos.tipo_documento,
+        datos.tipo_documento_otro, datos.tipo_aprendiz, datos.jornada,
+        datos.dias_semana, datos.hora_inicio, datos.hora_fin, req.user?.id || null,
+      ]
+    );
+
+    const [[aprendiz]] = await defaultDb.execute(
+      `SELECT ${CAMPOS_APRENDIZ_SELECT} FROM Aprendices WHERE id_aprendiz = ?`,
+      [resultado.insertId]
+    );
+
+    return res.status(201).json({ ok: true, aprendiz });
+  } catch (error) {
+    if (error?.code === 'ER_DUP_ENTRY') {
+      return res.status(409).json({ error: 'El documento ya está registrado en otro aprendiz' });
+    }
+    logger.error('Error al crear aprendiz', { error: error.message, stack: error.stack });
+    return handleControllerError(error, res, 'crearAprendiz', 'Error al crear aprendiz');
+  }
+}
 
 export async function actualizarAprendiz(req, res) {
   const { id } = req.params
   const idAprendiz = Number.parseInt(id, 10)
-  const { ficha = null, nombre, documento, tipo_documento = 'CC', tipo_documento_otro = null, jornada = null } = req.body || {}
-
   if (!Number.isFinite(idAprendiz) || idAprendiz <= 0) {
     return res.status(400).json({ error: 'ID de aprendiz inválido' })
   }
 
-  const nombreNormalizado = typeof nombre === 'string' ? nombre.trim() : ''
-  const documentoNormalizado = typeof documento === 'string' ? documento.trim() : ''
-  const fichaNormalizada = typeof ficha === 'string' ? ficha.trim() : null
-  const jornadaNormalizada = typeof jornada === 'string' && jornada.trim() ? jornada.trim() : null
-  const tipoDocumentoNormalizado = typeof tipo_documento === 'string' ? tipo_documento.trim() : 'CC'
-  const tipoDocumentoOtroNormalizado = tipo_documento === 'Otro' && tipo_documento_otro 
-    ? (typeof tipo_documento_otro === 'string' ? tipo_documento_otro.trim() : null)
-    : null
-
-  if (!TIPOS_DOCUMENTO.includes(tipoDocumentoNormalizado)) {
-    return res.status(400).json({
-      error: 'Tipo de documento inválido',
-      detalle: `Los tipos permitidos son: ${TIPOS_DOCUMENTO.join(', ')}`,
-    })
+  const validacion = validarDatosAprendiz(req.body);
+  if (validacion.error) {
+    return res.status(400).json({ error: validacion.error, ...(validacion.detalle ? { detalle: validacion.detalle } : {}) });
   }
-
-  if (tipoDocumentoNormalizado === 'Otro' && (!tipoDocumentoOtroNormalizado || tipoDocumentoOtroNormalizado.length === 0)) {
-    return res.status(400).json({
-      error: 'Debe especificar el tipo de documento cuando selecciona "Otro"',
-    })
-  }
-
-  if (!nombreNormalizado || !documentoNormalizado) {
-    return res.status(400).json({ error: 'Nombre y documento son obligatorios' })
-  }
-
-  if (jornadaNormalizada && !JORNADAS_VALIDAS.includes(jornadaNormalizada)) {
-    return res.status(400).json({
-      error: 'Jornada inválida',
-      detalle: `Las jornadas permitidas son: ${JORNADAS_VALIDAS.join(', ')}`,
-    })
-  }
+  const { datos } = validacion;
 
   try {
     await ensureAprendicesTable()
 
     const [[existe]] = await defaultDb.execute(
-      'SELECT id_aprendiz FROM Aprendices WHERE id_aprendiz = ? LIMIT 1',
+      `SELECT ${CAMPOS_APRENDIZ_SELECT} FROM Aprendices WHERE id_aprendiz = ? LIMIT 1`,
       [idAprendiz]
     )
 
@@ -187,8 +296,9 @@ export async function actualizarAprendiz(req, res) {
     }
 
     const [[duplicado]] = await defaultDb.execute(
-      'SELECT id_aprendiz FROM Aprendices WHERE documento = ? AND id_aprendiz <> ? LIMIT 1',
-      [documentoNormalizado, idAprendiz]
+      `SELECT ${CAMPOS_APRENDIZ_SELECT}
+       FROM Aprendices WHERE documento = ? AND id_aprendiz <> ? LIMIT 1`,
+      [datos.documento, idAprendiz]
     )
 
     if (duplicado) {
@@ -197,13 +307,18 @@ export async function actualizarAprendiz(req, res) {
 
     await defaultDb.execute(
       `UPDATE Aprendices
-       SET ficha = ?, nombre = ?, documento = ?, tipo_documento = ?, tipo_documento_otro = ?, jornada = ?
+       SET ficha = ?, nombre = ?, documento = ?, tipo_documento = ?, tipo_documento_otro = ?,
+           tipo_aprendiz = ?, jornada = ?, dias_semana = ?, hora_inicio = ?, hora_fin = ?
        WHERE id_aprendiz = ?`,
-      [fichaNormalizada || null, nombreNormalizado, documentoNormalizado, tipoDocumentoNormalizado, tipoDocumentoOtroNormalizado, jornadaNormalizada, idAprendiz]
+      [
+        datos.ficha || null, datos.nombre, datos.documento, datos.tipo_documento,
+        datos.tipo_documento_otro, datos.tipo_aprendiz, datos.jornada, datos.dias_semana,
+        datos.hora_inicio, datos.hora_fin, idAprendiz,
+      ]
     )
 
     const [[actualizado]] = await defaultDb.execute(
-      `SELECT id_aprendiz, ficha, nombre, documento, tipo_documento, tipo_documento_otro, jornada, fecha_creacion
+      `SELECT ${CAMPOS_APRENDIZ_SELECT}
        FROM Aprendices WHERE id_aprendiz = ?`,
       [idAprendiz]
     )
