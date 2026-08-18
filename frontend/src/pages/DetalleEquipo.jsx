@@ -7,6 +7,7 @@ import ConfirmModal from '../components/ConfirmModal';
 import ImageViewer from '../components/ImageViewer';
 import CustomSelect from '../components/CustomSelect';
 import { parseApiResponse, buildErrorMessage } from '../utils/api';
+import { canManageEquipoAssignments } from '../utils/permissions';
 import {
   FiArrowLeft,
   FiUpload,
@@ -84,6 +85,7 @@ export default function DetalleEquipo() {
   const [registrarUsoHoraInicio, setRegistrarUsoHoraInicio] = useState('');
   const [registrarUsoHoraFin, setRegistrarUsoHoraFin] = useState('');
   const [registrarUsoLoading, setRegistrarUsoLoading] = useState(false);
+  const canManageAssignments = canManageEquipoAssignments(user);
 
   useEffect(() => {
     try {
@@ -1578,31 +1580,33 @@ export default function DetalleEquipo() {
                                 </span>
                               )}
                             </div>
-                            <div className="detalle-equipo-responsable-actions">
-                              <button
-                                onClick={() =>
-                                  handleOpenEditAsignacion(responsable)
-                                }
-                                className="detalle-equipo-responsable-action-btn-edit"
-                                title="Editar asignación"
-                              >
-                                <FiEdit2 size={14} />
-                                Editar
-                              </button>
-                              <button
-                                onClick={() =>
-                                  setDeleteAsignacionConfirm({
-                                    open: true,
-                                    id: responsable.id_responsable,
-                                  })
-                                }
-                                className="detalle-equipo-responsable-action-btn-delete-inline"
-                                title="Eliminar asignación"
-                              >
-                                <FiTrash2 size={14} />
-                                Eliminar
-                              </button>
-                            </div>
+                            {canManageAssignments && (
+                              <div className="detalle-equipo-responsable-actions">
+                                <button
+                                  onClick={() =>
+                                    handleOpenEditAsignacion(responsable)
+                                  }
+                                  className="detalle-equipo-responsable-action-btn-edit"
+                                  title="Editar asignación"
+                                >
+                                  <FiEdit2 size={14} />
+                                  Editar
+                                </button>
+                                <button
+                                  onClick={() =>
+                                    setDeleteAsignacionConfirm({
+                                      open: true,
+                                      id: responsable.id_responsable,
+                                    })
+                                  }
+                                  className="detalle-equipo-responsable-action-btn-delete-inline"
+                                  title="Eliminar asignación"
+                                >
+                                  <FiTrash2 size={14} />
+                                  Eliminar
+                                </button>
+                              </div>
+                            )}
                           </div>
                           <div className="detalle-equipo-responsable-info-grid">
                             <div className="detalle-equipo-responsable-info-item">

@@ -243,6 +243,42 @@ describe('obtenerEquipoPorCodigo', () => {
     expect(res.status).not.toHaveBeenCalledWith(404);
   });
 
+  it('allows a Cuentadante to view their own equipo outside an assigned ambiente', async () => {
+    const fakeEquipo = { codigo_equipo: 42, placa: 'INV-42', id_cuentadante: 7 };
+    mockExecute.mockImplementation((sql, params = []) => {
+      if (sql.includes('SELECT DISTINCT ra.id_ambiente')) {
+        return Promise.resolve([[{ id_ambiente: 2 }]]);
+      }
+      if (sql.includes('WHERE e.placa = ?')) {
+        return Promise.resolve([[]]);
+      }
+      if (sql.includes('WHERE e.codigo_equipo = ?')) {
+        const hasOwnEquipmentScope = sql.includes('e.id_cuentadante = ?');
+        const hasAssignedAmbienteScope = sql.includes('e.id_ambiente IN (?)');
+        return Promise.resolve([
+          hasOwnEquipmentScope && hasAssignedAmbienteScope && params[1] === 7 && params[2] === 2
+            ? [fakeEquipo]
+            : []
+        ]);
+      }
+      return Promise.resolve([[]]);
+    });
+
+    const req = mockReq({
+      params: { codigo: '42' },
+      user: { id: 7, rol: 'Cuentadante' }
+    });
+    const res = mockRes();
+
+    await obtenerEquipoPorCodigo(req, res);
+
+    expect(res.status).not.toHaveBeenCalledWith(404);
+    expect(mockExecute).toHaveBeenCalledWith(
+      expect.stringContaining('WHERE e.codigo_equipo = ?'),
+      [42, 7, 2]
+    );
+  });
+
   it('returns 500 on DB error', async () => {
     mockExecute.mockRejectedValueOnce(new Error('DB fail'));
     const req = mockReq({ params: { codigo: 'PL-001' } });
@@ -480,8 +516,28 @@ describe('obtenerMisEquipos', () => {
     expect(res.json).toHaveBeenCalledWith(fakeEquipos);
   });
 
-  // BUG-01: solo habilitaciones de uso personal, sin las asignaciones temporales de clase
-  it('consulta solo habilitaciones activas del usuario y excluye las temporales de clase', async () => {
+  it('incluye el inventario a cargo para un cuentadante sin habilitaciones personales', async () => {
+    const inventarioACargo = [{
+      codigo_equipo: 101,
+      codigo_inventario: 'PLACA-101',
+      tipo_responsabilidad: 'Inventario a cargo',
+      origen_responsabilidad: 'inventario_cuentadante'
+    }];
+    mockExecute.mockResolvedValueOnce([inventarioACargo]);
+    const req = mockReq({ user: { id: 7, rol: 'Cuentadante' } });
+    const res = mockRes();
+
+    await obtenerMisEquipos(req, res);
+
+    const [sql, params] = mockExecute.mock.calls[0];
+    expect(sql).toMatch(/e\.id_cuentadante = \?/);
+    expect(sql).toMatch(/inventario_cuentadante/);
+    expect(params).toEqual([7, 7]);
+    expect(res.json).toHaveBeenCalledWith(inventarioACargo);
+  });
+
+  // Las habilitaciones temporales de clase no pertenecen a "Mis Equipos".
+  it('conserva las habilitaciones activas personales y excluye las temporales de clase', async () => {
     mockExecute.mockResolvedValueOnce([[]]);
     const req = mockReq({ user: { id: 7, rol: 'Instructor' } });
     const res = mockRes();
@@ -492,8 +548,21 @@ describe('obtenerMisEquipos', () => {
     expect(sql).toMatch(/re\.estado_responsabilidad = 'Activo'/);
     expect(sql).toMatch(/re\.fecha_desvinculacion IS NULL/);
     expect(sql).toMatch(/inicio de clase #/);
-    expect(sql).not.toMatch(/id_cuentadante/);
-    expect(params).toEqual([7]);
+    expect(sql).toMatch(/e\.id_cuentadante = \?/);
+    expect(params).toEqual([7, 7]);
+  });
+
+  it('elige la habilitacion manual activa mas reciente cuando hay duplicados para el mismo equipo', async () => {
+    mockExecute.mockResolvedValueOnce([[{ codigo_equipo: 101, id_responsable: 22 }]]);
+    const req = mockReq({ user: { id: 7, rol: 'Instructor' } });
+    const res = mockRes();
+
+    await obtenerMisEquipos(req, res);
+
+    const [sql] = mockExecute.mock.calls[0];
+    expect(sql).toMatch(/NOT EXISTS/);
+    expect(sql).toMatch(/re_mas_reciente\.id_responsable > re\.id_responsable/);
+    expect(res.json).toHaveBeenCalledWith([{ codigo_equipo: 101, id_responsable: 22 }]);
   });
 
   it('returns 500 on DB error', async () => {
@@ -504,7 +573,6 @@ describe('obtenerMisEquipos', () => {
     expect(res.status).toHaveBeenCalledWith(500);
   });
 });
-
 describe('listarAsignaciones', () => {
   beforeEach(() => {
     mockExecute.mockReset();

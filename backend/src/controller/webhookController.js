@@ -5,7 +5,7 @@ import { config } from '../config/config.js';
 
 // Obtener el secret desde configuración/entorno.
 // Se evalúa en cada petición para respetar cambios en variables de entorno en tests.
-const getWebhookSecret = () => config.webhook?.secret || process.env.WEBHOOK_SECRET;
+const getWebhookSecret = () => process.env.WEBHOOK_SECRET || config.webhook?.secret;
 
 // Query SQL pre-compilado (mejor rendimiento)
 const INSERT_QUERY = `

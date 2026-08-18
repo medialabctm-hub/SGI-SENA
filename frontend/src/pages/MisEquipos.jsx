@@ -101,9 +101,9 @@ export default function MisEquipos() {
                 <FiPackage size={28} color="#fff" />
               </div>
               <div>
-                <h2 className="mis-equipos-title">Mis Equipos Asignados</h2>
+                <h2 className="mis-equipos-title">Mis Equipos</h2>
                 <p className="mis-equipos-subtitle">
-                  Equipos que tienes bajo tu responsabilidad actualmente
+                  Inventario y equipos bajo tu responsabilidad actualmente
                 </p>
               </div>
             </div>
@@ -134,8 +134,8 @@ export default function MisEquipos() {
                       <th>Estado</th>
                       <th>Ambiente</th>
                       <th>Responsabilidad</th>
-                      <th>Fecha Asignación</th>
-                      <th>Días Asignado</th>
+                      <th>Fecha de Registro</th>
+                      <th>Días Habilitado</th>
                       <th>Asignado Por</th>
                       <th>Observaciones</th>
                     </tr>
@@ -189,20 +189,23 @@ export default function MisEquipos() {
                             {eq.tipo_responsabilidad}
                           </span>
                         </td>
-                        <td data-label="Fecha de asignación">
-                          {eq.fecha_asignacion
-                            ? new Date(eq.fecha_asignacion).toLocaleDateString(
-                                'es-CO'
-                              )
+                        <td data-label="Fecha de registro">
+                          {eq.fecha_asignacion || eq.fecha_adquisicion
+                            ? new Date(
+                                eq.fecha_asignacion || eq.fecha_adquisicion
+                              ).toLocaleDateString('es-CO')
                             : '-'}
                         </td>
-                        <td data-label="Días asignado">
+                        <td data-label="Días habilitado">
                           <span className="mis-equipos-responsabilidad-badge">
-                            {eq.dias_asignado || 0}
+                            {eq.dias_asignado ?? '-'}
                           </span>
                         </td>
                         <td data-label="Asignado por">
-                          {eq.asignado_por_nombre || 'Sistema'}
+                          {eq.origen_responsabilidad ===
+                          'inventario_cuentadante'
+                            ? 'Inventario a cargo'
+                            : eq.asignado_por_nombre || 'Sistema'}
                         </td>
                         <td
                           data-label="Observaciones"

@@ -330,7 +330,7 @@ export default function VerificarInventario() {
                       className="novedad-form-select form-select"
                       value={novedadForm.tipo_novedad}
                       onChange={e => setNovedadForm({ ...novedadForm, tipo_novedad: e.target.value })}
-                      options={['Mal Funcionamiento', 'Daño Físico', 'Falta de Componente', 'Robo', 'Otro']}
+                      options={['Mal Funcionamiento', 'Daño Físico', 'Falta de Componente', 'Pérdida', 'Robo', 'Otro']}
                       placeholder="Seleccionar tipo de novedad"
                       disabled={loading}
                     />

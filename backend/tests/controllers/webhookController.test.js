@@ -5,31 +5,24 @@
  */
 
 import { describe, it, expect, beforeEach, jest } from '@jest/globals';
-import { recibirWebhookExterno } from '../../src/controller/webhookController.js';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { config } from '../../src/config/config.js';
 import { AuthorizationError, ValidationError, DatabaseError } from '../../src/utils/errors.js';
 
-// Mock de dependencias
-jest.mock(
-  '../../src/config/dbconfig.js',
-  () => ({
-    default: {
-      execute: jest.fn(),
-    },
-  }),
-  { virtual: true }
-);
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const dbPath = path.resolve(__dirname, '../../src/config/dbconfig.js');
+const loggerPath = path.resolve(__dirname, '../../src/utils/logger.js');
+const mockExecute = jest.fn();
 
-jest.mock(
-  '../../src/utils/logger.js',
-  () => ({
-    logger: {
-      error: jest.fn(),
-      warn: jest.fn(),
-      info: jest.fn(),
-    },
-  }),
-  { virtual: true }
-);
+await jest.unstable_mockModule(dbPath, () => ({
+  default: { execute: mockExecute },
+}));
+await jest.unstable_mockModule(loggerPath, () => ({
+  logger: { error: jest.fn(), warn: jest.fn(), info: jest.fn() },
+}));
+
+const { recibirWebhookExterno } = await import('../../src/controller/webhookController.js');
 
 describe('recibirWebhookExterno', () => {
   let req, res, next;
@@ -38,6 +31,7 @@ describe('recibirWebhookExterno', () => {
     jest.clearAllMocks();
     
     process.env.WEBHOOK_SECRET = 'token-correcto';
+    config.webhook.secret = 'token-de-configuracion';
 
     req = {
       headers: {},
@@ -93,6 +87,23 @@ describe('recibirWebhookExterno', () => {
     );
   });
 
+  it('debe priorizar WEBHOOK_SECRET dinámico sobre el fallback de configuración', async () => {
+    req.headers['x-api-key'] = 'token-correcto';
+
+    await recibirWebhookExterno(req, res, next);
+
+    expect(res.status).toHaveBeenCalledWith(400);
+  });
+
+  it('debe usar el fallback de configuración si WEBHOOK_SECRET no está en el entorno', async () => {
+    delete process.env.WEBHOOK_SECRET;
+    req.headers['x-api-key'] = 'token-de-configuracion';
+
+    await recibirWebhookExterno(req, res, next);
+
+    expect(res.status).toHaveBeenCalledWith(400);
+  });
+
   it('debe rechazar peticiones con tipos de datos inválidos', async () => {
     req.headers['x-api-key'] = 'token-correcto';
     process.env.WEBHOOK_SECRET = 'token-correcto';
@@ -111,6 +122,7 @@ describe('recibirWebhookExterno', () => {
   // ─── WEBHOOK_SECRET no configurado ───────────────────────────────────────
   it('debe retornar 500 si WEBHOOK_SECRET no está configurado', async () => {
     delete process.env.WEBHOOK_SECRET;
+    config.webhook.secret = undefined;
     req.headers['x-api-key'] = 'any-token';
 
     await recibirWebhookExterno(req, res, next);
@@ -119,9 +131,6 @@ describe('recibirWebhookExterno', () => {
     expect(res.json).toHaveBeenCalledWith(
       expect.objectContaining({ success: false })
     );
-
-    // Restaurar para tests subsecuentes
-    process.env.WEBHOOK_SECRET = 'token-correcto';
   });
 
   // ─── Logging en modo development ──────────────────────────────────────────
@@ -169,8 +178,7 @@ describe('recibirWebhookExterno', () => {
 
   // ─── Inserción exitosa en BD ───────────────────────────────────────────────
   it('debe guardar los datos en BD y retornar 201 en éxito', async () => {
-    const dbMock = jest.requireMock('../../src/config/dbconfig.js');
-    dbMock.default.execute.mockResolvedValue([{ insertId: 42, affectedRows: 1 }]);
+    mockExecute.mockResolvedValue([{ insertId: 42, affectedRows: 1 }]);
     req.headers['x-api-key'] = 'token-correcto';
     req.body = {
       usuario: 'user1',
@@ -190,8 +198,7 @@ describe('recibirWebhookExterno', () => {
   it('debe loggear info en development cuando la inserción es exitosa', async () => {
     const prevNodeEnv = process.env.NODE_ENV;
     process.env.NODE_ENV = 'development';
-    const dbMock = jest.requireMock('../../src/config/dbconfig.js');
-    dbMock.default.execute.mockResolvedValue([{ insertId: 7 }]);
+    mockExecute.mockResolvedValue([{ insertId: 7 }]);
     req.headers['x-api-key'] = 'token-correcto';
     req.body = { usuario: 'user1', ambiente: 3, ficha: 'F-001', estado: 'ok' };
 

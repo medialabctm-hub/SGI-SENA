@@ -467,3 +467,61 @@
   color: var(--success-800);
   text-decoration: underline;
 }
+
+/* La barra de filtros comparte cuatro acciones. En móvil cada grupo conserva
+   sus controles dentro del ancho disponible, sin afectar el scroll horizontal
+   intencional de la tabla de resultados. */
+@media (max-width: 768px) {
+  .consultar-equipo-vista-inventario {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .consultar-equipo-vista-tabs {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    width: 100%;
+  }
+
+  .consultar-equipo-vista-tab {
+    min-width: 0;
+    padding: 8px 6px;
+    line-height: 1.2;
+    text-align: center;
+    white-space: normal;
+  }
+
+  .consultar-equipo-header-row,
+  .consultar-equipo-search-form,
+  .consultar-equipo-actions-row {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .consultar-equipo-search-form {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .consultar-equipo-search-form .search-input {
+    grid-column: 1 / -1;
+    min-width: 0;
+    width: 100%;
+  }
+
+  .consultar-equipo-actions-row {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .consultar-equipo-search-form .consultar-equipo-btn,
+  .consultar-equipo-actions-row .consultar-equipo-btn {
+    justify-content: center;
+    min-width: 0;
+    padding: 10px 8px;
+    font-size: 0.875rem;
+  }
+}

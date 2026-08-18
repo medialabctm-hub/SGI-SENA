@@ -203,21 +203,23 @@ export async function obtenerEquipoPorCodigo(req, res) {
 
     // Construir cláusula WHERE según el rol
     let whereClause = '';
-    let params = [codigo];
+    let scopeParams = [];
     
     if (userRole === 'Cuentadante') {
-      // Cuentadante: si tiene ambientes asignados usa misma lógica que Instructor; si no, solo por id_cuentadante
+      // El inventario propio sigue siendo visible aunque tenga ambientes habilitados.
       const [ambientesCuentadante] = await defaultDb.execute(
         `SELECT DISTINCT ra.id_ambiente FROM Responsabilidades_Ambiente ra
          WHERE ra.id_usuario = ? AND ra.estado_responsabilidad = 'Activa'`,
         [userId]
       );
       if (ambientesCuentadante?.length > 0) {
-        const ids = ambientesCuentadante.map(a => a.id_ambiente).join(',');
-        whereClause = ` AND e.id_ambiente IN (${ids})`;
+        const ids = ambientesCuentadante.map(a => a.id_ambiente);
+        const placeholders = ids.map(() => '?').join(',');
+        whereClause = ` AND (e.id_cuentadante = ? OR e.id_ambiente IN (${placeholders}))`;
+        scopeParams = [userId, ...ids];
       } else {
         whereClause = ' AND e.id_cuentadante = ?';
-        params.push(userId);
+        scopeParams = [userId];
       }
     } else if (userRole === 'Instructor') {
       // Los instructores solo pueden ver equipos de sus ambientes asignados
@@ -241,8 +243,10 @@ export async function obtenerEquipoPorCodigo(req, res) {
              AND c.fecha_clase >= CURDATE())
           )
       )`;
-      params.push(userId);
+      scopeParams = [userId];
     }
+
+    const params = [codigo, ...scopeParams];
 
     // Buscar por placa - ahora devuelve TODOS los registros con la misma placa (permite duplicados)
     const [rowsInventario] = await defaultDb.execute(
@@ -262,12 +266,7 @@ export async function obtenerEquipoPorCodigo(req, res) {
     const codigoNumerico = Number.parseInt(codigo, 10);
     if (Number.isFinite(codigoNumerico)) {
       // Reconstruir params para búsqueda por código_equipo
-      const paramsId = [codigoNumerico];
-      if (userRole === 'Instructor') {
-        paramsId.push(userId);
-      } else if (userRole === 'Cuentadante' && whereClause.includes('id_cuentadante')) {
-        paramsId.push(userId);
-      }
+      const paramsId = [codigoNumerico, ...scopeParams];
       
       const [rowsId] = await defaultDb.execute(
         `${queryBase} WHERE e.codigo_equipo = ?${whereClause}`,
@@ -818,11 +817,8 @@ export async function asignarEquipo(req, res) {
 }
 
 /**
- * Obtener las habilitaciones de uso personal del usuario actual ("Mis Equipos").
- *
- * ALCANCE: solo habilitaciones de uso (Responsables_Equipo). El inventario a cargo
- * de un cuentadante (Elementos.id_cuentadante) NO pertenece a esta pantalla; se
- * consulta desde "Inventario".
+ * Obtener los equipos bajo responsabilidad del usuario actual ("Mis Equipos").
+ * Incluye el inventario a cargo del cuentadante y sus habilitaciones personales.
  *
  * Se excluyen las asignaciones temporales generadas al iniciar una clase. El criterio
  * es estructural —esas filas nacen con fecha_desvinculacion programada, mientras que
@@ -842,25 +838,41 @@ export async function obtenerMisEquipos(req, res) {
         e.consecutivo,
         e.estado_fisico,
         e.descripcion,
+        e.fecha_adquisicion,
         a.nombre_ambiente,
         a.codigo_ambiente,
         re.fecha_asignacion,
-        re.tipo_responsabilidad,
+        COALESCE(re.tipo_responsabilidad, 'Inventario a cargo') AS tipo_responsabilidad,
         re.observaciones,
         DATEDIFF(NOW(), re.fecha_asignacion) AS dias_asignado,
-        u_asignado.nombre_usuario AS asignado_por_nombre
-      FROM Responsables_Equipo re
-      INNER JOIN Elementos e ON re.codigo_equipo = e.codigo_equipo
+        u_asignado.nombre_usuario AS asignado_por_nombre,
+        CASE
+          WHEN re.id_responsable IS NULL THEN 'inventario_cuentadante'
+          ELSE 'habilitacion_personal'
+        END AS origen_responsabilidad
+      FROM Elementos e
       LEFT JOIN Ambientes a ON e.id_ambiente = a.id_ambiente
-      LEFT JOIN Usuarios u_asignado ON re.asignado_por = u_asignado.id_usuario
-      WHERE re.id_usuario = ?
+      LEFT JOIN Responsables_Equipo re
+        ON re.codigo_equipo = e.codigo_equipo
+        AND re.id_usuario = ?
         AND re.estado_responsabilidad = 'Activo'
-        -- Excluir asignaciones temporales por clase: criterio estructural
         AND re.fecha_desvinculacion IS NULL
-        -- Respaldo para filas históricas creadas antes del criterio estructural
         AND (re.observaciones IS NULL OR re.observaciones NOT LIKE '%inicio de clase #%')
-      ORDER BY re.fecha_asignacion DESC`,
-      [userId]
+        AND NOT EXISTS (
+          SELECT 1
+          FROM Responsables_Equipo re_mas_reciente
+          WHERE re_mas_reciente.codigo_equipo = re.codigo_equipo
+            AND re_mas_reciente.id_usuario = re.id_usuario
+            AND re_mas_reciente.estado_responsabilidad = 'Activo'
+            AND re_mas_reciente.fecha_desvinculacion IS NULL
+            AND (re_mas_reciente.observaciones IS NULL OR re_mas_reciente.observaciones NOT LIKE '%inicio de clase #%')
+            AND re_mas_reciente.id_responsable > re.id_responsable
+        )
+      LEFT JOIN Usuarios u_asignado ON re.asignado_por = u_asignado.id_usuario
+      WHERE re.id_responsable IS NOT NULL
+        OR e.id_cuentadante = ?
+      ORDER BY COALESCE(re.fecha_asignacion, e.fecha_adquisicion) DESC`,
+      [userId, userId]
     )
 
     return res.json(equipos)
