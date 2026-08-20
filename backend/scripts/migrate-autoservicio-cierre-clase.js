@@ -1,7 +1,7 @@
 import { readFile } from 'fs/promises';
+import mysql from 'mysql2/promise';
 import path from 'path';
 import { fileURLToPath, pathToFileURL } from 'url';
-import { createConnection } from '../src/config/dbconfig.js';
 
 const VERSION = 'AUTOSERVICIO_CIERRE_V1';
 const ROUTINE = 'sp_finalizar_clase';
@@ -15,6 +15,30 @@ const createValidationSql = (migrationSql) => migrationSql.replace(
 );
 
 const getCreateProcedure = (rows) => rows?.[0]?.['Create Procedure'] || null;
+
+const envValue = (env, primary, fallback) => env[primary] || env[fallback] || null;
+
+export function getMigrationDbConfig(env = process.env) {
+  const config = {
+    host: envValue(env, 'DB_HOST', 'MYSQLHOST'),
+    user: envValue(env, 'DB_USER', 'MYSQLUSER'),
+    password: envValue(env, 'DB_PASSWORD', 'MYSQLPASSWORD'),
+    database: envValue(env, 'DB_NAME', 'MYSQLDATABASE'),
+    port: Number(envValue(env, 'DB_PORT', 'MYSQLPORT') || 3306),
+    charset: 'utf8mb4'
+  };
+  const missing = Object.entries(config)
+    .filter(([key, value]) => key !== 'port' && key !== 'charset' && !value)
+    .map(([key]) => key);
+  if (missing.length > 0 || !Number.isInteger(config.port) || config.port <= 0) {
+    throw new Error(`Faltan o son inválidas las variables de conexión MySQL: ${missing.join(', ') || 'DB_PORT/MYSQLPORT'}`);
+  }
+  return config;
+}
+
+export async function createMigrationConnection(env = process.env, createConnection = mysql.createConnection) {
+  return createConnection(getMigrationDbConfig(env));
+}
 
 async function readMigrationSql() {
   return readFile(definitionPath, 'utf8');
@@ -65,7 +89,7 @@ export async function runAutoservicioCierreMigration({ connection, migrationSql 
 }
 
 async function runCli() {
-  const connection = await createConnection();
+  const connection = await createMigrationConnection();
   try {
     const result = await runAutoservicioCierreMigration({ connection });
     console.log(result.applied ? `${ROUTINE} actualizado a ${VERSION}` : `${ROUTINE} ya tiene ${VERSION}`);

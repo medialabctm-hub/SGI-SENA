@@ -135,6 +135,32 @@ describe('MDL-77: bootstrap y readiness de autoservicio', () => {
     );
   });
 
+  it('rechaza uq_autoservicio_idempotency_key si es compuesto aunque idempotency_key sea la primera columna', async () => {
+    const execute = jest.fn(async (sql) => {
+      if (/COLUMN_NAME = 'id_usuario'/.test(sql)) return [[{ IS_NULLABLE: 'YES' }]];
+      if (/COLUMN_NAME IN/.test(sql)) return [[
+        { COLUMN_NAME: 'id_usuario', IS_NULLABLE: 'YES' },
+        { COLUMN_NAME: 'documento_externo' },
+        { COLUMN_NAME: 'nombre_externo' },
+        { COLUMN_NAME: 'id_aprendiz' },
+        { COLUMN_NAME: 'idempotency_key' }
+      ]];
+      if (/INFORMATION_SCHEMA\.STATISTICS/.test(sql)) return [[
+        { INDEX_NAME: 'idx_documento_externo', COLUMN_NAME: 'documento_externo', SEQ_IN_INDEX: 1, NON_UNIQUE: 1 },
+        { INDEX_NAME: 'idx_id_aprendiz', COLUMN_NAME: 'id_aprendiz', SEQ_IN_INDEX: 1, NON_UNIQUE: 1 },
+        { INDEX_NAME: 'uq_autoservicio_idempotency_key', COLUMN_NAME: 'idempotency_key', SEQ_IN_INDEX: 1, NON_UNIQUE: 0 },
+        { INDEX_NAME: 'uq_autoservicio_idempotency_key', COLUMN_NAME: 'codigo_equipo', SEQ_IN_INDEX: 2, NON_UNIQUE: 0 }
+      ]];
+      if (/INFORMATION_SCHEMA\.ROUTINES/.test(sql)) return [[{ ROUTINE_COMMENT: 'AUTOSERVICIO_CIERRE_V1' }]];
+      return [[]];
+    });
+    const { ensureAutoservicioSchema } = await importControllerWithDb(execute);
+
+    await expect(ensureAutoservicioSchema({ execute })).rejects.toThrow(
+      /uq_autoservicio_idempotency_key.*único sobre idempotency_key/i
+    );
+  });
+
   it('conecta el healthcheck del servidor con un helper testeable de readiness', async () => {
     const server = await readFile(serverPath, 'utf8');
 

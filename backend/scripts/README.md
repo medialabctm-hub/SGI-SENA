@@ -6,8 +6,11 @@ Desde `backend`, ejecute:
 node scripts/migrate-autoservicio-cierre-clase.js
 ```
 
-Use credenciales MySQL de administrador mediante las variables `DB_*` o
-`MYSQL*` ya configuradas para el backend. No ejecute
+Use exclusivamente credenciales MySQL de administrador: `DB_HOST`, `DB_USER`,
+`DB_PASSWORD`, `DB_NAME`, `DB_PORT` (o sus equivalentes `MYSQLHOST`,
+`MYSQLUSER`, `MYSQLPASSWORD`, `MYSQLDATABASE`, `MYSQLPORT`). El runner no carga
+la configuración global del backend ni exige Brevo, JWT, cookies, CORS o URL de
+frontend. No ejecute
 `migrate-autoservicio-cierre-clase.sql` directamente con el cliente `mysql`:
 es la definición que el runner mysql2 envía como un único `CREATE PROCEDURE`.
 

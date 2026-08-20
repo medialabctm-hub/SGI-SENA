@@ -4125,8 +4125,8 @@ async function verificarReadinessAutoservicio(db) {
     if (!columnasPorNombre.has(columna)) missing.push(`columna Historial_Uso_Equipos.${columna}`);
   });
   AUTOSERVICIO_INDICES_REQUERIDOS.forEach(({ nombre, columna, nonUnique, etiqueta }) => {
-    const indiceCorrecto = (indices || []).some((indice) => (
-      indice.INDEX_NAME === nombre &&
+    const columnasIndice = (indices || []).filter((indice) => indice.INDEX_NAME === nombre);
+    const indiceCorrecto = columnasIndice.length === 1 && columnasIndice.every((indice) => (
       indice.COLUMN_NAME === columna &&
       Number(indice.SEQ_IN_INDEX) === 1 &&
       Number(indice.NON_UNIQUE) === nonUnique
