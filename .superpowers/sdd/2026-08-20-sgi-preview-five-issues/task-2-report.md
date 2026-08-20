@@ -2,7 +2,7 @@
 
 ## Estado
 
-Completada. El commit final se registra en la sección correspondiente tras el amend del reporte.
+Completada.
 
 ## Causa raíz
 
@@ -65,9 +65,10 @@ Prueba interactiva local en `/solicitar-equipo`:
 
 ## Commit
 
-Pendiente de registrar tras crear el commit.
+`eba5c0a1893c2d1f9d4d0e5a06ee931fe01773ec` (`fix: harden autoservicio loan feedback`).
 
 ## Concerns
 
 - Node emite advertencias de `MODULE_TYPELESS_PACKAGE_JSON`; no se modificó `package.json` porque es una configuración transversal ajena a MDL-74.
 - Vite advierte un chunk final mayor a 500 kB; es una deuda previa/no bloqueante y queda fuera del alcance.
+- El servidor de desarrollo informó referencias existentes bajo `/public/images`; no bloquearon el build ni la prueba de viewport y quedan fuera de este flujo.
