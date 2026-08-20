@@ -7,9 +7,18 @@ const __dirname = path.dirname(__filename);
 
 // ── Mocks ──────────────────────────────────────────────────────────────────
 const mockExecute = jest.fn();
+const mockConnectionExecute = jest.fn();
+const mockConnection = {
+  beginTransaction: jest.fn(),
+  commit: jest.fn(),
+  rollback: jest.fn(),
+  release: jest.fn(),
+  execute: mockConnectionExecute,
+};
+const mockGetConnection = jest.fn();
 jest.unstable_mockModule(path.resolve(__dirname, '../../src/config/dbconfig.js'), () => ({
-  default: { execute: mockExecute },
-  pool: { execute: mockExecute }
+  default: { execute: mockExecute, pool: { getConnection: mockGetConnection } },
+  pool: { execute: mockExecute, getConnection: mockGetConnection }
 }));
 
 const mockLogger = { info: jest.fn(), error: jest.fn(), warn: jest.fn(), debug: jest.fn() };
@@ -50,8 +59,9 @@ jest.unstable_mockModule(path.resolve(__dirname, '../../src/middleware/uploadMid
   deleteImageFile: jest.fn()
 }));
 
+const mockEmitToAll = jest.fn();
 jest.unstable_mockModule(path.resolve(__dirname, '../../src/services/socketService.js'), () => ({
-  default: { emitToAll: jest.fn() }
+  default: { emitToAll: mockEmitToAll }
 }));
 
 // ── Dynamic import ─────────────────────────────────────────────────────────
@@ -291,6 +301,13 @@ describe('obtenerEquipoPorCodigo', () => {
 describe('actualizarEquipo', () => {
   beforeEach(() => {
     mockExecute.mockReset();
+    mockConnectionExecute.mockReset();
+    mockGetConnection.mockReset();
+    mockGetConnection.mockResolvedValue(mockConnection);
+    mockConnection.beginTransaction.mockReset();
+    mockConnection.commit.mockReset();
+    mockConnection.rollback.mockReset();
+    mockConnection.release.mockReset();
     jest.clearAllMocks();
   });
 
@@ -338,6 +355,122 @@ describe('actualizarEquipo', () => {
     const res = mockRes();
     await actualizarEquipo(req, res);
     expect(res.status).toHaveBeenCalledWith(500);
+  });
+
+  it('rolls back and returns once when a verified movement has no authorization', async () => {
+    mockConnectionExecute.mockResolvedValueOnce([[{ id_ambiente: 1, verificado_ambiente: 1 }]]);
+    const res = mockRes();
+
+    await actualizarEquipo(mockReq({
+      params: { codigo: '5' },
+      body: { id_ambiente: 2 },
+    }), res);
+
+    expect(mockConnection.beginTransaction).toHaveBeenCalledTimes(1);
+    expect(mockConnection.rollback).toHaveBeenCalledTimes(1);
+    expect(res.status).toHaveBeenCalledWith(403);
+    expect(res.json).toHaveBeenCalledTimes(1);
+    expect(mockEmitToAll).not.toHaveBeenCalled();
+  });
+
+  it('rolls back when the conditional authorization consumption conflicts', async () => {
+    mockConnectionExecute
+      .mockResolvedValueOnce([[{ id_ambiente: 1, verificado_ambiente: 1 }]])
+      .mockResolvedValueOnce([[{
+        id_solicitud: 12,
+        codigo_equipo: 5,
+        id_ambiente_origen: 1,
+        id_ambiente_destino: 2,
+        estado: 'Aprobada',
+        fecha_uso: null,
+      }]])
+      .mockResolvedValueOnce([{ affectedRows: 1 }])
+      .mockResolvedValueOnce([[{ id_historial: 99 }]])
+      .mockResolvedValueOnce([{ affectedRows: 0 }]);
+    const res = mockRes();
+
+    await actualizarEquipo(mockReq({
+      params: { codigo: '5' },
+      body: { id_ambiente: 2, id_solicitud_autorizacion: 12 },
+    }), res);
+
+    expect(mockConnection.rollback).toHaveBeenCalledTimes(1);
+    expect(res.status).toHaveBeenCalledWith(409);
+    expect(mockConnectionExecute.mock.calls.some(([sql]) => /WHERE id_solicitud = \? AND fecha_uso IS NULL/i.test(sql))).toBe(true);
+    expect(mockEmitToAll).not.toHaveBeenCalled();
+  });
+
+  it('consumes an authorized movement even when its history row is unavailable', async () => {
+    mockConnectionExecute
+      .mockResolvedValueOnce([[{ id_ambiente: 1, verificado_ambiente: 1 }]])
+      .mockResolvedValueOnce([[{
+        id_solicitud: 12,
+        codigo_equipo: 5,
+        id_ambiente_origen: 1,
+        id_ambiente_destino: 2,
+        id_autorizador: 20,
+        motivo: 'Traslado',
+        estado: 'Aprobada',
+        fecha_uso: null,
+      }]])
+      .mockResolvedValueOnce([{ affectedRows: 1 }])
+      .mockResolvedValueOnce([[]])
+      .mockResolvedValueOnce([{ affectedRows: 1 }]);
+    const res = mockRes();
+
+    await actualizarEquipo(mockReq({
+      params: { codigo: '5' },
+      body: { id_ambiente: 2, id_solicitud_autorizacion: 12 },
+    }), res);
+
+    expect(mockConnectionExecute.mock.calls.some(([sql]) => /WHERE id_solicitud = \? AND fecha_uso IS NULL/i.test(sql))).toBe(true);
+    expect(mockConnection.commit).toHaveBeenCalledTimes(1);
+    expect(res.json).toHaveBeenCalledWith({ ok: true, updated: 1 });
+  });
+
+  it('rolls back a database error and does not publish an equipment event', async () => {
+    mockConnectionExecute.mockRejectedValueOnce(new Error('DB fail'));
+    const res = mockRes();
+
+    await actualizarEquipo(mockReq({
+      params: { codigo: '5' },
+      body: { id_ambiente: 2 },
+    }), res);
+
+    expect(mockConnection.rollback).toHaveBeenCalledTimes(1);
+    expect(res.status).toHaveBeenCalledWith(500);
+    expect(res.json).toHaveBeenCalledTimes(1);
+    expect(mockEmitToAll).not.toHaveBeenCalled();
+  });
+
+  it('publishes the equipment event only after committing an authorized movement', async () => {
+    const order = [];
+    mockConnection.commit.mockImplementation(async () => { order.push('commit'); });
+    mockEmitToAll.mockImplementation(() => { order.push('emit'); });
+    mockConnectionExecute
+      .mockResolvedValueOnce([[{ id_ambiente: 1, verificado_ambiente: 1 }]])
+      .mockResolvedValueOnce([[{
+        id_solicitud: 12,
+        codigo_equipo: 5,
+        id_ambiente_origen: 1,
+        id_ambiente_destino: 2,
+        estado: 'Aprobada',
+        fecha_uso: null,
+      }]])
+      .mockResolvedValueOnce([{ affectedRows: 1 }])
+      .mockResolvedValueOnce([[{ id_historial: 99 }]])
+      .mockResolvedValueOnce([{ affectedRows: 1 }])
+      .mockResolvedValueOnce([{ affectedRows: 1 }]);
+    const res = mockRes();
+
+    await actualizarEquipo(mockReq({
+      params: { codigo: '5' },
+      body: { id_ambiente: 2, id_solicitud_autorizacion: 12 },
+    }), res);
+
+    expect(mockConnection.commit).toHaveBeenCalledTimes(1);
+    expect(order).toEqual(['commit', 'emit']);
+    expect(res.json).toHaveBeenCalledWith({ ok: true, updated: 1 });
   });
 });
 

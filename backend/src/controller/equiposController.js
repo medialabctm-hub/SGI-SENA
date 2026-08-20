@@ -425,6 +425,8 @@ export async function obtenerEquipoPorCodigo(req, res) {
 }
 
 export async function actualizarEquipo(req, res) {
+  let connection = null;
+  let transactionStarted = false;
   try {
     const { codigo } = req.params;
     if (!codigo) return res.status(400).json({ error: 'codigo requerido' });
@@ -460,57 +462,76 @@ export async function actualizarEquipo(req, res) {
       ambienteId = amb?.id_ambiente || null;
     }
 
-    // Si se está cambiando el ambiente: equipo verificado requiere una solicitud de autorización aprobada (uso único)
-    let idSolicitudAutorizacion = body.id_solicitud_autorizacion != null ? Number(body.id_solicitud_autorizacion) : null;
+    // Un cambio de ambiente y el consumo de su autorización deben compartir
+    // conexión: de otro modo dos solicitudes pueden comprobar fecha_uso antes
+    // de que cualquiera de ellas la marque como usada.
     if (ambienteId != null) {
-      const [[equipoActual]] = await defaultDb.execute(
-        'SELECT id_ambiente, COALESCE(verificado_ambiente, 0) AS verificado_ambiente FROM Elementos WHERE codigo_equipo = ?',
+      connection = await defaultDb.pool.getConnection();
+      await connection.beginTransaction();
+      transactionStarted = true;
+    }
+    const execute = connection ? connection.execute.bind(connection) : defaultDb.execute;
+    const rollbackAndRespond = async (status, payload) => {
+      if (transactionStarted) {
+        await connection.rollback();
+        transactionStarted = false;
+      }
+      return res.status(status).json(payload);
+    };
+
+    // Si se está cambiando el ambiente: equipo verificado requiere una solicitud de autorización aprobada (uso único)
+    const idSolicitudAutorizacion = body.id_solicitud_autorizacion != null ? Number(body.id_solicitud_autorizacion) : null;
+    let autorizacionMovimiento = null;
+    if (ambienteId != null) {
+      const [[equipoActual]] = await execute(
+        'SELECT id_ambiente, COALESCE(verificado_ambiente, 0) AS verificado_ambiente FROM Elementos WHERE codigo_equipo = ? FOR UPDATE',
         [codigoEquipo]
       );
       if (!equipoActual) {
-        return res.status(404).json({ error: 'Equipo no encontrado' });
+        return await rollbackAndRespond(404, { error: 'Equipo no encontrado' });
       }
       const ambienteCambia = Number(equipoActual.id_ambiente) !== Number(ambienteId);
       if (ambienteCambia && equipoActual.verificado_ambiente === 1) {
         if (!idSolicitudAutorizacion || idSolicitudAutorizacion <= 0) {
-          return res.status(403).json({
+          return await rollbackAndRespond(403, {
             error: 'Equipo verificado en ambiente',
             detalle: 'Para mover un equipo verificado debe usar una autorización aprobada. Cree una solicitud de autorización y espere a que el autorizador la apruebe, luego seleccione esa autorización al guardar.'
           });
         }
-        const [[solicitud]] = await defaultDb.execute(
+        const [[solicitud]] = await execute(
           `SELECT id_solicitud, codigo_equipo, id_ambiente_origen, id_ambiente_destino, id_autorizador, motivo, estado, fecha_uso
-           FROM Solicitudes_Autorizacion_Movimiento WHERE id_solicitud = ?`,
+           FROM Solicitudes_Autorizacion_Movimiento WHERE id_solicitud = ? FOR UPDATE`,
           [idSolicitudAutorizacion]
         );
         if (!solicitud) {
-          return res.status(404).json({ error: 'Solicitud de autorización no encontrada' });
+          return await rollbackAndRespond(404, { error: 'Solicitud de autorización no encontrada' });
         }
         if (solicitud.estado !== 'Aprobada') {
-          return res.status(403).json({
+          return await rollbackAndRespond(403, {
             error: 'La autorización no está aprobada',
             detalle: 'Solo puede usar una solicitud en estado Aprobada.'
           });
         }
         if (solicitud.fecha_uso != null) {
-          return res.status(403).json({
+          return await rollbackAndRespond(403, {
             error: 'Autorización ya utilizada',
             detalle: 'Cada autorización tiene un solo uso. Debe crear una nueva solicitud.'
           });
         }
         if (Number(solicitud.codigo_equipo) !== codigoEquipo) {
-          return res.status(403).json({ error: 'La autorización no corresponde a este equipo' });
+          return await rollbackAndRespond(403, { error: 'La autorización no corresponde a este equipo' });
         }
         if (Number(solicitud.id_ambiente_destino) !== Number(ambienteId)) {
-          return res.status(403).json({
+          return await rollbackAndRespond(403, {
             error: 'La autorización no aplica para el ambiente destino seleccionado'
           });
         }
         if (Number(solicitud.id_ambiente_origen) !== Number(equipoActual.id_ambiente)) {
-          return res.status(403).json({
+          return await rollbackAndRespond(403, {
             error: 'El ambiente actual del equipo no coincide con la autorización'
           });
         }
+        autorizacionMovimiento = solicitud;
       }
     }
 
@@ -551,25 +572,25 @@ export async function actualizarEquipo(req, res) {
     const tieneEstadoOperativo = estadoOperativo && ['Disponible', 'En Uso', 'En Mantenimiento', 'Dañado', 'Dado de Baja'].includes(estadoOperativo);
 
     if (sets.length === 0 && !tieneEstadoOperativo) {
-      return res.status(400).json({ error: 'Sin cambios para actualizar' });
+      return await rollbackAndRespond(400, { error: 'Sin cambios para actualizar' });
     }
 
     let affectedRows = 0;
     if (sets.length > 0) {
       const query = `UPDATE Elementos SET ${sets.join(', ')} WHERE codigo_equipo = ?`;
       const queryParams = [...params, codigoEquipo];
-      const [result] = await defaultDb.execute(query, queryParams);
-      if (result.affectedRows === 0) return res.status(404).json({ error: 'Equipo no encontrado' });
+      const [result] = await execute(query, queryParams);
+      if (result.affectedRows === 0) return await rollbackAndRespond(404, { error: 'Equipo no encontrado' });
       affectedRows = result.affectedRows;
     } else {
       // Solo se actualiza estado operativo: verificar que el equipo exista
-      const [[existe]] = await defaultDb.execute('SELECT 1 FROM Elementos WHERE codigo_equipo = ?', [codigoEquipo]);
-      if (!existe) return res.status(404).json({ error: 'Equipo no encontrado' });
+      const [[existe]] = await execute('SELECT 1 FROM Elementos WHERE codigo_equipo = ?', [codigoEquipo]);
+      if (!existe) return await rollbackAndRespond(404, { error: 'Equipo no encontrado' });
     }
 
     // Actualizar estado operativo en Estado_Equipo si se envió
     if (tieneEstadoOperativo) {
-      await defaultDb.execute(
+      await execute(
         `INSERT INTO Estado_Equipo (codigo_equipo, estado_operativo, fecha_actualizacion, actualizado_por)
          VALUES (?, ?, NOW(), ?)
          ON DUPLICATE KEY UPDATE estado_operativo = VALUES(estado_operativo), fecha_actualizacion = NOW(), actualizado_por = VALUES(actualizado_por)`,
@@ -579,35 +600,40 @@ export async function actualizarEquipo(req, res) {
     }
 
     // Si fue movimiento usando solicitud de autorización: marcar solicitud como usada y enlazar historial
-    if (ambienteId && idSolicitudAutorizacion && affectedRows > 0) {
-      const [[ultimoHistorial]] = await defaultDb.execute(
+    if (autorizacionMovimiento && affectedRows > 0) {
+      const [[ultimoHistorial]] = await execute(
         `SELECT id_historial FROM Historial_Equipos
          WHERE codigo_equipo = ? AND tipo_evento = 'Movimiento Ambiente'
          ORDER BY fecha_evento DESC LIMIT 1`,
         [codigoEquipo]
       );
-      if (ultimoHistorial) {
-        const idHistorial = ultimoHistorial.id_historial;
-        const [[sol]] = await defaultDb.execute(
-          'SELECT id_autorizador, motivo FROM Solicitudes_Autorizacion_Movimiento WHERE id_solicitud = ?',
-          [idSolicitudAutorizacion]
+      const idHistorial = ultimoHistorial?.id_historial || null;
+      const [consumo] = await execute(
+        `UPDATE Solicitudes_Autorizacion_Movimiento
+         SET fecha_uso = NOW(), id_usado_por = ?, id_historial_movimiento = ?
+         WHERE id_solicitud = ? AND fecha_uso IS NULL`,
+        [userId, idHistorial, idSolicitudAutorizacion]
+      );
+      if (consumo.affectedRows === 0) {
+        return await rollbackAndRespond(409, {
+          error: 'Autorización ya utilizada',
+          detalle: 'Cada autorización tiene un solo uso. Debe crear una nueva solicitud.'
+        });
+      }
+      if (idHistorial) {
+        await execute(
+          'UPDATE Historial_Equipos SET id_autorizado_por = ?, motivo_autorizacion = ? WHERE id_historial = ?',
+          [autorizacionMovimiento.id_autorizador, autorizacionMovimiento.motivo, idHistorial]
         );
-        if (sol) {
-          await defaultDb.execute(
-            `UPDATE Solicitudes_Autorizacion_Movimiento
-             SET fecha_uso = NOW(), id_usado_por = ?, id_historial_movimiento = ?
-             WHERE id_solicitud = ?`,
-            [userId, idHistorial, idSolicitudAutorizacion]
-          );
-          await defaultDb.execute(
-            'UPDATE Historial_Equipos SET id_autorizado_por = ?, motivo_autorizacion = ? WHERE id_historial = ?',
-            [sol.id_autorizador, sol.motivo, idHistorial]
-          );
-        }
       }
     }
 
-    // Emitir evento WebSocket para actualización en tiempo real
+    if (transactionStarted) {
+      await connection.commit();
+      transactionStarted = false;
+    }
+
+    // Emitir evento WebSocket solo después de confirmar la transacción.
     try {
       const socketService = (await import('../services/socketService.js')).default;
       socketService.emitToAll('equipo:updated', {
@@ -621,7 +647,16 @@ export async function actualizarEquipo(req, res) {
 
     return res.json({ ok: true, updated: affectedRows });
   } catch (err) {
+    if (transactionStarted) {
+      try {
+        await connection.rollback();
+      } catch (rollbackErr) {
+        logger.error('Error al revertir actualización de equipo', { error: rollbackErr.message });
+      }
+    }
     return handleControllerError(err, res, 'actualizarEquipo', 'Error al actualizar equipo');
+  } finally {
+    connection?.release();
   }
 }
 
