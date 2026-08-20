@@ -1,9 +1,15 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FiUser, FiHash, FiArrowLeft, FiCheckCircle } from 'react-icons/fi';
 import Toast from '../components/Toast';
 import InteractiveBackground from '../components/InteractiveBackground';
 import { buildErrorMessage, parseApiResponse } from '../utils/api';
+import {
+  createLoanRequestOptions,
+  createRequestGuard,
+  isRequestTimeout,
+  normalizeLoanResponse,
+} from '../utils/loanRequest';
 import '../styles/auth.css';
 
 const PASO_DOCUMENTO = 'documento';
@@ -19,77 +25,135 @@ export default function SolicitarEquipo() {
   const [loading, setLoading] = useState(false);
   const [errores, setErrores] = useState({});
   const [toast, setToast] = useState(null);
+  const requestGuardRef = useRef(createRequestGuard());
+  const loanRequestIdentityRef = useRef(null);
   const navigate = useNavigate();
+
+  useEffect(() => () => requestGuardRef.current.cancel(), []);
+
+  const cancelarSolicitudPendiente = () => {
+    requestGuardRef.current.cancel();
+    setLoading(false);
+  };
+
+  const limpiarIdentidadPrestamo = () => {
+    loanRequestIdentityRef.current = null;
+  };
 
   const handleVerificarDocumento = async (e) => {
     e.preventDefault();
     setErrores({});
+    setToast(null);
 
     if (!documento.trim()) {
       setErrores({ documento: 'El documento es obligatorio' });
       return;
     }
+    if (documento.trim().length > 50) {
+      setErrores({ documento: 'El documento no puede superar 50 caracteres' });
+      return;
+    }
 
+    const request = requestGuardRef.current.start();
     setLoading(true);
     try {
-      const res = await fetch(`/api/aprendices/verificar/${encodeURIComponent(documento.trim())}`);
+      const res = await fetch(`/api/aprendices/verificar/${encodeURIComponent(documento.trim())}`, {
+        signal: request.signal,
+      });
       const data = await parseApiResponse(res, 'No se pudo verificar el documento');
+      if (!requestGuardRef.current.isCurrent(request.id)) return;
       const aprendizData = data?.data?.aprendiz || data?.aprendiz || data;
       setAprendiz(aprendizData);
       setPaso(PASO_PLACA);
     } catch (err) {
+      if (isRequestTimeout(err, request)) {
+        setToast({
+          message: buildErrorMessage(new Error('timeout'), 'No se pudo verificar el documento'),
+          type: 'error'
+        });
+        return;
+      }
+      if (err?.name === 'AbortError' || !requestGuardRef.current.isCurrent(request.id)) return;
       setToast({
         message: buildErrorMessage(err, 'No se pudo verificar el documento'),
         type: 'error'
       });
     } finally {
-      setLoading(false);
+      if (requestGuardRef.current.isCurrent(request.id) || isRequestTimeout(null, request)) {
+        setLoading(false);
+        requestGuardRef.current.finish(request.id);
+      }
     }
   };
 
   const handleSolicitarEquipo = async (e) => {
     e.preventDefault();
     setErrores({});
+    setToast(null);
 
     if (!placa.trim()) {
       setErrores({ placa: 'La placa del equipo es obligatoria' });
       return;
     }
+    if (placa.trim().length > 100) {
+      setErrores({ placa: 'La placa no puede superar 100 caracteres' });
+      return;
+    }
 
+    const request = requestGuardRef.current.start({ identity: loanRequestIdentityRef.current || undefined });
+    loanRequestIdentityRef.current = request.identity;
     setLoading(true);
     try {
       const res = await fetch('/api/equipos/autoservicio/iniciar-uso', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ documento: documento.trim(), placa: placa.trim() })
+        ...createLoanRequestOptions(documento.trim(), placa.trim(), request.identity),
+        signal: request.signal,
       });
       const data = await parseApiResponse(res, 'No se pudo registrar el préstamo del equipo');
-      setPrestamo(data?.data || data);
+      const loan = normalizeLoanResponse(data);
+      if (!requestGuardRef.current.isCurrent(request.id)) return;
+      setPrestamo(loan);
       setPaso(PASO_CONFIRMACION);
     } catch (err) {
+      if (isRequestTimeout(err, request)) {
+        setToast({
+          message: buildErrorMessage(new Error('timeout'), 'No se pudo registrar el préstamo del equipo'),
+          type: 'error'
+        });
+        return;
+      }
+      if (err?.name === 'AbortError' || !requestGuardRef.current.isCurrent(request.id)) return;
       setToast({
         message: buildErrorMessage(err, 'No se pudo registrar el préstamo del equipo'),
         type: 'error'
       });
     } finally {
-      setLoading(false);
+      if (requestGuardRef.current.isCurrent(request.id) || isRequestTimeout(null, request)) {
+        setLoading(false);
+        requestGuardRef.current.finish(request.id);
+      }
     }
   };
 
   const reiniciar = () => {
+    cancelarSolicitudPendiente();
+    limpiarIdentidadPrestamo();
     setPaso(PASO_DOCUMENTO);
     setDocumento('');
     setPlaca('');
     setAprendiz(null);
     setPrestamo(null);
     setErrores({});
+    setToast(null);
   };
 
   const pedirOtroEquipo = () => {
+    cancelarSolicitudPendiente();
+    limpiarIdentidadPrestamo();
     setPaso(PASO_PLACA);
     setPlaca('');
     setPrestamo(null);
     setErrores({});
+    setToast(null);
   };
 
   if (paso === PASO_CONFIRMACION) {
@@ -144,14 +208,21 @@ export default function SolicitarEquipo() {
               <input
                 type="text"
                 placeholder="Placa del equipo"
+                name="placa"
+                maxLength={100}
+                required
                 value={placa}
-                onChange={(e) => setPlaca(e.target.value)}
+                onChange={(e) => {
+                  setPlaca(e.target.value);
+                  limpiarIdentidadPrestamo();
+                  if (errores.placa) setErrores((prev) => ({ ...prev, placa: undefined }));
+                }}
                 autoFocus
               />
             </label>
             {errores.placa && <div className="error-msg">{errores.placa}</div>}
 
-            <button className="btn primary btn-full-width" type="submit" disabled={loading}>
+            <button className="btn primary btn-full-width" type="submit" disabled={loading} aria-busy={loading}>
               {loading ? 'Solicitando...' : 'Solicitar equipo'}
             </button>
           </form>
@@ -159,7 +230,9 @@ export default function SolicitarEquipo() {
           <div className="links links-with-margin">
             <a
               href="#"
-              onClick={(e) => { e.preventDefault(); reiniciar(); }}
+              onClick={(e) => { e.preventDefault(); if (!loading) reiniciar(); }}
+              aria-disabled={loading}
+              tabIndex={loading ? -1 : 0}
               className="back-to-login-link"
             >
               <FiArrowLeft /> No soy yo, cambiar documento
@@ -187,14 +260,21 @@ export default function SolicitarEquipo() {
             <input
               type="text"
               placeholder="Documento"
+              name="documento"
+              inputMode="numeric"
+              maxLength={50}
+              required
               value={documento}
-              onChange={(e) => setDocumento(e.target.value)}
+              onChange={(e) => {
+                setDocumento(e.target.value);
+                if (errores.documento) setErrores((prev) => ({ ...prev, documento: undefined }));
+              }}
               autoFocus
             />
           </label>
           {errores.documento && <div className="error-msg">{errores.documento}</div>}
 
-          <button className="btn primary btn-full-width" type="submit" disabled={loading}>
+          <button className="btn primary btn-full-width" type="submit" disabled={loading} aria-busy={loading}>
             {loading ? 'Verificando...' : 'Continuar'}
           </button>
         </form>
