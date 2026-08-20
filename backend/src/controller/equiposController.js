@@ -4280,6 +4280,52 @@ END`);
   }
 }
 
+async function buscarSolicitudAutoservicioPorClave(db, idempotencyKey) {
+  const [[solicitud]] = await db.execute(
+    `SELECT hu.id_historial, hu.documento_externo, hu.nombre_externo, hu.codigo_equipo, hu.id_clase,
+            e.placa, e.tipo, e.modelo, c.nombre_clase
+     FROM Historial_Uso_Equipos hu
+     INNER JOIN Elementos e ON e.codigo_equipo = hu.codigo_equipo
+     LEFT JOIN Clases c ON c.id_clase = hu.id_clase
+     WHERE hu.idempotency_key = ?
+     LIMIT 1 FOR UPDATE`,
+    [idempotencyKey]
+  );
+  return solicitud || null;
+}
+
+const coincideSolicitudAutoservicio = (solicitud, documento, placa) => (
+  String(solicitud.documento_externo || '').trim() === documento &&
+  String(solicitud.placa || '').trim() === placa
+);
+
+const respuestaSolicitudAutoservicio = (solicitud) => ({
+  success: true,
+  idempotent: true,
+  message: 'Solicitud de préstamo recuperada',
+  data: {
+    id_historial: solicitud.id_historial,
+    equipo: {
+      codigo_equipo: solicitud.codigo_equipo,
+      placa: solicitud.placa,
+      tipo: solicitud.tipo,
+      modelo: solicitud.modelo
+    },
+    aprendiz: {
+      nombre: solicitud.nombre_externo,
+      documento: String(solicitud.documento_externo || '').trim()
+    },
+    clase: { id_clase: solicitud.id_clase, nombre_clase: solicitud.nombre_clase }
+  }
+});
+
+const respuestaClaveReutilizada = () => ({
+  success: false,
+  code: 'IDEMPOTENCY_KEY_REUSED',
+  error: 'Identidad de solicitud reutilizada',
+  message: 'Esta identidad ya fue usada para solicitar otro préstamo.'
+});
+
 /**
  * Autoservicio: el aprendiz (sin cuenta, cargado previamente desde Excel) ingresa su documento
  * y la placa del equipo para tomarlo en préstamo. No requiere autenticación.
@@ -4293,6 +4339,9 @@ END`);
 export async function iniciarUsoAutoservicio(req, res) {
   let connection;
   let transactionStarted = false;
+  let documentoNormalizado = '';
+  let placaNormalizada = '';
+  let idempotencyKey = '';
 
   const respondAfterRollback = async (status, payload) => {
     if (connection && transactionStarted) {
@@ -4303,9 +4352,9 @@ export async function iniciarUsoAutoservicio(req, res) {
   };
 
   try {
-    const documentoNormalizado = String(req.body?.documento || '').trim();
-    const placaNormalizada = String(req.body?.placa || '').trim();
-    const idempotencyKey = String(
+    documentoNormalizado = String(req.body?.documento || '').trim();
+    placaNormalizada = String(req.body?.placa || '').trim();
+    idempotencyKey = String(
       req.get?.('Idempotency-Key') || req.headers?.['idempotency-key'] || ''
     ).trim();
 
@@ -4329,49 +4378,14 @@ export async function iniciarUsoAutoservicio(req, res) {
     transactionStarted = true;
 
     if (idempotencyKey) {
-      const [[solicitudPrevia]] = await connection.execute(
-        `SELECT hu.id_historial, hu.documento_externo, hu.nombre_externo, hu.codigo_equipo, hu.id_clase,
-                e.placa, e.tipo, e.modelo, c.nombre_clase
-         FROM Historial_Uso_Equipos hu
-         INNER JOIN Elementos e ON e.codigo_equipo = hu.codigo_equipo
-         LEFT JOIN Clases c ON c.id_clase = hu.id_clase
-         WHERE hu.idempotency_key = ?
-         LIMIT 1 FOR UPDATE`,
-        [idempotencyKey]
-      );
+      const solicitudPrevia = await buscarSolicitudAutoservicioPorClave(connection, idempotencyKey);
       if (solicitudPrevia) {
-        const mismaSolicitud =
-          String(solicitudPrevia.documento_externo || '').trim() === documentoNormalizado &&
-          String(solicitudPrevia.placa || '').trim() === placaNormalizada;
-        if (!mismaSolicitud) {
-          return respondAfterRollback(409, {
-            success: false,
-            code: 'IDEMPOTENCY_KEY_REUSED',
-            error: 'Identidad de solicitud reutilizada',
-            message: 'Esta identidad ya fue usada para solicitar otro préstamo.'
-          });
+        if (!coincideSolicitudAutoservicio(solicitudPrevia, documentoNormalizado, placaNormalizada)) {
+          return respondAfterRollback(409, respuestaClaveReutilizada());
         }
         await connection.commit();
         transactionStarted = false;
-        return res.status(200).json({
-          success: true,
-          idempotent: true,
-          message: 'Solicitud de préstamo recuperada',
-          data: {
-            id_historial: solicitudPrevia.id_historial,
-            equipo: {
-              codigo_equipo: solicitudPrevia.codigo_equipo,
-              placa: solicitudPrevia.placa,
-              tipo: solicitudPrevia.tipo,
-              modelo: solicitudPrevia.modelo
-            },
-            aprendiz: {
-              nombre: solicitudPrevia.nombre_externo,
-              documento: String(solicitudPrevia.documento_externo || '').trim()
-            },
-            clase: { id_clase: solicitudPrevia.id_clase, nombre_clase: solicitudPrevia.nombre_clase }
-          }
-        });
+        return res.status(200).json(respuestaSolicitudAutoservicio(solicitudPrevia));
       }
     }
 
@@ -4535,6 +4549,19 @@ export async function iniciarUsoAutoservicio(req, res) {
         logger.warn('No se pudo revertir la transacción de autoservicio', { error: rollbackError.message });
       }
       transactionStarted = false;
+    }
+    if (err?.code === 'ER_DUP_ENTRY' && idempotencyKey && connection) {
+      try {
+        const solicitudPrevia = await buscarSolicitudAutoservicioPorClave(connection, idempotencyKey);
+        if (solicitudPrevia) {
+          if (!coincideSolicitudAutoservicio(solicitudPrevia, documentoNormalizado, placaNormalizada)) {
+            return res.status(409).json(respuestaClaveReutilizada());
+          }
+          return res.status(200).json(respuestaSolicitudAutoservicio(solicitudPrevia));
+        }
+      } catch (recoveryError) {
+        logger.warn('No se pudo recuperar la solicitud idempotente', { error: recoveryError.message });
+      }
     }
     logger.error('Error en iniciarUsoAutoservicio', { error: err.message, stack: err.stack });
     return handleControllerError(err, res, 'iniciarUsoAutoservicio', 'No se pudo registrar el préstamo del equipo');

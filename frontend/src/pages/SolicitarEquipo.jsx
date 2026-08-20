@@ -5,10 +5,9 @@ import Toast from '../components/Toast';
 import InteractiveBackground from '../components/InteractiveBackground';
 import { buildErrorMessage, parseApiResponse } from '../utils/api';
 import {
-  createLoanRequestOptions,
   createRequestGuard,
   isRequestTimeout,
-  normalizeLoanResponse,
+  submitLoanRequest,
 } from '../utils/loanRequest';
 import '../styles/auth.css';
 
@@ -49,11 +48,6 @@ export default function SolicitarEquipo() {
       setErrores({ documento: 'El documento es obligatorio' });
       return;
     }
-    if (documento.trim().length > 50) {
-      setErrores({ documento: 'El documento no puede superar 50 caracteres' });
-      return;
-    }
-
     const request = requestGuardRef.current.start();
     setLoading(true);
     try {
@@ -95,42 +89,31 @@ export default function SolicitarEquipo() {
       setErrores({ placa: 'La placa del equipo es obligatoria' });
       return;
     }
-    if (placa.trim().length > 100) {
-      setErrores({ placa: 'La placa no puede superar 100 caracteres' });
+    const result = await submitLoanRequest({
+      guard: requestGuardRef.current,
+      identity: loanRequestIdentityRef.current || undefined,
+      documento: documento.trim(),
+      placa: placa.trim(),
+      onLoading: setLoading,
+    });
+    loanRequestIdentityRef.current = result.request.identity;
+    if (result.kind === 'success') {
+      setPrestamo(result.loan);
+      setPaso(PASO_CONFIRMACION);
       return;
     }
-
-    const request = requestGuardRef.current.start({ identity: loanRequestIdentityRef.current || undefined });
-    loanRequestIdentityRef.current = request.identity;
-    setLoading(true);
-    try {
-      const res = await fetch('/api/equipos/autoservicio/iniciar-uso', {
-        ...createLoanRequestOptions(documento.trim(), placa.trim(), request.identity),
-        signal: request.signal,
-      });
-      const data = await parseApiResponse(res, 'No se pudo registrar el préstamo del equipo');
-      const loan = normalizeLoanResponse(data);
-      if (!requestGuardRef.current.isCurrent(request.id)) return;
-      setPrestamo(loan);
-      setPaso(PASO_CONFIRMACION);
-    } catch (err) {
-      if (isRequestTimeout(err, request)) {
-        setToast({
-          message: buildErrorMessage(new Error('timeout'), 'No se pudo registrar el préstamo del equipo'),
-          type: 'error'
-        });
-        return;
-      }
-      if (err?.name === 'AbortError' || !requestGuardRef.current.isCurrent(request.id)) return;
+    if (result.kind === 'timeout') {
       setToast({
-        message: buildErrorMessage(err, 'No se pudo registrar el préstamo del equipo'),
+        message: buildErrorMessage(new Error('timeout'), 'No se pudo registrar el préstamo del equipo'),
         type: 'error'
       });
-    } finally {
-      if (requestGuardRef.current.isCurrent(request.id) || isRequestTimeout(null, request)) {
-        setLoading(false);
-        requestGuardRef.current.finish(request.id);
-      }
+      return;
+    }
+    if (result.kind === 'error') {
+      setToast({
+        message: buildErrorMessage(result.error, 'No se pudo registrar el préstamo del equipo'),
+        type: 'error'
+      });
     }
   };
 
@@ -209,7 +192,6 @@ export default function SolicitarEquipo() {
                 type="text"
                 placeholder="Placa del equipo"
                 name="placa"
-                maxLength={100}
                 required
                 value={placa}
                 onChange={(e) => {
@@ -262,7 +244,6 @@ export default function SolicitarEquipo() {
               placeholder="Documento"
               name="documento"
               inputMode="numeric"
-              maxLength={50}
               required
               value={documento}
               onChange={(e) => {

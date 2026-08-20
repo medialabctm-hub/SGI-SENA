@@ -72,6 +72,8 @@ describe('contratos de asignación y autoservicio', () => {
     await ensureAutoservicioSchema({ execute: mockExecute });
 
     expect(mockExecute.mock.calls.some(([sql]) => /ALTER TABLE Historial_Uso_Equipos/i.test(sql))).toBe(true);
+    expect(mockExecute.mock.calls.some(([sql]) => /idempotency_key/i.test(sql))).toBe(true);
+    expect(mockExecute.mock.calls.some(([sql]) => /uq_autoservicio_idempotency_key/i.test(sql))).toBe(true);
     expect(mockPoolQuery).not.toHaveBeenCalled();
   });
 
@@ -205,6 +207,125 @@ describe('contratos de asignación y autoservicio', () => {
       data: expect.objectContaining({ id_historial: 7 }),
     }));
     expect(mockConnection.execute.mock.calls.some(([sql]) => /INSERT INTO Historial_Uso_Equipos/i.test(sql))).toBe(false);
+  });
+
+  it('crea una vez con 201 y recupera la repetición de la misma clave con 200', async () => {
+    let solicitudPrevia = null;
+    let inserciones = 0;
+    verificarDisponibilidadEquipo.mockResolvedValue({ disponible: true });
+    mockConnection.execute.mockImplementation(async (sql, params = []) => {
+      if (/WHERE hu\.idempotency_key/.test(sql)) return [solicitudPrevia ? [solicitudPrevia] : []];
+      if (/FROM Aprendices/.test(sql)) return [[{ id_aprendiz: 1, nombre: 'A', documento: 'D1', ficha: 'F' }]];
+      if (/FROM Elementos/.test(sql)) return [[{ codigo_equipo: 3, placa: 'P3', tipo: 'Laptop', modelo: 'M', id_ambiente: 1 }]];
+      if (/FROM Clases/.test(sql)) return [[{ id_clase: 4, nombre_clase: 'Clase' }]];
+      if (/FROM Historial_Uso_Equipos/.test(sql)) return [[]];
+      if (/INSERT INTO Historial_Uso_Equipos/.test(sql)) {
+        inserciones += 1;
+        solicitudPrevia = {
+          id_historial: 11,
+          documento_externo: 'D1',
+          nombre_externo: 'A',
+          codigo_equipo: 3,
+          placa: 'P3',
+          tipo: 'Laptop',
+          modelo: 'M',
+          id_clase: 4,
+          nombre_clase: 'Clase',
+          idempotency_key: params[5],
+        };
+        return [{ insertId: 11 }];
+      }
+      return [[]];
+    });
+
+    const request = {
+      body: { documento: 'D1', placa: 'P3' },
+      get: (header) => header === 'Idempotency-Key' ? 'prestamo-123' : undefined,
+    };
+    const first = res();
+    const retry = res();
+
+    await iniciarUsoAutoservicio(request, first);
+    await iniciarUsoAutoservicio(request, retry);
+
+    expect(first.status).toHaveBeenCalledWith(201);
+    expect(retry.status).toHaveBeenCalledWith(200);
+    expect(retry.json).toHaveBeenCalledWith(expect.objectContaining({
+      idempotent: true,
+      data: expect.objectContaining({ id_historial: 11 }),
+    }));
+    expect(inserciones).toBe(1);
+  });
+
+  it('mantiene 409 estable cuando la misma clave cambia el documento o la placa', async () => {
+    mockConnection.execute.mockImplementation(async (sql) => {
+      if (/WHERE hu\.idempotency_key/.test(sql)) {
+        return [[{
+          id_historial: 7,
+          documento_externo: 'D1',
+          nombre_externo: 'A',
+          codigo_equipo: 3,
+          placa: 'P3',
+          tipo: 'Laptop',
+          modelo: 'M',
+          id_clase: 4,
+          nombre_clase: 'Clase',
+        }]];
+      }
+      return [[]];
+    });
+
+    const response = res();
+    await iniciarUsoAutoservicio({
+      body: { documento: 'D2', placa: 'P3' },
+      get: (header) => header === 'Idempotency-Key' ? 'prestamo-123' : undefined,
+    }, response);
+
+    expect(response.status).toHaveBeenCalledWith(409);
+    expect(response.json).toHaveBeenCalledWith(expect.objectContaining({ code: 'IDEMPOTENCY_KEY_REUSED' }));
+  });
+
+  it('recupera el préstamo cuando una repetición concurrente pierde el índice único', async () => {
+    let consultasPorClave = 0;
+    verificarDisponibilidadEquipo.mockResolvedValueOnce({ disponible: true });
+    mockConnection.execute.mockImplementation(async (sql) => {
+      if (/WHERE hu\.idempotency_key/.test(sql)) {
+        consultasPorClave += 1;
+        if (consultasPorClave === 1) return [[]];
+        return [[{
+          id_historial: 11,
+          documento_externo: 'D1',
+          nombre_externo: 'A',
+          codigo_equipo: 3,
+          placa: 'P3',
+          tipo: 'Laptop',
+          modelo: 'M',
+          id_clase: 4,
+          nombre_clase: 'Clase',
+        }]];
+      }
+      if (/FROM Aprendices/.test(sql)) return [[{ id_aprendiz: 1, nombre: 'A', documento: 'D1', ficha: 'F' }]];
+      if (/FROM Elementos/.test(sql)) return [[{ codigo_equipo: 3, placa: 'P3', tipo: 'Laptop', modelo: 'M', id_ambiente: 1 }]];
+      if (/FROM Clases/.test(sql)) return [[{ id_clase: 4, nombre_clase: 'Clase' }]];
+      if (/FROM Historial_Uso_Equipos/.test(sql)) return [[]];
+      if (/INSERT INTO Historial_Uso_Equipos/.test(sql)) {
+        throw Object.assign(new Error('Duplicate entry prestamo-123'), { code: 'ER_DUP_ENTRY' });
+      }
+      return [[]];
+    });
+
+    const response = res();
+    await iniciarUsoAutoservicio({
+      body: { documento: 'D1', placa: 'P3' },
+      get: (header) => header === 'Idempotency-Key' ? 'prestamo-123' : undefined,
+    }, response);
+
+    expect(response.status).toHaveBeenCalledWith(200);
+    expect(response.json).toHaveBeenCalledWith(expect.objectContaining({
+      idempotent: true,
+      data: expect.objectContaining({ id_historial: 11 }),
+    }));
+    expect(mockConnection.rollback).toHaveBeenCalledTimes(1);
   });
 
   it('reclama el equipo dentro de una transacción y bloquea su sesión activa', async () => {

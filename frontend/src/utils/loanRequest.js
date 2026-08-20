@@ -1,3 +1,5 @@
+import { parseApiResponse } from './api.js';
+
 const DEFAULT_TIMEOUT_MS = 15_000;
 
 const defaultRequestIdentity = () => (
@@ -21,6 +23,38 @@ export function createLoanRequestOptions(documento, placa, identity) {
     },
     body: JSON.stringify({ documento, placa }),
   };
+}
+
+export async function submitLoanRequest({
+  guard,
+  identity,
+  documento,
+  placa,
+  onLoading,
+  fetchImpl = fetch,
+  endpoint = '/api/equipos/autoservicio/iniciar-uso',
+}) {
+  const request = guard.start({ identity });
+  onLoading(true);
+  try {
+    const response = await fetchImpl(endpoint, {
+      ...createLoanRequestOptions(documento, placa, request.identity),
+      signal: request.signal,
+    });
+    const data = await parseApiResponse(response, 'No se pudo registrar el préstamo del equipo');
+    const loan = normalizeLoanResponse(data);
+    if (!guard.isCurrent(request.id)) return { kind: 'cancelled', request };
+    return { kind: 'success', status: response.status, request, loan };
+  } catch (error) {
+    if (isRequestTimeout(error, request)) return { kind: 'timeout', request, error };
+    if (error?.name === 'AbortError' || !guard.isCurrent(request.id)) {
+      return { kind: 'cancelled', request, error };
+    }
+    return { kind: 'error', status: error?.status, request, error };
+  } finally {
+    if (guard.isCurrent(request.id) || isRequestTimeout(null, request)) onLoading(false);
+    guard.finish(request.id);
+  }
 }
 
 export function createRequestGuard({
