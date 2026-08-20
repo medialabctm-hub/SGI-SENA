@@ -4082,8 +4082,66 @@ export async function registrarUsoEquipoExterno(req, res) {
 // AUTOSERVICIO DE APRENDICES (SIN CUENTA)
 // ============================================
 
+const AUTOSERVICIO_CIERRE_VERSION = 'AUTOSERVICIO_CIERRE_V1';
+const AUTOSERVICIO_COLUMNAS = ['documento_externo', 'nombre_externo', 'id_aprendiz', 'idempotency_key'];
+const AUTOSERVICIO_INDICES = ['idx_documento_externo', 'idx_id_aprendiz', 'uq_autoservicio_idempotency_key'];
 let autoservicioSchemaListo = false;
 let autoservicioSchemaPromise = null;
+let autoservicioReadiness = {
+  ready: false,
+  migrationVersion: AUTOSERVICIO_CIERRE_VERSION,
+  missing: ['verificación de schema pendiente']
+};
+
+export function getAutoservicioReadiness() {
+  return autoservicioReadiness;
+}
+
+async function verificarReadinessAutoservicio(db) {
+  const [columnas] = await db.execute(
+    `SELECT COLUMN_NAME, IS_NULLABLE FROM INFORMATION_SCHEMA.COLUMNS
+     WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'Historial_Uso_Equipos'
+       AND COLUMN_NAME IN ('id_usuario', 'documento_externo', 'nombre_externo', 'id_aprendiz', 'idempotency_key')`
+  );
+  const columnasPorNombre = new Map((columnas || []).map(({ COLUMN_NAME, IS_NULLABLE }) => [COLUMN_NAME, IS_NULLABLE]));
+  const [indices] = await db.execute(
+    `SELECT DISTINCT INDEX_NAME FROM INFORMATION_SCHEMA.STATISTICS
+     WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'Historial_Uso_Equipos'
+       AND INDEX_NAME IN ('idx_documento_externo', 'idx_id_aprendiz', 'uq_autoservicio_idempotency_key')`
+  );
+  const indicesExistentes = new Set((indices || []).map(({ INDEX_NAME }) => INDEX_NAME));
+  const [[rutina]] = await db.execute(
+    `SELECT ROUTINE_COMMENT FROM INFORMATION_SCHEMA.ROUTINES
+     WHERE ROUTINE_SCHEMA = DATABASE() AND ROUTINE_NAME = 'sp_finalizar_clase'`
+  );
+
+  const missing = [];
+  if (columnasPorNombre.get('id_usuario') !== 'YES') missing.push('Historial_Uso_Equipos.id_usuario nullable');
+  AUTOSERVICIO_COLUMNAS.forEach((columna) => {
+    if (!columnasPorNombre.has(columna)) missing.push(`columna Historial_Uso_Equipos.${columna}`);
+  });
+  AUTOSERVICIO_INDICES.forEach((indice) => {
+    if (!indicesExistentes.has(indice)) missing.push(`índice Historial_Uso_Equipos.${indice}`);
+  });
+  if (!rutina?.ROUTINE_COMMENT?.includes(AUTOSERVICIO_CIERRE_VERSION)) {
+    missing.push(`sp_finalizar_clase con marcador ${AUTOSERVICIO_CIERRE_VERSION}`);
+  }
+
+  autoservicioReadiness = {
+    ready: missing.length === 0,
+    migrationVersion: AUTOSERVICIO_CIERRE_VERSION,
+    missing
+  };
+  return autoservicioReadiness;
+}
+
+function assertAutoservicioReady(readiness) {
+  if (readiness.ready) return readiness;
+  throw new Error(
+    `Autoservicio no está listo: faltan ${readiness.missing.join(', ')}. ` +
+    'Ejecute backend/scripts/migrate-autoservicio-cierre-clase.sql con un usuario administrador.'
+  );
+}
 
 /**
  * Asegura que el schema soporte préstamos de autoservicio para aprendices sin cuenta:
@@ -4105,7 +4163,7 @@ export async function ensureAutoservicioSchema(db) {
 }
 
 async function ensureAutoservicioSchemaInternal(db) {
-  if (autoservicioSchemaListo) return;
+  if (autoservicioSchemaListo) return autoservicioReadiness;
 
   try {
     const [[colIdUsuario]] = await db.execute(
@@ -4156,16 +4214,13 @@ async function ensureAutoservicioSchemaInternal(db) {
       await db.execute(`ALTER TABLE Historial_Uso_Equipos ${indicesFaltantes.join(', ')}`);
     }
 
-    // Las columnas ya están listas: el endpoint de autoservicio puede funcionar aunque
-    // el paso siguiente (redefinir el stored procedure) falle por permisos.
-    autoservicioSchemaListo = true;
   } catch (error) {
     logger.error('Error al asegurar schema de autoservicio', { error: error.message, stack: error.stack });
     throw error;
   }
 
   // Redefinir sp_finalizar_clase para que también cierre los préstamos de autoservicio,
-  // solo si la versión instalada todavía no lo hace (detectado por el marcador AUTOSERVICIO_CIERRE_V1).
+  // solo si la versión instalada todavía no lo hace (detectado por el marcador de migración).
   // OJO: esto requiere privilegios de administrador (el procedimiento original fue creado por root
   // al inicializar la BD; en MySQL 8, un usuario de aplicación sin el privilegio SYSTEM_USER no puede
   // reemplazar rutinas cuyo DEFINER sí lo tiene). Si falla por permisos, no se bloquea el resto:
@@ -4179,7 +4234,7 @@ async function ensureAutoservicioSchemaInternal(db) {
        WHERE ROUTINE_SCHEMA = DATABASE() AND ROUTINE_NAME = 'sp_finalizar_clase'`
     );
     const comentarioActual = rutina?.ROUTINE_COMMENT || '';
-    if (!comentarioActual.includes('AUTOSERVICIO_CIERRE_V1') && process.env.AUTO_MIGRATE_AUTOSERVICIO_PROCEDURE === 'true') {
+    if (!comentarioActual.includes(AUTOSERVICIO_CIERRE_VERSION) && process.env.AUTO_MIGRATE_AUTOSERVICIO_PROCEDURE === 'true') {
       await pool.query('DROP PROCEDURE IF EXISTS sp_finalizar_clase');
       await pool.query(`
 CREATE PROCEDURE sp_finalizar_clase(IN p_id_clase INT, IN p_fecha_fin_real DATETIME)
@@ -4259,7 +4314,7 @@ BEGIN
     SELECT 'Clase finalizada correctamente. Responsabilidades y asignaciones de equipos revertidas.' AS mensaje;
 END`);
       logger.info('sp_finalizar_clase actualizado para cerrar préstamos de autoservicio (AUTOSERVICIO_CIERRE_V1)');
-    } else if (!comentarioActual.includes('AUTOSERVICIO_CIERRE_V1')) {
+    } else if (!comentarioActual.includes(AUTOSERVICIO_CIERRE_VERSION)) {
       logger.warn(
         'sp_finalizar_clase no tiene AUTOSERVICIO_CIERRE_V1; se omitió la recreación automática. ' +
         'Ejecute backend/scripts/migrate-autoservicio-cierre-clase.sql con un usuario administrador.'
@@ -4278,6 +4333,10 @@ END`);
       logger.error('Error al actualizar sp_finalizar_clase para autoservicio', { error: procError.message, stack: procError.stack });
     }
   }
+
+  const readiness = await verificarReadinessAutoservicio(db);
+  autoservicioSchemaListo = readiness.ready;
+  return assertAutoservicioReady(readiness);
 }
 
 async function buscarSolicitudAutoservicioPorClave(db, idempotencyKey) {

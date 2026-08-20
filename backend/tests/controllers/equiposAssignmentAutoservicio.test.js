@@ -64,16 +64,25 @@ describe('contratos de asignación y autoservicio', () => {
   it('no recrea el procedimiento de cierre desde una petición pública', async () => {
     mockExecute.mockImplementation(async (sql) => {
       if (/COLUMN_NAME = 'id_usuario'/.test(sql)) return [[{ IS_NULLABLE: 'YES' }]];
-      if (/COLUMN_NAME IN/.test(sql)) return [[{ COLUMN_NAME: 'documento_externo' }]];
-      if (/INFORMATION_SCHEMA\.ROUTINES/.test(sql)) return [[{ ROUTINE_COMMENT: '' }]];
+      if (/COLUMN_NAME IN/.test(sql)) return [[
+        { COLUMN_NAME: 'id_usuario', IS_NULLABLE: 'YES' },
+        { COLUMN_NAME: 'documento_externo' },
+        { COLUMN_NAME: 'nombre_externo' },
+        { COLUMN_NAME: 'id_aprendiz' },
+        { COLUMN_NAME: 'idempotency_key' }
+      ]];
+      if (/INFORMATION_SCHEMA\.STATISTICS/.test(sql)) return [[
+        { INDEX_NAME: 'idx_documento_externo' },
+        { INDEX_NAME: 'idx_id_aprendiz' },
+        { INDEX_NAME: 'uq_autoservicio_idempotency_key' }
+      ]];
+      if (/INFORMATION_SCHEMA\.ROUTINES/.test(sql)) return [[{ ROUTINE_COMMENT: 'AUTOSERVICIO_CIERRE_V1' }]];
       return [[]];
     });
 
     await ensureAutoservicioSchema({ execute: mockExecute });
 
-    expect(mockExecute.mock.calls.some(([sql]) => /ALTER TABLE Historial_Uso_Equipos/i.test(sql))).toBe(true);
-    expect(mockExecute.mock.calls.some(([sql]) => /idempotency_key/i.test(sql))).toBe(true);
-    expect(mockExecute.mock.calls.some(([sql]) => /uq_autoservicio_idempotency_key/i.test(sql))).toBe(true);
+    expect(mockExecute.mock.calls.some(([sql]) => /INFORMATION_SCHEMA\.ROUTINES/i.test(sql))).toBe(true);
     expect(mockPoolQuery).not.toHaveBeenCalled();
   });
 

@@ -36,7 +36,7 @@ import imagenesEquipoRoutes from './src/routes/imagenesEquipoRoutes.js';
 import imagenesAmbienteRoutes from './src/routes/imagenesAmbienteRoutes.js';
 import schedulerService from './src/services/schedulerService.js';
 import socketService from './src/services/socketService.js';
-import { ensureAutoservicioSchema } from './src/controller/equiposController.js';
+import { ensureAutoservicioSchema, getAutoservicioReadiness } from './src/controller/equiposController.js';
 import defaultDb from './src/config/dbconfig.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -169,10 +169,13 @@ if (process.env.NODE_ENV === 'development') {
 
 // Health check
 app.get('/health', (req, res) => {
-  res.json({
-    status: 'ok',
+  const autoservicio = getAutoservicioReadiness();
+  const status = autoservicio.ready ? 200 : 503;
+  res.status(status).json({
+    status: autoservicio.ready ? 'ok' : 'not_ready',
     env: process.env.NODE_ENV || 'development',
     timestamp: new Date().toISOString(),
+    autoservicio,
   });
 });
 
