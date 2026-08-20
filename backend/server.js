@@ -10,6 +10,7 @@ import process from 'process';
 import { config } from './src/config/config.js';
 import { errorHandler } from './src/utils/errors.js';
 import { logger } from './src/utils/logger.js';
+import { buildAutoservicioHealth } from './src/utils/autoservicioHealth.js';
 // Inicializar contenedor de dependencias
 import './src/di/setup.js';
 // Importar servicio de email para inicializarlo al arrancar
@@ -169,13 +170,10 @@ if (process.env.NODE_ENV === 'development') {
 
 // Health check
 app.get('/health', (req, res) => {
-  const autoservicio = getAutoservicioReadiness();
-  const status = autoservicio.ready ? 200 : 503;
-  res.status(status).json({
-    status: autoservicio.ready ? 'ok' : 'not_ready',
+  const health = buildAutoservicioHealth(getAutoservicioReadiness());
+  res.status(health.statusCode).json({
+    ...health.body,
     env: process.env.NODE_ENV || 'development',
-    timestamp: new Date().toISOString(),
-    autoservicio,
   });
 });
 

@@ -4085,6 +4085,11 @@ export async function registrarUsoEquipoExterno(req, res) {
 const AUTOSERVICIO_CIERRE_VERSION = 'AUTOSERVICIO_CIERRE_V1';
 const AUTOSERVICIO_COLUMNAS = ['documento_externo', 'nombre_externo', 'id_aprendiz', 'idempotency_key'];
 const AUTOSERVICIO_INDICES = ['idx_documento_externo', 'idx_id_aprendiz', 'uq_autoservicio_idempotency_key'];
+const AUTOSERVICIO_INDICES_REQUERIDOS = [
+  { nombre: 'idx_documento_externo', columna: 'documento_externo', nonUnique: 1, etiqueta: 'índice idx_documento_externo sobre documento_externo' },
+  { nombre: 'idx_id_aprendiz', columna: 'id_aprendiz', nonUnique: 1, etiqueta: 'índice idx_id_aprendiz sobre id_aprendiz' },
+  { nombre: 'uq_autoservicio_idempotency_key', columna: 'idempotency_key', nonUnique: 0, etiqueta: 'índice uq_autoservicio_idempotency_key único sobre idempotency_key' }
+];
 let autoservicioSchemaListo = false;
 let autoservicioSchemaPromise = null;
 let autoservicioReadiness = {
@@ -4105,11 +4110,10 @@ async function verificarReadinessAutoservicio(db) {
   );
   const columnasPorNombre = new Map((columnas || []).map(({ COLUMN_NAME, IS_NULLABLE }) => [COLUMN_NAME, IS_NULLABLE]));
   const [indices] = await db.execute(
-    `SELECT DISTINCT INDEX_NAME FROM INFORMATION_SCHEMA.STATISTICS
+    `SELECT INDEX_NAME, COLUMN_NAME, SEQ_IN_INDEX, NON_UNIQUE FROM INFORMATION_SCHEMA.STATISTICS
      WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'Historial_Uso_Equipos'
        AND INDEX_NAME IN ('idx_documento_externo', 'idx_id_aprendiz', 'uq_autoservicio_idempotency_key')`
   );
-  const indicesExistentes = new Set((indices || []).map(({ INDEX_NAME }) => INDEX_NAME));
   const [[rutina]] = await db.execute(
     `SELECT ROUTINE_COMMENT FROM INFORMATION_SCHEMA.ROUTINES
      WHERE ROUTINE_SCHEMA = DATABASE() AND ROUTINE_NAME = 'sp_finalizar_clase'`
@@ -4120,8 +4124,14 @@ async function verificarReadinessAutoservicio(db) {
   AUTOSERVICIO_COLUMNAS.forEach((columna) => {
     if (!columnasPorNombre.has(columna)) missing.push(`columna Historial_Uso_Equipos.${columna}`);
   });
-  AUTOSERVICIO_INDICES.forEach((indice) => {
-    if (!indicesExistentes.has(indice)) missing.push(`índice Historial_Uso_Equipos.${indice}`);
+  AUTOSERVICIO_INDICES_REQUERIDOS.forEach(({ nombre, columna, nonUnique, etiqueta }) => {
+    const indiceCorrecto = (indices || []).some((indice) => (
+      indice.INDEX_NAME === nombre &&
+      indice.COLUMN_NAME === columna &&
+      Number(indice.SEQ_IN_INDEX) === 1 &&
+      Number(indice.NON_UNIQUE) === nonUnique
+    ));
+    if (!indiceCorrecto) missing.push(etiqueta);
   });
   if (!rutina?.ROUTINE_COMMENT?.includes(AUTOSERVICIO_CIERRE_VERSION)) {
     missing.push(`sp_finalizar_clase con marcador ${AUTOSERVICIO_CIERRE_VERSION}`);
@@ -4139,7 +4149,7 @@ function assertAutoservicioReady(readiness) {
   if (readiness.ready) return readiness;
   throw new Error(
     `Autoservicio no está listo: faltan ${readiness.missing.join(', ')}. ` +
-    'Ejecute backend/scripts/migrate-autoservicio-cierre-clase.sql con un usuario administrador.'
+    'Ejecute node scripts/migrate-autoservicio-cierre-clase.js con credenciales MySQL de administrador.'
   );
 }
 
@@ -4217,121 +4227,6 @@ async function ensureAutoservicioSchemaInternal(db) {
   } catch (error) {
     logger.error('Error al asegurar schema de autoservicio', { error: error.message, stack: error.stack });
     throw error;
-  }
-
-  // Redefinir sp_finalizar_clase para que también cierre los préstamos de autoservicio,
-  // solo si la versión instalada todavía no lo hace (detectado por el marcador de migración).
-  // OJO: esto requiere privilegios de administrador (el procedimiento original fue creado por root
-  // al inicializar la BD; en MySQL 8, un usuario de aplicación sin el privilegio SYSTEM_USER no puede
-  // reemplazar rutinas cuyo DEFINER sí lo tiene). Si falla por permisos, no se bloquea el resto:
-  // hay que ejecutar backend/scripts/migrate-autoservicio-cierre-clase.sql una vez con un usuario admin.
-  try {
-    // Se usa ROUTINE_COMMENT (no ROUTINE_DEFINITION): desde MySQL 8.0.20 leer el cuerpo de una
-    // rutina requiere el privilegio SHOW_ROUTINE o ser su definer, y devuelve NULL en silencio si
-    // no se tiene; ROUTINE_COMMENT es metadata simple y sí es visible para el usuario de la app.
-    const [[rutina]] = await db.execute(
-      `SELECT ROUTINE_COMMENT FROM INFORMATION_SCHEMA.ROUTINES
-       WHERE ROUTINE_SCHEMA = DATABASE() AND ROUTINE_NAME = 'sp_finalizar_clase'`
-    );
-    const comentarioActual = rutina?.ROUTINE_COMMENT || '';
-    if (!comentarioActual.includes(AUTOSERVICIO_CIERRE_VERSION) && process.env.AUTO_MIGRATE_AUTOSERVICIO_PROCEDURE === 'true') {
-      await pool.query('DROP PROCEDURE IF EXISTS sp_finalizar_clase');
-      await pool.query(`
-CREATE PROCEDURE sp_finalizar_clase(IN p_id_clase INT, IN p_fecha_fin_real DATETIME)
-COMMENT 'AUTOSERVICIO_CIERRE_V1'
-BEGIN
-    DECLARE v_id_ambiente INT;
-    DECLARE v_id_instructor INT;
-    DECLARE v_fecha_fin DATETIME;
-    DECLARE v_detalles_uso JSON;
-    DECLARE v_array_length INT;
-    DECLARE v_index INT DEFAULT 0;
-    DECLARE v_registro JSON;
-    DECLARE v_id_clase_registro INT;
-
-    SELECT id_ambiente, id_instructor INTO v_id_ambiente, v_id_instructor
-    FROM Clases WHERE id_clase = p_id_clase;
-
-    IF v_id_ambiente IS NULL THEN
-        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Clase no encontrada';
-    END IF;
-
-    IF p_fecha_fin_real IS NULL THEN
-        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'fecha_fin_real es obligatoria. El sistema es 100% manual.';
-    END IF;
-
-    SET v_fecha_fin = p_fecha_fin_real;
-
-    UPDATE Responsabilidades_Ambiente
-    SET estado_responsabilidad = 'Finalizada',
-        fecha_fin = v_fecha_fin
-    WHERE id_clase = p_id_clase
-      AND estado_responsabilidad = 'Activa';
-
-    UPDATE Responsables_Equipo re
-    INNER JOIN Elementos e ON re.codigo_equipo = e.codigo_equipo
-    SET re.estado_responsabilidad = 'Finalizado',
-        re.fecha_desvinculacion = v_fecha_fin
-    WHERE re.id_usuario = v_id_instructor
-      AND re.estado_responsabilidad = 'Activo'
-      AND re.observaciones LIKE CONCAT('%inicio de clase #', p_id_clase, '%')
-      AND e.id_ambiente = v_id_ambiente;
-
-    SELECT COALESCE(detalles_uso, JSON_ARRAY()) INTO v_detalles_uso
-    FROM Ambientes WHERE id_ambiente = v_id_ambiente;
-
-    SET v_array_length = JSON_LENGTH(v_detalles_uso);
-
-    buscar_loop: WHILE v_index < v_array_length DO
-        SET v_registro = JSON_EXTRACT(v_detalles_uso, CONCAT('$[', v_index, ']'));
-        SET v_id_clase_registro = JSON_UNQUOTE(JSON_EXTRACT(v_registro, '$.id_clase'));
-
-        IF v_id_clase_registro = p_id_clase THEN
-            SET v_registro = JSON_SET(
-                v_registro,
-                '$.estado', 'Finalizada',
-                '$.fecha_fin_real', DATE_FORMAT(v_fecha_fin, '%Y-%m-%d %H:%i:%s')
-            );
-            SET v_detalles_uso = JSON_SET(v_detalles_uso, CONCAT('$[', v_index, ']'), v_registro);
-            LEAVE buscar_loop;
-        END IF;
-
-        SET v_index = v_index + 1;
-    END WHILE buscar_loop;
-
-    UPDATE Ambientes
-    SET detalles_uso = v_detalles_uso
-    WHERE id_ambiente = v_id_ambiente;
-
-    UPDATE Clases SET estado_clase = 'Finalizada', fecha_fin_real = v_fecha_fin WHERE id_clase = p_id_clase;
-
-    UPDATE Historial_Uso_Equipos
-    SET estado = 'Finalizado',
-        fecha_hora_fin = v_fecha_fin
-    WHERE id_clase = p_id_clase
-      AND estado = 'En Uso';
-
-    SELECT 'Clase finalizada correctamente. Responsabilidades y asignaciones de equipos revertidas.' AS mensaje;
-END`);
-      logger.info('sp_finalizar_clase actualizado para cerrar préstamos de autoservicio (AUTOSERVICIO_CIERRE_V1)');
-    } else if (!comentarioActual.includes(AUTOSERVICIO_CIERRE_VERSION)) {
-      logger.warn(
-        'sp_finalizar_clase no tiene AUTOSERVICIO_CIERRE_V1; se omitió la recreación automática. ' +
-        'Ejecute backend/scripts/migrate-autoservicio-cierre-clase.sql con un usuario administrador.'
-      );
-    }
-  } catch (procError) {
-    if (/SYSTEM_USER/i.test(procError.message || '')) {
-      logger.warn(
-        'sp_finalizar_clase no se pudo actualizar: el usuario de la app no tiene privilegios sobre este stored procedure ' +
-        '(fue creado por un usuario administrador). Los préstamos de autoservicio funcionan igual, pero NO se cerrarán ' +
-        'automáticamente al finalizar la clase hasta que se ejecute manualmente, una sola vez y con un usuario con ' +
-        'privilegios de administrador (ej. root), el script backend/scripts/migrate-autoservicio-cierre-clase.sql',
-        { error: procError.message }
-      );
-    } else {
-      logger.error('Error al actualizar sp_finalizar_clase para autoservicio', { error: procError.message, stack: procError.stack });
-    }
   }
 
   const readiness = await verificarReadinessAutoservicio(db);
