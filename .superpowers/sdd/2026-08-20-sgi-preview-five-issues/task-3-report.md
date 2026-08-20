@@ -4,7 +4,7 @@
 
 Ronda inicial: `c3f45509070708d0764795ce952f42b3b6647acc`.
 
-Corrección de compatibilidad MySQL 8: `PENDIENTE_DE_COMMIT`.
+Corrección de compatibilidad MySQL 8: `5f5431a5632aed1f461183b1dce516c0c98aca4a`.
 
 ## Causa raíz
 
