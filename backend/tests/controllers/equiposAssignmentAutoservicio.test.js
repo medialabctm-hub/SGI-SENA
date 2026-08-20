@@ -11,10 +11,12 @@ const mockConnection = {
   rollback: jest.fn(),
   release: jest.fn()
 };
+const mockGetConnection = jest.fn();
+const mockPoolQuery = jest.fn();
 
 await jest.unstable_mockModule(path.resolve(__dirname, '../../src/config/dbconfig.js'), () => ({
   default: { execute: mockExecute },
-  pool: { getConnection: jest.fn().mockResolvedValue(mockConnection) }
+  pool: { getConnection: mockGetConnection, query: mockPoolQuery }
 }));
 await jest.unstable_mockModule(path.resolve(__dirname, '../../src/utils/logger.js'), () => ({
   logger: { info: jest.fn(), error: jest.fn(), warn: jest.fn(), debug: jest.fn() }
@@ -32,7 +34,7 @@ await jest.unstable_mockModule(path.resolve(__dirname, '../../src/middleware/upl
 }));
 await jest.unstable_mockModule(path.resolve(__dirname, '../../src/services/socketService.js'), () => ({ default: { emitToAll: jest.fn() } }));
 
-const { asignarEquipo, registrarUsoEquipoExterno, iniciarUsoAutoservicio } =
+const { asignarEquipo, registrarUsoEquipoExterno, iniciarUsoAutoservicio, ensureAutoservicioSchema } =
   await import('../../src/controller/equiposController.js');
 const { obtenerEquipoPorCodigo, verificarDisponibilidadEquipo, verificarAmbienteEquipoAprendiz } =
   await import('../../src/utils/sqlQueries.js');
@@ -52,6 +54,25 @@ describe('contratos de asignación y autoservicio', () => {
     mockConnection.commit.mockReset();
     mockConnection.rollback.mockReset();
     mockConnection.release.mockReset();
+    mockGetConnection.mockReset();
+    mockPoolQuery.mockReset();
+    mockGetConnection.mockResolvedValue(mockConnection);
+    mockConnection.execute.mockImplementation((...args) => mockExecute(...args));
+    verificarAmbienteEquipoAprendiz.mockResolvedValue({ valido: true });
+  });
+
+  it('no recrea el procedimiento de cierre desde una petición pública', async () => {
+    mockExecute.mockImplementation(async (sql) => {
+      if (/COLUMN_NAME = 'id_usuario'/.test(sql)) return [[{ IS_NULLABLE: 'YES' }]];
+      if (/COLUMN_NAME IN/.test(sql)) return [[{ COLUMN_NAME: 'documento_externo' }]];
+      if (/INFORMATION_SCHEMA\.ROUTINES/.test(sql)) return [[{ ROUTINE_COMMENT: '' }]];
+      return [[]];
+    });
+
+    await ensureAutoservicioSchema({ execute: mockExecute });
+
+    expect(mockExecute.mock.calls.some(([sql]) => /ALTER TABLE Historial_Uso_Equipos/i.test(sql))).toBe(true);
+    expect(mockPoolQuery).not.toHaveBeenCalled();
   });
 
   it('asigna un aprendiz importado con el payload real documento_externo sin inventar id_usuario', async () => {
@@ -147,5 +168,72 @@ describe('contratos de asignación y autoservicio', () => {
     await iniciarUsoAutoservicio({ body: { documento: ' D1 ', placa: 'P3' } }, response);
     expect(response.status).toHaveBeenCalledWith(200);
     expect(response.json).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ aprendiz: expect.objectContaining({ nombre: 'A', documento: 'D1' }) }) }));
+  });
+
+  it('recupera una solicitud repetida con Idempotency-Key sin reclamar otro préstamo', async () => {
+    verificarDisponibilidadEquipo.mockResolvedValueOnce({ disponible: true });
+    mockConnection.execute.mockImplementation(async (sql) => {
+      if (/idempotency_key/i.test(sql)) {
+        return [[{
+          id_historial: 7,
+          documento_externo: 'D1',
+          codigo_equipo: 3,
+          placa: 'P3',
+          tipo: 'Laptop',
+          modelo: 'M',
+          id_clase: 4,
+          nombre_clase: 'Clase',
+          nombre_externo: 'A',
+        }]];
+      }
+      if (/FROM Aprendices/.test(sql)) return [[{ id_aprendiz: 1, nombre: 'A', documento: 'D1', ficha: 'F' }]];
+      if (/FROM Elementos/.test(sql)) return [[{ codigo_equipo: 3, placa: 'P3', tipo: 'Laptop', modelo: 'M', id_ambiente: 1 }]];
+      if (/FROM Clases/.test(sql)) return [[]];
+      if (/Historial_Uso_Equipos/.test(sql)) return [[]];
+      return [{ insertId: 11 }];
+    });
+
+    const response = res();
+    await iniciarUsoAutoservicio({
+      body: { documento: 'D1', placa: 'P3' },
+      get: (header) => header === 'Idempotency-Key' ? 'prestamo-123' : undefined,
+    }, response);
+
+    expect(response.status).toHaveBeenCalledWith(200);
+    expect(response.json).toHaveBeenCalledWith(expect.objectContaining({
+      idempotent: true,
+      data: expect.objectContaining({ id_historial: 7 }),
+    }));
+    expect(mockConnection.execute.mock.calls.some(([sql]) => /INSERT INTO Historial_Uso_Equipos/i.test(sql))).toBe(false);
+  });
+
+  it('reclama el equipo dentro de una transacción y bloquea su sesión activa', async () => {
+    mockGetConnection.mockResolvedValue(mockConnection);
+    mockExecute.mockImplementation(async (sql) => {
+      if (/INFORMATION_SCHEMA/.test(sql)) return [[{ IS_NULLABLE: 'YES', cnt: 1 }]];
+      if (/FROM Aprendices/.test(sql)) return [[{ id_aprendiz: 1, nombre: 'A', documento: 'D1', ficha: 'F' }]];
+      if (/FROM Elementos/.test(sql)) return [[{ codigo_equipo: 3, placa: 'P3', tipo: 'Laptop', modelo: 'M', id_ambiente: 1 }]];
+      if (/FROM Clases/.test(sql)) return [[{ id_clase: 4, nombre_clase: 'Clase' }]];
+      if (/Historial_Uso_Equipos/.test(sql)) return [[]];
+      return [{ insertId: 11 }];
+    });
+    mockConnection.execute.mockImplementation(async (sql) => {
+      if (/FROM Aprendices/.test(sql)) return [[{ id_aprendiz: 1, nombre: 'A', documento: 'D1', ficha: 'F' }]];
+      if (/FROM Elementos/.test(sql)) return [[{ codigo_equipo: 3, placa: 'P3', tipo: 'Laptop', modelo: 'M', id_ambiente: 1 }]];
+      if (/FROM Clases/.test(sql)) return [[{ id_clase: 4, nombre_clase: 'Clase' }]];
+      if (/Historial_Uso_Equipos/.test(sql)) return [[]];
+      return [{ insertId: 11 }];
+    });
+    verificarDisponibilidadEquipo.mockResolvedValueOnce({ disponible: true });
+
+    const response = res();
+    await iniciarUsoAutoservicio({ body: { documento: 'D1', placa: 'P3' } }, response);
+
+    expect(mockGetConnection).toHaveBeenCalledTimes(1);
+    expect(mockConnection.beginTransaction).toHaveBeenCalledTimes(1);
+    expect(mockConnection.execute).toHaveBeenCalledWith(expect.stringMatching(/FOR UPDATE/i), [3]);
+    expect(mockConnection.commit).toHaveBeenCalledTimes(1);
+    expect(mockConnection.release).toHaveBeenCalledTimes(1);
+    expect(response.status).toHaveBeenCalledWith(201);
   });
 });

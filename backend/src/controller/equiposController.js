@@ -4083,6 +4083,7 @@ export async function registrarUsoEquipoExterno(req, res) {
 // ============================================
 
 let autoservicioSchemaListo = false;
+let autoservicioSchemaPromise = null;
 
 /**
  * Asegura que el schema soporte préstamos de autoservicio para aprendices sin cuenta:
@@ -4092,6 +4093,18 @@ let autoservicioSchemaListo = false;
  * Idempotente: se ejecuta una sola vez por arranque del proceso.
  */
 export async function ensureAutoservicioSchema(db) {
+  // Evita que varias solicitudes concurrentes ejecuten ALTER/metadata checks a la vez.
+  // La promesa se limpia si la migración falla para permitir un reintento posterior.
+  if (!autoservicioSchemaPromise) {
+    autoservicioSchemaPromise = ensureAutoservicioSchemaInternal(db).catch((error) => {
+      autoservicioSchemaPromise = null;
+      throw error;
+    });
+  }
+  return autoservicioSchemaPromise;
+}
+
+async function ensureAutoservicioSchemaInternal(db) {
   if (autoservicioSchemaListo) return;
 
   try {
@@ -4104,20 +4117,43 @@ export async function ensureAutoservicioSchema(db) {
       logger.info('Historial_Uso_Equipos.id_usuario actualizado a NULL (autoservicio)');
     }
 
-    const [[colDocExterno]] = await db.execute(
-      `SELECT COUNT(*) AS cnt FROM INFORMATION_SCHEMA.COLUMNS
-       WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'Historial_Uso_Equipos' AND COLUMN_NAME = 'documento_externo'`
+    const [columnasAutoservicio] = await db.execute(
+      `SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
+       WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'Historial_Uso_Equipos'
+         AND COLUMN_NAME IN ('documento_externo', 'nombre_externo', 'id_aprendiz', 'idempotency_key')`
     );
-    if (colDocExterno.cnt === 0) {
-      await db.execute(
-        `ALTER TABLE Historial_Uso_Equipos
-         ADD COLUMN documento_externo VARCHAR(50) NULL COMMENT 'Documento del aprendiz (autoservicio, sin cuenta)' AFTER id_usuario,
-         ADD COLUMN nombre_externo VARCHAR(200) NULL COMMENT 'Nombre del aprendiz (autoservicio, sin cuenta)' AFTER documento_externo,
-         ADD COLUMN id_aprendiz INT NULL COMMENT 'Referencia al roster de Aprendices (autoservicio)' AFTER nombre_externo,
-         ADD INDEX idx_documento_externo (documento_externo),
-         ADD INDEX idx_id_aprendiz (id_aprendiz)`
-      );
-      logger.info('Columnas de autoservicio agregadas a Historial_Uso_Equipos');
+    const columnasExistentes = new Set((columnasAutoservicio || []).map(({ COLUMN_NAME }) => COLUMN_NAME));
+    const definiciones = {
+      documento_externo: "ADD COLUMN documento_externo VARCHAR(50) NULL COMMENT 'Documento del aprendiz (autoservicio, sin cuenta)' AFTER id_usuario",
+      nombre_externo: "ADD COLUMN nombre_externo VARCHAR(200) NULL COMMENT 'Nombre del aprendiz (autoservicio, sin cuenta)' AFTER documento_externo",
+      id_aprendiz: "ADD COLUMN id_aprendiz INT NULL COMMENT 'Referencia al roster de Aprendices (autoservicio)' AFTER nombre_externo",
+      idempotency_key: "ADD COLUMN idempotency_key VARCHAR(128) NULL COMMENT 'Identidad de reintento del autoservicio' AFTER id_aprendiz"
+    };
+    const columnasFaltantes = Object.keys(definiciones).filter((columna) => !columnasExistentes.has(columna));
+    if (columnasFaltantes.length > 0) {
+      await db.execute(`ALTER TABLE Historial_Uso_Equipos ${columnasFaltantes.map((columna) => definiciones[columna]).join(', ')}`);
+      columnasFaltantes.forEach((columna) => columnasExistentes.add(columna));
+      logger.info('Columnas de autoservicio agregadas a Historial_Uso_Equipos', { columnas: columnasFaltantes });
+    }
+
+    const [indicesAutoservicio] = await db.execute(
+      `SELECT INDEX_NAME FROM INFORMATION_SCHEMA.STATISTICS
+       WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'Historial_Uso_Equipos'
+         AND INDEX_NAME IN ('idx_documento_externo', 'idx_id_aprendiz', 'uq_autoservicio_idempotency_key')`
+    );
+    const indicesExistentes = new Set((indicesAutoservicio || []).map(({ INDEX_NAME }) => INDEX_NAME));
+    const indicesFaltantes = [];
+    if (columnasExistentes.has('documento_externo') && !indicesExistentes.has('idx_documento_externo')) {
+      indicesFaltantes.push('ADD INDEX idx_documento_externo (documento_externo)');
+    }
+    if (columnasExistentes.has('id_aprendiz') && !indicesExistentes.has('idx_id_aprendiz')) {
+      indicesFaltantes.push('ADD INDEX idx_id_aprendiz (id_aprendiz)');
+    }
+    if (columnasExistentes.has('idempotency_key') && !indicesExistentes.has('uq_autoservicio_idempotency_key')) {
+      indicesFaltantes.push('ADD UNIQUE INDEX uq_autoservicio_idempotency_key (idempotency_key)');
+    }
+    if (indicesFaltantes.length > 0) {
+      await db.execute(`ALTER TABLE Historial_Uso_Equipos ${indicesFaltantes.join(', ')}`);
     }
 
     // Las columnas ya están listas: el endpoint de autoservicio puede funcionar aunque
@@ -4143,7 +4179,7 @@ export async function ensureAutoservicioSchema(db) {
        WHERE ROUTINE_SCHEMA = DATABASE() AND ROUTINE_NAME = 'sp_finalizar_clase'`
     );
     const comentarioActual = rutina?.ROUTINE_COMMENT || '';
-    if (!comentarioActual.includes('AUTOSERVICIO_CIERRE_V1')) {
+    if (!comentarioActual.includes('AUTOSERVICIO_CIERRE_V1') && process.env.AUTO_MIGRATE_AUTOSERVICIO_PROCEDURE === 'true') {
       await pool.query('DROP PROCEDURE IF EXISTS sp_finalizar_clase');
       await pool.query(`
 CREATE PROCEDURE sp_finalizar_clase(IN p_id_clase INT, IN p_fecha_fin_real DATETIME)
@@ -4223,6 +4259,11 @@ BEGIN
     SELECT 'Clase finalizada correctamente. Responsabilidades y asignaciones de equipos revertidas.' AS mensaje;
 END`);
       logger.info('sp_finalizar_clase actualizado para cerrar préstamos de autoservicio (AUTOSERVICIO_CIERRE_V1)');
+    } else if (!comentarioActual.includes('AUTOSERVICIO_CIERRE_V1')) {
+      logger.warn(
+        'sp_finalizar_clase no tiene AUTOSERVICIO_CIERRE_V1; se omitió la recreación automática. ' +
+        'Ejecute backend/scripts/migrate-autoservicio-cierre-clase.sql con un usuario administrador.'
+      );
     }
   } catch (procError) {
     if (/SYSTEM_USER/i.test(procError.message || '')) {
@@ -4250,9 +4291,23 @@ END`);
  * - El préstamo se cierra automáticamente (sp_finalizar_clase) cuando la clase termina.
  */
 export async function iniciarUsoAutoservicio(req, res) {
+  let connection;
+  let transactionStarted = false;
+
+  const respondAfterRollback = async (status, payload) => {
+    if (connection && transactionStarted) {
+      await connection.rollback();
+      transactionStarted = false;
+    }
+    return res.status(status).json(payload);
+  };
+
   try {
     const documentoNormalizado = String(req.body?.documento || '').trim();
     const placaNormalizada = String(req.body?.placa || '').trim();
+    const idempotencyKey = String(
+      req.get?.('Idempotency-Key') || req.headers?.['idempotency-key'] || ''
+    ).trim();
 
     if (!documentoNormalizado || !placaNormalizada) {
       return res.status(400).json({
@@ -4260,15 +4315,72 @@ export async function iniciarUsoAutoservicio(req, res) {
         error: 'Documento y placa son obligatorios'
       });
     }
+    if (idempotencyKey.length > 128) {
+      return res.status(400).json({
+        success: false,
+        error: 'La identidad de la solicitud no es válida'
+      });
+    }
 
     await ensureAutoservicioSchema(defaultDb);
 
-    const [[aprendiz]] = await defaultDb.execute(
+    connection = await pool.getConnection();
+    await connection.beginTransaction();
+    transactionStarted = true;
+
+    if (idempotencyKey) {
+      const [[solicitudPrevia]] = await connection.execute(
+        `SELECT hu.id_historial, hu.documento_externo, hu.nombre_externo, hu.codigo_equipo, hu.id_clase,
+                e.placa, e.tipo, e.modelo, c.nombre_clase
+         FROM Historial_Uso_Equipos hu
+         INNER JOIN Elementos e ON e.codigo_equipo = hu.codigo_equipo
+         LEFT JOIN Clases c ON c.id_clase = hu.id_clase
+         WHERE hu.idempotency_key = ?
+         LIMIT 1 FOR UPDATE`,
+        [idempotencyKey]
+      );
+      if (solicitudPrevia) {
+        const mismaSolicitud =
+          String(solicitudPrevia.documento_externo || '').trim() === documentoNormalizado &&
+          String(solicitudPrevia.placa || '').trim() === placaNormalizada;
+        if (!mismaSolicitud) {
+          return respondAfterRollback(409, {
+            success: false,
+            code: 'IDEMPOTENCY_KEY_REUSED',
+            error: 'Identidad de solicitud reutilizada',
+            message: 'Esta identidad ya fue usada para solicitar otro préstamo.'
+          });
+        }
+        await connection.commit();
+        transactionStarted = false;
+        return res.status(200).json({
+          success: true,
+          idempotent: true,
+          message: 'Solicitud de préstamo recuperada',
+          data: {
+            id_historial: solicitudPrevia.id_historial,
+            equipo: {
+              codigo_equipo: solicitudPrevia.codigo_equipo,
+              placa: solicitudPrevia.placa,
+              tipo: solicitudPrevia.tipo,
+              modelo: solicitudPrevia.modelo
+            },
+            aprendiz: {
+              nombre: solicitudPrevia.nombre_externo,
+              documento: String(solicitudPrevia.documento_externo || '').trim()
+            },
+            clase: { id_clase: solicitudPrevia.id_clase, nombre_clase: solicitudPrevia.nombre_clase }
+          }
+        });
+      }
+    }
+
+    const [[aprendiz]] = await connection.execute(
       'SELECT id_aprendiz, nombre, documento, ficha FROM Aprendices WHERE documento = ? LIMIT 1',
       [documentoNormalizado]
     );
     if (!aprendiz) {
-      return res.status(404).json({
+      return respondAfterRollback(404, {
         success: false,
         code: 'APRENDIZ_NOT_FOUND',
         error: 'Documento no encontrado',
@@ -4276,12 +4388,12 @@ export async function iniciarUsoAutoservicio(req, res) {
       });
     }
 
-    const [[equipo]] = await defaultDb.execute(
-      `SELECT codigo_equipo, placa, tipo, modelo, id_ambiente FROM Elementos WHERE placa = ? LIMIT 1`,
+    const [[equipo]] = await connection.execute(
+      `SELECT codigo_equipo, placa, tipo, modelo, id_ambiente FROM Elementos WHERE placa = ? LIMIT 1 FOR UPDATE`,
       [placaNormalizada]
     );
     if (!equipo) {
-      return res.status(404).json({
+      return respondAfterRollback(404, {
         success: false,
         code: 'EQUIPO_NOT_FOUND',
         error: 'Equipo no encontrado',
@@ -4289,9 +4401,9 @@ export async function iniciarUsoAutoservicio(req, res) {
       });
     }
 
-    const disponibilidad = await verificarDisponibilidadEquipo(defaultDb, equipo.codigo_equipo);
+    const disponibilidad = await verificarDisponibilidadEquipo(connection, equipo.codigo_equipo);
     if (!disponibilidad.disponible) {
-      return res.status(409).json({
+      return respondAfterRollback(409, {
         success: false,
         code: 'EQUIPO_NOT_AVAILABLE',
         error: disponibilidad.razon,
@@ -4300,7 +4412,7 @@ export async function iniciarUsoAutoservicio(req, res) {
     }
 
     if (!equipo.id_ambiente) {
-      return res.status(409).json({
+      return respondAfterRollback(409, {
         success: false,
         code: 'EQUIPO_WITHOUT_AMBIENTE',
         error: 'Equipo sin ambiente asignado',
@@ -4308,14 +4420,14 @@ export async function iniciarUsoAutoservicio(req, res) {
       });
     }
 
-    const [[claseActiva]] = await defaultDb.execute(
+    const [[claseActiva]] = await connection.execute(
       `SELECT id_clase, nombre_clase FROM Clases
        WHERE id_ambiente = ? AND estado_clase = 'En Curso'
-       ORDER BY fecha_inicio_real DESC LIMIT 1`,
+       ORDER BY fecha_inicio_real DESC LIMIT 1 FOR UPDATE`,
       [equipo.id_ambiente]
     );
     if (!claseActiva) {
-      return res.status(409).json({
+      return respondAfterRollback(409, {
         success: false,
         code: 'NO_ACTIVE_CLASS',
         error: 'Sin clase en curso',
@@ -4323,16 +4435,32 @@ export async function iniciarUsoAutoservicio(req, res) {
       });
     }
 
-    const [[usoActivo]] = await defaultDb.execute(
+    const ambienteAprendiz = await verificarAmbienteEquipoAprendiz(
+      connection,
+      equipo.codigo_equipo,
+      aprendiz.id_aprendiz,
+      { idAprendiz: aprendiz.id_aprendiz }
+    );
+    if (ambienteAprendiz && ambienteAprendiz.valido === false) {
+      return respondAfterRollback(409, {
+        success: false,
+        code: 'APRENDIZ_OUTSIDE_AMBIENTE',
+        error: 'Aprendiz fuera del ambiente',
+        message: ambienteAprendiz.razon || 'El aprendiz no tiene una clase activa asociada a este ambiente.'
+      });
+    }
+
+    const [[usoActivo]] = await connection.execute(
       `SELECT id_historial, documento_externo FROM Historial_Uso_Equipos
        WHERE codigo_equipo = ? AND estado = 'En Uso'
-       ORDER BY fecha_hora_inicio DESC LIMIT 1`,
+       ORDER BY fecha_hora_inicio DESC LIMIT 1 FOR UPDATE`,
       [equipo.codigo_equipo]
     );
     if (usoActivo) {
       if (String(usoActivo.documento_externo || '').trim() === documentoNormalizado) {
-        return res.status(200).json({
+        const response = {
           success: true,
+          idempotent: true,
           message: 'Ya tienes este equipo en uso',
           data: {
             id_historial: usoActivo.id_historial,
@@ -4340,9 +4468,12 @@ export async function iniciarUsoAutoservicio(req, res) {
             aprendiz: { nombre: aprendiz.nombre, documento: String(aprendiz.documento).trim() },
             clase: { id_clase: claseActiva.id_clase, nombre_clase: claseActiva.nombre_clase }
           }
-        });
+        };
+        await connection.commit();
+        transactionStarted = false;
+        return res.status(200).json(response);
       }
-      return res.status(409).json({
+      return respondAfterRollback(409, {
         success: false,
         code: 'EQUIPO_IN_USE',
         error: 'Equipo en uso',
@@ -4350,20 +4481,24 @@ export async function iniciarUsoAutoservicio(req, res) {
       });
     }
 
-    const [result] = await defaultDb.execute(
+    const [result] = await connection.execute(
       `INSERT INTO Historial_Uso_Equipos
-       (codigo_equipo, id_usuario, nombre_usuario, documento_externo, nombre_externo, id_aprendiz, fecha_hora_inicio, estado, id_clase, observaciones)
-       VALUES (?, NULL, ?, ?, ?, ?, NOW(), 'En Uso', ?, ?)`,
+       (codigo_equipo, id_usuario, nombre_usuario, documento_externo, nombre_externo, id_aprendiz, idempotency_key, fecha_hora_inicio, estado, id_clase, observaciones)
+       VALUES (?, NULL, ?, ?, ?, ?, ?, NOW(), 'En Uso', ?, ?)`,
       [
         equipo.codigo_equipo,
         aprendiz.nombre,
         documentoNormalizado,
         aprendiz.nombre,
         aprendiz.id_aprendiz,
+        idempotencyKey || null,
         claseActiva.id_clase,
         `Autoservicio: solicitado por el aprendiz (documento ${documentoNormalizado})`
       ]
     );
+
+    await connection.commit();
+    transactionStarted = false;
 
     logger.info('Autoservicio: préstamo de equipo registrado', {
       id_historial: result.insertId,
@@ -4393,7 +4528,17 @@ export async function iniciarUsoAutoservicio(req, res) {
       }
     });
   } catch (err) {
+    if (connection && transactionStarted) {
+      try {
+        await connection.rollback();
+      } catch (rollbackError) {
+        logger.warn('No se pudo revertir la transacción de autoservicio', { error: rollbackError.message });
+      }
+      transactionStarted = false;
+    }
     logger.error('Error en iniciarUsoAutoservicio', { error: err.message, stack: err.stack });
     return handleControllerError(err, res, 'iniciarUsoAutoservicio', 'No se pudo registrar el préstamo del equipo');
+  } finally {
+    if (connection) connection.release();
   }
 }
