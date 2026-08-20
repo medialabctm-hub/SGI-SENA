@@ -3,11 +3,21 @@ import '../styles/components/toast.css'
 import { createToastCloseController } from '../utils/toastLifecycle'
 
 export default function Toast({ message, type = 'info', onClose }) {
-  const [isClosing, setIsClosing] = useState(false)
+  const toastCycle = `${type}:${message}`
+  const [closingCycle, setClosingCycle] = useState(null)
   const closeControllerRef = useRef(null)
+  const onCloseRef = useRef(onClose)
+  const isClosing = closingCycle === toastCycle
 
   useEffect(() => {
-    const controller = createToastCloseController({ onClose, setIsClosing })
+    onCloseRef.current = onClose
+  })
+
+  useEffect(() => {
+    const controller = createToastCloseController({
+      onClose: () => onCloseRef.current?.(),
+      setIsClosing: () => setClosingCycle(toastCycle),
+    })
     closeControllerRef.current = controller
     const timer = setTimeout(controller.close, 5000)
 
@@ -15,7 +25,7 @@ export default function Toast({ message, type = 'info', onClose }) {
       clearTimeout(timer)
       controller.cleanup()
     }
-  }, [message, onClose])
+  }, [toastCycle])
 
   const handleClose = () => {
     closeControllerRef.current?.close()
