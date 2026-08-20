@@ -18,7 +18,7 @@ await jest.unstable_mockModule(dbPath,   () => ({ default: { execute: mockExecut
 await jest.unstable_mockModule(logPath,  () => ({ logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn() } }));
 await jest.unstable_mockModule(sockPath, () => ({ default: { emitToAll: jest.fn(), emitToUser: jest.fn() } }));
 
-const { ensureAprendicesTable, listarAprendices, crearAprendiz, actualizarAprendiz, eliminarAprendiz } =
+const { ensureAprendicesTable, listarAprendices, crearAprendiz, actualizarAprendiz, eliminarAprendiz, verificarAprendizPorDocumento } =
   await import('../../src/controller/aprendicesController.js');
 
 function makeRes() {
@@ -50,6 +50,53 @@ describe('aprendicesController', () => {
     jest.clearAllMocks();
     req = { user: { id: 1, rol: 'Administrador' }, params: {}, query: {}, body: {} };
     res = makeRes();
+  });
+
+  describe('verificarAprendizPorDocumento', () => {
+    it('resuelve aprendices importados sin consultar Usuarios desde la ruta pública', async () => {
+      stubEnsure();
+      mockExecute.mockResolvedValueOnce([[
+        { id_aprendiz: 12, nombre: 'Aprendiz Importado', documento: ' TI-009 ', ficha: 'F1' }
+      ]]);
+
+      await verificarAprendizPorDocumento({ params: { documento: ' TI-009 ' } }, res);
+
+      expect(res.json).toHaveBeenCalledWith({
+        ok: true,
+        origen: 'aprendiz',
+        id_usuario: null,
+        id_aprendiz: 12,
+        nombre: 'Aprendiz Importado',
+        documento: 'TI-009',
+        ficha: 'F1'
+      });
+      expect(mockExecute.mock.calls.some(([sql]) => /FROM Usuarios/.test(sql))).toBe(false);
+    });
+
+    it('busca el aprendiz importado cuando no existe un usuario activo', async () => {
+      mockExecute.mockImplementation(async (sql) => {
+        if (/FROM Aprendices/.test(sql) && !/INFORMATION_SCHEMA/.test(sql)) {
+          return [[{ id_aprendiz: 12, nombre: 'Aprendiz Importado', documento: ' TI-009 ', ficha: 'F1' }]];
+        }
+        if (/DATA_TYPE/.test(sql)) return [[{ DATA_TYPE: 'varchar', CHARACTER_SET_NAME: 'utf8mb4' }]];
+        if (/SELECT EXISTS/.test(sql)) return [[{ hay_pendientes: 0 }]];
+        return [[{ cnt: 1 }]];
+      });
+
+      await verificarAprendizPorDocumento({ params: { documento: ' TI-009 ' } }, res);
+
+      expect(res.json).toHaveBeenCalledWith({
+        ok: true,
+        origen: 'aprendiz',
+        id_usuario: null,
+        id_aprendiz: 12,
+        nombre: 'Aprendiz Importado',
+        documento: 'TI-009',
+        ficha: 'F1'
+      });
+      expect(mockExecute.mock.calls.some(([, params]) => params?.[0] === 'TI-009')).toBe(true);
+      expect(mockExecute.mock.calls.some(([sql]) => /FROM Usuarios/.test(sql))).toBe(false);
+    });
   });
 
   describe('ensureAprendicesTable', () => {

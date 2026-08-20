@@ -34,7 +34,8 @@ export default function SolicitarEquipo() {
     try {
       const res = await fetch(`/api/aprendices/verificar/${encodeURIComponent(documento.trim())}`);
       const data = await parseApiResponse(res, 'No se pudo verificar el documento');
-      setAprendiz({ nombre: data.nombre, ficha: data.ficha });
+      const aprendizData = data?.data?.aprendiz || data?.aprendiz || data;
+      setAprendiz(aprendizData);
       setPaso(PASO_PLACA);
     } catch (err) {
       setToast({
@@ -63,7 +64,7 @@ export default function SolicitarEquipo() {
         body: JSON.stringify({ documento: documento.trim(), placa: placa.trim() })
       });
       const data = await parseApiResponse(res, 'No se pudo registrar el préstamo del equipo');
-      setPrestamo(data.data);
+      setPrestamo(data?.data || data);
       setPaso(PASO_CONFIRMACION);
     } catch (err) {
       setToast({

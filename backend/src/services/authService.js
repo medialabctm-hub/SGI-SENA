@@ -337,13 +337,40 @@ export class AuthService {
    * @returns {Promise<Object>} Datos del usuario
    */
   async getUserByCedula(cedula) {
-    const user = await this.userRepository.findByCedula(cedula);
+    const documentoNormalizado = typeof cedula === 'string' ? cedula.trim() : cedula;
+    const user = await this.userRepository.findByCedula(documentoNormalizado);
 
-    if (!user) {
-      throw new NotFoundError('Usuario');
+    if (user) {
+      return user;
     }
 
-    return user;
+    const db = this.userRepository.db;
+    if (db?.execute) {
+      const resultadoAprendices = await db.execute(
+        `SELECT id_aprendiz, nombre, documento, ficha
+         FROM Aprendices
+         WHERE TRIM(documento) = ?
+         LIMIT 1`,
+        [documentoNormalizado]
+      );
+      const filasAprendices = Array.isArray(resultadoAprendices?.[0]) ? resultadoAprendices[0] : [];
+      const [aprendiz] = filasAprendices;
+
+      if (aprendiz) {
+        const documentoAprendiz = String(aprendiz.documento).trim();
+        return {
+          origen: 'aprendiz',
+          id_usuario: null,
+          id_aprendiz: aprendiz.id_aprendiz,
+          nombre: aprendiz.nombre,
+          nombre_usuario: aprendiz.nombre,
+          documento: documentoAprendiz,
+          ficha: aprendiz.ficha || null,
+        };
+      }
+    }
+
+    throw new NotFoundError('Usuario');
   }
 
   /**

@@ -11,6 +11,48 @@ export class ApiError extends Error {
   }
 }
 
+const getFirstStructuredMessage = payload => {
+  const details = payload?.details;
+  if (!Array.isArray(details) || details.length === 0) return '';
+  const detail = details[0];
+  if (typeof detail === 'string') return detail.trim();
+  return String(detail?.userMessage || detail?.message || detail?.error || detail?.detail || '').trim();
+};
+
+const getPreferredApiMessage = (payload, fallback = '') =>
+  payload?.userMessage?.trim?.() ||
+  payload?.message?.trim?.() ||
+  getFirstStructuredMessage(payload) ||
+  payload?.error?.trim?.() ||
+  payload?.detalle?.trim?.() ||
+  fallback;
+
+export const isIdempotentApiResponse = data => Boolean(
+  data?.idempotent === true ||
+  data?.alreadyRegistered === true ||
+  data?.reused === true ||
+  ((data?.success === true || data?.ok === true) &&
+    Boolean(data?.aprendiz || data?.data?.aprendiz))
+);
+
+export const buildEquipoAssignmentPayload = form => {
+  const payload = {
+    codigo_equipo: form.codigo_equipo,
+    tipo_responsabilidad: form.tipo_responsabilidad,
+  };
+
+  if (form.observaciones) payload.observaciones = form.observaciones;
+
+  if (form.id_usuario) {
+    payload.id_usuario = form.id_usuario;
+  } else {
+    if (form.id_aprendiz) payload.id_aprendiz = form.id_aprendiz;
+    if (form.documento_externo) payload.documento_externo = form.documento_externo;
+  }
+
+  return payload;
+};
+
 const extractJson = async (response) => {
   try {
     const text = await response.text();
@@ -105,8 +147,8 @@ const getUserFriendlyError = (error, status, originalMessage) => {
     return 'No se encontró el recurso solicitado';
   }
 
-  // Errores de validación del usuario (400) - estos SÍ pueden mostrar mensajes específicos
-  if (status === 400) {
+  // Errores de validación del usuario (400/422) - estos SÍ pueden mostrar mensajes específicos
+  if (status === 400 || status === 422) {
     // Si el mensaje original es amigable y no técnico, usarlo
     const message = originalMessage || error?.message || '';
     
@@ -217,24 +259,10 @@ export const parseApiResponse = async (
 ) => {
   const data = await extractJson(response);
   if (!response.ok) {
-    // Si hay detalles de validación, extraer los mensajes
-    if (data?.details && Array.isArray(data.details) && data.details.length > 0) {
-      const validationMessages = data.details
-        .map(d => d.message)
-        .filter(Boolean)
-        .join('. ');
-      const message = validationMessages || data?.error || data?.message || defaultErrorMessage;
-      if (isSessionExpired(response.status, message)) handleSessionExpiration();
-      throw new ApiError(message, response.status, data);
-    }
+    if (response.status === 409 && isIdempotentApiResponse(data)) return data;
 
-    // userMessage tiene prioridad: es el texto que el backend redactó para el usuario
-    const message =
-      data?.userMessage ||
-      data?.error ||
-      data?.message ||
-      data?.detalle ||
-      defaultErrorMessage;
+    // Si hay detalles de validación, extraer los mensajes
+    const message = getPreferredApiMessage(data, defaultErrorMessage);
 
     if (isSessionExpired(response.status, message)) handleSessionExpiration();
     throw new ApiError(message, response.status, data);
@@ -255,7 +283,15 @@ export const buildErrorMessage = (error, fallback = 'Ocurrió un problema. Por f
 
   // Si es un ApiError, usar el status y mensaje
   if (error instanceof ApiError) {
-    return getUserFriendlyError(error, error.status, error.message);
+    const message = getPreferredApiMessage(error.payload, error.message);
+    return getUserFriendlyError(error, error.status, message);
+  }
+
+  // Permite reutilizar el mismo formateador para errores estructurados recibidos
+  // dentro de una respuesta exitosa parcial (por ejemplo, registro-externo).
+  if (error?.payload && typeof error.status === 'number') {
+    const message = getPreferredApiMessage(error.payload, error.message || '');
+    return getUserFriendlyError(error, error.status, message);
   }
 
   // Si es un Error genérico, verificar si es de red

@@ -164,7 +164,7 @@ export async function verificarAprendizPorDocumento(req, res) {
     await ensureAprendicesTable()
 
     const [[aprendiz]] = await defaultDb.execute(
-      `SELECT ${CAMPOS_APRENDIZ_SELECT} FROM Aprendices WHERE documento = ? LIMIT 1`,
+      `SELECT ${CAMPOS_APRENDIZ_SELECT} FROM Aprendices WHERE TRIM(documento) = ? LIMIT 1`,
       [documentoNormalizado]
     )
 
@@ -176,7 +176,8 @@ export async function verificarAprendizPorDocumento(req, res) {
       })
     }
 
-    return res.json({ ok: true, existe: true, nombre: aprendiz.nombre, ficha: aprendiz.ficha })
+    return res.json({ ok: true, origen: 'aprendiz', id_usuario: null, id_aprendiz: aprendiz.id_aprendiz,
+      nombre: aprendiz.nombre, documento: String(aprendiz.documento).trim(), ficha: aprendiz.ficha })
   } catch (error) {
     logger.error('Error al verificar aprendiz por documento', { error: error.message, stack: error.stack })
     return handleControllerError(error, res, 'verificarAprendizPorDocumento', 'Error al verificar el documento');

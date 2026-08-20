@@ -275,9 +275,11 @@ export default function DetalleEquipo() {
       const resultados = data?.data?.usuarios || data?.usuarios || [];
       const errores = data?.data?.errores || data?.errores || [];
       if (errores.length > 0 && resultados.length === 0) {
-        const primerError = errores[0];
         setToast({
-          message: primerError.error || 'Error al registrar el uso',
+          message: buildErrorMessage(
+            { status: 400, payload: { details: errores } },
+            'Error al registrar el uso'
+          ),
           type: 'error',
         });
         return;

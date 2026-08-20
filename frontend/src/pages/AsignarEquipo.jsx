@@ -5,7 +5,7 @@ import Toast from '../components/Toast'
 import ConfirmModal from '../components/ConfirmModal'
 import CustomSelect from '../components/CustomSelect'
 import { FiUserPlus, FiPackage, FiUsers, FiShield, FiFileText, FiSearch, FiCheck, FiUserCheck, FiTrash2, FiList, FiAlertCircle } from 'react-icons/fi'
-import { parseApiResponse, buildErrorMessage } from '../utils/api'
+import { parseApiResponse, buildErrorMessage, buildEquipoAssignmentPayload } from '../utils/api'
 import { useSocket } from '../contexts/SocketContext'
 import '../styles/pages/equipos.css'
 import '../styles/pages/asignaciones.css'
@@ -16,6 +16,8 @@ export default function AsignarEquipo() {
   const [form, setForm] = useState({
     codigo_equipo: '',
     id_usuario: '',
+    id_aprendiz: '',
+    documento_externo: '',
     tipo_responsabilidad: 'Principal',
     observaciones: '',
   })
@@ -211,29 +213,39 @@ export default function AsignarEquipo() {
       
       if (res.ok) {
         const data = await parseApiResponse(res)
+        const aprendizImportado = data.aprendiz_importado || data.aprendiz ||
+          (!data.id_usuario && data.id_aprendiz ? data : null)
+        const idAprendiz = data.id_aprendiz || aprendizImportado?.id_aprendiz
+        const documentoExterno = data.documento_externo || data.documento ||
+          aprendizImportado?.documento_externo || aprendizImportado?.documento || cedulaUsuario.trim()
+        const esAprendizImportado = !data.id_usuario && Boolean(idAprendiz)
         
         // Validar que si es Instructor, solo puede asignar a Aprendices
-        if (isInstructor && data.nombre_rol !== 'Aprendiz') {
+        if (isInstructor && !esAprendizImportado && data.nombre_rol !== 'Aprendiz') {
           setToast({ 
             message: 'Solo puedes asignar equipos a aprendices', 
             type: 'error' 
           })
           setUsuarioEncontrado(null)
-          setForm(prev => ({ ...prev, id_usuario: '' }))
+          setForm(prev => ({ ...prev, id_usuario: '', id_aprendiz: '', documento_externo: '' }))
           return
         }
         
         setUsuarioEncontrado(data)
-        setForm(prev => ({ ...prev, id_usuario: data.id_usuario }))
-        setToast({ message: 'Usuario encontrado correctamente', type: 'success' })
-      } else {
-        const errorData = await res.json().catch(() => ({}))
-        setToast({ 
-          message: errorData.error || 'Usuario no encontrado', 
-          type: 'error' 
+        setForm(prev => ({
+          ...prev,
+          id_usuario: data.id_usuario || '',
+          id_aprendiz: idAprendiz || '',
+          documento_externo: esAprendizImportado ? documentoExterno : '',
+        }))
+        setToast({
+          message: esAprendizImportado
+            ? 'Aprendiz importado encontrado correctamente'
+            : 'Usuario encontrado correctamente',
+          type: 'success'
         })
-        setUsuarioEncontrado(null)
-        setForm(prev => ({ ...prev, id_usuario: '' }))
+      } else {
+        await parseApiResponse(res, 'Usuario no encontrado')
       }
     } catch (err) {
       setToast({ 
@@ -241,7 +253,7 @@ export default function AsignarEquipo() {
         type: 'error' 
       })
       setUsuarioEncontrado(null)
-      setForm(prev => ({ ...prev, id_usuario: '' }))
+      setForm(prev => ({ ...prev, id_usuario: '', id_aprendiz: '', documento_externo: '' }))
     } finally {
       setBuscandoUsuario(false)
     }
@@ -260,13 +272,15 @@ export default function AsignarEquipo() {
   function limpiarUsuario() {
     setCedulaUsuario('')
     setUsuarioEncontrado(null)
-    setForm(prev => ({ ...prev, id_usuario: '' }))
+    setForm(prev => ({ ...prev, id_usuario: '', id_aprendiz: '', documento_externo: '' }))
   }
 
   async function handleSubmit(e) {
     e.preventDefault()
     
-    if (!form.codigo_equipo || !form.id_usuario) {
+    const tieneUsuario = Boolean(form.id_usuario)
+    const tieneAprendizImportado = Boolean(form.id_aprendiz && form.documento_externo)
+    if (!form.codigo_equipo || (!tieneUsuario && !tieneAprendizImportado)) {
       setToast({ message: 'Debes buscar y seleccionar un equipo y un usuario', type: 'error' })
       return
     }
@@ -289,36 +303,31 @@ export default function AsignarEquipo() {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`
         },
-        body: JSON.stringify(form)
+        body: JSON.stringify(buildEquipoAssignmentPayload(form))
       })
 
-      const data = await res.json()
+      const data = await parseApiResponse(res, 'Error al habilitar el equipo')
 
-      if (res.ok) {
-        setToast({ 
-          message: data.message || 'Equipo habilitado correctamente', 
-          type: 'success' 
-        })
-        setForm({
-          codigo_equipo: '',
-          id_usuario: '',
-          tipo_responsabilidad: 'Principal',
-          observaciones: '',
-        })
-        limpiarEquipo()
-        limpiarUsuario()
-        // Actualizar lista de asignaciones si está visible
-        if (activeTab === 'ver') {
-          await fetchAsignaciones()
-        }
-      } else {
-        setToast({ 
-          message: data.error || 'Error al habilitar el equipo', 
-          type: 'error' 
-        })
+      setToast({
+        message: data.message || 'Equipo habilitado correctamente',
+        type: 'success'
+      })
+      setForm({
+        codigo_equipo: '',
+        id_usuario: '',
+        id_aprendiz: '',
+        documento_externo: '',
+        tipo_responsabilidad: 'Principal',
+        observaciones: '',
+      })
+      limpiarEquipo()
+      limpiarUsuario()
+      // Actualizar lista de asignaciones si está visible
+      if (activeTab === 'ver') {
+        await fetchAsignaciones()
       }
     } catch (err) {
-      setToast({ message: 'Error de conexión con el servidor', type: 'error' })
+      setToast({ message: buildErrorMessage(err, 'Error al habilitar el equipo'), type: 'error' })
     } finally {
       setLoading(false)
     }
@@ -514,9 +523,9 @@ export default function AsignarEquipo() {
                     <span>Usuario encontrado</span>
                   </div>
                   <div className="equipo-found-info">
-                    <div><strong>Nombre:</strong> {usuarioEncontrado.nombre_usuario}</div>
-                    <div><strong>Documento:</strong> {usuarioEncontrado.cedula}</div>
-                    <div><strong>Rol:</strong> {usuarioEncontrado.nombre_rol}</div>
+                    <div><strong>Nombre:</strong> {usuarioEncontrado.nombre_usuario || usuarioEncontrado.nombre || usuarioEncontrado.aprendiz?.nombre || usuarioEncontrado.aprendiz_importado?.nombre}</div>
+                    <div><strong>Documento:</strong> {usuarioEncontrado.cedula || usuarioEncontrado.documento || usuarioEncontrado.aprendiz?.documento || usuarioEncontrado.aprendiz_importado?.documento}</div>
+                    <div><strong>Rol:</strong> {usuarioEncontrado.nombre_rol || (form.id_aprendiz ? 'Aprendiz importado' : '')}</div>
                     {usuarioEncontrado.equipos_asignados !== undefined && (
                       <div><strong>Equipos asignados:</strong> {usuarioEncontrado.equipos_asignados}</div>
                     )}

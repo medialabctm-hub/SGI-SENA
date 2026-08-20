@@ -407,6 +407,27 @@ describe('AuthService', () => {
       mockUserRepository.findByCedula.mockResolvedValue(null);
       await expect(authService.getUserByCedula('0000000')).rejects.toThrow(NotFoundError);
     });
+
+    it('debe devolver un aprendiz importado como origen aprendiz cuando no existe cuenta', async () => {
+      mockUserRepository.findByCedula.mockResolvedValue(null);
+      mockUserRepository.db.execute.mockResolvedValueOnce([[
+        { id_aprendiz: 44, nombre: 'Aprendiz Importado', documento: ' TI-44 ', ficha: 'F-1' }
+      ]]);
+
+      await expect(authService.getUserByCedula(' TI-44 ')).resolves.toEqual({
+        origen: 'aprendiz',
+        id_usuario: null,
+        id_aprendiz: 44,
+        nombre: 'Aprendiz Importado',
+        nombre_usuario: 'Aprendiz Importado',
+        documento: 'TI-44',
+        ficha: 'F-1'
+      });
+      expect(mockUserRepository.db.execute).toHaveBeenCalledWith(
+        expect.stringContaining('FROM Aprendices'),
+        ['TI-44']
+      );
+    });
   });
 
   // ─── updateUser ─────────────────────────────────────────────────────────────

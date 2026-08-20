@@ -678,12 +678,14 @@ export async function eliminarEquipo(req, res) {
  */
 export async function asignarEquipo(req, res) {
   try {
-    const { codigo_equipo, id_usuario, tipo_responsabilidad = 'Principal', observaciones } = req.body
+    const { codigo_equipo, id_usuario, id_aprendiz, documento, documento_externo, tipo_responsabilidad = 'Principal', observaciones } = req.body
     const asignadoPor = req.user?.id
     const userRole = req.user?.rol
+    const documentoRecibido = documento_externo ?? documento;
+    const documentoNormalizado = typeof documentoRecibido === 'string' ? documentoRecibido.trim() : ''
 
-    if (!codigo_equipo || !id_usuario) {
-      return res.status(400).json({ error: 'Faltan campos obligatorios (codigo_equipo, id_usuario)' })
+    if (!codigo_equipo || (!id_usuario && !(id_aprendiz && documentoNormalizado))) {
+      return res.status(400).json({ error: 'Faltan campos obligatorios (codigo_equipo y usuario o aprendiz)' })
     }
 
     // Validar que el equipo existe usando utilidad SQL
@@ -694,16 +696,28 @@ export async function asignarEquipo(req, res) {
     }
 
     // Validar que el usuario receptor existe y obtener su rol
-    const [[usuarioReceptor]] = await defaultDb.execute(
-      `SELECT u.id_usuario, u.nombre_usuario, r.nombre_rol 
-       FROM Usuarios u
-       LEFT JOIN Roles r ON u.id_rol = r.id_rol
-       WHERE u.id_usuario = ? AND u.estado = 'Activo'`,
-      [id_usuario]
-    )
+    let usuarioReceptor;
+    let aprendizImportado = null;
+    if (id_usuario) {
+      const [[usuarioCuenta]] = await defaultDb.execute(
+        `SELECT u.id_usuario, u.nombre_usuario, r.nombre_rol
+         FROM Usuarios u LEFT JOIN Roles r ON u.id_rol = r.id_rol
+         WHERE u.id_usuario = ? AND u.estado = 'Activo'`, [id_usuario]
+      );
+      usuarioReceptor = usuarioCuenta;
+    } else {
+      const [[aprendiz]] = await defaultDb.execute(
+        `SELECT id_aprendiz, nombre, documento, ficha FROM Aprendices
+         WHERE id_aprendiz = ? AND TRIM(documento) = ? LIMIT 1`,
+        [id_aprendiz, documentoNormalizado]
+      );
+      aprendizImportado = aprendiz;
+      usuarioReceptor = aprendiz && { id_usuario: null, id_aprendiz: aprendiz.id_aprendiz,
+        nombre_usuario: aprendiz.nombre, nombre_rol: 'Aprendiz' };
+    }
 
     if (!usuarioReceptor) {
-      return res.status(404).json({ error: 'Usuario no encontrado o inactivo' })
+      return res.status(404).json({ error: id_usuario ? 'Usuario no encontrado o inactivo' : 'Usuario o aprendiz no encontrado' })
     }
 
     // Instructor y Cuentadante solo pueden habilitar a Aprendices
@@ -714,11 +728,11 @@ export async function asignarEquipo(req, res) {
     }
 
     // Si el receptor es un Aprendiz, validar que el equipo pertenezca a su ambiente/ficha
-    if (usuarioReceptor.nombre_rol === 'Aprendiz') {
+    if (usuarioReceptor.nombre_rol === 'Aprendiz' && !aprendizImportado) {
       const validacionAmbiente = await verificarAmbienteEquipoAprendiz(
         defaultDb,
         codigo_equipo,
-        id_usuario
+        usuarioReceptor.id_usuario
       )
 
       if (!validacionAmbiente.valido) {
@@ -763,9 +777,10 @@ export async function asignarEquipo(req, res) {
     // Verificar si ya existe una habilitación activa para este equipo y usuario
     // NOTA: Esta es una habilitación para uso, NO una asignación de inventario
     const [[habilitacionExistente]] = await defaultDb.execute(
-      `SELECT id_responsable FROM Responsables_Equipo 
-       WHERE codigo_equipo = ? AND id_usuario = ? AND estado_responsabilidad = 'Activo'`,
-      [codigo_equipo, id_usuario]
+      aprendizImportado
+        ? `SELECT id_responsable FROM Responsables_Equipo WHERE codigo_equipo = ? AND id_usuario IS NULL AND TRIM(documento_externo) = ? AND estado_responsabilidad = 'Activo'`
+        : `SELECT id_responsable FROM Responsables_Equipo WHERE codigo_equipo = ? AND id_usuario = ? AND estado_responsabilidad = 'Activo'`,
+      aprendizImportado ? [codigo_equipo, String(aprendizImportado.documento).trim()] : [codigo_equipo, id_usuario]
     )
 
     if (habilitacionExistente) {
@@ -780,11 +795,24 @@ export async function asignarEquipo(req, res) {
     // IMPORTANTE: estado_responsabilidad se escribe de forma explícita. Si se deja al DEFAULT de la
     // columna, la fila depende del esquema desplegado; cuando ese default no es 'Activo' la
     // habilitación se crea correctamente pero nunca aparece en "Mis Equipos" (ver BUG-01).
+    let campos = 'codigo_equipo, id_usuario, tipo_responsabilidad, estado_responsabilidad, observaciones, asignado_por, fecha_asignacion, fecha_desvinculacion';
+    const valores = [codigo_equipo, aprendizImportado ? null : id_usuario, tipo_responsabilidad, observaciones || null, asignadoPor];
+    let marcadores = "?, ?, ?, 'Activo', ?, ?, NOW(), NULL";
+    if (aprendizImportado) {
+      campos += ', documento_externo';
+      valores.push(String(aprendizImportado.documento).trim());
+      marcadores += ', ?';
+      const [[colIdAprendiz]] = await defaultDb.execute(
+        `SELECT COUNT(*) AS cnt FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'Responsables_Equipo' AND COLUMN_NAME = 'id_aprendiz'`
+      );
+      if (colIdAprendiz?.cnt > 0) {
+        campos += ', id_aprendiz';
+        valores.push(aprendizImportado.id_aprendiz);
+        marcadores += ', ?';
+      }
+    }
     const [result] = await defaultDb.execute(
-      `INSERT INTO Responsables_Equipo
-       (codigo_equipo, id_usuario, tipo_responsabilidad, estado_responsabilidad, observaciones, asignado_por, fecha_asignacion, fecha_desvinculacion)
-       VALUES (?, ?, ?, 'Activo', ?, ?, NOW(), NULL)`,
-      [codigo_equipo, id_usuario, tipo_responsabilidad, observaciones || null, asignadoPor]
+      `INSERT INTO Responsables_Equipo (${campos}) VALUES (${marcadores})`, valores
     )
 
     // Emitir evento WebSocket para actualización en tiempo real
@@ -793,7 +821,8 @@ export async function asignarEquipo(req, res) {
       socketService.emitToAll('asignacion:created', {
         id_responsable: result.insertId,
         codigo_equipo,
-        id_usuario,
+        id_usuario: aprendizImportado ? null : id_usuario,
+        ...(aprendizImportado ? { id_aprendiz: aprendizImportado.id_aprendiz, documento: String(aprendizImportado.documento).trim() } : {}),
         timestamp: new Date().toISOString(),
       });
     } catch (socketErr) {
@@ -3951,8 +3980,9 @@ export async function registrarUsoEquipoExterno(req, res) {
         });
         await connection.rollback();
         connection.release();
-        return res.status(400).json({
+        return res.status(422).json({
           success: false,
+          code: 'NO_USERS_PROCESSED',
           error: 'No se pudo procesar ningún usuario en la verificación de ambiente',
           message: 'Ningún usuario pudo ser asignado; revisar documentos y errores.',
           errores: errores
@@ -4240,6 +4270,7 @@ export async function iniciarUsoAutoservicio(req, res) {
     if (!aprendiz) {
       return res.status(404).json({
         success: false,
+        code: 'APRENDIZ_NOT_FOUND',
         error: 'Documento no encontrado',
         message: 'No encontramos tu documento en la lista de aprendices. Verifica con tu instructor que ya te hayan cargado.'
       });
@@ -4252,6 +4283,7 @@ export async function iniciarUsoAutoservicio(req, res) {
     if (!equipo) {
       return res.status(404).json({
         success: false,
+        code: 'EQUIPO_NOT_FOUND',
         error: 'Equipo no encontrado',
         message: `No se encontró un equipo con la placa "${placaNormalizada}"`
       });
@@ -4261,6 +4293,7 @@ export async function iniciarUsoAutoservicio(req, res) {
     if (!disponibilidad.disponible) {
       return res.status(409).json({
         success: false,
+        code: 'EQUIPO_NOT_AVAILABLE',
         error: disponibilidad.razon,
         message: `El equipo con placa "${placaNormalizada}" no está disponible en este momento. Estado: ${disponibilidad.estado_operativo || 'N/A'}`
       });
@@ -4269,6 +4302,7 @@ export async function iniciarUsoAutoservicio(req, res) {
     if (!equipo.id_ambiente) {
       return res.status(409).json({
         success: false,
+        code: 'EQUIPO_WITHOUT_AMBIENTE',
         error: 'Equipo sin ambiente asignado',
         message: 'Este equipo no tiene un ambiente asignado, no se puede validar la clase en curso.'
       });
@@ -4283,6 +4317,7 @@ export async function iniciarUsoAutoservicio(req, res) {
     if (!claseActiva) {
       return res.status(409).json({
         success: false,
+        code: 'NO_ACTIVE_CLASS',
         error: 'Sin clase en curso',
         message: 'No hay una clase en curso en el ambiente de este equipo. No puedes tomarlo prestado en este momento.'
       });
@@ -4295,19 +4330,21 @@ export async function iniciarUsoAutoservicio(req, res) {
       [equipo.codigo_equipo]
     );
     if (usoActivo) {
-      if (usoActivo.documento_externo === documentoNormalizado) {
+      if (String(usoActivo.documento_externo || '').trim() === documentoNormalizado) {
         return res.status(200).json({
           success: true,
           message: 'Ya tienes este equipo en uso',
           data: {
             id_historial: usoActivo.id_historial,
             equipo: { codigo_equipo: equipo.codigo_equipo, placa: equipo.placa, tipo: equipo.tipo, modelo: equipo.modelo },
+            aprendiz: { nombre: aprendiz.nombre, documento: String(aprendiz.documento).trim() },
             clase: { id_clase: claseActiva.id_clase, nombre_clase: claseActiva.nombre_clase }
           }
         });
       }
       return res.status(409).json({
         success: false,
+        code: 'EQUIPO_IN_USE',
         error: 'Equipo en uso',
         message: 'Este equipo ya está siendo usado por otra persona en este momento.'
       });

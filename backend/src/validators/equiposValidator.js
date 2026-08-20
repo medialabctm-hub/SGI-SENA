@@ -114,7 +114,10 @@ export const asignarEquipoSchema = z.object({
     z.string().min(1, 'El código del equipo es requerido'),
     z.number().int().positive('El código del equipo debe ser un número positivo'),
   ]),
-  id_usuario: z.number().int().positive('El ID del usuario es requerido'),
+  id_usuario: z.number().int().positive().optional(),
+  id_aprendiz: z.number().int().positive().optional(),
+  documento: z.string().trim().min(1).optional(),
+  documento_externo: z.string().trim().min(1).optional(),
   tipo_responsabilidad: z.enum(['Principal', 'Secundario'], {
     error: 'Tipo de responsabilidad inválido. Debe ser "Principal" o "Secundario"',
   }),
@@ -129,6 +132,9 @@ export const asignarEquipoSchema = z.object({
     }),
     z.null()
   ]).optional().nullable(),
+}).refine((value) => value.id_usuario || (value.id_aprendiz && (value.documento_externo || value.documento)), {
+  message: 'Debe proporcionar id_usuario o id_aprendiz con documento_externo',
+  path: ['id_usuario']
 });
 
 export const verificarInventarioSchema = z.object({
