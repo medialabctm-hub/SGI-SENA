@@ -103,3 +103,75 @@ interrumpida ni se afirma que esté libre de handles abiertos.
   marcador mediante `INFORMATION_SCHEMA.ROUTINES`.
 - Jest conserva manejadores asíncronos al finalizar la suite completa; el
   resultado de aserciones y exit code provienen de `--forceExit`.
+
+## Fix round 2 — semántica exacta e independencia administrativa
+
+Commit funcional de la ronda: `8ff68de` (`fix: tighten autoservicio migration readiness`).
+
+### Hallazgos corregidos
+
+- El predicado anterior de readiness aceptaba `uq_autoservicio_idempotency_key`
+  si `idempotency_key` era solo su primera columna. Ahora cada índice requerido
+  debe tener exactamente una fila en `INFORMATION_SCHEMA.STATISTICS`, con
+  `SEQ_IN_INDEX = 1`, la columna esperada y `NON_UNIQUE` esperado: 1 para
+  `idx_documento_externo`/`documento_externo` e `idx_id_aprendiz`/`id_aprendiz`,
+  y 0 para `uq_autoservicio_idempotency_key`/`idempotency_key`.
+- El runner importaba `src/config/dbconfig.js`, por lo que su carga podía exigir
+  configuración global ajena a la migración. Ahora usa directamente
+  `mysql2/promise`; `getMigrationDbConfig` y `createMigrationConnection` solo
+  consumen `DB_HOST`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`, `DB_PORT` o sus
+  equivalentes `MYSQLHOST`, `MYSQLUSER`, `MYSQLPASSWORD`, `MYSQLDATABASE`,
+  `MYSQLPORT`. No carga Brevo, JWT, cookies, CORS ni frontend.
+- El README conserva la invocación exacta `cd backend` seguido de
+  `node scripts/migrate-autoservicio-cierre-clase.js` e incorpora ese contrato
+  limitado de variables de entorno.
+
+### TDD — RED exacto de la ronda 2
+
+Primero se añadieron una prueba de índice único compuesto (con
+`idempotency_key` en `SEQ_IN_INDEX = 1` y una segunda columna) y una prueba de
+creación de conexión con solo `DB_*`, además del recorrido estatal de creación
+sin rutina y no-op en la segunda ejecución.
+
+```powershell
+cd D:\sgi\SGI-SENA\backend
+npm test -- tests/migrations/autoservicioMigration.test.js tests/scripts/migrateAutoservicioCierreClase.test.js --runInBand
+```
+
+Resultado RED: exit 1, 2 fallos esperados. La prueba del índice compuesto
+recibió `{ ready: true }` y la prueba administrativa falló con
+`createMigrationConnection is not a function`. La prueba estatal ya verificaba
+el contrato existente: sin rutina, crea y elimina la rutina temporal, crea la
+definitiva, y la segunda llamada devuelve no-op.
+
+### GREEN y evidencia de la ronda 2
+
+```powershell
+cd D:\sgi\SGI-SENA\backend
+node --check scripts/migrate-autoservicio-cierre-clase.js
+node --check src/controller/equiposController.js
+node --check src/utils/autoservicioHealth.js
+node --check server.js
+
+npm test -- tests/migrations/autoservicioMigration.test.js tests/scripts/migrateAutoservicioCierreClase.test.js tests/server/autoservicioHealth.test.js tests/controllers/equiposAssignmentAutoservicio.test.js --runInBand
+# Exit 0: 4 suites, 25 pruebas
+
+npm test -- --runInBand --forceExit
+# Exit 0: 83 suites, 1827 pruebas
+```
+
+Se mantienen las pruebas de rollback y limpieza: fallo en preflight sin tocar
+la rutina destino, restauración tras fallo de creación, y `DROP` de la rutina
+temporal desde `finally`. El test nuevo de conexión inyecta una fábrica mysql2
+simulada y demuestra que no se importa configuración global.
+
+### Concerns vigentes tras la ronda 2
+
+- La sustitución de una rutina MySQL sigue sin ser atómica: una caída del
+  proceso o del servidor entre `DROP` y `CREATE` puede requerir restauración
+  administrativa desde el respaldo consultado. No se mutó producción.
+- La semántica se prueba de forma determinista contra el protocolo mysql2
+  simulado; falta ejecutar el comando dos veces contra MySQL 8 de staging.
+- La suite completa pasó con código 0, pero Jest mostró el aviso de handles
+  abiertos y se ejecutó explícitamente con `--forceExit`; no se interpreta
+  como ausencia de handles.
