@@ -90,6 +90,8 @@ Prueba interactiva local en `/solicitar-equipo`:
 
 `eba5c0a1893c2d1f9d4d0e5a06ee931fe01773ec` (`fix: harden autoservicio loan feedback`).
 
+Ronda de fix 1: `85aac98254907a05eae38473877df2a9e60ad677` (`test: cover autoservicio accessibility flow`).
+
 ## Concerns
 
 - Node emite advertencias de `MODULE_TYPELESS_PACKAGE_JSON`; no se modificó `package.json` porque es una configuración transversal ajena a MDL-74.
