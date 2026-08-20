@@ -167,7 +167,7 @@ export default function RestablecerContrasena() {
         )}
         <div className="login-card">
           <div className="logo-box">
-            <div className="logo"><img src='/public/images/logoSena.png' alt="Logo SENA" /></div>
+            <div className="logo"><img src='/images/logoSena.png' alt="Logo SENA" /></div>
           </div>
           <div className="success-container">
             <FiCheckCircle size={64} className="success-icon auth-success-icon" />
@@ -224,7 +224,7 @@ export default function RestablecerContrasena() {
       )}
       <div className="login-card">
         <div className="logo-box">
-          <div className="logo"><img src='/public/images/logoSena.png' alt="Logo SENA" /></div>
+          <div className="logo"><img src='/images/logoSena.png' alt="Logo SENA" /></div>
         </div>
         <h1 className="title">Restablecer Contraseña</h1>
         {usuario && (

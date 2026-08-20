@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {FiBell, FiLogOut, FiUser, FiMenu,} from 'react-icons/fi';
 import { Link } from "react-router-dom";
 import { useNavigate } from 'react-router-dom';
-import logo from '/public/images/logoSena.png';
+import logo from '/images/logoSena.png';
 import Toast from './Toast';
 import ConfirmModal from './ConfirmModal';
 import NotificationsModal from './NotificationsModal';
@@ -19,9 +19,14 @@ import '../styles/notifications.css';
 export default function Header() {
   const { tieneDuplicadosPendientes } = useDuplicados();
   const socketHook = useSocket();
-  const [user, setUser] = useState(
-    JSON.parse(localStorage.getItem('user') || '{}')
-  );
+  const [user, setUser] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem('user') || '{}');
+    } catch (error) {
+      localStorage.removeItem('user');
+      return {};
+    }
+  });
   const [toast, setToast] = useState(null);
   const [showConfirm, setShowConfirm] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
@@ -80,6 +85,8 @@ export default function Header() {
   const confirmLogout = () => {
     setShowConfirm(false);
     localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    window.dispatchEvent(new Event('auth:changed'));
     setToast({ message: 'Sesión cerrada correctamente', type: 'success' });
     setTimeout(() => {
       window.location.href = '/login';

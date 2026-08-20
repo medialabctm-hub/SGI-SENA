@@ -5,18 +5,21 @@ import '../styles/components/protectedRoute.css';
 
 export default function ProtectedRoute({ children }) {
   const [loading, setLoading] = useState(true);
+  const [authorized, setAuthorized] = useState(false);
   const location = useLocation();
   const token = localStorage.getItem('token');
 
   useEffect(() => {
     const checkUser = async () => {
       if (!token) {
+        setAuthorized(false);
         setLoading(false);
         return;
       }
 
       // Si ya estamos en la página de cambiar contraseña, permitir acceso
       if (location.pathname === '/cambiar-contrasena') {
+        setAuthorized(true);
         setLoading(false);
         return;
       }
@@ -31,14 +34,24 @@ export default function ProtectedRoute({ children }) {
 
         if (res.ok) {
           const data = await res.json();
+          setAuthorized(true);
           if (data.user?.requiere_cambio_contrasena) {
             // Redirigir a cambiar contraseña si es necesario
             window.location.href = '/cambiar-contrasena';
             return;
           }
+        } else {
+          // Nunca renderizar una ruta protegida con una sesión rechazada.
+          if (res.status === 401 || res.status === 403) {
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            window.dispatchEvent(new Event('auth:changed'));
+          }
+          setAuthorized(false);
         }
       } catch (error) {
         console.error('Error verificando usuario:', error);
+        setAuthorized(false);
       } finally {
         setLoading(false);
       }
@@ -47,7 +60,7 @@ export default function ProtectedRoute({ children }) {
     checkUser();
   }, [token, location.pathname]);
 
-  if (!token) {
+  if (!token || (!loading && !authorized)) {
     return <Navigate to="/login" replace />;
   }
 

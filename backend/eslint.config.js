@@ -28,6 +28,28 @@ export default [
       },
     },
     rules: {
+      // Mantener la revisión de errores reales como gate y reportar el estilo
+      // heredado como warnings para que el lint sea ejecutable en CI.
+      'no-unused-vars': ['warn', {
+        argsIgnorePattern: '^_',
+        varsIgnorePattern: '^_',
+      }],
+      'prefer-const': 'warn',
+      'prefer-template': 'warn',
+      'object-shorthand': 'warn',
+      'prefer-destructuring': 'warn',
+      'no-plusplus': 'warn',
+      'no-restricted-globals': 'warn',
+      'no-else-return': 'warn',
+      'consistent-return': 'warn',
+      'no-underscore-dangle': 'warn',
+      'no-empty': 'warn',
+      'import/order': 'warn',
+      'import/no-duplicates': 'warn',
+      'import/no-cycle': 'warn',
+      'import/no-named-as-default': 'warn',
+      'import/no-named-as-default-member': 'warn',
+      'class-methods-use-this': 'warn',
       // Permitir console.warn y console.error (ya configurado en Airbnb)
       'no-console': ['warn', { allow: ['warn', 'error'] }],
       

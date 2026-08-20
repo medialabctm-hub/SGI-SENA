@@ -23,13 +23,15 @@ import {
   FiPlay,
   FiSquare,
   FiInfo,
-  FiFile
+  FiFile,
+  FiCheckCircle
 } from 'react-icons/fi'
 import { parseApiResponse, buildErrorMessage } from '../utils/api'
 import { useSocket } from '../contexts/SocketContext'
 import '../styles/pages/equipos.css'
 import '../styles/pages/horarios.css'
 import { LoadingScreen } from './LoadingDemo'
+import { parseLocalDate } from '../utils/localDate'
 
 export default function Horarios() {
   const [user, setUser] = useState(null)
@@ -603,7 +605,9 @@ export default function Horarios() {
     }
 
     // Validar que fecha_inicio sea anterior a fecha_fin
-    if (new Date(form.fecha_inicio) > new Date(form.fecha_fin)) {
+    const fechaInicio = parseLocalDate(form.fecha_inicio)
+    const fechaFin = parseLocalDate(form.fecha_fin)
+    if (fechaInicio && fechaFin && fechaInicio > fechaFin) {
       setToast({ 
         message: 'La fecha de inicio debe ser anterior a la fecha de fin', 
         type: 'error' 
@@ -621,16 +625,20 @@ export default function Horarios() {
   }
 
   // Calcular si hay rango de fechas válido
-  const tieneRangoFechas = form.fecha_inicio && form.fecha_fin && 
-                           new Date(form.fecha_inicio) <= new Date(form.fecha_fin)
+  const fechaInicioRango = parseLocalDate(form.fecha_inicio)
+  const fechaFinRango = parseLocalDate(form.fecha_fin)
+  const tieneRangoFechas = Boolean(
+    fechaInicioRango && fechaFinRango && fechaInicioRango <= fechaFinRango
+  )
   
   // Calcular cantidad de clases que se crearían con los días seleccionados
   const calcularCantidadClases = () => {
     const diasSemana = form.dias_semana || []
     if (!tieneRangoFechas || diasSemana.length === 0) return 0
     
-    const inicio = new Date(form.fecha_inicio)
-    const fin = new Date(form.fecha_fin)
+    const inicio = parseLocalDate(form.fecha_inicio)
+    const fin = parseLocalDate(form.fecha_fin, true)
+    if (!inicio || !fin) return 0
     const diasSeleccionados = diasSemana.map(dia => {
       const diasMap = { 'Lunes': 1, 'Martes': 2, 'Miércoles': 3, 'Jueves': 4, 'Viernes': 5, 'Sábado': 6, 'Domingo': 0 }
       return diasMap[dia] !== undefined ? diasMap[dia] : -1

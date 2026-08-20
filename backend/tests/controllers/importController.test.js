@@ -579,14 +579,14 @@ describe('importarAprendices', () => {
     }));
   });
 
-  it('skips rows with duplicate documento', async () => {
+  it('actualiza filas con documento ya existente', async () => {
     fakeWorkbook([{ Nombre: 'Ana', Documento: '9876' }]);
     mockExecute.mockResolvedValueOnce([[{ id_aprendiz: 1 }]]); // doc ya existe
     const req = mockReq({ file: { buffer: Buffer.from('data') } });
     const res = mockRes();
     await importarAprendices(req, res);
     expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
-      resultados: expect.objectContaining({ fallidos: 1 })
+      resultados: expect.objectContaining({ exitosos: 1, actualizados: 1, fallidos: 0 })
     }));
   });
 

@@ -5,37 +5,38 @@
  */
 
 import { describe, it, expect, beforeEach, jest } from '@jest/globals';
-import { recibirWebhookExterno } from '../../src/controller/webhookController.js';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import { AuthorizationError, ValidationError, DatabaseError } from '../../src/utils/errors.js';
 
-// Mock de dependencias
-jest.mock(
-  '../../src/config/dbconfig.js',
-  () => ({
-    default: {
-      execute: jest.fn(),
-    },
-  }),
-  { virtual: true }
-);
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const dbPath = path.resolve(__dirname, '../../src/config/dbconfig.js');
+const loggerPath = path.resolve(__dirname, '../../src/utils/logger.js');
+const controllerPath = path.resolve(__dirname, '../../src/controller/webhookController.js');
+const dbExecuteMock = jest.fn();
+const loggerMock = {
+  error: jest.fn(),
+  warn: jest.fn(),
+  info: jest.fn(),
+};
 
-jest.mock(
-  '../../src/utils/logger.js',
-  () => ({
-    logger: {
-      error: jest.fn(),
-      warn: jest.fn(),
-      info: jest.fn(),
-    },
-  }),
-  { virtual: true }
-);
+// Mock de dependencias
+await jest.unstable_mockModule(dbPath, () => ({
+  default: { execute: dbExecuteMock },
+}));
+
+await jest.unstable_mockModule(loggerPath, () => ({
+  logger: loggerMock,
+}));
+
+const { recibirWebhookExterno } = await import(controllerPath);
 
 describe('recibirWebhookExterno', () => {
   let req, res, next;
 
   beforeEach(() => {
     jest.clearAllMocks();
+    dbExecuteMock.mockReset();
     
     process.env.WEBHOOK_SECRET = 'token-correcto';
 
@@ -169,8 +170,7 @@ describe('recibirWebhookExterno', () => {
 
   // ─── Inserción exitosa en BD ───────────────────────────────────────────────
   it('debe guardar los datos en BD y retornar 201 en éxito', async () => {
-    const dbMock = jest.requireMock('../../src/config/dbconfig.js');
-    dbMock.default.execute.mockResolvedValue([{ insertId: 42, affectedRows: 1 }]);
+    dbExecuteMock.mockResolvedValue([{ insertId: 42, affectedRows: 1 }]);
     req.headers['x-api-key'] = 'token-correcto';
     req.body = {
       usuario: 'user1',
@@ -190,8 +190,7 @@ describe('recibirWebhookExterno', () => {
   it('debe loggear info en development cuando la inserción es exitosa', async () => {
     const prevNodeEnv = process.env.NODE_ENV;
     process.env.NODE_ENV = 'development';
-    const dbMock = jest.requireMock('../../src/config/dbconfig.js');
-    dbMock.default.execute.mockResolvedValue([{ insertId: 7 }]);
+    dbExecuteMock.mockResolvedValue([{ insertId: 7 }]);
     req.headers['x-api-key'] = 'token-correcto';
     req.body = { usuario: 'user1', ambiente: 3, ficha: 'F-001', estado: 'ok' };
 

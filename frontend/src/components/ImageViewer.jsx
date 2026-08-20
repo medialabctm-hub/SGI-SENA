@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { FiX, FiChevronLeft, FiChevronRight, FiStar } from 'react-icons/fi';
 import '../styles/components/imageViewer.css';
 
@@ -23,6 +23,26 @@ export default function ImageViewer({ images = [], currentIndex = 0, onClose, on
   const handleImageClick = () => {
     setZoomed(!zoomed);
   };
+
+  const handleClose = useCallback(() => {
+    if (onClose) onClose();
+  }, [onClose]);
+
+  const handlePrev = useCallback(() => {
+    if (images.length === 0) return;
+    const newIndex = (currentImgIndex - 1 + images.length) % images.length;
+    setCurrentImgIndex(newIndex);
+    setImageLoaded(false);
+    if (onImageChange) onImageChange(newIndex);
+  }, [currentImgIndex, images.length, onImageChange]);
+
+  const handleNext = useCallback(() => {
+    if (images.length === 0) return;
+    const newIndex = (currentImgIndex + 1) % images.length;
+    setCurrentImgIndex(newIndex);
+    setImageLoaded(false);
+    if (onImageChange) onImageChange(newIndex);
+  }, [currentImgIndex, images.length, onImageChange]);
 
   useEffect(() => {
     setCurrentImgIndex(currentIndex);
@@ -51,33 +71,7 @@ export default function ImageViewer({ images = [], currentIndex = 0, onClose, on
       document.body.classList.remove('image-viewer-open');
       window.removeEventListener('keydown', handleKeyPress);
     };
-  }, [images.length]);
-
-  const handleClose = () => {
-    if (onClose) {
-      onClose();
-    }
-  };
-
-  const handlePrev = () => {
-    if (images.length === 0) return;
-    const newIndex = (currentImgIndex - 1 + images.length) % images.length;
-    setCurrentImgIndex(newIndex);
-    setImageLoaded(false);
-    if (onImageChange) {
-      onImageChange(newIndex);
-    }
-  };
-
-  const handleNext = () => {
-    if (images.length === 0) return;
-    const newIndex = (currentImgIndex + 1) % images.length;
-    setCurrentImgIndex(newIndex);
-    setImageLoaded(false);
-    if (onImageChange) {
-      onImageChange(newIndex);
-    }
-  };
+  }, [images.length, handleClose, handlePrev, handleNext]);
 
   if (!images || images.length === 0 || currentImgIndex < 0 || currentImgIndex >= images.length) {
     return null;

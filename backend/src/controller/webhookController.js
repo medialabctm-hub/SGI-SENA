@@ -1,11 +1,10 @@
 import dbWrapper from '../config/dbconfig.js';
 import { logger } from '../utils/logger.js';
 import { DatabaseError } from '../utils/errors.js';
-import { config } from '../config/config.js';
 
-// Obtener el secret desde configuración/entorno.
-// Se evalúa en cada petición para respetar cambios en variables de entorno en tests.
-const getWebhookSecret = () => config.webhook?.secret || process.env.WEBHOOK_SECRET;
+// Leer el secreto en cada petición para respetar rotaciones y detectar una
+// configuración ausente sin reutilizar un valor capturado durante el arranque.
+const getWebhookSecret = () => process.env.WEBHOOK_SECRET;
 
 // Query SQL pre-compilado (mejor rendimiento)
 const INSERT_QUERY = `

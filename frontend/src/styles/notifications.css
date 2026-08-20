@@ -140,6 +140,15 @@
   overflow: hidden;
 }
 
+@media (max-width: 600px) {
+  .notifications-popover {
+    right: 0;
+    width: calc(100vw - 16px);
+    min-width: 0;
+    max-width: 520px;
+  }
+}
+
 .notifications-popover::before {
   content: '';
   position: absolute;

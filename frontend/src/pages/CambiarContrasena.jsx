@@ -120,7 +120,7 @@ export default function CambiarContrasena() {
       )}
       <div className="login-card">
         <div className="logo-box">
-          <div className="logo"><img src='/public/images/logoSena.png' alt="Logo SENA" /></div>
+          <div className="logo"><img src='/images/logoSena.png' alt="Logo SENA" /></div>
         </div>
         <h1 className="title">Cambiar Contraseña</h1>
         <p className="subtitle">Debes cambiar tu contraseña para continuar</p>
