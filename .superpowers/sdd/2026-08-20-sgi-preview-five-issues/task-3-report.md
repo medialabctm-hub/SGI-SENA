@@ -2,7 +2,7 @@
 
 ## Estado
 
-Implementado. Commit: `PENDIENTE_DE_AMEND`.
+Implementado. Commit: `c3f45509070708d0764795ce952f42b3b6647acc`.
 
 ## Causa raíz
 
