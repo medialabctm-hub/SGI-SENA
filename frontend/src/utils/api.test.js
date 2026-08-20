@@ -87,6 +87,32 @@ test('parseApiResponse acepta una respuesta 409 marcada explícitamente como ide
   assert.equal(data.data.aprendiz.id_aprendiz, 22);
 });
 
+test('buildErrorMessage explica el rate limit y permite reintentar', () => {
+  const error = new ApiError('Too many requests', 429, {
+    code: 'RATE_LIMITED',
+    message: 'Demasiadas solicitudes. Espera unos segundos e inténtalo de nuevo.',
+  });
+
+  assert.equal(
+    buildErrorMessage(error),
+    'Demasiadas solicitudes. Espera unos segundos e inténtalo de nuevo.'
+  );
+});
+
+test('buildErrorMessage conserva mensajes accionables de envelopes 404, 409, 429 y 500', () => {
+  const cases = [
+    [404, 'No encontramos un aprendiz con ese documento.'],
+    [409, 'Este equipo ya está siendo usado por otra persona en este momento.'],
+    [429, 'Demasiadas solicitudes. Espera unos segundos e inténtalo de nuevo.'],
+    [500, 'El préstamo fue registrado; actualiza la página para confirmar el estado.'],
+  ];
+
+  for (const [status, userMessage] of cases) {
+    const error = new ApiError('Error técnico', status, { userMessage });
+    assert.equal(buildErrorMessage(error), userMessage);
+  }
+});
+
 test('buildEquipoAssignmentPayload conserva la forma de usuario con cuenta', () => {
   assert.deepEqual(
     api.buildEquipoAssignmentPayload({

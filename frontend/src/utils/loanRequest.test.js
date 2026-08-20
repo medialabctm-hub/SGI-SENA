@@ -55,19 +55,56 @@ test('createLoanRequestOptions repite documento, placa e identidad en la recuper
   assert.equal(recoveredAttempt.body, JSON.stringify({ documento: '123', placa: 'P-1' }));
 });
 
-test('normalizeLoanResponse acepta el sobre data y rechaza contratos incompletos', () => {
+test('normalizeLoanResponse acepta el envelope completo que usa la confirmación', () => {
   const loan = normalizeLoanResponse({
     data: {
-      equipo: { placa: 'P-1' },
+      equipo: { placa: 'P-1', tipo: 'Portátil', modelo: 'Latitude' },
       aprendiz: { nombre: 'Ana' },
       clase: { nombre_clase: 'Matemáticas' },
     },
   });
 
   assert.equal(loan.equipo.placa, 'P-1');
+});
 
-  assert.throws(
-    () => normalizeLoanResponse({ data: { equipo: { placa: 'P-1' } } }),
-    /respuesta del préstamo es inválida/i
-  );
+test('normalizeLoanResponse rechaza envelopes ausentes, colecciones y campos de confirmación incompletos', () => {
+  const completeLoan = {
+    equipo: { placa: 'P-1', tipo: 'Portátil', modelo: 'Latitude' },
+    aprendiz: { nombre: 'Ana' },
+    clase: { nombre_clase: 'Matemáticas' },
+  };
+
+  for (const response of [
+    completeLoan,
+    { data: { ...completeLoan, equipo: [] } },
+    { data: { ...completeLoan, equipo: { placa: 'P-1', tipo: 'Portátil' } } },
+    { data: { ...completeLoan, aprendiz: { nombre: '   ' } } },
+    { data: { ...completeLoan, clase: { nombre_clase: '' } } },
+  ]) {
+    assert.throws(
+      () => normalizeLoanResponse(response),
+      /respuesta del préstamo es inválida/i
+    );
+  }
+});
+
+test('submitLoanRequest no confirma un préstamo cuando el envelope de éxito es inválido', async () => {
+  const guard = createRequestGuard({ timeoutMs: 0 });
+  const result = await loanRequest.submitLoanRequest({
+    guard,
+    documento: '123',
+    placa: 'P-1',
+    onLoading: () => {},
+    fetchImpl: () => Promise.resolve(new Response(JSON.stringify({
+      success: true,
+      data: {
+        equipo: { placa: 'P-1', tipo: 'Portátil' },
+        aprendiz: { nombre: 'Ana' },
+        clase: { nombre_clase: 'Matemáticas' },
+      },
+    }), { status: 201, headers: { 'Content-Type': 'application/json' } })),
+  });
+
+  assert.equal(result.kind, 'error');
+  assert.match(result.error.message, /respuesta del préstamo es inválida/i);
 });

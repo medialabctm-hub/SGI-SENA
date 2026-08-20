@@ -115,8 +115,22 @@ export function createRequestGuard({
 }
 
 export function normalizeLoanResponse(data) {
-  const loan = data?.data || data;
-  if (!loan?.equipo || !loan?.aprendiz || !loan?.clase) {
+  const loan = data?.data;
+  const isRecord = value => typeof value === 'object' && value !== null && !Array.isArray(value);
+  const hasText = value => typeof value === 'string' && value.trim().length > 0;
+
+  if (
+    !isRecord(data) ||
+    !isRecord(loan) ||
+    !isRecord(loan.equipo) ||
+    !hasText(loan.equipo.placa) ||
+    !hasText(loan.equipo.tipo) ||
+    !hasText(loan.equipo.modelo) ||
+    !isRecord(loan.aprendiz) ||
+    !hasText(loan.aprendiz.nombre) ||
+    !isRecord(loan.clase) ||
+    !hasText(loan.clase.nombre_clase)
+  ) {
     throw new Error('La respuesta del préstamo es inválida');
   }
   return loan;

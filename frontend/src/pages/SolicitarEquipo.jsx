@@ -186,13 +186,14 @@ export default function SolicitarEquipo() {
           <p className="subtitle">Escribe la placa del equipo que vas a usar</p>
 
           <form onSubmit={handleSolicitarEquipo} className="form">
-            <label className="input">
+            <label htmlFor="placa">Placa del equipo</label>
+            <div className="input">
               <span className="icon"><FiHash /></span>
               <input
+                id="placa"
                 type="text"
                 placeholder="Placa del equipo"
                 name="placa"
-                required
                 value={placa}
                 onChange={(e) => {
                   setPlaca(e.target.value);
@@ -200,9 +201,11 @@ export default function SolicitarEquipo() {
                   if (errores.placa) setErrores((prev) => ({ ...prev, placa: undefined }));
                 }}
                 autoFocus
+                aria-invalid={Boolean(errores.placa)}
+                aria-describedby={errores.placa ? 'placa-error' : undefined}
               />
-            </label>
-            {errores.placa && <div className="error-msg">{errores.placa}</div>}
+            </div>
+            {errores.placa && <div id="placa-error" className="error-msg" role="alert">{errores.placa}</div>}
 
             <button className="btn primary btn-full-width" type="submit" disabled={loading} aria-busy={loading}>
               {loading ? 'Solicitando...' : 'Solicitar equipo'}
@@ -237,23 +240,26 @@ export default function SolicitarEquipo() {
         <p className="subtitle">Ingresa tu número de documento para continuar</p>
 
         <form onSubmit={handleVerificarDocumento} className="form">
-          <label className="input">
+          <label htmlFor="documento">Número de documento</label>
+          <div className="input">
             <span className="icon"><FiUser /></span>
             <input
+              id="documento"
               type="text"
               placeholder="Documento"
               name="documento"
               inputMode="numeric"
-              required
               value={documento}
               onChange={(e) => {
                 setDocumento(e.target.value);
                 if (errores.documento) setErrores((prev) => ({ ...prev, documento: undefined }));
               }}
               autoFocus
+              aria-invalid={Boolean(errores.documento)}
+              aria-describedby={errores.documento ? 'documento-error' : undefined}
             />
-          </label>
-          {errores.documento && <div className="error-msg">{errores.documento}</div>}
+          </div>
+          {errores.documento && <div id="documento-error" className="error-msg" role="alert">{errores.documento}</div>}
 
           <button className="btn primary btn-full-width" type="submit" disabled={loading} aria-busy={loading}>
             {loading ? 'Verificando...' : 'Continuar'}

@@ -203,6 +203,16 @@ const getUserFriendlyError = (error, status, originalMessage) => {
     return 'Ya existe un registro con estos datos';
   }
 
+  // El límite público de autoservicio es recuperable: informar al usuario
+  // para que espere en vez de mostrar un error genérico de servidor.
+  if (status === 429) {
+    const msg = (originalMessage || '').trim();
+    if (msg.length > 0 && msg.length <= 300 && !TECHNICAL_PATTERNS.some(p => p.test(msg))) {
+      return msg;
+    }
+    return 'Demasiadas solicitudes. Espera unos segundos e inténtalo de nuevo.';
+  }
+
   // Error desconocido - mensaje genérico seguro
   return 'Ocurrió un problema. Por favor intenta de nuevo más tarde';
 };

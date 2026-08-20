@@ -1,33 +1,34 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import '../styles/components/toast.css'
+import { createToastCloseController } from '../utils/toastLifecycle'
 
 export default function Toast({ message, type = 'info', onClose }) {
   const [isClosing, setIsClosing] = useState(false)
+  const closeControllerRef = useRef(null)
 
   useEffect(() => {
-    // Auto-cerrar después de 5 segundos
-    const timer = setTimeout(() => {
-      setIsClosing(true)
-      // Esperar a que termine la animación antes de llamar onClose
-      setTimeout(() => {
-        if (onClose) onClose()
-      }, 300) // Duración de la animación de salida
-    }, 5000)
+    const controller = createToastCloseController({ onClose, setIsClosing })
+    closeControllerRef.current = controller
+    const timer = setTimeout(controller.close, 5000)
 
-    return () => clearTimeout(timer)
-  }, [onClose])
+    return () => {
+      clearTimeout(timer)
+      controller.cleanup()
+    }
+  }, [message, onClose])
 
   const handleClose = () => {
-    setIsClosing(true)
-    setTimeout(() => {
-      if (onClose) onClose()
-    }, 300)
+    closeControllerRef.current?.close()
   }
 
   return (
-    <div className={`toast toast-${type} ${isClosing ? 'toast-closing' : ''}`}> 
-      <span>{message}</span>
-      <button className="toast-close" onClick={handleClose}>×</button>
+    <div
+      className={`toast toast-${type} ${isClosing ? 'toast-closing' : ''}`}
+      role={type === 'error' ? 'alert' : 'status'}
+      aria-live={type === 'error' ? 'assertive' : 'polite'}
+    >
+      <span className="toast-message">{message}</span>
+      <button className="toast-close" type="button" onClick={handleClose} aria-label="Cerrar notificación">×</button>
     </div>
   )
 }
