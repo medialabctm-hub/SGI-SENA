@@ -7,6 +7,8 @@ Sistema de Gestión de Equipos Tecnológicos y Mobiliarios del SENA
 SGE-SENA es un software de gestión de equipos tecnológicos y mobiliarios que pertenecen a las instalaciones del SENA, diseñado para facilitar el inventariado, mantenimiento y control de estos recursos.
 
 ## Estructura del Proyecto
+.
+
 
 ```
 SGE-SENA/
