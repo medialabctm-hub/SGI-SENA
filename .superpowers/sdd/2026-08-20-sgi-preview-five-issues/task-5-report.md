@@ -38,6 +38,31 @@ Las imágenes de equipos se persistían tras validar solamente el MIME declarado
 
 ## Riesgos y gaps
 
-- Las etiquetas `<img>` existentes del frontend usan `ruta_imagen` directamente y no pueden enviar el Bearer token al nuevo endpoint privado. Es necesario adaptar el cliente para descargar un blob autenticado (o introducir una sesión cookie segura) antes de habilitar esta ruta en preview visual.
 - La verificación de firmas cubre los formatos permitidos y elimina el temporal antes del `INSERT`, pero no realiza análisis antivirus ni decodificación completa de imágenes.
 - No se accedió a producción ni se crearon archivos reales en `uploads`; las verificaciones se ejecutaron con fixtures y mocks.
+
+## Ronda 2 — correcciones NEEDS_FIX
+
+Se cerraron los hallazgos P1/P2 de revisión:
+
+- Se eliminó el montaje global `express.static('/uploads')`; solo `ambientes` y `perfiles` conservan mounts específicos. Las evidencias de equipos se sirven únicamente desde la API autenticada.
+- El guard de alcance se aplica a listado, lectura de metadata, actualización, principal y eliminación. Las rutas por `idImagen` resuelven primero el equipo asociado.
+- `handleUploadError` elimina temporales ya escritos cuando Multer rechaza la petición, tanto en la ruta privada como en el flujo externo que comparte el handler.
+- `DetalleEquipo` usa `useAuthenticatedEvidenceImages`: descarga cada evidencia con Bearer, entrega object URLs al `<img>` y a `ImageViewer`, y los revoca al cambiar/desmontar.
+
+### Pruebas de la ronda
+
+- RED: ausencia de alcance en listado/metadata y temporales tras rechazo Multer fallaban; el hook inexistente impedía cargar blobs autenticados.
+- GREEN focal/backend relacionado: 188 pruebas en 8 suites.
+- Frontend relevante: 10 pruebas; `npm run build` finalizó correctamente.
+- Backend completo: `npm test -- --runInBand` finalizó con código 0.
+
+### Commits de la ronda
+
+- `fa50bbc fix(uploads): close evidence access review gaps` (hook y prueba de blobs)
+- `5204b2f fix(uploads): scope every equipment image operation`
+- `8b3551e fix(frontend): render evidence from authenticated blobs`
+
+### Riesgo residual real
+
+La carga de blobs exige que el navegador pueda alcanzar el endpoint API y que el token almacenado sea válido; ante 401/403 la imagen queda vacía, sin volver a abrir una ruta pública. La revocación de object URLs ocurre al cambiar el conjunto de evidencias o desmontar la vista.
