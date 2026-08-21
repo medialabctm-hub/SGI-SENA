@@ -287,12 +287,15 @@ export async function aprobarSolicitud(req, res) {
       return res.status(403).json({ error: 'Solo el autorizador designado puede aprobar esta solicitud' });
     }
 
-    await defaultDb.execute(
+    const [result] = await defaultDb.execute(
       `UPDATE Solicitudes_Autorizacion_Movimiento
        SET estado = 'Aprobada', fecha_resolucion = NOW(), id_resolucion_por = ?
-       WHERE id_solicitud = ?`,
+       WHERE id_solicitud = ? AND estado = 'Pendiente'`,
       [userId, idSolicitud]
     );
+    if (result.affectedRows === 0) {
+      return res.status(409).json({ error: 'La solicitud ya fue resuelta' });
+    }
 
     return res.json({ ok: true, message: 'Solicitud aprobada. El solicitante puede ejecutar el movimiento.' });
   } catch (err) {
@@ -328,12 +331,15 @@ export async function rechazarSolicitud(req, res) {
       return res.status(403).json({ error: 'Solo el autorizador designado puede rechazar esta solicitud' });
     }
 
-    await defaultDb.execute(
+    const [result] = await defaultDb.execute(
       `UPDATE Solicitudes_Autorizacion_Movimiento
        SET estado = 'Rechazada', fecha_resolucion = NOW(), id_resolucion_por = ?, observacion_rechazo = ?
-       WHERE id_solicitud = ?`,
+       WHERE id_solicitud = ? AND estado = 'Pendiente'`,
       [userId, observacion_rechazo, idSolicitud]
     );
+    if (result.affectedRows === 0) {
+      return res.status(409).json({ error: 'La solicitud ya fue resuelta' });
+    }
 
     return res.json({ ok: true, message: 'Solicitud rechazada' });
   } catch (err) {
