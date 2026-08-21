@@ -255,11 +255,12 @@ export default function DetalleEquipo() {
         documento: doc,
         ficha: null,
       };
-      if (registrarUsoObservaciones.trim()) {
-        usuario.observaciones = registrarUsoObservaciones.trim();
-      }
-      if (registrarUsoDiasSemana.length > 0) usuario.dias_semana = registrarUsoDiasSemana;
-      if ((registrarUsoHoraInicio || '').trim() && (registrarUsoHoraFin || '').trim()) {
+      if (registrarUsoDiasSemana.length > 0)
+        usuario.dias_semana = registrarUsoDiasSemana;
+      if (
+        (registrarUsoHoraInicio || '').trim() &&
+        (registrarUsoHoraFin || '').trim()
+      ) {
         usuario.hora_inicio = registrarUsoHoraInicio.trim();
         usuario.hora_fin = registrarUsoHoraFin.trim();
       }
