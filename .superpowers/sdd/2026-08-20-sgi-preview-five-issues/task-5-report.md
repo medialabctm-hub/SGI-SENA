@@ -95,3 +95,29 @@ La carga de blobs exige que el navegador pueda alcanzar el endpoint API y que el
 
 - La protección depende de que todos los despliegues usen `backend/server.js` o `backend/src/app.js` actuales; un entrypoint alternativo futuro no debe volver a montar `/uploads` de forma global.
 - El flujo externo borra el archivo local antes de devolver el error, pero la consistencia entre filesystem y BD ante caídas de proceso fuera de la transacción sigue sin ser atómica. No se tocó producción ni se utilizaron datos o archivos reales.
+
+## Ronda 3 — compensación de persistencia parcial
+
+### Root cause y corrección
+
+Las evidencias externas se insertan antes de abrir la transacción del uso. Si un INSERT posterior fallaba, el cleanup previo sólo hacía `unlink`, dejando persistidas las filas de `Imagenes_Equipo` insertadas con anterioridad.
+
+El catch de procesamiento ahora obtiene los IDs ya insertados, ejecuta `DELETE FROM Imagenes_Equipo WHERE id_imagen_equipo = ?` para cada uno mediante `Promise.allSettled`, registra de forma acotada un fallo de compensación y después limpia todos los archivos. Finalmente relanza el error original, por lo que la respuesta pública continúa siendo 500 y no filtra detalles internos.
+
+### RED/GREEN
+
+- RED: primer INSERT exitoso (`id=901`) y segundo INSERT fallido no ejecutaban DELETE de metadata.
+- GREEN: la regresión comprueba DELETE de `901`, unlink de ambos archivos renombrados y respuesta 500.
+- Focal backend: 111 pruebas pasaron.
+- Backend relacionado: 153 pruebas en 5 suites pasaron.
+- Frontend hook: 2 pruebas pasaron; `npm run build` completó con la advertencia preexistente de tamaño de chunk.
+- Backend completo: `npm test -- --runInBand --forceExit` ejecutado sin fallos visibles; se conserva `--forceExit` por handles abiertos preexistentes de Jest.
+
+### Churn y commit
+
+- Se revisó `frontend/src/pages/DetalleEquipo.jsx`: su diff funcional compartido sigue acotado a la carga autenticada y a un hunk ajeno de registro de uso. Esta ronda no lo modifica ni lo vuelve a normalizar para no sobrescribir cambios ajenos.
+- `925edaf fix(uploads): compensate partial evidence metadata`
+
+### Riesgo residual real
+
+La compensación es best-effort: si un DELETE de metadata falla por una caída de base de datos, se conserva el error original y se intenta limpiar todos los archivos, pero una indisponibilidad simultánea de BD puede requerir reconciliación operativa posterior. Una transacción que abarque filesystem y BD no está disponible en esta arquitectura.
