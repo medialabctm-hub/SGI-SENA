@@ -3150,13 +3150,21 @@ export async function registrarUsoEquipoExterno(req, res) {
           });
         }
       } catch (imagenError) {
+        // El archivo ya fue renombrado antes del INSERT. No se puede continuar
+        // sin dejar una evidencia huérfana si la persistencia falla.
+        const filesToDelete = new Set([
+          ...uploadedFiles,
+          ...files.map((file) => file?.filename).filter(Boolean),
+        ]);
+        filesToDelete.forEach((filename) => deleteImageFile(filename));
+        uploadedFiles.length = 0;
+
         logger.error('Error al procesar imágenes en verificación de ambiente', {
           error: imagenError.message,
           stack: imagenError.stack,
           codigo_equipo: codigoEquipo
         });
-        // Continuar con el proceso aunque haya error en las imágenes
-        // Las imágenes ya subidas se mantendrán
+        throw imagenError;
       }
     }
 

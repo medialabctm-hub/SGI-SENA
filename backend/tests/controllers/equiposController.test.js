@@ -1,4 +1,5 @@
 import { jest } from '@jest/globals';
+import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -54,9 +55,10 @@ jest.unstable_mockModule(path.resolve(__dirname, '../../src/utils/sqlQueries.js'
   deshabilitarAsignacionesActivas: jest.fn()
 }));
 
+const mockDeleteImageFile = jest.fn();
 jest.unstable_mockModule(path.resolve(__dirname, '../../src/middleware/uploadMiddleware.js'), () => ({
   getImagePath: jest.fn(),
-  deleteImageFile: jest.fn()
+  deleteImageFile: mockDeleteImageFile
 }));
 
 const mockEmitToAll = jest.fn();
@@ -90,7 +92,8 @@ const {
   obtenerHistorialEquipo,
   actualizarCuentadantePrincipal,
   obtenerCuentadantePrincipal,
-  buscarCuentadantePorDocumento
+  buscarCuentadantePorDocumento,
+  registrarUsoEquipoExterno
 } = await import(path.resolve(__dirname, '../../src/controller/equiposController.js'));
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -1378,5 +1381,38 @@ describe('buscarCuentadantePorDocumento', () => {
     const res = mockRes();
     await buscarCuentadantePorDocumento(req, res);
     expect(res.status).toHaveBeenCalledWith(500);
+  });
+});
+
+describe('registrarUsoEquipoExterno', () => {
+  beforeEach(() => {
+    mockExecute.mockReset();
+    mockVerificarDisponibilidad.mockReset();
+    jest.clearAllMocks();
+  });
+
+  it('cleans up a renamed evidence file and fails the request when its INSERT fails', async () => {
+    const existsSync = jest.spyOn(fs, 'existsSync').mockReturnValue(true);
+    const renameSync = jest.spyOn(fs, 'renameSync').mockImplementation(() => {});
+    mockExecute
+      .mockResolvedValueOnce([[{ codigo_equipo: 42, placa: 'EXT-42', id_ambiente: null }]])
+      .mockRejectedValueOnce(new Error('INSERT Imagenes_Equipo failed'));
+    mockVerificarDisponibilidad.mockResolvedValue({ disponible: true });
+    const req = mockReq({
+      body: { placa: 'EXT-42', usuarios: [] },
+      files: [{ filename: 'temporal.png', originalname: 'evidence.png' }],
+    });
+    const res = mockRes();
+
+    try {
+      await registrarUsoEquipoExterno(req, res);
+    } finally {
+      existsSync.mockRestore();
+      renameSync.mockRestore();
+    }
+
+    expect(res.status).toHaveBeenCalledWith(500);
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ success: false }));
+    expect(mockDeleteImageFile).toHaveBeenCalledWith(expect.stringMatching(/-42-evidence\.png$/));
   });
 });

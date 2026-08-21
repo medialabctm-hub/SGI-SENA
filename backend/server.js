@@ -147,10 +147,12 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 // Cookie parser
 app.use(cookieParser());
 
-// Servir archivos estáticos (imágenes de equipos y fotos de perfil)
+// Sólo los recursos explícitamente públicos se sirven como estáticos.
+// Las evidencias de equipos se entregan mediante el endpoint autenticado.
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use('/uploads/ambientes', express.static(path.join(__dirname, 'uploads', 'ambientes')));
+app.use('/uploads/perfiles', express.static(path.join(__dirname, 'uploads', 'perfiles')));
 
 // Morgan - Logging de requests (optimizado)
 // En producción, usar formato más eficiente

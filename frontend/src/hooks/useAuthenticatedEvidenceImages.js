@@ -10,15 +10,21 @@ export function useAuthenticatedEvidenceImages(images = []) {
   useEffect(() => {
     let cancelled = false;
     const objectUrls = [];
+    const controller = new AbortController();
     const token = localStorage.getItem('token');
 
     async function load() {
       const entries = await Promise.all(images.map(async (image) => {
         const response = await fetch(image.ruta_imagen, {
           headers: { Authorization: `Bearer ${token}` },
+          signal: controller.signal,
         });
         if (!response.ok) return [image.id_imagen_equipo, null];
         const objectUrl = URL.createObjectURL(await response.blob());
+        if (cancelled) {
+          URL.revokeObjectURL(objectUrl);
+          return [image.id_imagen_equipo, null];
+        }
         objectUrls.push(objectUrl);
         return [image.id_imagen_equipo, objectUrl];
       }));
@@ -34,6 +40,7 @@ export function useAuthenticatedEvidenceImages(images = []) {
 
     return () => {
       cancelled = true;
+      controller.abort();
       objectUrls.forEach((url) => URL.revokeObjectURL(url));
     };
   }, [imageKey]);
