@@ -66,3 +66,32 @@ Se cerraron los hallazgos P1/P2 de revisión:
 ### Riesgo residual real
 
 La carga de blobs exige que el navegador pueda alcanzar el endpoint API y que el token almacenado sea válido; ante 401/403 la imagen queda vacía, sin volver a abrir una ruta pública. La revocación de object URLs ocurre al cambiar el conjunto de evidencias o desmontar la vista.
+
+## Ronda 2 — re-revisión NEEDS_FIX
+
+### Hallazgos cerrados
+
+- `backend/server.js`, que es el entrypoint de npm y Docker, ya no monta `/uploads` de forma global. Conserva únicamente los mounts públicos de `ambientes` y `perfiles`; las evidencias de equipos quedan detrás del endpoint autenticado.
+- En `registrarUsoEquipoExterno`, un error al insertar `Imagenes_Equipo` borra el archivo temporal/renombrado y se propaga al manejador general para responder 500; el flujo ya no continúa con evidencia huérfana.
+- `useAuthenticatedEvidenceImages` usa `AbortController` y, aun si un fetch que ignora el abort resuelve después del desmontaje, revoca inmediatamente el object URL tardío y no actualiza estado.
+- Se normalizó el whitespace de las líneas de renderizado autenticado en `DetalleEquipo.jsx`. Un hunk funcional ajeno que apareció en el índice compartido se restauró al worktree y quedó fuera del resultado funcional de MDL-80.
+
+### RED/GREEN y verificación
+
+- RED backend: el test del entrypoint encontraba `express.static('/uploads')`; el INSERT externo fallido devolvía 400 y no llamaba a cleanup.
+- RED frontend: una respuesta tardía creaba `blob:late-evidence` después de cleanup sin revocarlo.
+- GREEN focal: 111 pruebas backend y 2 pruebas del hook frontend.
+- Backend relacionado: 157 pruebas en 6 suites (scope, controlador de imágenes, middleware y controlador externo).
+- Frontend: `npm run build` completó; Vite dejó únicamente su advertencia existente de chunk grande.
+- Backend completo: `npm test -- --runInBand --forceExit` se ejecutó sin fallos en las pasadas de esta ronda. La opción `--forceExit` sigue siendo necesaria por handles abiertos preexistentes de Jest.
+
+### Commits de la ronda 2
+
+- `1dc9576 fix(uploads): close runtime evidence exposure`
+- `417babf fix(frontend): format authenticated evidence rendering`
+- `dbf96b2 chore(frontend): preserve shared detail changes`
+
+### Riesgo residual real
+
+- La protección depende de que todos los despliegues usen `backend/server.js` o `backend/src/app.js` actuales; un entrypoint alternativo futuro no debe volver a montar `/uploads` de forma global.
+- El flujo externo borra el archivo local antes de devolver el error, pero la consistencia entre filesystem y BD ante caídas de proceso fuera de la transacción sigue sin ser atómica. No se tocó producción ni se utilizaron datos o archivos reales.
