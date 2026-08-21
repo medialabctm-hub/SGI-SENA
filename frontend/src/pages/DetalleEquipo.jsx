@@ -30,6 +30,7 @@ import '../styles/pages/equipos.css';
 import '../styles/detalleEquipo.css';
 import '../styles/pages/ambientes.css';
 import { LoadingScreen } from './LoadingDemo';
+import { useAuthenticatedEvidenceImages } from '../hooks/useAuthenticatedEvidenceImages';
 
 export default function DetalleEquipo() {
   const { codigoEquipo } = useParams();
@@ -86,6 +87,10 @@ export default function DetalleEquipo() {
   const [registrarUsoHoraFin, setRegistrarUsoHoraFin] = useState('');
   const [registrarUsoLoading, setRegistrarUsoLoading] = useState(false);
   const canManageAssignments = canManageEquipoAssignments(user);
+  const authenticatedImages = useAuthenticatedEvidenceImages(imagenes);
+  const authenticatedPrincipal = authenticatedImages.find(
+    image => image.id_imagen_equipo === imagenPrincipal?.id_imagen_equipo
+  );
 
   useEffect(() => {
     try {
@@ -643,8 +648,8 @@ export default function DetalleEquipo() {
   }
 
   // Preparar imágenes para el ImageViewer
-  const viewerImages = imagenes.map(img => ({
-    url: img.ruta_imagen,
+  const viewerImages = authenticatedImages.map(img => ({
+    url: img.url,
     titulo: img.tipo_imagen,
     descripcion: img.descripcion,
     es_principal: img.es_principal,
@@ -1353,7 +1358,7 @@ export default function DetalleEquipo() {
                   <div>
                     <div className="detalle-equipo-image-wrapper">
                       <img
-                        src={imagenPrincipal.ruta_imagen}
+                        src={authenticatedPrincipal?.url || ''}
                         alt={imagenPrincipal.descripcion || 'Imagen del equipo'}
                         onError={e => {
                           console.error(
@@ -1416,7 +1421,7 @@ export default function DetalleEquipo() {
               </div>
               {imagenes.length > 0 ? (
                 <div className="detalle-equipo-gallery-thumbnails">
-                  {imagenes.map((imagen, index) => (
+                  {authenticatedImages.map((imagen, index) => (
                     <div
                       key={imagen.id_imagen_equipo}
                       className={`detalle-equipo-gallery-thumbnail ${imagen.es_principal ? 'principal' : ''}`}
@@ -1424,7 +1429,7 @@ export default function DetalleEquipo() {
                     >
                       <div className="detalle-equipo-gallery-thumbnail-image">
                         <img
-                          src={imagen.ruta_imagen}
+                          src={imagen.url || ''}
                           alt={imagen.descripcion || 'Imagen del equipo'}
                           onError={e => {
                             console.error(
