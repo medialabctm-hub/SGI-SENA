@@ -70,6 +70,23 @@ describe('uploadMiddleware', () => {
     expect(getImagePath('img.png')).toBe('/api/equipos/imagenes/archivo/img.png');
   });
 
+  it('handleUploadError elimina temporales ya escritos cuando Multer rechaza una subida', () => {
+    const res = mockRes();
+    const existsSpy = jest.spyOn(fs, 'existsSync').mockReturnValue(true);
+    const unlinkSpy = jest.spyOn(fs, 'unlinkSync').mockImplementation(() => {});
+
+    handleUploadError(
+      new multer.MulterError('LIMIT_FILE_COUNT'),
+      { files: [{ filename: 'temporal.png' }] },
+      res,
+      jest.fn()
+    );
+
+    expect(unlinkSpy).toHaveBeenCalled();
+    existsSpy.mockRestore();
+    unlinkSpy.mockRestore();
+  });
+
   it('getImagePath rechaza nombres que intentan salir del directorio de evidencias', () => {
     expect(() => getImagePath('../secreto.png')).toThrow(/nombre de archivo/i);
   });

@@ -174,6 +174,16 @@ describe('subirImagenesEquipo', () => {
 
 // ───────────────────────── listarImagenesEquipo ─────────────────────────
 describe('listarImagenesEquipo', () => {
+  it('denies a list request when the route did not establish equipment scope', async () => {
+    const req = { params: { codigoEquipo: '5' }, user: { id_usuario: 9 } };
+    const res = mockRes(); const next = mockNext();
+
+    await listarImagenesEquipo(req, res, next);
+
+    expect(res.status).toHaveBeenCalledWith(403);
+    expect(mockExecute).not.toHaveBeenCalled();
+  });
+
   it('returns images list for equipo', async () => {
     const req = { params: { codigoEquipo: '5' } };
     const res = mockRes(); const next = mockNext();
@@ -201,6 +211,15 @@ describe('listarImagenesEquipo', () => {
 
 // ───────────────────────── obtenerImagenEquipo ─────────────────────────
 describe('obtenerImagenEquipo', () => {
+  it('denies image metadata when the route did not establish equipment scope', async () => {
+    const req = { params: { idImagen: '1' }, user: { id_usuario: 9 } };
+    const res = mockRes(); const next = mockNext();
+
+    await obtenerImagenEquipo(req, res, next);
+
+    expect(res.status).toHaveBeenCalledWith(403);
+    expect(mockExecute).not.toHaveBeenCalled();
+  });
   it('calls next(NotFoundError) when image not found', async () => {
     const req = { params: { idImagen: '999' } };
     const res = mockRes(); const next = mockNext();
@@ -230,7 +249,7 @@ describe('obtenerImagenEquipo', () => {
 // ───────────────────────── eliminarImagenEquipo ─────────────────────────
 describe('eliminarImagenEquipo', () => {
   it('calls next(NotFoundError) when image not found', async () => {
-    const req = { params: { idImagen: '99' }, user: { id_usuario: 1 } };
+    const req = { params: { idImagen: '99' }, user: { id_usuario: 1 }, evidenceScope: { canAccess: true } };
     const res = mockRes(); const next = mockNext();
     mockExecute.mockResolvedValueOnce([[]]); // not found
     await eliminarImagenEquipo(req, res, next);
@@ -238,7 +257,7 @@ describe('eliminarImagenEquipo', () => {
   });
 
   it('deletes image and calls deleteImageFile', async () => {
-    const req = { params: { idImagen: '5' }, user: { id_usuario: 1 } };
+    const req = { params: { idImagen: '5' }, user: { id_usuario: 1 }, evidenceScope: { canAccess: true } };
     const res = mockRes(); const next = mockNext();
     mockExecute
       .mockResolvedValueOnce([[{ nombre_archivo: 'pic.jpg', codigo_equipo: 5 }]])
@@ -249,7 +268,7 @@ describe('eliminarImagenEquipo', () => {
   });
 
   it('calls next with error on DB failure', async () => {
-    const req = { params: { idImagen: '5' }, user: { id_usuario: 1 } };
+    const req = { params: { idImagen: '5' }, user: { id_usuario: 1 }, evidenceScope: { canAccess: true } };
     const res = mockRes(); const next = mockNext();
     mockExecute.mockRejectedValueOnce(new Error('fail'));
     await eliminarImagenEquipo(req, res, next);
@@ -260,7 +279,7 @@ describe('eliminarImagenEquipo', () => {
 // ───────────────────────── marcarImagenPrincipal ─────────────────────────
 describe('marcarImagenPrincipal (equipo)', () => {
   it('calls next(NotFoundError) when image not found', async () => {
-    const req = { params: { idImagen: '99' }, user: { id_usuario: 1 } };
+    const req = { params: { idImagen: '99' }, user: { id_usuario: 1 }, evidenceScope: { canAccess: true } };
     const res = mockRes(); const next = mockNext();
     mockExecute.mockResolvedValueOnce([[]]); // not found
     await marcarImagenPrincipal(req, res, next);
@@ -268,7 +287,7 @@ describe('marcarImagenPrincipal (equipo)', () => {
   });
 
   it('marks image as principal', async () => {
-    const req = { params: { idImagen: '3' }, user: { id_usuario: 1 } };
+    const req = { params: { idImagen: '3' }, user: { id_usuario: 1 }, evidenceScope: { canAccess: true } };
     const res = mockRes(); const next = mockNext();
     mockExecute
       .mockResolvedValueOnce([[{ codigo_equipo: 5 }]])
@@ -279,7 +298,7 @@ describe('marcarImagenPrincipal (equipo)', () => {
   });
 
   it('calls next with error on DB failure', async () => {
-    const req = { params: { idImagen: '3' }, user: { id_usuario: 1 } };
+    const req = { params: { idImagen: '3' }, user: { id_usuario: 1 }, evidenceScope: { canAccess: true } };
     const res = mockRes(); const next = mockNext();
     mockExecute.mockRejectedValueOnce(new Error('fail'));
     await marcarImagenPrincipal(req, res, next);

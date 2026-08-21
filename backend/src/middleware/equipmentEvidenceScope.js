@@ -59,3 +59,11 @@ export function requireEquipmentEvidenceScopeWhenFiles(options) {
     return files.length > 0 ? requireScope(req, res, next) : next();
   };
 }
+
+export async function resolveCodigoEquipoFromImage(req) {
+  const [[image]] = await defaultDb.execute(
+    'SELECT codigo_equipo FROM Imagenes_Equipo WHERE id_imagen_equipo = ? LIMIT 1',
+    [req.params.idImagen]
+  );
+  return image?.codigo_equipo;
+}

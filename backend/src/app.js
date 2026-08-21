@@ -99,8 +99,8 @@ app.use(cookieParser());
 const __filenameApp = fileURLToPath(import.meta.url);
 const __dirnameApp = dirname(__filenameApp);
 // Equipment evidence is served only by its authenticated API route.
-app.use('/uploads/equipos', (req, res) => res.status(404).json({ error: 'Ruta no encontrada' }));
-app.use('/uploads', express.static(path.join(__dirnameApp, '..', 'uploads')));
+app.use('/uploads/ambientes', express.static(path.join(__dirnameApp, '..', 'uploads', 'ambientes')));
+app.use('/uploads/perfiles', express.static(path.join(__dirnameApp, '..', 'uploads', 'perfiles')));
 
 if (process.env.NODE_ENV === 'development') {
   app.use(morgan('dev'));

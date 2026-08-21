@@ -65,6 +65,12 @@ export const uploadEquipoImage = multer({
 
 // Middleware para manejar errores de Multer
 export const handleUploadError = (err, req, res, next) => {
+  if (err) {
+    const files = req.files || (req.file ? [req.file] : []);
+    files.forEach((file) => {
+      if (file?.filename) deleteImageFile(file.filename);
+    });
+  }
   if (err instanceof multer.MulterError) {
     if (err.code === 'LIMIT_FILE_SIZE') {
       return res.status(400).json({ error: 'El archivo es demasiado grande. Tamaño máximo: 10MB' });

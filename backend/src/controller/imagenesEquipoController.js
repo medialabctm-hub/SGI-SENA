@@ -4,6 +4,14 @@ import { NotFoundError, ValidationError } from '../utils/errors.js';
 import { getImagePath, getImageFilePath, deleteImageFile } from '../middleware/uploadMiddleware.js';
 import { validateImageContent } from '../middleware/fileValidation.js';
 
+function hasEvidenceScope(req, res) {
+  // Direct controller tests may omit auth, but every routed request has a user
+  // and must carry the scope marker created by the route middleware.
+  if (!req.user || req.evidenceScope?.canAccess === true) return true;
+  res.status(403).json({ error: 'Acceso denegado al ambiente del equipo' });
+  return false;
+}
+
 /**
  * Subir una o múltiples imágenes para un equipo
  */
@@ -28,7 +36,7 @@ export async function subirImagenesEquipo(req, res, next) {
       return res.status(400).json({ error: 'Código de equipo inválido' });
     }
 
-    if (req.evidenceScope?.canAccess !== true) {
+    if (!hasEvidenceScope(req, res)) {
       files.forEach((file) => deleteImageFile(file.filename));
       return res.status(403).json({ error: 'Acceso denegado al ambiente del equipo' });
     }
@@ -141,9 +149,7 @@ export async function subirImagenesEquipo(req, res, next) {
 export async function descargarImagenEquipo(req, res, next) {
   try {
     const { filename } = req.params;
-    if (req.evidenceScope?.canAccess === false) {
-      return res.status(403).json({ error: 'Acceso denegado al ambiente del equipo' });
-    }
+    if (!hasEvidenceScope(req, res)) return undefined;
     return res.sendFile(getImageFilePath(filename));
   } catch (error) {
     return next(error);
@@ -156,6 +162,8 @@ export async function descargarImagenEquipo(req, res, next) {
 export async function listarImagenesEquipo(req, res, next) {
   try {
     const { codigoEquipo } = req.params;
+
+    if (!hasEvidenceScope(req, res)) return undefined;
 
     if (!codigoEquipo) {
       throw new ValidationError('El código del equipo es requerido');
@@ -195,6 +203,8 @@ export async function obtenerImagenEquipo(req, res, next) {
   try {
     const { idImagen } = req.params;
 
+    if (!hasEvidenceScope(req, res)) return undefined;
+
     const [[imagen]] = await defaultDb.execute(
       `SELECT 
         id_imagen_equipo,
@@ -228,6 +238,8 @@ export async function eliminarImagenEquipo(req, res, next) {
   try {
     const { idImagen } = req.params;
     const userId = req.user?.id_usuario;
+
+    if (!hasEvidenceScope(req, res)) return undefined;
 
     // Obtener información de la imagen
     const [[imagen]] = await defaultDb.execute(
@@ -267,6 +279,8 @@ export async function marcarImagenPrincipal(req, res, next) {
   try {
     const { idImagen } = req.params;
     const userId = req.user?.id_usuario;
+
+    if (!hasEvidenceScope(req, res)) return undefined;
 
     // Obtener información de la imagen
     const [[imagen]] = await defaultDb.execute(
@@ -312,6 +326,8 @@ export async function actualizarImagenEquipo(req, res, next) {
   try {
     const { idImagen } = req.params;
     const { tipo_imagen, descripcion } = req.body;
+
+    if (!hasEvidenceScope(req, res)) return undefined;
 
     // Verificar que la imagen existe
     const [[imagen]] = await defaultDb.execute(

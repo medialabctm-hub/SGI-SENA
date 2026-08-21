@@ -13,7 +13,7 @@ import { requirePermission, requireAnyPermission } from '../middleware/authoriza
 import { PERMISSIONS } from '../config/permissions.js';
 import { writeLimiter, readLimiter } from '../middleware/rateLimiter.js';
 import { uploadEquipoImage, handleUploadError, validateUploadedImageContent } from '../middleware/uploadMiddleware.js';
-import { requireEquipmentEvidenceScope } from '../middleware/equipmentEvidenceScope.js';
+import { requireEquipmentEvidenceScope, resolveCodigoEquipoFromImage } from '../middleware/equipmentEvidenceScope.js';
 
 const router = express.Router();
 
@@ -65,6 +65,7 @@ router.get(
     PERMISSIONS.EQUIPOS.VIEW,
     PERMISSIONS.EQUIPOS.VIEW_OWN,
   ]),
+  requireEquipmentEvidenceScope(),
   listarImagenesEquipo
 );
 
@@ -78,6 +79,7 @@ router.get(
     PERMISSIONS.EQUIPOS.VIEW,
     PERMISSIONS.EQUIPOS.VIEW_OWN,
   ]),
+  requireEquipmentEvidenceScope({ resolveCodigoEquipo: resolveCodigoEquipoFromImage }),
   obtenerImagenEquipo
 );
 
@@ -88,6 +90,7 @@ router.put(
   authenticate,
   writeLimiter,
   requirePermission(PERMISSIONS.EQUIPOS.UPDATE),
+  requireEquipmentEvidenceScope({ resolveCodigoEquipo: resolveCodigoEquipoFromImage }),
   actualizarImagenEquipo
 );
 
@@ -98,6 +101,7 @@ router.patch(
   authenticate,
   writeLimiter,
   requirePermission(PERMISSIONS.EQUIPOS.UPDATE),
+  requireEquipmentEvidenceScope({ resolveCodigoEquipo: resolveCodigoEquipoFromImage }),
   marcarImagenPrincipal
 );
 
@@ -108,6 +112,7 @@ router.delete(
   authenticate,
   writeLimiter,
   requirePermission(PERMISSIONS.EQUIPOS.UPDATE),
+  requireEquipmentEvidenceScope({ resolveCodigoEquipo: resolveCodigoEquipoFromImage }),
   eliminarImagenEquipo
 );
 
