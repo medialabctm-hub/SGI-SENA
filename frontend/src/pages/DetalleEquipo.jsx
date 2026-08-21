@@ -89,7 +89,7 @@ export default function DetalleEquipo() {
   const canManageAssignments = canManageEquipoAssignments(user);
   const authenticatedImages = useAuthenticatedEvidenceImages(imagenes);
   const authenticatedPrincipal = authenticatedImages.find(
-    image => image.id_imagen_equipo === imagenPrincipal?.id_imagen_equipo
+    (image) => image.id_imagen_equipo === imagenPrincipal?.id_imagen_equipo
   );
 
   useEffect(() => {
@@ -255,12 +255,11 @@ export default function DetalleEquipo() {
         documento: doc,
         ficha: null,
       };
-      if (registrarUsoDiasSemana.length > 0)
-        usuario.dias_semana = registrarUsoDiasSemana;
-      if (
-        (registrarUsoHoraInicio || '').trim() &&
-        (registrarUsoHoraFin || '').trim()
-      ) {
+      if (registrarUsoObservaciones.trim()) {
+        usuario.observaciones = registrarUsoObservaciones.trim();
+      }
+      if (registrarUsoDiasSemana.length > 0) usuario.dias_semana = registrarUsoDiasSemana;
+      if ((registrarUsoHoraInicio || '').trim() && (registrarUsoHoraFin || '').trim()) {
         usuario.hora_inicio = registrarUsoHoraInicio.trim();
         usuario.hora_fin = registrarUsoHoraFin.trim();
       }
@@ -648,7 +647,7 @@ export default function DetalleEquipo() {
   }
 
   // Preparar imágenes para el ImageViewer
-  const viewerImages = authenticatedImages.map(img => ({
+  const viewerImages = authenticatedImages.map((img) => ({
     url: img.url,
     titulo: img.tipo_imagen,
     descripcion: img.descripcion,
