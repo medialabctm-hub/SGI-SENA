@@ -67,7 +67,11 @@ describe('uploadMiddleware', () => {
   });
 
   it('getImagePath retorna ruta esperada', () => {
-    expect(getImagePath('img.png')).toBe('/uploads/equipos/img.png');
+    expect(getImagePath('img.png')).toBe('/api/equipos/imagenes/archivo/img.png');
+  });
+
+  it('getImagePath rechaza nombres que intentan salir del directorio de evidencias', () => {
+    expect(() => getImagePath('../secreto.png')).toThrow(/nombre de archivo/i);
   });
 
   it('deleteImageFile retorna false cuando archivo no existe', () => {

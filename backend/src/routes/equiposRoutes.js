@@ -6,9 +6,10 @@ import { requirePermission, requireAnyPermission, requireAnyPermissionIfAuthenti
 import { PERMISSIONS } from '../config/permissions.js';
 import { writeLimiter, readLimiter, strictLimiter, webhookLimiter, searchLimiter } from '../middleware/rateLimiter.js';
 import { validate, registrarEquipoSchema, actualizarEquipoSchema, asignarEquipoSchema, verificarInventarioSchema, solicitudAutorizacionMovimientoSchema, crearCategoriaSchema, actualizarCategoriaSchema, registrarUsoEquipoSchema, actualizarUsoEquipoSchema, registrarUsoEquipoExternoSchema, actualizarAsignacionEquipoSchema, autoservicioIniciarUsoSchema } from '../validators/equiposValidator.js';
-import { uploadEquipoImagePublico, handleUploadError } from '../middleware/uploadMiddleware.js';
+import { uploadEquipoImagePublico, handleUploadError, validateUploadedImageContent } from '../middleware/uploadMiddleware.js';
 import { parseFormData } from '../middleware/parseFormData.js';
 import { corsPublic } from '../middleware/corsPublicMiddleware.js';
+import { requireEquipmentEvidenceScopeWhenFiles } from '../middleware/equipmentEvidenceScope.js';
 
 const router = express.Router();
 
@@ -29,6 +30,14 @@ router.post('/uso/registro-externo',
   parseFormData,
   optionalAuthenticate,
   requireAnyPermissionIfAuthenticated([PERMISSIONS.EQUIPOS.ASSIGN, PERMISSIONS.EQUIPOS.ASSIGN_TO_APRENDIZ]),
+  requireEquipmentEvidenceScopeWhenFiles({
+    resolveCodigoEquipo: async (req) => {
+      const { default: db } = await import('../config/dbconfig.js');
+      const [[equipo]] = await db.execute('SELECT codigo_equipo FROM Elementos WHERE placa = ? LIMIT 1', [req.body.placa]);
+      return equipo?.codigo_equipo;
+    },
+  }),
+  validateUploadedImageContent,
   validate(registrarUsoEquipoExternoSchema),
   registrarUsoEquipoExterno
 );

@@ -125,8 +125,8 @@ describe('rateLimiter - exportaciones', () => {
 describe('uploadMiddleware', () => {
   it('debe retornar la ruta correcta con getImagePath()', async () => {
     const { getImagePath } = await import('../../src/middleware/uploadMiddleware.js');
-    expect(getImagePath('foto.jpg')).toBe('/uploads/equipos/foto.jpg');
-    expect(getImagePath('img-001.png')).toBe('/uploads/equipos/img-001.png');
+    expect(getImagePath('foto.jpg')).toBe('/api/equipos/imagenes/archivo/foto.jpg');
+    expect(getImagePath('img-001.png')).toBe('/api/equipos/imagenes/archivo/img-001.png');
   });
 
   it('deleteImageFile debe retornar false si el archivo no existe', async () => {

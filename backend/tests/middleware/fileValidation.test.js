@@ -20,6 +20,7 @@ jest.mock(
 
 import {
   validateImageFile,
+  validateImageContent,
   validateExcelFile,
   validateMultipleImages,
   validateExcel,
@@ -99,6 +100,16 @@ describe('validateImageFile()', () => {
     expect(result.error).toMatch(/extensión/i);
   });
 
+  it('rechaza un MIME declarado que no corresponde con la extensión', () => {
+    const result = validateImageFile(makeImageFile({
+      mimetype: 'image/jpeg',
+      originalname: 'evidencia.png',
+    }));
+
+    expect(result.valid).toBe(false);
+    expect(result.error).toMatch(/no coincide/i);
+  });
+
   it('debe retornar error si el nombre contiene caracteres peligrosos', () => {
     const result = validateImageFile(makeImageFile({
       originalname: 'foto<script>.jpg',
@@ -118,6 +129,19 @@ describe('validateImageFile()', () => {
       expect(result.valid).toBe(true);
     }
   );
+});
+
+describe('validateImageContent()', () => {
+  it('rechaza contenido PNG presentado como evidencia JPEG', async () => {
+    const result = await validateImageContent(makeImageFile({
+      mimetype: 'image/jpeg',
+      originalname: 'evidencia.jpg',
+      buffer: Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+    }));
+
+    expect(result.valid).toBe(false);
+    expect(result.error).toMatch(/contenido.*no coincide/i);
+  });
 });
 
 // ──────────────────────────────────────────────

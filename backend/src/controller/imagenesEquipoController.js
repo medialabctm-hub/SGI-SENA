@@ -1,7 +1,8 @@
 import defaultDb from '../config/dbconfig.js';
 import { logger } from '../utils/logger.js';
 import { NotFoundError, ValidationError } from '../utils/errors.js';
-import { getImagePath, deleteImageFile } from '../middleware/uploadMiddleware.js';
+import { getImagePath, getImageFilePath, deleteImageFile } from '../middleware/uploadMiddleware.js';
+import { validateImageContent } from '../middleware/fileValidation.js';
 
 /**
  * Subir una o múltiples imágenes para un equipo
@@ -21,6 +22,25 @@ export async function subirImagenesEquipo(req, res, next) {
       return res.status(400).json({ error: 'No se proporcionaron archivos para subir' });
     }
 
+    const codigoEquipoNum = parseInt(codigoEquipo, 10);
+    if (isNaN(codigoEquipoNum)) {
+      files.forEach((file) => deleteImageFile(file.filename));
+      return res.status(400).json({ error: 'Código de equipo inválido' });
+    }
+
+    if (req.evidenceScope?.canAccess !== true) {
+      files.forEach((file) => deleteImageFile(file.filename));
+      return res.status(403).json({ error: 'Acceso denegado al ambiente del equipo' });
+    }
+
+    for (const file of files) {
+      const contentValidation = await validateImageContent(file);
+      if (!contentValidation.valid) {
+        files.forEach((uploadedFile) => deleteImageFile(uploadedFile.filename));
+        return res.status(400).json({ error: contentValidation.error });
+      }
+    }
+
     // Verificar que el equipo existe
     const [[equipo]] = await defaultDb.execute(
       'SELECT codigo_equipo FROM Elementos WHERE codigo_equipo = ?',
@@ -36,12 +56,6 @@ export async function subirImagenesEquipo(req, res, next) {
     }
 
     const imagenesSubidas = [];
-    const codigoEquipoNum = parseInt(codigoEquipo, 10);
-
-    if (isNaN(codigoEquipoNum)) {
-      return res.status(400).json({ error: 'Código de equipo inválido' });
-    }
-
     const esPrincipal = es_principal === 'true' || es_principal === true;
 
     // Estrategia: Insertar primero con es_principal = 0 para evitar el conflicto del trigger
@@ -119,6 +133,19 @@ export async function subirImagenesEquipo(req, res, next) {
       deleteImageFile(req.file.filename);
     }
 
+    return next(error);
+  }
+}
+
+/** Entrega una evidencia privada después de que la ruta validó RBAC y alcance. */
+export async function descargarImagenEquipo(req, res, next) {
+  try {
+    const { filename } = req.params;
+    if (req.evidenceScope?.canAccess === false) {
+      return res.status(403).json({ error: 'Acceso denegado al ambiente del equipo' });
+    }
+    return res.sendFile(getImageFilePath(filename));
+  } catch (error) {
     return next(error);
   }
 }
