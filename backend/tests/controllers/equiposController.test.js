@@ -1415,4 +1415,37 @@ describe('registrarUsoEquipoExterno', () => {
     expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ success: false }));
     expect(mockDeleteImageFile).toHaveBeenCalledWith(expect.stringMatching(/-42-evidence\.png$/));
   });
+
+  it('compensates persisted image metadata and every file when a later INSERT fails', async () => {
+    const existsSync = jest.spyOn(fs, 'existsSync').mockReturnValue(true);
+    const renameSync = jest.spyOn(fs, 'renameSync').mockImplementation(() => {});
+    mockExecute
+      .mockResolvedValueOnce([[{ codigo_equipo: 42, placa: 'EXT-42', id_ambiente: null }]])
+      .mockResolvedValueOnce([{ insertId: 901 }])
+      .mockRejectedValueOnce(new Error('second Imagenes_Equipo INSERT failed'));
+    mockVerificarDisponibilidad.mockResolvedValue({ disponible: true });
+    const req = mockReq({
+      body: { placa: 'EXT-42', usuarios: [] },
+      files: [
+        { filename: 'temporal-one.png', originalname: 'one.png' },
+        { filename: 'temporal-two.png', originalname: 'two.png' },
+      ],
+    });
+    const res = mockRes();
+
+    try {
+      await registrarUsoEquipoExterno(req, res);
+    } finally {
+      existsSync.mockRestore();
+      renameSync.mockRestore();
+    }
+
+    expect(res.status).toHaveBeenCalledWith(500);
+    expect(mockExecute).toHaveBeenCalledWith(
+      expect.stringMatching(/DELETE FROM Imagenes_Equipo/i),
+      [901]
+    );
+    expect(mockDeleteImageFile).toHaveBeenCalledWith(expect.stringMatching(/-42-one\.png$/));
+    expect(mockDeleteImageFile).toHaveBeenCalledWith(expect.stringMatching(/-42-two\.png$/));
+  });
 });

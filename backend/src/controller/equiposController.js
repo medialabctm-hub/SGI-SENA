@@ -3150,6 +3150,23 @@ export async function registrarUsoEquipoExterno(req, res) {
           });
         }
       } catch (imagenError) {
+        // Los INSERT de evidencias ocurren antes de la transacción de uso.
+        // Compensar los metadatos ya persistidos antes de limpiar los archivos.
+        const persistedImageIds = imagenesSubidas
+          .map((imagen) => imagen.id_imagen_equipo)
+          .filter((idImagen) => idImagen != null);
+        const metadataCleanup = await Promise.allSettled(
+          persistedImageIds.map((idImagen) => defaultDb.execute(
+            'DELETE FROM Imagenes_Equipo WHERE id_imagen_equipo = ?',
+            [idImagen]
+          ))
+        );
+        metadataCleanup
+          .filter((result) => result.status === 'rejected')
+          .forEach((result) => logger.error('No se pudo compensar metadata de evidencia', {
+            error: result.reason?.message,
+          }));
+
         // El archivo ya fue renombrado antes del INSERT. No se puede continuar
         // sin dejar una evidencia huérfana si la persistencia falla.
         const filesToDelete = new Set([
