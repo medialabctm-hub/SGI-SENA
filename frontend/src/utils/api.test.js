@@ -130,6 +130,36 @@ test('buildEquipoAssignmentPayload conserva la forma de usuario con cuenta', () 
   );
 });
 
+test('handleSessionExpiration dispara auth:changed y limpia token/user antes de redirigir', () => {
+  const events = [];
+  const store = { token: 'abc', user: '{"id_usuario":1}' };
+  globalThis.window = {
+    location: { pathname: '/dashboard' },
+    dispatchEvent: (event) => events.push(event.type),
+  };
+  globalThis.localStorage = {
+    getItem: (key) => (key in store ? store[key] : null),
+    removeItem: (key) => { delete store[key]; },
+  };
+  // setTimeout ya existe en el proceso de Node (a diferencia de window/localStorage):
+  // se guarda y se restaura, nunca se borra, para no dejar el timer roto para el
+  // resto de los tests de este archivo.
+  const realSetTimeout = globalThis.setTimeout;
+  globalThis.setTimeout = () => {}; // no ejercitamos el redirect diferido en este test
+
+  try {
+    api.handleSessionExpiration();
+
+    assert.deepEqual(events, ['auth:changed']);
+    assert.equal('token' in store, false);
+    assert.equal('user' in store, false);
+  } finally {
+    delete globalThis.window;
+    delete globalThis.localStorage;
+    globalThis.setTimeout = realSetTimeout;
+  }
+});
+
 test('buildEquipoAssignmentPayload conserva id_aprendiz y documento_externo sin id_usuario', () => {
   assert.deepEqual(
     api.buildEquipoAssignmentPayload({

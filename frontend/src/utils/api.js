@@ -254,6 +254,7 @@ export const handleSessionExpiration = () => {
   sessionExpirationTriggered = true;
   localStorage.removeItem('token');
   localStorage.removeItem('user');
+  window.dispatchEvent(new Event('auth:changed'));
   // Delay corto para que el usuario alcance a ver el toast "Tu sesión expiró"
   setTimeout(() => {
     window.location.href = '/login';

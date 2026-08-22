@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {FiBell, FiLogOut, FiUser, FiMenu,} from 'react-icons/fi';
 import { Link } from "react-router-dom";
 import { useNavigate } from 'react-router-dom';
-import logo from '/public/images/logoSena.png';
+import logo from '/images/logoSena.png';
 import Toast from './Toast';
 import ConfirmModal from './ConfirmModal';
 import NotificationsModal from './NotificationsModal';
@@ -19,9 +19,14 @@ import '../styles/notifications.css';
 export default function Header() {
   const { tieneDuplicadosPendientes } = useDuplicados();
   const socketHook = useSocket();
-  const [user, setUser] = useState(
-    JSON.parse(localStorage.getItem('user') || '{}')
-  );
+  const [user, setUser] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem('user') || '{}');
+    } catch (error) {
+      localStorage.removeItem('user');
+      return {};
+    }
+  });
   const [toast, setToast] = useState(null);
   const [showConfirm, setShowConfirm] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
@@ -80,6 +85,8 @@ export default function Header() {
   const confirmLogout = () => {
     setShowConfirm(false);
     localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    window.dispatchEvent(new Event('auth:changed'));
     setToast({ message: 'Sesión cerrada correctamente', type: 'success' });
     setTimeout(() => {
       window.location.href = '/login';
@@ -326,6 +333,23 @@ export default function Header() {
       clearInterval(interval);
     };
   }, [user?.foto_perfil, user?.nombre_usuario])
+
+  // Reaccionar a login/logout/expiración de sesión en la MISMA pestaña. El evento
+  // nativo 'storage' de arriba no se dispara ahí (solo en otras pestañas), así que
+  // sin esto el header seguía mostrando el usuario anterior tras un logout o un 401.
+  useEffect(() => {
+    const handleAuthChanged = () => {
+      try {
+        const userData = localStorage.getItem('user');
+        setUser(userData ? JSON.parse(userData) : {});
+      } catch {
+        setUser({});
+      }
+    };
+
+    window.addEventListener('auth:changed', handleAuthChanged);
+    return () => window.removeEventListener('auth:changed', handleAuthChanged);
+  }, []);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
