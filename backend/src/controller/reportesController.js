@@ -402,9 +402,7 @@ export async function obtenerTiposReporte(req, res) {
  */
 export async function generarReportePDF(req, res) {
   try {
-    const { tipo_reporte = 'Equipos', id_ambiente, fecha_inicio, fecha_fin } = req.query;
-    const userId = req.user?.id;
-    const userRole = req.user?.rol;
+    const { id_ambiente, fecha_inicio, fecha_fin } = req.query;
 
     // Los permisos ya fueron validados por el middleware requireAnyPermission
     // Solo Administradores y Cuentadantes tienen PERMISSIONS.REPORTES.VIEW según permissions.js
@@ -654,7 +652,7 @@ export async function generarReportePDF(req, res) {
     let totalCuentadantesSecundarios = 0;
     const instructoresUnicos = new Set();
 
-    for (const [ambienteKey, datosAmbiente] of Object.entries(equiposPorAmbiente)) {
+    for (const [ambienteKey] of Object.entries(equiposPorAmbiente)) {
       const ambienteId = ambienteKey !== 'sin_ambiente' ? parseInt(ambienteKey, 10) : null;
       if (!ambienteId) continue;
 

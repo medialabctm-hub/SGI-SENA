@@ -1,5 +1,4 @@
 import defaultDb from '../config/dbconfig.js'
-import { PERMISSIONS } from '../config/permissions.js'
 import { handleControllerError } from '../utils/controllerHelpers.js';
 
 /**

@@ -2,9 +2,8 @@ import defaultDb, { pool } from '../config/dbconfig.js';
 import { notifyNuevoEquipo } from '../services/notificationService.js';
 import { logger } from '../utils/logger.js';
 import { ServiceFactory } from '../factories/ServiceFactory.js';
-import { 
-  obtenerEquipoPorCodigo as obtenerEquipoPorCodigoUtil, 
-  obtenerUsuarioPorCedula,
+import {
+  obtenerEquipoPorCodigo as obtenerEquipoPorCodigoUtil,
   verificarDisponibilidadEquipo,
   verificarAmbienteEquipoAprendiz
 } from '../utils/sqlQueries.js';
@@ -4144,7 +4143,6 @@ export async function registrarUsoEquipoExterno(req, res) {
 
 const AUTOSERVICIO_CIERRE_VERSION = 'AUTOSERVICIO_CIERRE_V1';
 const AUTOSERVICIO_COLUMNAS = ['documento_externo', 'nombre_externo', 'id_aprendiz', 'idempotency_key'];
-const AUTOSERVICIO_INDICES = ['idx_documento_externo', 'idx_id_aprendiz', 'uq_autoservicio_idempotency_key'];
 const AUTOSERVICIO_INDICES_REQUERIDOS = [
   { nombre: 'idx_documento_externo', columna: 'documento_externo', nonUnique: 1, etiqueta: 'índice idx_documento_externo sobre documento_externo' },
   { nombre: 'idx_id_aprendiz', columna: 'id_aprendiz', nonUnique: 1, etiqueta: 'índice idx_id_aprendiz sobre id_aprendiz' },

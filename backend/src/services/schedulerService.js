@@ -3,20 +3,6 @@ import { logger } from '../utils/logger.js';
 import { createForUsers } from './notificationService.js';
 import { getColombiaDateTimeString } from '../utils/timezone.js';
 
-/**
- * Obtener fecha/hora local en formato MySQL (YYYY-MM-DD HH:MM:SS)
- * IMPORTANTE: NO usa UTC, usa la hora local del servidor
- */
-function getLocalDateTimeString(date = new Date()) {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  const hours = String(date.getHours()).padStart(2, '0');
-  const minutes = String(date.getMinutes()).padStart(2, '0');
-  const seconds = String(date.getSeconds()).padStart(2, '0');
-  return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
-}
-
 function normalizarHora(hora) {
   const horaStr = String(hora);
   if (horaStr.split(':').length === 2) {
@@ -28,13 +14,6 @@ function normalizarHora(hora) {
 function crearDateTime(fecha, hora) {
   const horaNormalizada = normalizarHora(hora);
   return new Date(`${fecha}T${horaNormalizada}`);
-}
-
-function convertirFechaMySqlALocal(fecha) {
-  if (!fecha) return null;
-  const fechaStr = fecha instanceof Date ? fecha.toISOString().slice(0, 19).replace('T', ' ') : String(fecha);
-  // Interpretar como hora local (sin aplicar UTC) para evitar sumar/restar horas por zona
-  return new Date(fechaStr.replace(' ', 'T'));
 }
 
 /**

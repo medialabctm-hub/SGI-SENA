@@ -3,16 +3,12 @@ import { createForUsers, createForRole } from '../services/notificationService.j
 import { logger } from '../utils/logger.js'
 import {
   obtenerEquipoPorCodigo,
-  obtenerUsuarioActivo,
   deshabilitarAsignacionesActivas
 } from '../utils/sqlQueries.js'
 import { obtenerValoresEnumColumna } from '../utils/enumSchemaUtils.js'
 import emailService from '../services/emailService.js'
 import { config } from '../config/config.js'
 import PDFDocument from 'pdfkit'
-import path from 'path'
-import { fileURLToPath } from 'url'
-import fs from 'fs'
 import { handleControllerError } from '../utils/controllerHelpers.js';
 
 /**

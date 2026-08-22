@@ -1,5 +1,4 @@
 import jwt from 'jsonwebtoken';
-import process from 'process';
 
 /**
  * JwtService - Servicio para operaciones relacionadas con JWT

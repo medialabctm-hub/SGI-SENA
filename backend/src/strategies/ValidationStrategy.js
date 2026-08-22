@@ -13,7 +13,7 @@ export class ValidationStrategy {
    * @param {any} value - Valor a validar
    * @returns {Object} { valid: boolean, error: string|null }
    */
-  validate(value) {
+  validate(_value) {
     throw new Error('Método validate debe ser implementado por las subclases');
   }
 }

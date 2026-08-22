@@ -1,5 +1,5 @@
 import defaultDb from '../config/dbconfig.js'
-import { createForUsers, createForRole } from '../services/notificationService.js'
+import { createForUsers } from '../services/notificationService.js'
 import { logger } from '../utils/logger.js'
 import { handleControllerError } from '../utils/controllerHelpers.js';
 import {
@@ -379,7 +379,6 @@ export async function actualizarFechaProximo(req, res) {
   try {
     const { id } = req.params
     const { fecha_proximo } = req.body
-    const userId = req.user?.id
     const userRole = req.user?.rol
 
     if (!fecha_proximo) {
@@ -439,7 +438,6 @@ export async function actualizarFechaMantenimiento(req, res) {
   try {
     const { id } = req.params
     const { fecha_mantenimiento } = req.body
-    const userId = req.user?.id
     const userRole = req.user?.rol
 
     if (!fecha_mantenimiento) {

@@ -5,9 +5,7 @@ import {
   expandirAsignacionesPorFechas,
   convertirNombresDiasANumeros,
   validarRangoHoras,
-  validarRangoFechas,
-  calcularCantidadAsignaciones,
-  obtenerNombreDia
+  validarRangoFechas
 } from '../services/ambientesService.js';
 
 export async function listarAmbientes(req, res) {
@@ -366,12 +364,7 @@ export async function actualizarAmbiente(req, res) {
     const { id } = req.params;
     const {
       codigo_ambiente,
-      nombre_ambiente,
       tipo_ambiente,
-      capacidad_personas,
-      piso,
-      edificio,
-      descripcion,
       estado_ambiente
     } = req.body;
 
@@ -904,7 +897,6 @@ export async function listarAsignacionesAmbientes(req, res) {
 export async function obtenerInstructoresAmbiente(req, res) {
   try {
     const { id } = req.params;
-    const { fecha_consulta } = req.query;
 
     // Validar que el ambiente existe
     const [[ambiente]] = await defaultDb.execute(
