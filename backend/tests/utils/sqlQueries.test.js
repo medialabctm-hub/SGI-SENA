@@ -349,6 +349,36 @@ describe('obtenerAmbientesValidosAprendiz()', () => {
     await obtenerAmbientesValidosAprendiz(db, 4);
     expect(db.execute).toHaveBeenCalledTimes(2);
   });
+
+  it('con options.idAprendiz debe resolver la ficha directo contra Aprendices (aprendiz sin cuenta)', async () => {
+    db.execute.mockImplementation(async (sql, params) => {
+      if (/FROM Aprendices\s+WHERE id_aprendiz/.test(sql)) {
+        expect(params).toEqual([50]);
+        return [[{ ficha: '2750001' }]];
+      }
+      if (/INNER JOIN Usuarios/.test(sql)) {
+        throw new Error('no debe consultar Usuarios cuando options.idAprendiz está presente');
+      }
+      if (/Participantes_Clase/.test(sql)) return [[]]; // sin cuenta -> nunca hay filas aquí
+      if (/FROM Clases c\s+WHERE c\.codigo_ficha/.test(sql)) return [[{ id_ambiente: 2 }, { id_ambiente: 6 }]];
+      return [[]];
+    });
+
+    const result = await obtenerAmbientesValidosAprendiz(db, 999, { idAprendiz: 50 });
+    expect(result).toContain(2);
+    expect(result).toContain(6);
+  });
+
+  it('con options.idAprendiz debe devolver array vacío si Aprendices no tiene esa fila', async () => {
+    db.execute.mockImplementation(async (sql) => {
+      if (/FROM Aprendices\s+WHERE id_aprendiz/.test(sql)) return [[]]; // sin fila para ese id_aprendiz
+      if (/Participantes_Clase/.test(sql)) return [[]];
+      return [[]];
+    });
+
+    const result = await obtenerAmbientesValidosAprendiz(db, 999, { idAprendiz: 999999 });
+    expect(result).toEqual([]);
+  });
 });
 
 // ──────────────────────────────────────────────
@@ -416,5 +446,38 @@ describe('verificarAmbienteEquipoAprendiz()', () => {
 
     expect(result.valido).toBe(false);
     expect(result.razon).toContain('N/A');
+  });
+
+  it('debe validar por ficha directa cuando el aprendiz no tiene cuenta de usuario', async () => {
+    db.execute.mockImplementation(async (sql) => {
+      if (/FROM Elementos/.test(sql)) return [[{ id_ambiente: 2, nombre_ambiente: 'Lab TI' }]];
+      if (/FROM Aprendices\s+WHERE id_aprendiz/.test(sql)) return [[{ ficha: 'F-100' }]];
+      if (/INNER JOIN Usuarios/.test(sql)) return [[]];
+      if (/Participantes_Clase/.test(sql)) return [[]];
+      if (/FROM Clases c/.test(sql)) return [[{ id_ambiente: 2 }]];
+      return [[]];
+    });
+
+    const result = await verificarAmbienteEquipoAprendiz(db, 10, 50, { idAprendiz: 50 });
+
+    expect(result.valido).toBe(true);
+    expect(db.execute.mock.calls.some(([sql]) => /FROM Aprendices\s+WHERE id_aprendiz/.test(sql))).toBe(true);
+  });
+
+  it('con options.idAprendiz debe devolver valido:false si el ambiente del equipo no está en la ficha', async () => {
+    db.execute.mockImplementation(async (sql) => {
+      if (/FROM Elementos/.test(sql)) return [[{ id_ambiente: 2, nombre_ambiente: 'Lab TI' }]];
+      if (/FROM Aprendices\s+WHERE id_aprendiz/.test(sql)) return [[{ ficha: 'F-100' }]];
+      if (/Participantes_Clase/.test(sql)) return [[]];
+      if (/FROM Clases c\s+WHERE c\.codigo_ficha/.test(sql)) return [[{ id_ambiente: 9 }]]; // ficha solo tiene clase en amb 9, no 2
+      return [[]];
+    });
+
+    const result = await verificarAmbienteEquipoAprendiz(db, 10, 50, { idAprendiz: 50 });
+
+    expect(result.valido).toBe(false);
+    expect(result.razon).toContain('no corresponde a las clases activas');
+    expect(result.ambiente_equipo).toBe(2);
+    expect(result.ambientes_validos).toEqual([9]);
   });
 });
