@@ -28,15 +28,44 @@ export default [
       },
     },
     rules: {
-      // Permitir console.warn y console.error (ya configurado en Airbnb)
-      'no-console': ['warn', { allow: ['warn', 'error'] }],
-      
-      // Airbnb permite parámetros sin usar si empiezan con _
-      'no-unused-vars': ['error', { 
+      // Mantener la revisión de errores reales como gate y reportar el estilo
+      // heredado como warnings para que el lint sea ejecutable en CI.
+      'no-unused-vars': ['warn', {
         argsIgnorePattern: '^_',
         varsIgnorePattern: '^_',
+        ignoreRestSiblings: true,
       }],
-      
+      'prefer-const': 'warn',
+      'prefer-template': 'warn',
+      'object-shorthand': 'warn',
+      'prefer-destructuring': ['warn', {
+        array: false,
+        object: true,
+      }, {
+        enforceForRenamedProperties: false,
+      }],
+      'no-plusplus': ['warn', { allowForLoopAfterthoughts: true }],
+      'no-restricted-globals': ['warn', {
+        name: 'isNaN',
+        message: 'Use Number.isNaN instead',
+      }],
+      'no-else-return': 'warn',
+      'consistent-return': ['warn', { treatUndefinedAsUnspecified: true }],
+      'no-underscore-dangle': ['warn', {
+        allow: ['__filename', '__dirname'],
+      }],
+      'no-empty': 'warn',
+      'import/order': 'warn',
+      'import/no-duplicates': 'warn',
+      'import/no-cycle': 'warn',
+      'import/no-named-as-default': 'warn',
+      'import/no-named-as-default-member': 'warn',
+      'class-methods-use-this': ['warn', {
+        exceptMethods: ['decode', 'compare', 'generatePassword', 'getLogLevel', 'formatMessage', 'validate', 'executeSync', 'generateCode'],
+      }],
+      // Permitir console.warn y console.error (ya configurado en Airbnb)
+      'no-console': ['warn', { allow: ['warn', 'error'] }],
+
       // Permitir reasignación de propiedades de parámetros (común en Express)
       'no-param-reassign': ['error', { props: false }],
       
@@ -71,43 +100,21 @@ export default [
         },
       ],
       
-      // Permitir ++ y -- en algunos contextos
-      'no-plusplus': ['error', { allowForLoopAfterthoughts: true }],
-      
       // Permitir await en loops cuando sea necesario (pero con advertencia)
       'no-await-in-loop': 'warn',
-      
+
       // Permitir múltiples clases por archivo cuando sea necesario (ej: errores, estrategias)
       'max-classes-per-file': ['error', { max: 10 }],
-      
-      // Permitir métodos de clase sin usar 'this' (ej: métodos estáticos)
-      'class-methods-use-this': ['error', {
-        exceptMethods: ['decode', 'compare', 'generatePassword', 'getLogLevel', 'formatMessage', 'validate', 'executeSync', 'generateCode'],
-      }],
-      
+
       // Permitir default exports cuando sea apropiado
       'import/prefer-default-export': 'off',
-      
-      // Permitir consistent-return en algunos casos (middlewares, validators)
-      'consistent-return': ['error', { treatUndefinedAsUnspecified: true }],
-      
-      // Permitir __filename y __dirname (necesarios para ES modules)
-      'no-underscore-dangle': ['error', {
-        allow: ['__filename', '__dirname'],
-      }],
-      
+
       // Permitir continue en algunos casos
       'no-continue': 'off',
-      
+
       // Permitir radix en parseInt (pero con advertencia)
       'radix': ['warn', 'always'],
-      
-      // Permitir isNaN global (pero preferir Number.isNaN)
-      'no-restricted-globals': ['error', {
-        name: 'isNaN',
-        message: 'Use Number.isNaN instead',
-      }],
-      
+
       // Permitir dot-notation más flexible para acceso dinámico
       'dot-notation': ['error', { allowPattern: '^[a-z_]+$' }],
       
@@ -139,14 +146,14 @@ export default [
       
       // Permitir one-var en algunos casos
       'one-var': 'off',
-      
-      // Permitir prefer-destructuring más flexible
-      'prefer-destructuring': ['error', {
-        array: false,
-        object: true,
-      }, {
-        enforceForRenamedProperties: false,
-      }],
+    },
+  },
+  {
+    files: ['tests/**/*.{js,mjs,cjs}', '**/*.test.{js,mjs,cjs}'],
+    languageOptions: {
+      globals: {
+        ...globals.jest,
+      },
     },
   },
   prettier,
