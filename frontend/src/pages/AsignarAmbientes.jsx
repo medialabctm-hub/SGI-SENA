@@ -10,6 +10,7 @@ import '../styles/pages/equipos.css'
 import '../styles/pages/verificaciones.css'
 import '../styles/pages/asignaciones.css'
 import { LoadingScreen } from './LoadingDemo'
+import { parseLocalDate } from '../utils/localDate'
 
 export default function AsignarAmbientes() {
   const [user, setUser] = useState(null)
@@ -147,11 +148,12 @@ export default function AsignarAmbientes() {
 
     const numeroDias = form.dias_semana.map(d => mapaoDias[d]).filter(d => d !== undefined)
 
-    const inicio = new Date(form.fecha_inicio)
-    const fin = new Date(form.fecha_fin)
-
-    inicio.setHours(0, 0, 0, 0)
-    fin.setHours(23, 59, 59, 999)
+    const inicio = parseLocalDate(form.fecha_inicio)
+    const fin = parseLocalDate(form.fecha_fin, true)
+    if (!inicio || !fin) {
+      setCantidadAsignaciones(0)
+      return
+    }
 
     let contador = 0
     const diaActual = new Date(inicio)

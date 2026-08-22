@@ -198,7 +198,6 @@ export default function Ambientes() {
       estado_ambiente: amb.estado_ambiente || INITIAL_FORM.estado_ambiente,
     });
     setShowForm(false);
-    setViewAmbiente(null);
   };
 
   const handleCancelInline = () => {
@@ -293,7 +292,6 @@ export default function Ambientes() {
                     onClick={() => {
                       setShowForm(true);
                       setEditingAmbiente(null);
-                      setViewAmbiente(null);
                       setForm(INITIAL_FORM);
                       setErrores({});
                     }}
