@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Tests para AuthFacade
  * Patron Facade - registra servicios mock en el container real
  */

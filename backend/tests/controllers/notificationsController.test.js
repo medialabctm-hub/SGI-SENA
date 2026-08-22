@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Tests completos para notificationsController
  * Usa jest.unstable_mockModule para interceptar la BD real
  */

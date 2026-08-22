@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Tests para preferencesController
  * Cubre getPreferences y updatePreferences
  */

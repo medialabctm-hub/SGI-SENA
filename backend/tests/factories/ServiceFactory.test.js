@@ -1,9 +1,9 @@
-﻿/**
+/**
  * Tests para ServiceFactory
  * Patron Factory - usa el container real con servicios de prueba registrados
  */
 
-import { describe, it, expect, beforeEach, afterEach } from '@jest/globals';
+import { describe, it, expect, afterEach } from '@jest/globals';
 import { ServiceFactory } from '../../src/factories/ServiceFactory.js';
 import { container } from '../../src/di/Container.js';
 
