@@ -84,7 +84,7 @@ describe('Subject', () => {
     subject.notify('test.event', { value: 1 });
 
     // Dar tiempo para ejecución async en forEach
-    await new Promise((r) => setTimeout(r, 10));
+    await new Promise((r) => { setTimeout(r, 10); });
 
     expect(obs1.calls).toHaveLength(1);
     expect(obs1.calls[0]).toEqual({ event: 'test.event', data: { value: 1 } });
@@ -108,7 +108,7 @@ describe('Subject', () => {
     // No debe lanzar
     expect(() => subject.notify('test', {})).not.toThrow();
 
-    await new Promise((r) => setTimeout(r, 10));
+    await new Promise((r) => { setTimeout(r, 10); });
     expect(good.called).toBe(true);
   });
 });
