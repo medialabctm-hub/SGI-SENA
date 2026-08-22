@@ -64,6 +64,17 @@ etc.) — ninguno relacionado con la config del lint ni con código muerto ya id
 4. El PR #20 sigue en draft; esta limpieza no cambia el alcance funcional de las 5 issues
    que el PR resuelve, solo la salud del gate de lint.
 
+## Commit adicional (post-checkpoint): cierre de restos del intento previo de lint
+
+10. `chore: completar arreglos pendientes del intento previo de fix de lint` —
+    `backend/jest.config.js` (resetModules + setupFiles, verificado tests/setUpEnv.js
+    existe) y `frontend/package.json` (mismo fix de `--ext` ya aplicado en backend).
+    Suite completa backend re-verificada: 85/85 suites, 1848/1848 tests. `frontend/package.json`
+    sigue apareciendo como "modified" en `git status` tras el commit por una diferencia
+    pura de fin de línea (CRLF/LF, `core.autocrlf=true` en esta máquina) — confirmado con
+    `git diff --ignore-space-at-eol` (0 líneas) que no hay ninguna diferencia de contenido
+    real. No requiere acción.
+
 ## Ajuste al plan original (descubierto durante la ejecución)
 
 El plan original no cruzó las listas de "código muerto a limpiar" contra los archivos que
