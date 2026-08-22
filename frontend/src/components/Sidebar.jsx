@@ -5,7 +5,6 @@ import {
   FiSearch,
   FiUsers,
   FiSettings,
-  FiFileText,
   FiAlertCircle,
   FiPackage,
   FiTool,
@@ -20,7 +19,6 @@ import {
   FiBell,
   FiCheckCircle,
   FiCalendar,
-  FiClock,
   FiClipboard,
   FiMonitor
 } from 'react-icons/fi'
@@ -33,9 +31,6 @@ export default function Sidebar({ user }) {
   const nav = useBlockedNavigate()
   const location = useLocation()
   const userRole = user?.nombre_rol || ''
-  const isAdmin = userRole === 'Administrador'
-  const isInstructor = userRole === 'Instructor'
-  const isAprendiz = userRole === 'Aprendiz'
 
   // Estado de menús expandidos
   const [expandedMenus, setExpandedMenus] = useState({

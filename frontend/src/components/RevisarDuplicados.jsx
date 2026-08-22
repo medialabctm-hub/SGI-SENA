@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react'
-import { FiCheck, FiX, FiAlertCircle, FiCheckCircle, FiClock, FiSave } from 'react-icons/fi'
-import { parseApiResponse, buildErrorMessage, handleError } from '../utils/api'
+import { FiX, FiAlertCircle, FiCheckCircle, FiSave } from 'react-icons/fi'
+import { parseApiResponse, handleError } from '../utils/api'
 import { useDuplicados } from '../contexts/DuplicadosContext'
 import InfoModal from './InfoModal'
 import '../styles/pages/verificaciones.css'
 
 export default function RevisarDuplicados({ idImportacion, onProcesarCompleto }) {
-  const { limpiarDuplicados } = useDuplicados()
+  useDuplicados()
   const [duplicados, setDuplicados] = useState([])
   const [loading, setLoading] = useState(false)
   const [procesando, setProcesando] = useState(false)
@@ -64,8 +64,8 @@ export default function RevisarDuplicados({ idImportacion, onProcesarCompleto })
           accion
         })
       })
-      const data = await parseApiResponse(res, 'Error al procesar duplicado')
-      
+      await parseApiResponse(res, 'Error al procesar duplicado')
+
       // Remover el duplicado procesado de la lista
       setDuplicados(prev => {
         const nuevos = prev.filter(d => d.id_duplicado !== idDuplicado)

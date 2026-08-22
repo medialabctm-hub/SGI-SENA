@@ -5,7 +5,7 @@ import Sidebar from '../components/Sidebar'
 import Toast from '../components/Toast'
 import ConfirmModal from '../components/ConfirmModal'
 import CustomSelect from '../components/CustomSelect'
-import { FiTool, FiEye, FiCheckCircle, FiClock, FiXCircle, FiAlertCircle, FiPlus, FiEdit, FiTrash2, FiList, FiPackage, FiCalendar, FiUser, FiFileText, FiSearch, FiCheck, FiX, FiType } from 'react-icons/fi'
+import { FiTool, FiEye, FiCheckCircle, FiClock, FiXCircle, FiAlertCircle, FiEdit, FiTrash2, FiList, FiPackage, FiCalendar, FiUser, FiFileText, FiSearch, FiCheck, FiX, FiType } from 'react-icons/fi'
 import { parseApiResponse, buildErrorMessage } from '../utils/api'
 import { useSocket } from '../contexts/SocketContext'
 import '../styles/pages/equipos.css'
@@ -220,12 +220,6 @@ export default function Mantenimientos() {
   }
 
   function getTipoBadge(tipo) {
-    const tipos = {
-      'Preventivo': { color: 'var(--success-800)', bg: '#d1fae5' },
-      'Correctivo': { color: 'var(--warning-600)', bg: '#fef3c7' },
-      'Predictivo': { color: '#3b82f6', bg: '#dbeafe' }
-    }
-    const tipoInfo = tipos[tipo] || tipos['Preventivo']
     return (
       <span className="mantenimientos-tipo-badge">
         {tipo}
@@ -503,7 +497,7 @@ export default function Mantenimientos() {
           type: 'error' 
         })
       }
-    } catch (err) {
+    } catch {
       setToast({ message: 'Error de conexión con el servidor', type: 'error' })
     } finally {
       setLoadingCrear(false)

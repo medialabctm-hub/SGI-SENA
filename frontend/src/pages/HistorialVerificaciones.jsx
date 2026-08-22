@@ -4,13 +4,10 @@ import Header from '../components/Header'
 import Sidebar from '../components/Sidebar'
 import Toast from '../components/Toast'
 import CustomSelect from '../components/CustomSelect'
-import { 
-  FiClock, 
-  FiUser, 
-  FiMapPin, 
-  FiPackage, 
-  FiCheckCircle, 
-  FiAlertCircle, 
+import {
+  FiClock,
+  FiCheckCircle,
+  FiAlertCircle,
   FiX,
   FiArrowLeft,
   FiCalendar,
