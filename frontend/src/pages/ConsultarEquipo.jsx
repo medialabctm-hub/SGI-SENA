@@ -5,7 +5,7 @@ import Toast from '../components/Toast'
 import DestructiveConfirmModal from '../components/DestructiveConfirmModal'
 import CustomSelect from '../components/CustomSelect'
 import { parseApiResponse, buildErrorMessage } from '../utils/api'
-import { FiDownload, FiSearch, FiList, FiClock, FiEye, FiUpload, FiSettings, FiCheckSquare, FiSquare } from 'react-icons/fi'
+import { FiDownload, FiSearch, FiList, FiClock, FiEye, FiSettings, FiCheckSquare, FiSquare } from 'react-icons/fi'
 import { useNavigate } from 'react-router-dom'
 import * as XLSX from 'xlsx'
 import '../styles/pages/equipos.css'
@@ -177,7 +177,7 @@ export default function ConsultarEquipo() {
         const data = await parseApiResponse(res, 'No se pudo listar los equipos')
         const equiposList = data?.equipos || (Array.isArray(data) ? data : [])
         if (isMounted) setEquipos(equiposList)
-      } catch (err) {
+      } catch {
         if (isMounted) setEquipos([])
       } finally {
         if (isMounted) setLoading(false)
@@ -256,12 +256,6 @@ export default function ConsultarEquipo() {
     setLoading(true)
     setToast(null)
     try {
-      // Función helper para limpiar valores
-      const cleanValue = (val) => {
-        if (val === undefined || val === '' || val === null) return null;
-        return val;
-      };
-      
       const cleanNumber = (val) => {
         if (val === undefined || val === '' || val === null) return null;
         const num = typeof val === 'string' ? parseFloat(val) : Number(val);
@@ -461,32 +455,6 @@ export default function ConsultarEquipo() {
     }
   }
 
-  // Función para parsear especificaciones del formato "MARCA:valor;SERIAL:valor;MODELO:valor;OBSERVACIONES:valor"
-  function parsearEspecificaciones(specs) {
-    if (!specs || typeof specs !== 'string') {
-      return { marca: '-', serial: '-', modelo: '-', observaciones: '-' }
-    }
-    
-    const resultado = { marca: '-', serial: '-', modelo: '-', observaciones: '-' }
-    
-    // Buscar cada campo en el formato "CAMPO:valor" (puede terminar con ; o al final del string)
-    const campos = {
-      marca: /MARCA:\s*([^;]+?)(?=;|$)/i,
-      serial: /SERIAL:\s*([^;]+?)(?=;|$)/i,
-      modelo: /MODELO:\s*([^;]+?)(?=;|$)/i,
-      observaciones: /OBSERVACIONES:\s*([^;]+?)(?=;|$)/i
-    }
-    
-    Object.keys(campos).forEach(campo => {
-      const match = specs.match(campos[campo])
-      if (match && match[1]) {
-        const valor = match[1].trim()
-        resultado[campo] = valor || '-'
-      }
-    })
-    
-    return resultado
-  }
 
   async function handleDescargarPDF() {
     setToast(null)
@@ -519,7 +487,6 @@ export default function ConsultarEquipo() {
     try {
       // Preparar datos para Excel con especificaciones separadas
       const datosExcel = equiposParaExportar.map(eq => {
-        const specs = parsearEspecificaciones(eq.specs_completas)
         return {
           'Código Inventario': eq.codigo_inventario || '-',
           'Tipo': eq.tipo || '-',
@@ -596,8 +563,7 @@ export default function ConsultarEquipo() {
       if (ws['!ref']) {
         const range = XLSX.utils.decode_range(ws['!ref'])
         // El autofilter debe aplicarse desde la fila de encabezados (índice 1)
-        range.s.r = 1
-        range.e.r = range.e.r // Mantener el final del rango
+        range.s.r = 1 // El autofilter mantiene el final del rango calculado por decode_range
         ws['!autofilter'] = { ref: XLSX.utils.encode_range(range) }
       }
       
