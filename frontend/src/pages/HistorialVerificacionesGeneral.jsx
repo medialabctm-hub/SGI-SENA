@@ -4,27 +4,23 @@ import Header from '../components/Header'
 import Sidebar from '../components/Sidebar'
 import Toast from '../components/Toast'
 import CustomSelect from '../components/CustomSelect'
-import { 
-  FiClock, 
-  FiUser, 
-  FiMapPin, 
-  FiPackage, 
-  FiCheckCircle, 
-  FiAlertCircle, 
+import {
+  FiClock,
+  FiCheckCircle,
+  FiAlertCircle,
   FiX,
   FiFilter,
-  FiRefreshCw,
   FiSearch
 } from 'react-icons/fi'
-import { parseApiResponse, buildErrorMessage } from '../utils/api'
+import { parseApiResponse } from '../utils/api'
 import '../styles/pages/equipos.css'
 import '../styles/pages/historiales.css'
 
 export default function HistorialVerificacionesGeneral() {
   const navigate = useNavigate()
   const [user, setUser] = useState(null)
-  const [loading, setLoading] = useState(false)
-  const [verificaciones, setVerificaciones] = useState([])
+  const [loading] = useState(false)
+  const [verificaciones] = useState([])
   const [toast, setToast] = useState(null)
   const [filtros, setFiltros] = useState({
     codigo_equipo: '',
@@ -52,31 +48,6 @@ export default function HistorialVerificacionesGeneral() {
       fetchAmbientes()
     }
   }, [user, filtros])
-
-  async function fetchHistorial() {
-    setLoading(true)
-    setToast(null)
-    try {
-      const token = localStorage.getItem('token')
-      const params = new URLSearchParams()
-      if (filtros.codigo_equipo) params.append('codigo_equipo', filtros.codigo_equipo)
-      if (filtros.id_ambiente) params.append('id_ambiente', filtros.id_ambiente)
-      if (filtros.fecha_desde) params.append('fecha_desde', filtros.fecha_desde)
-      if (filtros.fecha_hasta) params.append('fecha_hasta', filtros.fecha_hasta)
-      if (filtros.estado_verificacion) params.append('estado_verificacion', filtros.estado_verificacion)
-
-      const res = await fetch(`/api/equipos/verificacion/historial?${params.toString()}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      })
-      const data = await parseApiResponse(res, 'No se pudo obtener el historial')
-      setVerificaciones(data.verificaciones || [])
-    } catch (err) {
-      setToast({ message: buildErrorMessage(err, 'No se pudo obtener el historial'), type: 'error' })
-      setVerificaciones([])
-    } finally {
-      setLoading(false)
-    }
-  }
 
   async function fetchAmbientes() {
     try {

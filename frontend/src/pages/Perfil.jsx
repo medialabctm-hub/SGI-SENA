@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FiUser, FiMail, FiShield, FiCamera, FiArrowLeft, FiCreditCard, FiPhone, FiEdit2, FiTrash2 } from 'react-icons/fi';
-import { parseApiResponse, buildErrorMessage, handleError } from '../utils/api';
+import { FiUser, FiMail, FiCamera, FiArrowLeft, FiCreditCard, FiPhone, FiEdit2, FiTrash2 } from 'react-icons/fi';
+import { parseApiResponse, handleError } from '../utils/api';
 import Toast from '../components/Toast';
 import Header from '../components/Header';
 import Sidebar from '../components/Sidebar';
@@ -73,7 +73,7 @@ export default function Perfil() {
           try {
             localStorage.setItem('user', JSON.stringify(data.user));
             setCurrentUser(data.user);
-          } catch (e) {
+          } catch {
             // Ignorar errores de localStorage
           }
         }
@@ -130,7 +130,7 @@ export default function Perfil() {
         try {
           localStorage.setItem('user', JSON.stringify(data.user));
           setCurrentUser(data.user);
-        } catch (e) {
+        } catch {
           // Ignorar errores de localStorage
         }
       }
@@ -243,10 +243,7 @@ export default function Perfil() {
   // Variables derivadas (después del return condicional está bien)
   const fotoPerfil = userData?.foto_perfil;
   const nombreCompleto = userData?.nombre_usuario || userData?.nombre || 'Usuario';
-  const correo = userData?.correo || '-';
   const rol = userData?.nombre_rol || '-';
-  const cedula = userData?.cedula || '-';
-  const telefono = userData?.telefono || '-';
 
   return (
     <div className="page simple-page perfil-page">
