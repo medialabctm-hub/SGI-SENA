@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
-import { FiUpload, FiFile, FiDownload, FiUser, FiSave, FiAlertCircle, FiSearch, FiCheckCircle } from 'react-icons/fi'
+import { FiUpload, FiFile, FiDownload, FiUser, FiAlertCircle, FiSearch, FiCheckCircle } from 'react-icons/fi'
 import * as XLSX from 'xlsx'
 import { parseApiResponse, buildErrorMessage, handleError } from '../utils/api'
 import RevisarDuplicados from './RevisarDuplicados'
@@ -18,10 +18,10 @@ export default function ImportarEquipos({ onImportComplete, onEstadoDuplicadosCh
   const [cuentadanteEncontrado, setCuentadanteEncontrado] = useState(null)
   const [buscandoCuentadante, setBuscandoCuentadante] = useState(false)
   const [loadingCuentadante, setLoadingCuentadante] = useState(false)
-  const [savingCuentadante, setSavingCuentadante] = useState(false)
+  const [savingCuentadante] = useState(false)
   const [user, setUser] = useState(null)
   const [idImportacion, setIdImportacion] = useState(null)
-  const [equiposImportadosIds, setEquiposImportadosIds] = useState([]) // IDs de equipos importados en esta sesión
+  const [, setEquiposImportadosIds] = useState([]) // IDs de equipos importados en esta sesión
   const [mostrarDuplicados, setMostrarDuplicados] = useState(false)
   const { establecerDuplicadosPendientes, limpiarDuplicados, setImportacionEnCurso } = useDuplicados()
   const [infoModal, setInfoModal] = useState({ open: false, message: '', title: '' })
@@ -140,62 +140,6 @@ export default function ImportarEquipos({ onImportComplete, onEstadoDuplicadosCh
       setCuentadanteEncontrado(null)
     } finally {
       setBuscandoCuentadante(false)
-    }
-  }
-
-  const handleSaveCuentadante = async () => {
-    if (!cuentadantePrincipal.trim()) {
-      setError('el Documento del cuentadante es obligatoria')
-      return
-    }
-
-    // Si no se ha buscado el cuentadante, buscarlo primero
-    if (!cuentadanteEncontrado) {
-      await buscarCuentadante()
-      if (!cuentadanteEncontrado) {
-        return // No continuar si no se encontró
-      }
-    }
-
-    // Validar que hay equipos importados para asignar el cuentadante
-    if (!equiposImportadosIds || equiposImportadosIds.length === 0) {
-      setError('No hay elementos importados en esta sesión. Debe importar elementos primero antes de asignar el cuentadante.')
-      return
-    }
-
-    try {
-      setSavingCuentadante(true)
-      setError(null)
-      const token = localStorage.getItem('token')
-      
-      // Enviar los IDs de equipos importados para asignar cuentadante solo a esos
-      const res = await fetch('/api/equipos/cuentadante-principal', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
-        },
-        body: JSON.stringify({ 
-          cedula: cuentadantePrincipal.trim(),
-          equipos_ids: equiposImportadosIds // Solo actualizar equipos importados en esta sesión
-        })
-      })
-      const data = await parseApiResponse(res, 'Error al actualizar cuentadante principal')
-      setCuentadanteActual(data.cuentadante_principal || '')
-      setCuentadantePrincipal(data.cuentadante_cedula || cuentadantePrincipal.trim())
-      setError(null)
-      // Mostrar mensaje de éxito
-      setInfoModal({
-        open: true,
-        message: `Cuentadante principal "${data.cuentadante_principal}" asignado correctamente a ${data.equipos_actualizados} elemento(s) importado(s) en esta sesión`,
-        title: 'Éxito'
-      })
-      // Limpiar IDs después de asignar (opcional, para evitar reasignaciones accidentales)
-      // setEquiposImportadosIds([])
-    } catch (err) {
-      handleError(err, (errObj) => setError(typeof errObj === 'string' ? errObj : errObj?.message ?? 'Error al guardar el cuentadante principal'), 'Error al guardar el cuentadante principal')
-    } finally {
-      setSavingCuentadante(false)
     }
   }
 

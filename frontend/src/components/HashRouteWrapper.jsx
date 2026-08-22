@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { hashRouteSync, hasRouteHash, unhashRoute } from '../utils/routeHash';
+import { hashRouteSync, hasRouteHash } from '../utils/routeHash';
 
 /**
  * Componente wrapper que maneja la conversión de rutas con hash

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { FiPlus, FiTrash2, FiCopy, FiX, FiCheck, FiAlertCircle } from 'react-icons/fi';
+import { FiPlus, FiTrash2, FiCopy, FiCheck, FiAlertCircle } from 'react-icons/fi';
 import Toast from '../../components/Toast';
 import ConfirmModal from '../../components/ConfirmModal';
 import CustomSelect from '../../components/CustomSelect';
@@ -76,7 +76,7 @@ export default function InvitationCodes() {
         body: JSON.stringify(body)
       });
 
-      const data = await parseApiResponse(res, 'No se pudo crear el código');
+      await parseApiResponse(res, 'No se pudo crear el código');
       setToast({ message: 'Código creado exitosamente', type: 'success' });
       setShowForm(false);
       setForm({

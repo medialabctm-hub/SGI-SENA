@@ -3,10 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom'
 import Header from '../components/Header'
 import Sidebar from '../components/Sidebar'
 import Toast from '../components/Toast'
-import { 
-  FiClock, 
-  FiUser, 
-  FiPackage, 
+import {
+  FiClock,
   FiArrowLeft,
   FiFilter,
   FiPlay,

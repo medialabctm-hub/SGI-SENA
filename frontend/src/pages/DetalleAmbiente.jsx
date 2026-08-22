@@ -7,7 +7,7 @@ import {
 import Header from '../components/Header';
 import Sidebar from '../components/Sidebar';
 import Toast from '../components/Toast';
-import { parseApiResponse, buildErrorMessage, handleError, getAuthHeaders } from '../utils/api';
+import { parseApiResponse, handleError, getAuthHeaders } from '../utils/api';
 import '../styles/pages/equipos.css';
 import '../styles/pages/usuarios.css';
 import '../styles/components/modals.css';
