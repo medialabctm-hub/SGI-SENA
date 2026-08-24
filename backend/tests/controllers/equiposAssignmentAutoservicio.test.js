@@ -57,7 +57,13 @@ describe('contratos de asignación y autoservicio', () => {
     mockGetConnection.mockReset();
     mockPoolQuery.mockReset();
     mockGetConnection.mockResolvedValue(mockConnection);
-    mockConnection.execute.mockImplementation((...args) => mockExecute(...args));
+    mockConnection.execute.mockImplementation(async (sql, params = []) => {
+      if (/FROM Elementos[\s\S]*WHERE codigo_equipo = \?[\s\S]*FOR UPDATE/i.test(sql)) {
+        return [[{ codigo_equipo: Number(params[0]), placa: 'P3', tipo: 'Laptop', modelo: 'M', id_ambiente: 1 }]];
+      }
+      return mockExecute(sql, params);
+    });
+    verificarDisponibilidadEquipo.mockReset();
     verificarAmbienteEquipoAprendiz.mockResolvedValue({ valido: true });
   });
 
@@ -128,10 +134,14 @@ describe('contratos de asignación y autoservicio', () => {
       .mockResolvedValueOnce([[{ id_ambiente: 1, nombre_ambiente: 'A1', codigo_ambiente: '101' }]]);
     verificarDisponibilidadEquipo.mockResolvedValueOnce({ disponible: true });
     mockConnection.execute.mockImplementation(async (sql) => {
+      if (/FROM Elementos[\s\S]*WHERE placa = \?[\s\S]*FOR UPDATE/i.test(sql)) {
+        return [[{ codigo_equipo: 3, placa: 'P3', tipo: 'Laptop', modelo: 'M', id_ambiente: 1 }]];
+      }
+      if (/FROM Ambientes/.test(sql)) return [[{ id_ambiente: 1, nombre_ambiente: 'A1', codigo_ambiente: '101' }]];
       if (/INFORMATION_SCHEMA/.test(sql)) return [[{ cnt: 1 }]];
       if (/FROM Usuarios/.test(sql)) return [[]];
       if (/FROM Aprendices/.test(sql)) return [[]];
-      return [{ insertId: 1 }];
+      return [[]];
     });
 
     const response = res();
@@ -140,6 +150,27 @@ describe('contratos de asignación y autoservicio', () => {
     expect(response.status).toHaveBeenCalledWith(422);
     expect(response.json).toHaveBeenCalledWith(expect.objectContaining({ code: 'NO_USERS_PROCESSED', errores: [expect.objectContaining({ documento: 'NO-1' })] }));
     expect(mockConnection.rollback).toHaveBeenCalled();
+  });
+
+  it('reclama el equipo del flujo externo antes de validar disponibilidad', async () => {
+    mockGetConnection.mockResolvedValue(mockConnection);
+    mockConnection.execute.mockImplementation(async (sql) => {
+      if (/FROM Elementos[\s\S]*WHERE placa = \?[\s\S]*FOR UPDATE/i.test(sql)) {
+        return [[{ codigo_equipo: 3, placa: 'P3', tipo: 'Laptop', modelo: 'M', id_ambiente: 1 }]];
+      }
+      return [[]];
+    });
+    verificarDisponibilidadEquipo.mockResolvedValueOnce({ disponible: false, razon: 'En uso' });
+
+    const response = res();
+    await registrarUsoEquipoExterno({ body: { placa: 'P3', usuarios: [{ documento: 'D1' }] } }, response);
+
+    expect(mockGetConnection).toHaveBeenCalledTimes(1);
+    expect(mockConnection.beginTransaction).toHaveBeenCalledTimes(1);
+    expect(mockConnection.execute).toHaveBeenCalledWith(expect.stringMatching(/FROM Elementos[\s\S]*WHERE placa = \?[\s\S]*FOR UPDATE/i), ['P3']);
+    expect(mockConnection.rollback).toHaveBeenCalledTimes(1);
+    expect(mockConnection.release).toHaveBeenCalledTimes(1);
+    expect(response.status).toHaveBeenCalledWith(409);
   });
 
   it('devuelve códigos estables para 404 y 409 de autoservicio', async () => {
@@ -361,7 +392,10 @@ describe('contratos de asignación y autoservicio', () => {
 
     expect(mockGetConnection).toHaveBeenCalledTimes(1);
     expect(mockConnection.beginTransaction).toHaveBeenCalledTimes(1);
-    expect(mockConnection.execute).toHaveBeenCalledWith(expect.stringMatching(/FOR UPDATE/i), [3]);
+    expect(mockConnection.execute).toHaveBeenCalledWith(
+      expect.stringMatching(/FROM Elementos[\s\S]*WHERE placa = \?[\s\S]*FOR UPDATE/i),
+      ['P3']
+    );
     expect(mockConnection.commit).toHaveBeenCalledTimes(1);
     expect(mockConnection.release).toHaveBeenCalledTimes(1);
     expect(response.status).toHaveBeenCalledWith(201);

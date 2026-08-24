@@ -527,6 +527,20 @@ describe('asignarEquipo', () => {
   beforeEach(() => {
     mockExecute.mockReset();
     jest.clearAllMocks();
+    mockGetConnection.mockReset();
+    mockGetConnection.mockResolvedValue(mockConnection);
+    mockConnection.execute.mockReset();
+    mockConnection.execute.mockImplementation(async (sql, params = []) => {
+      if (/FROM Elementos[\s\S]*FOR UPDATE/i.test(sql)) {
+        const equipo = await mockObtenerEquipoPorCodigo({}, params[0]);
+        return [equipo ? [equipo] : []];
+      }
+      return mockExecute(sql, params);
+    });
+    mockConnection.beginTransaction.mockReset();
+    mockConnection.commit.mockReset();
+    mockConnection.rollback.mockReset();
+    mockConnection.release.mockReset();
     mockObtenerEquipoPorCodigo.mockReset();
     mockVerificarDisponibilidad.mockReset();
     mockVerificarAmbienteEquipoAprendiz.mockReset();
@@ -634,6 +648,35 @@ describe('asignarEquipo', () => {
     const res = mockRes();
     await asignarEquipo(req, res);
     expect(res.status).toHaveBeenCalledWith(500);
+  });
+
+  it('claims the equipment row inside a transaction before creating an assignment', async () => {
+    mockObtenerEquipoPorCodigo.mockResolvedValueOnce({ codigo_equipo: 1, tipo: 'Laptop', modelo: 'Dell', id_ambiente: 4 });
+    mockGetConnection.mockResolvedValueOnce(mockConnection);
+    mockConnection.execute.mockImplementation(async (sql) => {
+      if (/FROM Elementos/.test(sql)) {
+        return [[{ codigo_equipo: 1, tipo: 'Laptop', modelo: 'Dell', id_ambiente: 4 }]];
+      }
+      if (/FROM Usuarios/.test(sql)) {
+        return [[{ id_usuario: 2, nombre_usuario: 'Juan', nombre_rol: 'Aprendiz' }]];
+      }
+      if (/INSERT INTO Responsables_Equipo/.test(sql)) return [{ insertId: 100 }];
+      if (/Mantenimiento/.test(sql) || /Responsables_Equipo/.test(sql)) return [[undefined]];
+      return [[]];
+    });
+    mockVerificarDisponibilidad.mockResolvedValueOnce({ disponible: true });
+    mockVerificarAmbienteEquipoAprendiz.mockResolvedValueOnce({ valido: true });
+
+    const req = mockReq({ body: { codigo_equipo: 1, id_usuario: 2 } });
+    const res = mockRes();
+    await asignarEquipo(req, res);
+
+    expect(mockGetConnection).toHaveBeenCalledTimes(1);
+    expect(mockConnection.beginTransaction).toHaveBeenCalledTimes(1);
+    expect(mockConnection.execute).toHaveBeenCalledWith(expect.stringMatching(/FROM Elementos[\s\S]*FOR UPDATE/i), [1]);
+    expect(mockConnection.commit).toHaveBeenCalledTimes(1);
+    expect(mockConnection.release).toHaveBeenCalledTimes(1);
+    expect(res.status).toHaveBeenCalledWith(201);
   });
 });
 
@@ -965,6 +1008,33 @@ describe('registrarInicioUso', () => {
     const res = mockRes();
     await registrarInicioUso(req, res);
     expect(res.status).toHaveBeenCalledWith(400);
+  });
+
+  it('claims the equipment row inside a transaction before creating a usage session', async () => {
+    mockGetConnection.mockResolvedValueOnce(mockConnection);
+    mockConnection.execute.mockImplementation(async (sql) => {
+      if (/FROM Elementos/.test(sql)) {
+        return [[{ codigo_equipo: 1, tipo: 'Laptop', modelo: 'Dell' }]];
+      }
+      if (/id_historial/.test(sql)) return [[]];
+      if (/INFORMATION_SCHEMA/.test(sql)) return [[{ cnt: 1 }]];
+      if (/INSERT INTO Historial_Uso_Equipos/.test(sql)) return [{ insertId: 200 }];
+      return [[]];
+    });
+
+    const req = mockReq({
+      user: { id: 5, rol: 'Aprendiz' },
+      body: { codigo_equipo: 1, nombre_usuario: 'Juan' }
+    });
+    const res = mockRes();
+    await registrarInicioUso(req, res);
+
+    expect(mockGetConnection).toHaveBeenCalledTimes(1);
+    expect(mockConnection.beginTransaction).toHaveBeenCalledTimes(1);
+    expect(mockConnection.execute).toHaveBeenCalledWith(expect.stringMatching(/FROM Elementos[\s\S]*FOR UPDATE/i), [1]);
+    expect(mockConnection.commit).toHaveBeenCalledTimes(1);
+    expect(mockConnection.release).toHaveBeenCalledTimes(1);
+    expect(res.status).toHaveBeenCalledWith(201);
   });
 });
 
@@ -1388,6 +1458,14 @@ describe('registrarUsoEquipoExterno', () => {
   beforeEach(() => {
     mockExecute.mockReset();
     mockVerificarDisponibilidad.mockReset();
+    mockGetConnection.mockReset();
+    mockGetConnection.mockResolvedValue(mockConnection);
+    mockConnectionExecute.mockReset();
+    mockConnectionExecute.mockImplementation((...args) => mockExecute(...args));
+    mockConnection.beginTransaction.mockReset();
+    mockConnection.commit.mockReset();
+    mockConnection.rollback.mockReset();
+    mockConnection.release.mockReset();
     jest.clearAllMocks();
   });
 

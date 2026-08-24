@@ -18,6 +18,13 @@ BEGIN
     DECLARE v_index INT DEFAULT 0;
     DECLARE v_registro JSON;
     DECLARE v_id_clase_registro INT;
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        ROLLBACK;
+        RESIGNAL;
+    END;
+
+    START TRANSACTION;
 
     SELECT id_ambiente, id_instructor INTO v_id_ambiente, v_id_instructor
     FROM Clases WHERE id_clase = p_id_clase;
@@ -66,6 +73,8 @@ BEGIN
     UPDATE Historial_Uso_Equipos
     SET estado = 'Finalizado', fecha_hora_fin = v_fecha_fin
     WHERE id_clase = p_id_clase AND estado = 'En Uso';
+
+    COMMIT;
 
     SELECT 'Clase finalizada correctamente. Responsabilidades y asignaciones de equipos revertidas.' AS mensaje;
 END

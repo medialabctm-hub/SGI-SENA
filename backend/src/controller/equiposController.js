@@ -10,6 +10,7 @@ import {
 import { getImagePath, deleteImageFile } from '../middleware/uploadMiddleware.js';
 import { handleControllerError } from '../utils/controllerHelpers.js';
 import { AppError, translateDbError } from '../utils/errors.js';
+import { beginEquipmentClaim, lockEquipmentRow } from '../utils/equipmentClaim.js';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
@@ -711,6 +712,17 @@ export async function eliminarEquipo(req, res) {
  * Instructor: solo puede habilitar a Aprendices
  */
 export async function asignarEquipo(req, res) {
+  let connection;
+  let transactionStarted = false;
+
+  const rollbackAndRespond = async (status, payload) => {
+    if (connection && transactionStarted) {
+      await connection.rollback();
+      transactionStarted = false;
+    }
+    return res.status(status).json(payload);
+  };
+
   try {
     const { codigo_equipo, id_usuario, id_aprendiz, documento, documento_externo, tipo_responsabilidad = 'Principal', observaciones } = req.body
     const asignadoPor = req.user?.id
@@ -722,25 +734,28 @@ export async function asignarEquipo(req, res) {
       return res.status(400).json({ error: 'Faltan campos obligatorios (codigo_equipo y usuario o aprendiz)' })
     }
 
-    // Validar que el equipo existe usando utilidad SQL
-    const equipo = await obtenerEquipoPorCodigoUtil(defaultDb, codigo_equipo)
+    const claim = await beginEquipmentClaim(pool, { codigoEquipo: codigo_equipo });
+    connection = claim.connection;
+    transactionStarted = claim.transactionStarted;
+    const equipo = claim.equipment;
+    const execute = connection.execute.bind(connection);
 
     if (!equipo) {
-      return res.status(404).json({ error: 'Equipo no encontrado' })
+      return rollbackAndRespond(404, { error: 'Equipo no encontrado' })
     }
 
     // Validar que el usuario receptor existe y obtener su rol
     let usuarioReceptor;
     let aprendizImportado = null;
     if (id_usuario) {
-      const [[usuarioCuenta]] = await defaultDb.execute(
+      const [[usuarioCuenta]] = await execute(
         `SELECT u.id_usuario, u.nombre_usuario, r.nombre_rol
          FROM Usuarios u LEFT JOIN Roles r ON u.id_rol = r.id_rol
          WHERE u.id_usuario = ? AND u.estado = 'Activo'`, [id_usuario]
       );
       usuarioReceptor = usuarioCuenta;
     } else {
-      const [[aprendiz]] = await defaultDb.execute(
+      const [[aprendiz]] = await execute(
         `SELECT id_aprendiz, nombre, documento, ficha FROM Aprendices
          WHERE id_aprendiz = ? AND TRIM(documento) = ? LIMIT 1`,
         [id_aprendiz, documentoNormalizado]
@@ -751,26 +766,26 @@ export async function asignarEquipo(req, res) {
     }
 
     if (!usuarioReceptor) {
-      return res.status(404).json({ error: id_usuario ? 'Usuario no encontrado o inactivo' : 'Usuario o aprendiz no encontrado' })
+      return rollbackAndRespond(404, { error: id_usuario ? 'Usuario no encontrado o inactivo' : 'Usuario o aprendiz no encontrado' })
     }
 
     // Instructor y Cuentadante solo pueden habilitar a Aprendices
     if ((userRole === 'Instructor' || userRole === 'Cuentadante') && usuarioReceptor.nombre_rol !== 'Aprendiz') {
-      return res.status(403).json({ 
-        error: 'Solo puedes habilitar equipos a aprendices' 
+      return rollbackAndRespond(403, {
+        error: 'Solo puedes habilitar equipos a aprendices'
       })
     }
 
     // Si el receptor es un Aprendiz, validar que el equipo pertenezca a su ambiente/ficha
     if (usuarioReceptor.nombre_rol === 'Aprendiz' && !aprendizImportado) {
       const validacionAmbiente = await verificarAmbienteEquipoAprendiz(
-        defaultDb,
+        connection,
         codigo_equipo,
         usuarioReceptor.id_usuario
       )
 
       if (!validacionAmbiente.valido) {
-        return res.status(409).json({
+        return rollbackAndRespond(409, {
           error: validacionAmbiente.razon,
           ambiente_equipo: validacionAmbiente.ambiente_equipo,
           nombre_ambiente_equipo: validacionAmbiente.nombre_ambiente_equipo,
@@ -780,10 +795,10 @@ export async function asignarEquipo(req, res) {
     }
 
     // Verificar disponibilidad del equipo (estado_operativo y estado_fisico)
-    const disponibilidad = await verificarDisponibilidadEquipo(defaultDb, codigo_equipo)
+    const disponibilidad = await verificarDisponibilidadEquipo(connection, codigo_equipo)
     
     if (!disponibilidad.disponible) {
-      return res.status(409).json({ 
+      return rollbackAndRespond(409, {
         error: disponibilidad.razon,
         estado_operativo: disponibilidad.estado_operativo,
         estado_fisico: disponibilidad.estado_fisico,
@@ -793,7 +808,7 @@ export async function asignarEquipo(req, res) {
 
     // Verificar si el equipo está en mantenimiento (estado "En Proceso")
     // Esta validación adicional cubre casos donde el estado_operativo no esté sincronizado
-    const [[mantenimientoActivo]] = await defaultDb.execute(
+    const [[mantenimientoActivo]] = await execute(
       `SELECT id_mantenimiento, estado_mantenimiento, tipo_mantenimiento 
        FROM Mantenimiento 
        WHERE codigo_equipo = ? AND estado_mantenimiento = 'En Proceso' 
@@ -803,14 +818,14 @@ export async function asignarEquipo(req, res) {
     )
 
     if (mantenimientoActivo) {
-      return res.status(409).json({ 
+      return rollbackAndRespond(409, {
         error: `Este equipo está actualmente en mantenimiento (${mantenimientoActivo.tipo_mantenimiento}). No se puede habilitar hasta que el mantenimiento finalice.` 
       })
     }
 
     // Verificar si ya existe una habilitación activa para este equipo y usuario
     // NOTA: Esta es una habilitación para uso, NO una asignación de inventario
-    const [[habilitacionExistente]] = await defaultDb.execute(
+    const [[habilitacionExistente]] = await execute(
       aprendizImportado
         ? `SELECT id_responsable FROM Responsables_Equipo WHERE codigo_equipo = ? AND id_usuario IS NULL AND TRIM(documento_externo) = ? AND estado_responsabilidad = 'Activo'`
         : `SELECT id_responsable FROM Responsables_Equipo WHERE codigo_equipo = ? AND id_usuario = ? AND estado_responsabilidad = 'Activo'`,
@@ -818,7 +833,7 @@ export async function asignarEquipo(req, res) {
     )
 
     if (habilitacionExistente) {
-      return res.status(409).json({ 
+      return rollbackAndRespond(409, {
         error: 'Este equipo ya está habilitado para este usuario' 
       })
     }
@@ -836,7 +851,7 @@ export async function asignarEquipo(req, res) {
       campos += ', documento_externo';
       valores.push(String(aprendizImportado.documento).trim());
       marcadores += ', ?';
-      const [[colIdAprendiz]] = await defaultDb.execute(
+      const [[colIdAprendiz]] = await execute(
         `SELECT COUNT(*) AS cnt FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'Responsables_Equipo' AND COLUMN_NAME = 'id_aprendiz'`
       );
       if (colIdAprendiz?.cnt > 0) {
@@ -845,9 +860,12 @@ export async function asignarEquipo(req, res) {
         marcadores += ', ?';
       }
     }
-    const [result] = await defaultDb.execute(
+    const [result] = await execute(
       `INSERT INTO Responsables_Equipo (${campos}) VALUES (${marcadores})`, valores
     )
+
+    await connection.commit();
+    transactionStarted = false;
 
     // Emitir evento WebSocket para actualización en tiempo real
     try {
@@ -874,8 +892,18 @@ export async function asignarEquipo(req, res) {
       nota: 'Esta habilitación permite el uso del equipo. El inventario permanece asignado al ambiente.'
     })
   } catch (err) {
+    if (connection && transactionStarted) {
+      try {
+        await connection.rollback();
+      } catch (rollbackError) {
+        logger.warn('No se pudo revertir la habilitación del equipo', { error: rollbackError.message });
+      }
+      transactionStarted = false;
+    }
     logger.error('Error al habilitar equipo', { error: err.message, stack: err.stack })
     return handleControllerError(err, res, 'asignarEquipo', 'Error al habilitar el equipo');
+  } finally {
+    if (connection) connection.release();
   }
 }
 
@@ -2473,6 +2501,17 @@ export async function eliminarCategoria(req, res) {
  * Crea un nuevo registro de uso cuando un usuario inicia sesión
  */
 export async function registrarInicioUso(req, res) {
+  let connection;
+  let transactionStarted = false;
+
+  const rollbackAndRespond = async (status, payload) => {
+    if (connection && transactionStarted) {
+      await connection.rollback();
+      transactionStarted = false;
+    }
+    return res.status(status).json(payload);
+  };
+
   try {
     const { codigo_equipo, nombre_usuario, fecha_hora_inicio, observaciones } = req.body;
     const userId = req.user?.id; // El usuario viene del token JWT
@@ -2485,22 +2524,25 @@ export async function registrarInicioUso(req, res) {
       return res.status(400).json({ error: 'El nombre del usuario es obligatorio' });
     }
 
-    // Validar que el equipo existe
-    const equipo = await obtenerEquipoPorCodigoUtil(defaultDb, codigo_equipo);
+    const claim = await beginEquipmentClaim(pool, { codigoEquipo: codigo_equipo });
+    connection = claim.connection;
+    transactionStarted = claim.transactionStarted;
+    const equipo = claim.equipment;
+
     if (!equipo) {
-      return res.status(404).json({ error: 'Equipo no encontrado' });
+      return rollbackAndRespond(404, { error: 'Equipo no encontrado' });
     }
 
     // Verificar si el usuario tiene una sesión activa en este equipo
-    const [[sesionActiva]] = await defaultDb.execute(
-      `SELECT id_historial FROM Historial_Uso_Equipos 
-       WHERE codigo_equipo = ? AND id_usuario = ? AND estado = 'En Uso' 
+    const [[sesionActiva]] = await connection.execute(
+      `SELECT id_historial FROM Historial_Uso_Equipos
+       WHERE codigo_equipo = ? AND id_usuario = ? AND estado = 'En Uso'
        ORDER BY fecha_hora_inicio DESC LIMIT 1`,
       [codigo_equipo, userId]
     );
 
     if (sesionActiva) {
-      return res.status(409).json({ 
+      return rollbackAndRespond(409, {
         error: 'Ya existe una sesión activa para este usuario en este equipo',
         id_historial: sesionActiva.id_historial
       });
@@ -2510,9 +2552,9 @@ export async function registrarInicioUso(req, res) {
     const fechaInicio = fecha_hora_inicio ? new Date(fecha_hora_inicio) : new Date();
 
     // Verificar si la columna nombre_usuario existe en la tabla
-    const [[columnaExiste]] = await defaultDb.execute(
-      `SELECT COUNT(*) AS cnt FROM INFORMATION_SCHEMA.COLUMNS 
-       WHERE TABLE_SCHEMA = DATABASE() 
+    const [[columnaExiste]] = await connection.execute(
+      `SELECT COUNT(*) AS cnt FROM INFORMATION_SCHEMA.COLUMNS
+       WHERE TABLE_SCHEMA = DATABASE()
        AND TABLE_NAME = 'Historial_Uso_Equipos' 
        AND COLUMN_NAME = 'nombre_usuario'`
     );
@@ -2521,21 +2563,24 @@ export async function registrarInicioUso(req, res) {
     let result;
     if (columnaExiste.cnt > 0) {
       // Si la columna existe, incluirla en el INSERT
-      [result] = await defaultDb.execute(
-        `INSERT INTO Historial_Uso_Equipos 
-         (codigo_equipo, id_usuario, nombre_usuario, fecha_hora_inicio, estado, observaciones) 
+      [result] = await connection.execute(
+        `INSERT INTO Historial_Uso_Equipos
+         (codigo_equipo, id_usuario, nombre_usuario, fecha_hora_inicio, estado, observaciones)
          VALUES (?, ?, ?, ?, 'En Uso', ?)`,
         [codigo_equipo, userId, nombre_usuario, fechaInicio, observaciones || null]
       );
     } else {
       // Si la columna no existe, insertar sin ella
-      [result] = await defaultDb.execute(
-        `INSERT INTO Historial_Uso_Equipos 
-         (codigo_equipo, id_usuario, fecha_hora_inicio, estado, observaciones) 
+      [result] = await connection.execute(
+        `INSERT INTO Historial_Uso_Equipos
+         (codigo_equipo, id_usuario, fecha_hora_inicio, estado, observaciones)
          VALUES (?, ?, ?, 'En Uso', ?)`,
         [codigo_equipo, userId, fechaInicio, observaciones || null]
       );
     }
+
+    await connection.commit();
+    transactionStarted = false;
 
     logger.info('Inicio de uso registrado', {
       id_historial: result.insertId,
@@ -2552,8 +2597,18 @@ export async function registrarInicioUso(req, res) {
       fecha_hora_inicio: fechaInicio
     });
   } catch (err) {
+    if (connection && transactionStarted) {
+      try {
+        await connection.rollback();
+      } catch (rollbackError) {
+        logger.warn('No se pudo revertir el inicio de uso', { error: rollbackError.message });
+      }
+      transactionStarted = false;
+    }
     logger.error('Error al registrar inicio de uso', { error: err.message, stack: err.stack });
     return handleControllerError(err, res, 'registrarInicioUso', 'Error al registrar inicio de uso');
+  } finally {
+    if (connection) connection.release();
   }
 }
 
@@ -3028,6 +3083,16 @@ export async function obtenerSesionesActivas(req, res) {
 export async function registrarUsoEquipoExterno(req, res) {
   const uploadedFiles = []; // Para limpiar archivos en caso de error
   const asignadoPor = req.user?.id ?? null; // Cuando hay auth (web/app), quién registró el uso
+  let connection;
+  let transactionStarted = false;
+
+  const rollbackAndRespond = async (status, payload) => {
+    if (connection && transactionStarted) {
+      await connection.rollback();
+      transactionStarted = false;
+    }
+    return res.status(status).json(payload);
+  };
 
   try {
     const { placa, ambiente, usuarios } = req.body;
@@ -3042,13 +3107,11 @@ export async function registrarUsoEquipoExterno(req, res) {
       tiene_usuarios: !!usuarios && Array.isArray(usuarios)
     });
 
-    // Validar que el equipo existe por placa
-    const [[equipo]] = await defaultDb.execute(
-      `SELECT codigo_equipo, placa, tipo, modelo, id_ambiente 
-       FROM Elementos 
-       WHERE placa = ? LIMIT 1`,
-      [placa.trim()]
-    );
+    // Reclamar el equipo antes de validar disponibilidad y ejecutar cualquier escritura.
+    const claim = await beginEquipmentClaim(pool, { placa: placa.trim() });
+    connection = claim.connection;
+    transactionStarted = claim.transactionStarted;
+    const equipo = claim.equipment;
 
     if (!equipo) {
       // Eliminar archivos subidos si el equipo no existe
@@ -3057,17 +3120,17 @@ export async function registrarUsoEquipoExterno(req, res) {
           deleteImageFile(file.filename);
         });
       }
-      return res.status(404).json({ 
+      return rollbackAndRespond(404, {
         success: false,
         error: 'Equipo no encontrado',
-        message: `No se encontró un equipo con la placa "${placa}"` 
+        message: `No se encontró un equipo con la placa "${placa}"`
       });
     }
 
     const codigoEquipo = equipo.codigo_equipo;
 
     // Verificar disponibilidad del equipo (estado_operativo y estado_fisico)
-    const disponibilidad = await verificarDisponibilidadEquipo(defaultDb, codigoEquipo);
+    const disponibilidad = await verificarDisponibilidadEquipo(connection, codigoEquipo);
     const bloqueadoPorDanadoConFisicoBueno = !disponibilidad.disponible
       && disponibilidad.razon === 'Equipo dañado, no disponible para asignación'
       && disponibilidad.estado_fisico === 'Bueno';
@@ -3075,7 +3138,7 @@ export async function registrarUsoEquipoExterno(req, res) {
       if (files && files.length > 0) {
         files.forEach((file) => deleteImageFile(file.filename));
       }
-      return res.status(409).json({
+      return rollbackAndRespond(409, {
         success: false,
         error: disponibilidad.razon,
         message: `El equipo con placa "${placa}" no está disponible para uso. Estado: ${disponibilidad.estado_operativo || 'N/A'}`,
@@ -3124,7 +3187,7 @@ export async function registrarUsoEquipoExterno(req, res) {
           const tipoImagen = 'Detalle'; // Por defecto
           const descripcion = `Imagen subida en verificación de ambiente - Placa: ${placa}`;
 
-          const [resultImagen] = await defaultDb.execute(
+          const [resultImagen] = await connection.execute(
             `INSERT INTO Imagenes_Equipo 
              (codigo_equipo, ruta_imagen, nombre_archivo, tipo_imagen, descripcion, subida_por, es_principal)
              VALUES (?, ?, ?, ?, ?, NULL, FALSE)`,
@@ -3155,7 +3218,7 @@ export async function registrarUsoEquipoExterno(req, res) {
           .map((imagen) => imagen.id_imagen_equipo)
           .filter((idImagen) => idImagen != null);
         const metadataCleanup = await Promise.allSettled(
-          persistedImageIds.map((idImagen) => defaultDb.execute(
+          persistedImageIds.map((idImagen) => connection.execute(
             'DELETE FROM Imagenes_Equipo WHERE id_imagen_equipo = ?',
             [idImagen]
           ))
@@ -3206,7 +3269,7 @@ export async function registrarUsoEquipoExterno(req, res) {
       });
       
       // Intentar buscar primero por codigo_ambiente (lo que los usuarios conocen: "101", "102", etc.)
-      const [[amb]] = await defaultDb.execute(
+      const [[amb]] = await connection.execute(
         `SELECT id_ambiente, nombre_ambiente, codigo_ambiente 
          FROM Ambientes 
          WHERE codigo_ambiente = ? OR codigo_ambiente = CAST(? AS UNSIGNED)
@@ -3219,7 +3282,7 @@ export async function registrarUsoEquipoExterno(req, res) {
 
       // Si no se encontró por codigo_ambiente, intentar por nombre_ambiente (ej: "Ambiente 101")
       if (!ambienteId) {
-        const [[ambPorNombre]] = await defaultDb.execute(
+        const [[ambPorNombre]] = await connection.execute(
           `SELECT id_ambiente, nombre_ambiente, codigo_ambiente 
            FROM Ambientes 
            WHERE nombre_ambiente = ? OR nombre_ambiente LIKE ? 
@@ -3234,7 +3297,7 @@ export async function registrarUsoEquipoExterno(req, res) {
       if (!ambienteId) {
         const ambienteNumerico = Number.parseInt(codigoBusqueda, 10);
         if (Number.isFinite(ambienteNumerico) && ambienteNumerico > 0) {
-          const [[ambPorId]] = await defaultDb.execute(
+          const [[ambPorId]] = await connection.execute(
             `SELECT id_ambiente, nombre_ambiente, codigo_ambiente 
              FROM Ambientes 
              WHERE id_ambiente = ? 
@@ -3251,7 +3314,7 @@ export async function registrarUsoEquipoExterno(req, res) {
           ambiente_recibido: ambienteTrimmed,
           codigo_busqueda: codigoBusqueda
         });
-        return res.status(404).json({ 
+        return rollbackAndRespond(404, {
           success: false,
           error: 'Ambiente no encontrado',
           message: `No se encontró un ambiente con el código "${ambiente}". Puedes usar el código numérico (ej: "101", "102") o el nombre completo (ej: "Ambiente 101").` 
@@ -3267,19 +3330,14 @@ export async function registrarUsoEquipoExterno(req, res) {
 
     // Validar que hay usuarios
     if (!usuarios || !Array.isArray(usuarios) || usuarios.length === 0) {
-      return res.status(400).json({ 
+      return rollbackAndRespond(400, {
         success: false,
         error: 'Usuarios requeridos',
         message: 'Debe proporcionar al menos un usuario con documento' 
       });
     }
 
-    // Obtener conexión del pool para transacción
-    const connection = await pool.getConnection();
-
     try {
-      await connection.beginTransaction();
-
       // 1. Actualizar el ambiente del equipo en el inventario (una sola vez para todos los usuarios)
       const ambienteAnterior = equipo.id_ambiente ? Number(equipo.id_ambiente) : null;
       const ambienteNuevo = ambienteId ? Number(ambienteId) : null;
@@ -4037,9 +4095,7 @@ export async function registrarUsoEquipoExterno(req, res) {
           cantidad_errores: errores.length,
           errores: errores
         });
-        await connection.rollback();
-        connection.release();
-        return res.status(422).json({
+        return rollbackAndRespond(422, {
           success: false,
           code: 'NO_USERS_PROCESSED',
           error: 'No se pudo procesar ningún usuario en la verificación de ambiente',
@@ -4071,6 +4127,7 @@ export async function registrarUsoEquipoExterno(req, res) {
 
       // Confirmar transacción
       await connection.commit();
+      transactionStarted = false;
 
       logger.info('Verificación de ambiente y asignación de aprendices completada', {
         codigo_equipo: equipo.codigo_equipo,
@@ -4079,8 +4136,6 @@ export async function registrarUsoEquipoExterno(req, res) {
         usuarios_con_error: errores.length,
         ambiente_id: ambienteId
       });
-
-      connection.release();
 
       return res.status(201).json({
         success: true,
@@ -4104,11 +4159,22 @@ export async function registrarUsoEquipoExterno(req, res) {
         }
       });
     } catch (transactionError) {
-      await connection.rollback();
-      connection.release();
+      if (transactionStarted) {
+        await connection.rollback();
+        transactionStarted = false;
+      }
       throw transactionError;
     }
   } catch (err) {
+    if (connection && transactionStarted) {
+      try {
+        await connection.rollback();
+      } catch (rollbackError) {
+        logger.warn('No se pudo revertir la verificación de ambiente', { error: rollbackError.message });
+      }
+      transactionStarted = false;
+    }
+
     // Limpiar archivos subidos en caso de error
     if (uploadedFiles.length > 0) {
       uploadedFiles.forEach((filename) => {
@@ -4134,6 +4200,8 @@ export async function registrarUsoEquipoExterno(req, res) {
       message: mensajeUsuario,
       detalle: process.env.NODE_ENV === 'development' ? err.message : undefined
     });
+  } finally {
+    if (connection) connection.release();
   }
 }
 
@@ -4414,10 +4482,7 @@ export async function iniciarUsoAutoservicio(req, res) {
       });
     }
 
-    const [[equipo]] = await connection.execute(
-      `SELECT codigo_equipo, placa, tipo, modelo, id_ambiente FROM Elementos WHERE placa = ? LIMIT 1 FOR UPDATE`,
-      [placaNormalizada]
-    );
+    const equipo = await lockEquipmentRow(connection, { placa: placaNormalizada });
     if (!equipo) {
       return respondAfterRollback(404, {
         success: false,
