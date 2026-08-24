@@ -11,14 +11,23 @@ export function SocketProvider({ children }) {
   const [socket, setSocket] = useState(null);
   const [connected, setConnected] = useState(false);
   const [error, setError] = useState(null);
+  const [token, setToken] = useState(() => localStorage.getItem('token'));
 
   useEffect(() => {
-    // Obtener token de autenticación
-    const token = localStorage.getItem('token');
-    
+    const syncToken = () => setToken(localStorage.getItem('token'));
+    window.addEventListener('storage', syncToken);
+    window.addEventListener('auth:changed', syncToken);
+    return () => {
+      window.removeEventListener('storage', syncToken);
+      window.removeEventListener('auth:changed', syncToken);
+    };
+  }, []);
+
+  useEffect(() => {
     if (!token) {
-      // No hay token, no conectar
-      return;
+      setSocket(null);
+      setConnected(false);
+      return undefined;
     }
 
     // Crear conexión Socket.io
@@ -76,22 +85,7 @@ export function SocketProvider({ children }) {
         newSocket.disconnect();
       }
     };
-  }, []); // Solo ejecutar una vez al montar
-
-  // Reconectar cuando cambie el token
-  useEffect(() => {
-    const token = localStorage.getItem('token');
-    
-    if (!token && socket) {
-      // Token eliminado, desconectar
-      socket.disconnect();
-      setSocket(null);
-      setConnected(false);
-    } else if (token && !socket) {
-      // Token disponible pero no hay socket, reconectar
-      // Esto se manejará en el useEffect principal
-    }
-  }, [socket]);
+  }, [token]);
 
   /**
    * Suscribirse a un evento

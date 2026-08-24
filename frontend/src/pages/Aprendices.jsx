@@ -5,6 +5,7 @@ import {
   FiEdit3,
   FiTrash2,
   FiPlus,
+  FiX,
 } from 'react-icons/fi';
 import * as XLSX from 'xlsx';
 import Header from '../components/Header';
@@ -18,6 +19,7 @@ import {
   getAuthHeaders,
 } from '../utils/api';
 import { useSocket } from '../contexts/SocketContext';
+import '../styles/pages/equipos.css';
 import '../styles/pages/usuarios.css';
 
 const TIPOS_APRENDIZ = ['Regular', 'Practicante', 'Semillero'];
@@ -88,8 +90,8 @@ function AprendizContextFields({ form, onChange, onTipoChange }) {
 
   return (
     <>
-      <label>
-        Tipo de aprendiz
+      <div className="form-row">
+        <label>Tipo de aprendiz</label>
         <CustomSelect
           name="tipo_aprendiz"
           value={form.tipo_aprendiz}
@@ -97,12 +99,12 @@ function AprendizContextFields({ form, onChange, onTipoChange }) {
           options={TIPOS_APRENDIZ}
           placeholder="Seleccionar tipo de aprendiz"
         />
-      </label>
+      </div>
 
       {isRegular ? (
         <>
-          <label>
-            Ficha
+          <div className="form-row">
+            <label>Ficha</label>
             <input
               type="text"
               name="ficha"
@@ -110,9 +112,9 @@ function AprendizContextFields({ form, onChange, onTipoChange }) {
               onChange={onChange}
               required
             />
-          </label>
-          <label>
-            Jornada
+          </div>
+          <div className="form-row">
+            <label>Jornada</label>
             <CustomSelect
               name="jornada"
               value={form.jornada}
@@ -120,20 +122,20 @@ function AprendizContextFields({ form, onChange, onTipoChange }) {
               options={JORNADAS_REGULAR}
               placeholder="Seleccionar jornada"
             />
-          </label>
-          <p className="users-toolbar-description">
+          </div>
+          <p className="aprendiz-form-info">
             El aula del aprendiz regular se asigna desde las clases asociadas a
             su ficha.
           </p>
         </>
       ) : (
         <>
-          <p className="users-toolbar-description">
+          <p className="aprendiz-form-info">
             Jornada: <strong>{isPracticante ? 'Completa' : 'Flexible'}</strong>
             {isPracticante && ' (mínimo ocho horas diarias).'}
           </p>
-          <label>
-            Días de asistencia
+          <div className="form-row form-row-full">
+            <label>Días de asistencia</label>
             <input
               type="text"
               name="dias_semana"
@@ -142,9 +144,9 @@ function AprendizContextFields({ form, onChange, onTipoChange }) {
               placeholder="Ej.: Lunes a viernes"
               required
             />
-          </label>
-          <label>
-            Hora de inicio
+          </div>
+          <div className="form-row">
+            <label>Hora de inicio</label>
             <input
               type="time"
               name="hora_inicio"
@@ -152,9 +154,9 @@ function AprendizContextFields({ form, onChange, onTipoChange }) {
               onChange={onChange}
               required
             />
-          </label>
-          <label>
-            Hora de fin
+          </div>
+          <div className="form-row">
+            <label>Hora de fin</label>
             <input
               type="time"
               name="hora_fin"
@@ -162,7 +164,7 @@ function AprendizContextFields({ form, onChange, onTipoChange }) {
               onChange={onChange}
               required
             />
-          </label>
+          </div>
         </>
       )}
     </>
@@ -172,8 +174,8 @@ function AprendizContextFields({ form, onChange, onTipoChange }) {
 function AprendizBaseFields({ form, onChange, onDocumentTypeChange }) {
   return (
     <>
-      <label>
-        Nombre completo
+      <div className="form-row form-row-full">
+        <label>Nombre completo</label>
         <input
           type="text"
           name="nombre"
@@ -181,9 +183,9 @@ function AprendizBaseFields({ form, onChange, onDocumentTypeChange }) {
           onChange={onChange}
           required
         />
-      </label>
-      <label>
-        Tipo de documento
+      </div>
+      <div className="form-row">
+        <label>Tipo de documento</label>
         <CustomSelect
           name="tipo_documento"
           value={form.tipo_documento}
@@ -191,10 +193,10 @@ function AprendizBaseFields({ form, onChange, onDocumentTypeChange }) {
           options={['TI', 'CC', 'CE', 'PPT', 'Otro']}
           placeholder="Seleccionar tipo de documento"
         />
-      </label>
+      </div>
       {form.tipo_documento === 'Otro' && (
-        <label>
-          Especificar tipo de documento
+        <div className="form-row form-row-full">
+          <label>Especificar tipo de documento</label>
           <input
             type="text"
             name="tipo_documento_otro"
@@ -204,10 +206,10 @@ function AprendizBaseFields({ form, onChange, onDocumentTypeChange }) {
             maxLength={50}
             required
           />
-        </label>
+        </div>
       )}
-      <label>
-        Documento
+      <div className="form-row">
+        <label>Documento</label>
         <input
           type="text"
           name="documento"
@@ -215,7 +217,7 @@ function AprendizBaseFields({ form, onChange, onDocumentTypeChange }) {
           onChange={onChange}
           required
         />
-      </label>
+      </div>
     </>
   );
 }
@@ -530,42 +532,51 @@ export default function Aprendices() {
   ) => (
     <div className="modal-overlay">
       <div className="modal-sheet form-modal">
-        <div className="modal-header">
-          <h3>{title}</h3>
-          <button className="btn" onClick={onClose}>
-            Cerrar
-          </button>
-        </div>
-        <form className="modal-form" onSubmit={onSubmit}>
-          <AprendizBaseFields
-            form={form}
-            onChange={event =>
-              setter(prev => ({
-                ...prev,
-                [event.target.name]: event.target.value,
-              }))
-            }
-            onDocumentTypeChange={updateDocumentType(setter)}
-          />
-          <AprendizContextFields
-            form={form}
-            onChange={event =>
-              setter(prev => ({
-                ...prev,
-                [event.target.name]: event.target.value,
-              }))
-            }
-            onTipoChange={updateTipoAprendiz(setter)}
-          />
-          <div className="modal-form-actions">
-            <button type="button" className="btn" onClick={onClose}>
-              Cancelar
-            </button>
-            <button type="submit" className="btn btn-verde" disabled={saving}>
-              {saving ? 'Guardando...' : submitText}
+        <div className="form-equipos aprendiz-modal-form">
+          <div className="modal-header aprendiz-modal-header">
+            <h3>{title}</h3>
+            <button
+              type="button"
+              className="aprendiz-modal-close"
+              onClick={onClose}
+              aria-label="Cerrar"
+            >
+              <FiX size={22} />
             </button>
           </div>
-        </form>
+          <form className="modal-form" onSubmit={onSubmit}>
+            <div className="form-grid">
+              <AprendizBaseFields
+                form={form}
+                onChange={event =>
+                  setter(prev => ({
+                    ...prev,
+                    [event.target.name]: event.target.value,
+                  }))
+                }
+                onDocumentTypeChange={updateDocumentType(setter)}
+              />
+              <AprendizContextFields
+                form={form}
+                onChange={event =>
+                  setter(prev => ({
+                    ...prev,
+                    [event.target.name]: event.target.value,
+                  }))
+                }
+                onTipoChange={updateTipoAprendiz(setter)}
+              />
+            </div>
+            <div className="modal-form-actions">
+              <button type="button" className="btn" onClick={onClose}>
+                Cancelar
+              </button>
+              <button type="submit" className="btn btn-verde" disabled={saving}>
+                {saving ? 'Guardando...' : submitText}
+              </button>
+            </div>
+          </form>
+        </div>
       </div>
     </div>
   );
@@ -738,21 +749,28 @@ export default function Aprendices() {
       {showImport && isAdministrador && (
         <div className="modal-overlay">
           <div className="modal-sheet form-modal-large">
-            <div className="modal-header">
-              <h3>Importar aprendices</h3>
-              <button className="btn" onClick={() => setShowImport(false)}>
-                Cerrar
-              </button>
+            <div className="form-equipos aprendiz-modal-form">
+              <div className="modal-header aprendiz-modal-header">
+                <h3>Importar aprendices</h3>
+                <button
+                  type="button"
+                  className="aprendiz-modal-close"
+                  onClick={() => setShowImport(false)}
+                  aria-label="Cerrar"
+                >
+                  <FiX size={22} />
+                </button>
+              </div>
+              <ImportarAprendices
+                onImportComplete={resultados => {
+                  setToast({
+                    message: `Importación completada: ${resultados.exitosos} exitosos, ${resultados.fallidos} fallidos`,
+                    type: resultados.fallidos === 0 ? 'success' : 'warning',
+                  });
+                  if (resultados.exitosos > 0) fetchAprendices();
+                }}
+              />
             </div>
-            <ImportarAprendices
-              onImportComplete={resultados => {
-                setToast({
-                  message: `Importación completada: ${resultados.exitosos} exitosos, ${resultados.fallidos} fallidos`,
-                  type: resultados.fallidos === 0 ? 'success' : 'warning',
-                });
-                if (resultados.exitosos > 0) fetchAprendices();
-              }}
-            />
           </div>
         </div>
       )}
