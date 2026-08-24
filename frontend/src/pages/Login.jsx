@@ -40,6 +40,7 @@ export default function Login() {
       const data = await parseApiResponse(res, 'No se pudo iniciar sesión');
       localStorage.setItem('token', data.token);
       localStorage.setItem('user', JSON.stringify(data.user));
+      window.dispatchEvent(new Event('auth:changed'));
       
       // Si requiere cambio de contraseña, redirigir a la página de cambio
       if (data.requiereCambioContrasena) {

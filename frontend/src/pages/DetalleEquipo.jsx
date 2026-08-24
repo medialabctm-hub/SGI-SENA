@@ -30,7 +30,6 @@ import '../styles/pages/equipos.css';
 import '../styles/detalleEquipo.css';
 import '../styles/pages/ambientes.css';
 import { LoadingScreen } from './LoadingDemo';
-import { useAuthenticatedEvidenceImages } from '../hooks/useAuthenticatedEvidenceImages';
 
 export default function DetalleEquipo() {
   const { codigoEquipo } = useParams();
@@ -87,10 +86,6 @@ export default function DetalleEquipo() {
   const [registrarUsoHoraFin, setRegistrarUsoHoraFin] = useState('');
   const [registrarUsoLoading, setRegistrarUsoLoading] = useState(false);
   const canManageAssignments = canManageEquipoAssignments(user);
-  const authenticatedImages = useAuthenticatedEvidenceImages(imagenes);
-  const authenticatedPrincipal = authenticatedImages.find(
-    (image) => image.id_imagen_equipo === imagenPrincipal?.id_imagen_equipo
-  );
 
   useEffect(() => {
     try {
@@ -255,12 +250,11 @@ export default function DetalleEquipo() {
         documento: doc,
         ficha: null,
       };
-      if (registrarUsoDiasSemana.length > 0)
-        usuario.dias_semana = registrarUsoDiasSemana;
-      if (
-        (registrarUsoHoraInicio || '').trim() &&
-        (registrarUsoHoraFin || '').trim()
-      ) {
+      if (registrarUsoObservaciones.trim()) {
+        usuario.observaciones = registrarUsoObservaciones.trim();
+      }
+      if (registrarUsoDiasSemana.length > 0) usuario.dias_semana = registrarUsoDiasSemana;
+      if ((registrarUsoHoraInicio || '').trim() && (registrarUsoHoraFin || '').trim()) {
         usuario.hora_inicio = registrarUsoHoraInicio.trim();
         usuario.hora_fin = registrarUsoHoraFin.trim();
       }
@@ -648,8 +642,8 @@ export default function DetalleEquipo() {
   }
 
   // Preparar imágenes para el ImageViewer
-  const viewerImages = authenticatedImages.map((img) => ({
-    url: img.url,
+  const viewerImages = imagenes.map(img => ({
+    url: img.ruta_imagen,
     titulo: img.tipo_imagen,
     descripcion: img.descripcion,
     es_principal: img.es_principal,
@@ -1358,7 +1352,7 @@ export default function DetalleEquipo() {
                   <div>
                     <div className="detalle-equipo-image-wrapper">
                       <img
-                        src={authenticatedPrincipal?.url || ''}
+                        src={imagenPrincipal.ruta_imagen}
                         alt={imagenPrincipal.descripcion || 'Imagen del equipo'}
                         onError={e => {
                           console.error(
@@ -1421,7 +1415,7 @@ export default function DetalleEquipo() {
               </div>
               {imagenes.length > 0 ? (
                 <div className="detalle-equipo-gallery-thumbnails">
-                  {authenticatedImages.map((imagen, index) => (
+                  {imagenes.map((imagen, index) => (
                     <div
                       key={imagen.id_imagen_equipo}
                       className={`detalle-equipo-gallery-thumbnail ${imagen.es_principal ? 'principal' : ''}`}
@@ -1429,7 +1423,7 @@ export default function DetalleEquipo() {
                     >
                       <div className="detalle-equipo-gallery-thumbnail-image">
                         <img
-                          src={imagen.url || ''}
+                          src={imagen.ruta_imagen}
                           alt={imagen.descripcion || 'Imagen del equipo'}
                           onError={e => {
                             console.error(
