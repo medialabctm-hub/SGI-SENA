@@ -584,14 +584,134 @@
 }
 
 .modal-form {
-  margin-top: 12px;
+  margin-top: 0;
+  padding: 0 28px 28px;
 }
 
 .modal-form-actions {
   display: flex;
   justify-content: flex-end;
-  gap: 8px;
-  margin-top: 12px;
+  gap: 12px;
+  margin-top: 8px;
+  padding-top: 20px;
+  border-top: 2px solid var(--neutral-100);
+}
+
+/* Modal de aprendices */
+.aprendiz-modal-form {
+  margin-top: 0;
+  padding: 0;
+  border: none;
+  box-shadow: none;
+  max-width: none;
+}
+
+.aprendiz-modal-form .modal-header,
+.aprendiz-modal-header {
+  padding: 24px 28px;
+  margin-bottom: 0;
+  border-bottom: 2px solid var(--neutral-100);
+}
+
+.aprendiz-modal-form .modal-header h3 {
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: var(--neutral-900);
+}
+
+.aprendiz-modal-close {
+  background: transparent;
+  border: none;
+  color: var(--neutral-600);
+  cursor: pointer;
+  padding: 6px;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.aprendiz-modal-close:hover {
+  background: var(--neutral-100);
+  color: var(--neutral-900);
+}
+
+.aprendiz-modal-form .form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.25rem 1.5rem;
+  padding: 24px 28px 0;
+}
+
+.aprendiz-modal-form .form-row {
+  margin-bottom: 0;
+}
+
+.aprendiz-modal-form .form-row label {
+  display: block;
+  margin-bottom: 0.5rem;
+}
+
+.aprendiz-form-info {
+  grid-column: 1 / -1;
+  margin: 0;
+  padding: 12px 14px;
+  background: var(--success-50);
+  border: 1px solid rgba(1, 175, 0, 0.15);
+  border-radius: 10px;
+  color: var(--neutral-700);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.aprendiz-modal-form .modal-form-actions {
+  padding: 20px 28px 28px;
+  margin-top: 0;
+}
+
+.aprendiz-modal-form .modal-form-actions .btn {
+  padding: 10px 20px;
+  border-radius: 10px;
+  font-weight: 600;
+}
+
+.aprendiz-modal-form .modal-form-actions .btn-verde {
+  min-width: 160px;
+  width: auto;
+  height: auto;
+}
+
+@media (max-width: 768px) {
+  .aprendiz-modal-form .form-grid {
+    grid-template-columns: 1fr;
+    padding: 20px 20px 0;
+  }
+
+  .aprendiz-modal-form .modal-header,
+  .aprendiz-modal-header {
+    padding: 20px;
+    flex-direction: row;
+    align-items: center;
+  }
+
+  .modal-form {
+    padding: 0 20px 20px;
+  }
+
+  .aprendiz-modal-form .modal-form-actions {
+    flex-direction: column;
+    padding: 16px 20px 20px;
+  }
+
+  .aprendiz-modal-form .modal-form-actions .btn,
+  .aprendiz-modal-form .modal-form-actions .btn-verde {
+    width: 100%;
+    min-width: 0;
+  }
 }
 
 /* Responsive */
