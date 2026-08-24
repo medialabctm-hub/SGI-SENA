@@ -301,7 +301,7 @@ export default function Novedades() {
           type: 'error' 
         })
       }
-    } catch (err) {
+    } catch {
       setToast({ message: 'Error de conexión con el servidor', type: 'error' })
     } finally {
       setLoadingCrear(false)
@@ -497,7 +497,7 @@ export default function Novedades() {
           type: 'error' 
         })
       }
-    } catch (err) {
+    } catch {
       setToast({ message: 'Error de conexión con el servidor', type: 'error' })
     } finally {
       setLoadingCrearReporte(false)

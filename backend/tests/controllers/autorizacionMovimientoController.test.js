@@ -25,6 +25,8 @@ const {
   resolverAutorizador,
   obtenerAutorizadorParaEquipo,
   crearSolicitud,
+  aprobarSolicitud,
+  rechazarSolicitud,
   listarDisponiblesParaMovimiento,
 } = await import(path.resolve(__dirname, '../../src/controller/autorizacionMovimientoController.js'));
 
@@ -196,6 +198,36 @@ describe('crearSolicitud', () => {
     const res = mockRes();
     await crearSolicitud(mockReq({ body: { codigo_equipo: 5 } }), res);
     expect(res.status).toHaveBeenCalledWith(400);
+  });
+});
+
+describe.each([
+  ['aprobar', aprobarSolicitud, { body: {} }],
+  ['rechazar', rechazarSolicitud, { body: { observacion_rechazo: 'No procede' } }],
+])('%sSolicitud', (_accion, handler, requestOverrides) => {
+  it('devuelve 409 una sola vez cuando pierde la carrera por resolver la solicitud', async () => {
+    mockExecute
+      .mockResolvedValueOnce([[{ id_solicitud: 12, id_autorizador: 1, estado: 'Pendiente' }]])
+      .mockResolvedValueOnce([{ affectedRows: 0 }]);
+    const res = mockRes();
+
+    await handler(mockReq({ params: { id: '12' }, ...requestOverrides }), res);
+
+    expect(res.status).toHaveBeenCalledWith(409);
+    expect(res.json).toHaveBeenCalledTimes(1);
+    const updateCall = mockExecute.mock.calls[1];
+    expect(updateCall[0]).toMatch(/WHERE id_solicitud = \? AND estado = 'Pendiente'/);
+  });
+
+  it('retorna una sola respuesta y no actualiza cuando la solicitud ya estaba resuelta', async () => {
+    mockExecute.mockResolvedValueOnce([[{ id_solicitud: 12, id_autorizador: 1, estado: 'Aprobada' }]]);
+    const res = mockRes();
+
+    await handler(mockReq({ params: { id: '12' }, ...requestOverrides }), res);
+
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json).toHaveBeenCalledTimes(1);
+    expect(mockExecute).toHaveBeenCalledTimes(1);
   });
 });
 

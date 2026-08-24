@@ -26,6 +26,7 @@ multerMock.MulterError = class MulterError extends Error {
 await jest.unstable_mockModule('multer', () => ({ default: multerMock }));
 await jest.unstable_mockModule(fileValidationPath, () => ({
   validateImageFile: mockValidateImageFile,
+  validateImageContent: jest.fn(),
 }));
 await jest.unstable_mockModule('fs', () => ({
   default: {
@@ -94,7 +95,7 @@ describe('uploadMiddleware config', () => {
     expect(cb2.mock.calls[0][0].message).toBe('invalid mime');
   });
 
-  it('getImagePath mantiene ruta pública de equipos', () => {
-    expect(getImagePath('x.png')).toBe('/uploads/equipos/x.png');
+  it('getImagePath entrega una ruta privada de equipos', () => {
+    expect(getImagePath('x.png')).toBe('/api/equipos/imagenes/archivo/x.png');
   });
 });

@@ -265,7 +265,7 @@ export default function Reportes() {
           type: 'error' 
         })
       }
-    } catch (err) {
+    } catch {
       setToast({ message: 'Error de conexión con el servidor', type: 'error' })
     } finally {
       setLoadingCrear(false)

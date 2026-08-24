@@ -28,6 +28,11 @@ export default {
       lines: 80,
     },
   },
+  // Evitar que imports y mocks ESM de una suite contaminen a la siguiente.
+  resetModules: true,
+  // Cargar los valores seguros de prueba antes de importar cualquier módulo
+  // que valide la configuración de producción.
+  setupFiles: ['<rootDir>/tests/setUpEnv.js'],
   setupFilesAfterEnv: ['<rootDir>/tests/setup.js'],
   testTimeout: 10000,
   verbose: true,

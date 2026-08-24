@@ -1,4 +1,4 @@
-import { ValidationError, NotFoundError, ConflictError } from '../utils/errors.js';
+import { ValidationError, NotFoundError } from '../utils/errors.js';
 import crypto from 'crypto';
 
 /**

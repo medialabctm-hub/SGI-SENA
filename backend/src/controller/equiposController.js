@@ -2,9 +2,8 @@ import defaultDb, { pool } from '../config/dbconfig.js';
 import { notifyNuevoEquipo } from '../services/notificationService.js';
 import { logger } from '../utils/logger.js';
 import { ServiceFactory } from '../factories/ServiceFactory.js';
-import { 
-  obtenerEquipoPorCodigo as obtenerEquipoPorCodigoUtil, 
-  obtenerUsuarioPorCedula,
+import {
+  obtenerEquipoPorCodigo as obtenerEquipoPorCodigoUtil,
   verificarDisponibilidadEquipo,
   verificarAmbienteEquipoAprendiz
 } from '../utils/sqlQueries.js';
@@ -425,6 +424,8 @@ export async function obtenerEquipoPorCodigo(req, res) {
 }
 
 export async function actualizarEquipo(req, res) {
+  let connection = null;
+  let transactionStarted = false;
   try {
     const { codigo } = req.params;
     if (!codigo) return res.status(400).json({ error: 'codigo requerido' });
@@ -460,57 +461,76 @@ export async function actualizarEquipo(req, res) {
       ambienteId = amb?.id_ambiente || null;
     }
 
-    // Si se está cambiando el ambiente: equipo verificado requiere una solicitud de autorización aprobada (uso único)
-    let idSolicitudAutorizacion = body.id_solicitud_autorizacion != null ? Number(body.id_solicitud_autorizacion) : null;
+    // Un cambio de ambiente y el consumo de su autorización deben compartir
+    // conexión: de otro modo dos solicitudes pueden comprobar fecha_uso antes
+    // de que cualquiera de ellas la marque como usada.
     if (ambienteId != null) {
-      const [[equipoActual]] = await defaultDb.execute(
-        'SELECT id_ambiente, COALESCE(verificado_ambiente, 0) AS verificado_ambiente FROM Elementos WHERE codigo_equipo = ?',
+      connection = await defaultDb.pool.getConnection();
+      await connection.beginTransaction();
+      transactionStarted = true;
+    }
+    const execute = connection ? connection.execute.bind(connection) : defaultDb.execute;
+    const rollbackAndRespond = async (status, payload) => {
+      if (transactionStarted) {
+        await connection.rollback();
+        transactionStarted = false;
+      }
+      return res.status(status).json(payload);
+    };
+
+    // Si se está cambiando el ambiente: equipo verificado requiere una solicitud de autorización aprobada (uso único)
+    const idSolicitudAutorizacion = body.id_solicitud_autorizacion != null ? Number(body.id_solicitud_autorizacion) : null;
+    let autorizacionMovimiento = null;
+    if (ambienteId != null) {
+      const [[equipoActual]] = await execute(
+        'SELECT id_ambiente, COALESCE(verificado_ambiente, 0) AS verificado_ambiente FROM Elementos WHERE codigo_equipo = ? FOR UPDATE',
         [codigoEquipo]
       );
       if (!equipoActual) {
-        return res.status(404).json({ error: 'Equipo no encontrado' });
+        return await rollbackAndRespond(404, { error: 'Equipo no encontrado' });
       }
       const ambienteCambia = Number(equipoActual.id_ambiente) !== Number(ambienteId);
       if (ambienteCambia && equipoActual.verificado_ambiente === 1) {
         if (!idSolicitudAutorizacion || idSolicitudAutorizacion <= 0) {
-          return res.status(403).json({
+          return await rollbackAndRespond(403, {
             error: 'Equipo verificado en ambiente',
             detalle: 'Para mover un equipo verificado debe usar una autorización aprobada. Cree una solicitud de autorización y espere a que el autorizador la apruebe, luego seleccione esa autorización al guardar.'
           });
         }
-        const [[solicitud]] = await defaultDb.execute(
+        const [[solicitud]] = await execute(
           `SELECT id_solicitud, codigo_equipo, id_ambiente_origen, id_ambiente_destino, id_autorizador, motivo, estado, fecha_uso
-           FROM Solicitudes_Autorizacion_Movimiento WHERE id_solicitud = ?`,
+           FROM Solicitudes_Autorizacion_Movimiento WHERE id_solicitud = ? FOR UPDATE`,
           [idSolicitudAutorizacion]
         );
         if (!solicitud) {
-          return res.status(404).json({ error: 'Solicitud de autorización no encontrada' });
+          return await rollbackAndRespond(404, { error: 'Solicitud de autorización no encontrada' });
         }
         if (solicitud.estado !== 'Aprobada') {
-          return res.status(403).json({
+          return await rollbackAndRespond(403, {
             error: 'La autorización no está aprobada',
             detalle: 'Solo puede usar una solicitud en estado Aprobada.'
           });
         }
         if (solicitud.fecha_uso != null) {
-          return res.status(403).json({
+          return await rollbackAndRespond(403, {
             error: 'Autorización ya utilizada',
             detalle: 'Cada autorización tiene un solo uso. Debe crear una nueva solicitud.'
           });
         }
         if (Number(solicitud.codigo_equipo) !== codigoEquipo) {
-          return res.status(403).json({ error: 'La autorización no corresponde a este equipo' });
+          return await rollbackAndRespond(403, { error: 'La autorización no corresponde a este equipo' });
         }
         if (Number(solicitud.id_ambiente_destino) !== Number(ambienteId)) {
-          return res.status(403).json({
+          return await rollbackAndRespond(403, {
             error: 'La autorización no aplica para el ambiente destino seleccionado'
           });
         }
         if (Number(solicitud.id_ambiente_origen) !== Number(equipoActual.id_ambiente)) {
-          return res.status(403).json({
+          return await rollbackAndRespond(403, {
             error: 'El ambiente actual del equipo no coincide con la autorización'
           });
         }
+        autorizacionMovimiento = solicitud;
       }
     }
 
@@ -551,25 +571,25 @@ export async function actualizarEquipo(req, res) {
     const tieneEstadoOperativo = estadoOperativo && ['Disponible', 'En Uso', 'En Mantenimiento', 'Dañado', 'Dado de Baja'].includes(estadoOperativo);
 
     if (sets.length === 0 && !tieneEstadoOperativo) {
-      return res.status(400).json({ error: 'Sin cambios para actualizar' });
+      return await rollbackAndRespond(400, { error: 'Sin cambios para actualizar' });
     }
 
     let affectedRows = 0;
     if (sets.length > 0) {
       const query = `UPDATE Elementos SET ${sets.join(', ')} WHERE codigo_equipo = ?`;
       const queryParams = [...params, codigoEquipo];
-      const [result] = await defaultDb.execute(query, queryParams);
-      if (result.affectedRows === 0) return res.status(404).json({ error: 'Equipo no encontrado' });
+      const [result] = await execute(query, queryParams);
+      if (result.affectedRows === 0) return await rollbackAndRespond(404, { error: 'Equipo no encontrado' });
       affectedRows = result.affectedRows;
     } else {
       // Solo se actualiza estado operativo: verificar que el equipo exista
-      const [[existe]] = await defaultDb.execute('SELECT 1 FROM Elementos WHERE codigo_equipo = ?', [codigoEquipo]);
-      if (!existe) return res.status(404).json({ error: 'Equipo no encontrado' });
+      const [[existe]] = await execute('SELECT 1 FROM Elementos WHERE codigo_equipo = ?', [codigoEquipo]);
+      if (!existe) return await rollbackAndRespond(404, { error: 'Equipo no encontrado' });
     }
 
     // Actualizar estado operativo en Estado_Equipo si se envió
     if (tieneEstadoOperativo) {
-      await defaultDb.execute(
+      await execute(
         `INSERT INTO Estado_Equipo (codigo_equipo, estado_operativo, fecha_actualizacion, actualizado_por)
          VALUES (?, ?, NOW(), ?)
          ON DUPLICATE KEY UPDATE estado_operativo = VALUES(estado_operativo), fecha_actualizacion = NOW(), actualizado_por = VALUES(actualizado_por)`,
@@ -579,35 +599,40 @@ export async function actualizarEquipo(req, res) {
     }
 
     // Si fue movimiento usando solicitud de autorización: marcar solicitud como usada y enlazar historial
-    if (ambienteId && idSolicitudAutorizacion && affectedRows > 0) {
-      const [[ultimoHistorial]] = await defaultDb.execute(
+    if (autorizacionMovimiento && affectedRows > 0) {
+      const [[ultimoHistorial]] = await execute(
         `SELECT id_historial FROM Historial_Equipos
          WHERE codigo_equipo = ? AND tipo_evento = 'Movimiento Ambiente'
          ORDER BY fecha_evento DESC LIMIT 1`,
         [codigoEquipo]
       );
-      if (ultimoHistorial) {
-        const idHistorial = ultimoHistorial.id_historial;
-        const [[sol]] = await defaultDb.execute(
-          'SELECT id_autorizador, motivo FROM Solicitudes_Autorizacion_Movimiento WHERE id_solicitud = ?',
-          [idSolicitudAutorizacion]
+      const idHistorial = ultimoHistorial?.id_historial || null;
+      const [consumo] = await execute(
+        `UPDATE Solicitudes_Autorizacion_Movimiento
+         SET fecha_uso = NOW(), id_usado_por = ?, id_historial_movimiento = ?
+         WHERE id_solicitud = ? AND fecha_uso IS NULL`,
+        [userId, idHistorial, idSolicitudAutorizacion]
+      );
+      if (consumo.affectedRows === 0) {
+        return await rollbackAndRespond(409, {
+          error: 'Autorización ya utilizada',
+          detalle: 'Cada autorización tiene un solo uso. Debe crear una nueva solicitud.'
+        });
+      }
+      if (idHistorial) {
+        await execute(
+          'UPDATE Historial_Equipos SET id_autorizado_por = ?, motivo_autorizacion = ? WHERE id_historial = ?',
+          [autorizacionMovimiento.id_autorizador, autorizacionMovimiento.motivo, idHistorial]
         );
-        if (sol) {
-          await defaultDb.execute(
-            `UPDATE Solicitudes_Autorizacion_Movimiento
-             SET fecha_uso = NOW(), id_usado_por = ?, id_historial_movimiento = ?
-             WHERE id_solicitud = ?`,
-            [userId, idHistorial, idSolicitudAutorizacion]
-          );
-          await defaultDb.execute(
-            'UPDATE Historial_Equipos SET id_autorizado_por = ?, motivo_autorizacion = ? WHERE id_historial = ?',
-            [sol.id_autorizador, sol.motivo, idHistorial]
-          );
-        }
       }
     }
 
-    // Emitir evento WebSocket para actualización en tiempo real
+    if (transactionStarted) {
+      await connection.commit();
+      transactionStarted = false;
+    }
+
+    // Emitir evento WebSocket solo después de confirmar la transacción.
     try {
       const socketService = (await import('../services/socketService.js')).default;
       socketService.emitToAll('equipo:updated', {
@@ -621,7 +646,16 @@ export async function actualizarEquipo(req, res) {
 
     return res.json({ ok: true, updated: affectedRows });
   } catch (err) {
+    if (transactionStarted) {
+      try {
+        await connection.rollback();
+      } catch (rollbackErr) {
+        logger.error('Error al revertir actualización de equipo', { error: rollbackErr.message });
+      }
+    }
     return handleControllerError(err, res, 'actualizarEquipo', 'Error al actualizar equipo');
+  } finally {
+    connection?.release();
   }
 }
 
@@ -3115,13 +3149,38 @@ export async function registrarUsoEquipoExterno(req, res) {
           });
         }
       } catch (imagenError) {
+        // Los INSERT de evidencias ocurren antes de la transacción de uso.
+        // Compensar los metadatos ya persistidos antes de limpiar los archivos.
+        const persistedImageIds = imagenesSubidas
+          .map((imagen) => imagen.id_imagen_equipo)
+          .filter((idImagen) => idImagen != null);
+        const metadataCleanup = await Promise.allSettled(
+          persistedImageIds.map((idImagen) => defaultDb.execute(
+            'DELETE FROM Imagenes_Equipo WHERE id_imagen_equipo = ?',
+            [idImagen]
+          ))
+        );
+        metadataCleanup
+          .filter((result) => result.status === 'rejected')
+          .forEach((result) => logger.error('No se pudo compensar metadata de evidencia', {
+            error: result.reason?.message,
+          }));
+
+        // El archivo ya fue renombrado antes del INSERT. No se puede continuar
+        // sin dejar una evidencia huérfana si la persistencia falla.
+        const filesToDelete = new Set([
+          ...uploadedFiles,
+          ...files.map((file) => file?.filename).filter(Boolean),
+        ]);
+        filesToDelete.forEach((filename) => deleteImageFile(filename));
+        uploadedFiles.length = 0;
+
         logger.error('Error al procesar imágenes en verificación de ambiente', {
           error: imagenError.message,
           stack: imagenError.stack,
           codigo_equipo: codigoEquipo
         });
-        // Continuar con el proceso aunque haya error en las imágenes
-        // Las imágenes ya subidas se mantendrán
+        throw imagenError;
       }
     }
 
@@ -4082,7 +4141,75 @@ export async function registrarUsoEquipoExterno(req, res) {
 // AUTOSERVICIO DE APRENDICES (SIN CUENTA)
 // ============================================
 
+const AUTOSERVICIO_CIERRE_VERSION = 'AUTOSERVICIO_CIERRE_V1';
+const AUTOSERVICIO_COLUMNAS = ['documento_externo', 'nombre_externo', 'id_aprendiz', 'idempotency_key'];
+const AUTOSERVICIO_INDICES_REQUERIDOS = [
+  { nombre: 'idx_documento_externo', columna: 'documento_externo', nonUnique: 1, etiqueta: 'índice idx_documento_externo sobre documento_externo' },
+  { nombre: 'idx_id_aprendiz', columna: 'id_aprendiz', nonUnique: 1, etiqueta: 'índice idx_id_aprendiz sobre id_aprendiz' },
+  { nombre: 'uq_autoservicio_idempotency_key', columna: 'idempotency_key', nonUnique: 0, etiqueta: 'índice uq_autoservicio_idempotency_key único sobre idempotency_key' }
+];
 let autoservicioSchemaListo = false;
+let autoservicioSchemaPromise = null;
+let autoservicioReadiness = {
+  ready: false,
+  migrationVersion: AUTOSERVICIO_CIERRE_VERSION,
+  missing: ['verificación de schema pendiente']
+};
+
+export function getAutoservicioReadiness() {
+  return autoservicioReadiness;
+}
+
+async function verificarReadinessAutoservicio(db) {
+  const [columnas] = await db.execute(
+    `SELECT COLUMN_NAME, IS_NULLABLE FROM INFORMATION_SCHEMA.COLUMNS
+     WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'Historial_Uso_Equipos'
+       AND COLUMN_NAME IN ('id_usuario', 'documento_externo', 'nombre_externo', 'id_aprendiz', 'idempotency_key')`
+  );
+  const columnasPorNombre = new Map((columnas || []).map(({ COLUMN_NAME, IS_NULLABLE }) => [COLUMN_NAME, IS_NULLABLE]));
+  const [indices] = await db.execute(
+    `SELECT INDEX_NAME, COLUMN_NAME, SEQ_IN_INDEX, NON_UNIQUE FROM INFORMATION_SCHEMA.STATISTICS
+     WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'Historial_Uso_Equipos'
+       AND INDEX_NAME IN ('idx_documento_externo', 'idx_id_aprendiz', 'uq_autoservicio_idempotency_key')`
+  );
+  const [[rutina]] = await db.execute(
+    `SELECT ROUTINE_COMMENT FROM INFORMATION_SCHEMA.ROUTINES
+     WHERE ROUTINE_SCHEMA = DATABASE() AND ROUTINE_NAME = 'sp_finalizar_clase'`
+  );
+
+  const missing = [];
+  if (columnasPorNombre.get('id_usuario') !== 'YES') missing.push('Historial_Uso_Equipos.id_usuario nullable');
+  AUTOSERVICIO_COLUMNAS.forEach((columna) => {
+    if (!columnasPorNombre.has(columna)) missing.push(`columna Historial_Uso_Equipos.${columna}`);
+  });
+  AUTOSERVICIO_INDICES_REQUERIDOS.forEach(({ nombre, columna, nonUnique, etiqueta }) => {
+    const columnasIndice = (indices || []).filter((indice) => indice.INDEX_NAME === nombre);
+    const indiceCorrecto = columnasIndice.length === 1 && columnasIndice.every((indice) => (
+      indice.COLUMN_NAME === columna &&
+      Number(indice.SEQ_IN_INDEX) === 1 &&
+      Number(indice.NON_UNIQUE) === nonUnique
+    ));
+    if (!indiceCorrecto) missing.push(etiqueta);
+  });
+  if (!rutina?.ROUTINE_COMMENT?.includes(AUTOSERVICIO_CIERRE_VERSION)) {
+    missing.push(`sp_finalizar_clase con marcador ${AUTOSERVICIO_CIERRE_VERSION}`);
+  }
+
+  autoservicioReadiness = {
+    ready: missing.length === 0,
+    migrationVersion: AUTOSERVICIO_CIERRE_VERSION,
+    missing
+  };
+  return autoservicioReadiness;
+}
+
+function assertAutoservicioReady(readiness) {
+  if (readiness.ready) return readiness;
+  throw new Error(
+    `Autoservicio no está listo: faltan ${readiness.missing.join(', ')}. ` +
+    'Ejecute node scripts/migrate-autoservicio-cierre-clase.js con credenciales MySQL de administrador.'
+  );
+}
 
 /**
  * Asegura que el schema soporte préstamos de autoservicio para aprendices sin cuenta:
@@ -4092,7 +4219,19 @@ let autoservicioSchemaListo = false;
  * Idempotente: se ejecuta una sola vez por arranque del proceso.
  */
 export async function ensureAutoservicioSchema(db) {
-  if (autoservicioSchemaListo) return;
+  // Evita que varias solicitudes concurrentes ejecuten ALTER/metadata checks a la vez.
+  // La promesa se limpia si la migración falla para permitir un reintento posterior.
+  if (!autoservicioSchemaPromise) {
+    autoservicioSchemaPromise = ensureAutoservicioSchemaInternal(db).catch((error) => {
+      autoservicioSchemaPromise = null;
+      throw error;
+    });
+  }
+  return autoservicioSchemaPromise;
+}
+
+async function ensureAutoservicioSchemaInternal(db) {
+  if (autoservicioSchemaListo) return autoservicioReadiness;
 
   try {
     const [[colIdUsuario]] = await db.execute(
@@ -4104,140 +4243,100 @@ export async function ensureAutoservicioSchema(db) {
       logger.info('Historial_Uso_Equipos.id_usuario actualizado a NULL (autoservicio)');
     }
 
-    const [[colDocExterno]] = await db.execute(
-      `SELECT COUNT(*) AS cnt FROM INFORMATION_SCHEMA.COLUMNS
-       WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'Historial_Uso_Equipos' AND COLUMN_NAME = 'documento_externo'`
+    const [columnasAutoservicio] = await db.execute(
+      `SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
+       WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'Historial_Uso_Equipos'
+         AND COLUMN_NAME IN ('documento_externo', 'nombre_externo', 'id_aprendiz', 'idempotency_key')`
     );
-    if (colDocExterno.cnt === 0) {
-      await db.execute(
-        `ALTER TABLE Historial_Uso_Equipos
-         ADD COLUMN documento_externo VARCHAR(50) NULL COMMENT 'Documento del aprendiz (autoservicio, sin cuenta)' AFTER id_usuario,
-         ADD COLUMN nombre_externo VARCHAR(200) NULL COMMENT 'Nombre del aprendiz (autoservicio, sin cuenta)' AFTER documento_externo,
-         ADD COLUMN id_aprendiz INT NULL COMMENT 'Referencia al roster de Aprendices (autoservicio)' AFTER nombre_externo,
-         ADD INDEX idx_documento_externo (documento_externo),
-         ADD INDEX idx_id_aprendiz (id_aprendiz)`
-      );
-      logger.info('Columnas de autoservicio agregadas a Historial_Uso_Equipos');
+    const columnasExistentes = new Set((columnasAutoservicio || []).map(({ COLUMN_NAME }) => COLUMN_NAME));
+    const definiciones = {
+      documento_externo: "ADD COLUMN documento_externo VARCHAR(50) NULL COMMENT 'Documento del aprendiz (autoservicio, sin cuenta)' AFTER id_usuario",
+      nombre_externo: "ADD COLUMN nombre_externo VARCHAR(200) NULL COMMENT 'Nombre del aprendiz (autoservicio, sin cuenta)' AFTER documento_externo",
+      id_aprendiz: "ADD COLUMN id_aprendiz INT NULL COMMENT 'Referencia al roster de Aprendices (autoservicio)' AFTER nombre_externo",
+      idempotency_key: "ADD COLUMN idempotency_key VARCHAR(128) NULL COMMENT 'Identidad de reintento del autoservicio' AFTER id_aprendiz"
+    };
+    const columnasFaltantes = Object.keys(definiciones).filter((columna) => !columnasExistentes.has(columna));
+    if (columnasFaltantes.length > 0) {
+      await db.execute(`ALTER TABLE Historial_Uso_Equipos ${columnasFaltantes.map((columna) => definiciones[columna]).join(', ')}`);
+      columnasFaltantes.forEach((columna) => columnasExistentes.add(columna));
+      logger.info('Columnas de autoservicio agregadas a Historial_Uso_Equipos', { columnas: columnasFaltantes });
     }
 
-    // Las columnas ya están listas: el endpoint de autoservicio puede funcionar aunque
-    // el paso siguiente (redefinir el stored procedure) falle por permisos.
-    autoservicioSchemaListo = true;
+    const [indicesAutoservicio] = await db.execute(
+      `SELECT INDEX_NAME FROM INFORMATION_SCHEMA.STATISTICS
+       WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'Historial_Uso_Equipos'
+         AND INDEX_NAME IN ('idx_documento_externo', 'idx_id_aprendiz', 'uq_autoservicio_idempotency_key')`
+    );
+    const indicesExistentes = new Set((indicesAutoservicio || []).map(({ INDEX_NAME }) => INDEX_NAME));
+    const indicesFaltantes = [];
+    if (columnasExistentes.has('documento_externo') && !indicesExistentes.has('idx_documento_externo')) {
+      indicesFaltantes.push('ADD INDEX idx_documento_externo (documento_externo)');
+    }
+    if (columnasExistentes.has('id_aprendiz') && !indicesExistentes.has('idx_id_aprendiz')) {
+      indicesFaltantes.push('ADD INDEX idx_id_aprendiz (id_aprendiz)');
+    }
+    if (columnasExistentes.has('idempotency_key') && !indicesExistentes.has('uq_autoservicio_idempotency_key')) {
+      indicesFaltantes.push('ADD UNIQUE INDEX uq_autoservicio_idempotency_key (idempotency_key)');
+    }
+    if (indicesFaltantes.length > 0) {
+      await db.execute(`ALTER TABLE Historial_Uso_Equipos ${indicesFaltantes.join(', ')}`);
+    }
+
   } catch (error) {
     logger.error('Error al asegurar schema de autoservicio', { error: error.message, stack: error.stack });
     throw error;
   }
 
-  // Redefinir sp_finalizar_clase para que también cierre los préstamos de autoservicio,
-  // solo si la versión instalada todavía no lo hace (detectado por el marcador AUTOSERVICIO_CIERRE_V1).
-  // OJO: esto requiere privilegios de administrador (el procedimiento original fue creado por root
-  // al inicializar la BD; en MySQL 8, un usuario de aplicación sin el privilegio SYSTEM_USER no puede
-  // reemplazar rutinas cuyo DEFINER sí lo tiene). Si falla por permisos, no se bloquea el resto:
-  // hay que ejecutar backend/scripts/migrate-autoservicio-cierre-clase.sql una vez con un usuario admin.
-  try {
-    // Se usa ROUTINE_COMMENT (no ROUTINE_DEFINITION): desde MySQL 8.0.20 leer el cuerpo de una
-    // rutina requiere el privilegio SHOW_ROUTINE o ser su definer, y devuelve NULL en silencio si
-    // no se tiene; ROUTINE_COMMENT es metadata simple y sí es visible para el usuario de la app.
-    const [[rutina]] = await db.execute(
-      `SELECT ROUTINE_COMMENT FROM INFORMATION_SCHEMA.ROUTINES
-       WHERE ROUTINE_SCHEMA = DATABASE() AND ROUTINE_NAME = 'sp_finalizar_clase'`
-    );
-    const comentarioActual = rutina?.ROUTINE_COMMENT || '';
-    if (!comentarioActual.includes('AUTOSERVICIO_CIERRE_V1')) {
-      await pool.query('DROP PROCEDURE IF EXISTS sp_finalizar_clase');
-      await pool.query(`
-CREATE PROCEDURE sp_finalizar_clase(IN p_id_clase INT, IN p_fecha_fin_real DATETIME)
-COMMENT 'AUTOSERVICIO_CIERRE_V1'
-BEGIN
-    DECLARE v_id_ambiente INT;
-    DECLARE v_id_instructor INT;
-    DECLARE v_fecha_fin DATETIME;
-    DECLARE v_detalles_uso JSON;
-    DECLARE v_array_length INT;
-    DECLARE v_index INT DEFAULT 0;
-    DECLARE v_registro JSON;
-    DECLARE v_id_clase_registro INT;
-
-    SELECT id_ambiente, id_instructor INTO v_id_ambiente, v_id_instructor
-    FROM Clases WHERE id_clase = p_id_clase;
-
-    IF v_id_ambiente IS NULL THEN
-        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Clase no encontrada';
-    END IF;
-
-    IF p_fecha_fin_real IS NULL THEN
-        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'fecha_fin_real es obligatoria. El sistema es 100% manual.';
-    END IF;
-
-    SET v_fecha_fin = p_fecha_fin_real;
-
-    UPDATE Responsabilidades_Ambiente
-    SET estado_responsabilidad = 'Finalizada',
-        fecha_fin = v_fecha_fin
-    WHERE id_clase = p_id_clase
-      AND estado_responsabilidad = 'Activa';
-
-    UPDATE Responsables_Equipo re
-    INNER JOIN Elementos e ON re.codigo_equipo = e.codigo_equipo
-    SET re.estado_responsabilidad = 'Finalizado',
-        re.fecha_desvinculacion = v_fecha_fin
-    WHERE re.id_usuario = v_id_instructor
-      AND re.estado_responsabilidad = 'Activo'
-      AND re.observaciones LIKE CONCAT('%inicio de clase #', p_id_clase, '%')
-      AND e.id_ambiente = v_id_ambiente;
-
-    SELECT COALESCE(detalles_uso, JSON_ARRAY()) INTO v_detalles_uso
-    FROM Ambientes WHERE id_ambiente = v_id_ambiente;
-
-    SET v_array_length = JSON_LENGTH(v_detalles_uso);
-
-    buscar_loop: WHILE v_index < v_array_length DO
-        SET v_registro = JSON_EXTRACT(v_detalles_uso, CONCAT('$[', v_index, ']'));
-        SET v_id_clase_registro = JSON_UNQUOTE(JSON_EXTRACT(v_registro, '$.id_clase'));
-
-        IF v_id_clase_registro = p_id_clase THEN
-            SET v_registro = JSON_SET(
-                v_registro,
-                '$.estado', 'Finalizada',
-                '$.fecha_fin_real', DATE_FORMAT(v_fecha_fin, '%Y-%m-%d %H:%i:%s')
-            );
-            SET v_detalles_uso = JSON_SET(v_detalles_uso, CONCAT('$[', v_index, ']'), v_registro);
-            LEAVE buscar_loop;
-        END IF;
-
-        SET v_index = v_index + 1;
-    END WHILE buscar_loop;
-
-    UPDATE Ambientes
-    SET detalles_uso = v_detalles_uso
-    WHERE id_ambiente = v_id_ambiente;
-
-    UPDATE Clases SET estado_clase = 'Finalizada', fecha_fin_real = v_fecha_fin WHERE id_clase = p_id_clase;
-
-    UPDATE Historial_Uso_Equipos
-    SET estado = 'Finalizado',
-        fecha_hora_fin = v_fecha_fin
-    WHERE id_clase = p_id_clase
-      AND estado = 'En Uso';
-
-    SELECT 'Clase finalizada correctamente. Responsabilidades y asignaciones de equipos revertidas.' AS mensaje;
-END`);
-      logger.info('sp_finalizar_clase actualizado para cerrar préstamos de autoservicio (AUTOSERVICIO_CIERRE_V1)');
-    }
-  } catch (procError) {
-    if (/SYSTEM_USER/i.test(procError.message || '')) {
-      logger.warn(
-        'sp_finalizar_clase no se pudo actualizar: el usuario de la app no tiene privilegios sobre este stored procedure ' +
-        '(fue creado por un usuario administrador). Los préstamos de autoservicio funcionan igual, pero NO se cerrarán ' +
-        'automáticamente al finalizar la clase hasta que se ejecute manualmente, una sola vez y con un usuario con ' +
-        'privilegios de administrador (ej. root), el script backend/scripts/migrate-autoservicio-cierre-clase.sql',
-        { error: procError.message }
-      );
-    } else {
-      logger.error('Error al actualizar sp_finalizar_clase para autoservicio', { error: procError.message, stack: procError.stack });
-    }
-  }
+  const readiness = await verificarReadinessAutoservicio(db);
+  autoservicioSchemaListo = readiness.ready;
+  return assertAutoservicioReady(readiness);
 }
+
+async function buscarSolicitudAutoservicioPorClave(db, idempotencyKey) {
+  const [[solicitud]] = await db.execute(
+    `SELECT hu.id_historial, hu.documento_externo, hu.nombre_externo, hu.codigo_equipo, hu.id_clase,
+            e.placa, e.tipo, e.modelo, c.nombre_clase
+     FROM Historial_Uso_Equipos hu
+     INNER JOIN Elementos e ON e.codigo_equipo = hu.codigo_equipo
+     LEFT JOIN Clases c ON c.id_clase = hu.id_clase
+     WHERE hu.idempotency_key = ?
+     LIMIT 1 FOR UPDATE`,
+    [idempotencyKey]
+  );
+  return solicitud || null;
+}
+
+const coincideSolicitudAutoservicio = (solicitud, documento, placa) => (
+  String(solicitud.documento_externo || '').trim() === documento &&
+  String(solicitud.placa || '').trim() === placa
+);
+
+const respuestaSolicitudAutoservicio = (solicitud) => ({
+  success: true,
+  idempotent: true,
+  message: 'Solicitud de préstamo recuperada',
+  data: {
+    id_historial: solicitud.id_historial,
+    equipo: {
+      codigo_equipo: solicitud.codigo_equipo,
+      placa: solicitud.placa,
+      tipo: solicitud.tipo,
+      modelo: solicitud.modelo
+    },
+    aprendiz: {
+      nombre: solicitud.nombre_externo,
+      documento: String(solicitud.documento_externo || '').trim()
+    },
+    clase: { id_clase: solicitud.id_clase, nombre_clase: solicitud.nombre_clase }
+  }
+});
+
+const respuestaClaveReutilizada = () => ({
+  success: false,
+  code: 'IDEMPOTENCY_KEY_REUSED',
+  error: 'Identidad de solicitud reutilizada',
+  message: 'Esta identidad ya fue usada para solicitar otro préstamo.'
+});
 
 /**
  * Autoservicio: el aprendiz (sin cuenta, cargado previamente desde Excel) ingresa su documento
@@ -4250,9 +4349,26 @@ END`);
  * - El préstamo se cierra automáticamente (sp_finalizar_clase) cuando la clase termina.
  */
 export async function iniciarUsoAutoservicio(req, res) {
+  let connection;
+  let transactionStarted = false;
+  let documentoNormalizado = '';
+  let placaNormalizada = '';
+  let idempotencyKey = '';
+
+  const respondAfterRollback = async (status, payload) => {
+    if (connection && transactionStarted) {
+      await connection.rollback();
+      transactionStarted = false;
+    }
+    return res.status(status).json(payload);
+  };
+
   try {
-    const documentoNormalizado = String(req.body?.documento || '').trim();
-    const placaNormalizada = String(req.body?.placa || '').trim();
+    documentoNormalizado = String(req.body?.documento || '').trim();
+    placaNormalizada = String(req.body?.placa || '').trim();
+    idempotencyKey = String(
+      req.get?.('Idempotency-Key') || req.headers?.['idempotency-key'] || ''
+    ).trim();
 
     if (!documentoNormalizado || !placaNormalizada) {
       return res.status(400).json({
@@ -4260,15 +4376,37 @@ export async function iniciarUsoAutoservicio(req, res) {
         error: 'Documento y placa son obligatorios'
       });
     }
+    if (idempotencyKey.length > 128) {
+      return res.status(400).json({
+        success: false,
+        error: 'La identidad de la solicitud no es válida'
+      });
+    }
 
     await ensureAutoservicioSchema(defaultDb);
 
-    const [[aprendiz]] = await defaultDb.execute(
+    connection = await pool.getConnection();
+    await connection.beginTransaction();
+    transactionStarted = true;
+
+    if (idempotencyKey) {
+      const solicitudPrevia = await buscarSolicitudAutoservicioPorClave(connection, idempotencyKey);
+      if (solicitudPrevia) {
+        if (!coincideSolicitudAutoservicio(solicitudPrevia, documentoNormalizado, placaNormalizada)) {
+          return respondAfterRollback(409, respuestaClaveReutilizada());
+        }
+        await connection.commit();
+        transactionStarted = false;
+        return res.status(200).json(respuestaSolicitudAutoservicio(solicitudPrevia));
+      }
+    }
+
+    const [[aprendiz]] = await connection.execute(
       'SELECT id_aprendiz, nombre, documento, ficha FROM Aprendices WHERE documento = ? LIMIT 1',
       [documentoNormalizado]
     );
     if (!aprendiz) {
-      return res.status(404).json({
+      return respondAfterRollback(404, {
         success: false,
         code: 'APRENDIZ_NOT_FOUND',
         error: 'Documento no encontrado',
@@ -4276,12 +4414,12 @@ export async function iniciarUsoAutoservicio(req, res) {
       });
     }
 
-    const [[equipo]] = await defaultDb.execute(
-      `SELECT codigo_equipo, placa, tipo, modelo, id_ambiente FROM Elementos WHERE placa = ? LIMIT 1`,
+    const [[equipo]] = await connection.execute(
+      `SELECT codigo_equipo, placa, tipo, modelo, id_ambiente FROM Elementos WHERE placa = ? LIMIT 1 FOR UPDATE`,
       [placaNormalizada]
     );
     if (!equipo) {
-      return res.status(404).json({
+      return respondAfterRollback(404, {
         success: false,
         code: 'EQUIPO_NOT_FOUND',
         error: 'Equipo no encontrado',
@@ -4289,9 +4427,9 @@ export async function iniciarUsoAutoservicio(req, res) {
       });
     }
 
-    const disponibilidad = await verificarDisponibilidadEquipo(defaultDb, equipo.codigo_equipo);
+    const disponibilidad = await verificarDisponibilidadEquipo(connection, equipo.codigo_equipo);
     if (!disponibilidad.disponible) {
-      return res.status(409).json({
+      return respondAfterRollback(409, {
         success: false,
         code: 'EQUIPO_NOT_AVAILABLE',
         error: disponibilidad.razon,
@@ -4300,7 +4438,7 @@ export async function iniciarUsoAutoservicio(req, res) {
     }
 
     if (!equipo.id_ambiente) {
-      return res.status(409).json({
+      return respondAfterRollback(409, {
         success: false,
         code: 'EQUIPO_WITHOUT_AMBIENTE',
         error: 'Equipo sin ambiente asignado',
@@ -4308,14 +4446,14 @@ export async function iniciarUsoAutoservicio(req, res) {
       });
     }
 
-    const [[claseActiva]] = await defaultDb.execute(
+    const [[claseActiva]] = await connection.execute(
       `SELECT id_clase, nombre_clase FROM Clases
        WHERE id_ambiente = ? AND estado_clase = 'En Curso'
-       ORDER BY fecha_inicio_real DESC LIMIT 1`,
+       ORDER BY fecha_inicio_real DESC LIMIT 1 FOR UPDATE`,
       [equipo.id_ambiente]
     );
     if (!claseActiva) {
-      return res.status(409).json({
+      return respondAfterRollback(409, {
         success: false,
         code: 'NO_ACTIVE_CLASS',
         error: 'Sin clase en curso',
@@ -4323,16 +4461,32 @@ export async function iniciarUsoAutoservicio(req, res) {
       });
     }
 
-    const [[usoActivo]] = await defaultDb.execute(
+    const ambienteAprendiz = await verificarAmbienteEquipoAprendiz(
+      connection,
+      equipo.codigo_equipo,
+      aprendiz.id_aprendiz,
+      { idAprendiz: aprendiz.id_aprendiz }
+    );
+    if (ambienteAprendiz && ambienteAprendiz.valido === false) {
+      return respondAfterRollback(409, {
+        success: false,
+        code: 'APRENDIZ_OUTSIDE_AMBIENTE',
+        error: 'Aprendiz fuera del ambiente',
+        message: ambienteAprendiz.razon || 'El aprendiz no tiene una clase activa asociada a este ambiente.'
+      });
+    }
+
+    const [[usoActivo]] = await connection.execute(
       `SELECT id_historial, documento_externo FROM Historial_Uso_Equipos
        WHERE codigo_equipo = ? AND estado = 'En Uso'
-       ORDER BY fecha_hora_inicio DESC LIMIT 1`,
+       ORDER BY fecha_hora_inicio DESC LIMIT 1 FOR UPDATE`,
       [equipo.codigo_equipo]
     );
     if (usoActivo) {
       if (String(usoActivo.documento_externo || '').trim() === documentoNormalizado) {
-        return res.status(200).json({
+        const response = {
           success: true,
+          idempotent: true,
           message: 'Ya tienes este equipo en uso',
           data: {
             id_historial: usoActivo.id_historial,
@@ -4340,9 +4494,12 @@ export async function iniciarUsoAutoservicio(req, res) {
             aprendiz: { nombre: aprendiz.nombre, documento: String(aprendiz.documento).trim() },
             clase: { id_clase: claseActiva.id_clase, nombre_clase: claseActiva.nombre_clase }
           }
-        });
+        };
+        await connection.commit();
+        transactionStarted = false;
+        return res.status(200).json(response);
       }
-      return res.status(409).json({
+      return respondAfterRollback(409, {
         success: false,
         code: 'EQUIPO_IN_USE',
         error: 'Equipo en uso',
@@ -4350,20 +4507,24 @@ export async function iniciarUsoAutoservicio(req, res) {
       });
     }
 
-    const [result] = await defaultDb.execute(
+    const [result] = await connection.execute(
       `INSERT INTO Historial_Uso_Equipos
-       (codigo_equipo, id_usuario, nombre_usuario, documento_externo, nombre_externo, id_aprendiz, fecha_hora_inicio, estado, id_clase, observaciones)
-       VALUES (?, NULL, ?, ?, ?, ?, NOW(), 'En Uso', ?, ?)`,
+       (codigo_equipo, id_usuario, nombre_usuario, documento_externo, nombre_externo, id_aprendiz, idempotency_key, fecha_hora_inicio, estado, id_clase, observaciones)
+       VALUES (?, NULL, ?, ?, ?, ?, ?, NOW(), 'En Uso', ?, ?)`,
       [
         equipo.codigo_equipo,
         aprendiz.nombre,
         documentoNormalizado,
         aprendiz.nombre,
         aprendiz.id_aprendiz,
+        idempotencyKey || null,
         claseActiva.id_clase,
         `Autoservicio: solicitado por el aprendiz (documento ${documentoNormalizado})`
       ]
     );
+
+    await connection.commit();
+    transactionStarted = false;
 
     logger.info('Autoservicio: préstamo de equipo registrado', {
       id_historial: result.insertId,
@@ -4393,7 +4554,30 @@ export async function iniciarUsoAutoservicio(req, res) {
       }
     });
   } catch (err) {
+    if (connection && transactionStarted) {
+      try {
+        await connection.rollback();
+      } catch (rollbackError) {
+        logger.warn('No se pudo revertir la transacción de autoservicio', { error: rollbackError.message });
+      }
+      transactionStarted = false;
+    }
+    if (err?.code === 'ER_DUP_ENTRY' && idempotencyKey && connection) {
+      try {
+        const solicitudPrevia = await buscarSolicitudAutoservicioPorClave(connection, idempotencyKey);
+        if (solicitudPrevia) {
+          if (!coincideSolicitudAutoservicio(solicitudPrevia, documentoNormalizado, placaNormalizada)) {
+            return res.status(409).json(respuestaClaveReutilizada());
+          }
+          return res.status(200).json(respuestaSolicitudAutoservicio(solicitudPrevia));
+        }
+      } catch (recoveryError) {
+        logger.warn('No se pudo recuperar la solicitud idempotente', { error: recoveryError.message });
+      }
+    }
     logger.error('Error en iniciarUsoAutoservicio', { error: err.message, stack: err.stack });
     return handleControllerError(err, res, 'iniciarUsoAutoservicio', 'No se pudo registrar el préstamo del equipo');
+  } finally {
+    if (connection) connection.release();
   }
 }

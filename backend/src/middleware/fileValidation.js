@@ -1,3 +1,4 @@
+import fs from 'fs/promises';
 import { logger } from '../utils/logger.js';
 
 /**
@@ -29,6 +30,42 @@ const ALLOWED_EXCEL_EXTENSIONS = ['.xls', '.xlsx'];
 const MAX_IMAGE_SIZE = 10 * 1024 * 1024; // 10 MB
 const MAX_EXCEL_SIZE = 50 * 1024 * 1024; // 50 MB
 
+const IMAGE_MIME_EXTENSIONS = {
+  'image/jpeg': ['.jpg', '.jpeg'],
+  'image/jpg': ['.jpg', '.jpeg'],
+  'image/png': ['.png'],
+  'image/gif': ['.gif'],
+  'image/webp': ['.webp'],
+};
+
+const imageMimeFromSignature = (bytes) => {
+  if (bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) return 'image/jpeg';
+  if (bytes.length >= 8 && bytes.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))) return 'image/png';
+  if (bytes.length >= 6 && (bytes.subarray(0, 6).toString('ascii') === 'GIF87a' || bytes.subarray(0, 6).toString('ascii') === 'GIF89a')) return 'image/gif';
+  if (bytes.length >= 12 && bytes.subarray(0, 4).toString('ascii') === 'RIFF' && bytes.subarray(8, 12).toString('ascii') === 'WEBP') return 'image/webp';
+  return null;
+};
+
+/**
+ * Validates image bytes after Multer writes the temporary file and before
+ * database persistence. Buffers keep this testable without touching uploads.
+ */
+export async function validateImageContent(file) {
+  if (!file?.buffer && !file?.path) return { valid: true };
+
+  const bytes = file.buffer
+    ? file.buffer.subarray(0, 12)
+    : (await fs.readFile(file.path)).subarray(0, 12);
+  const actualMime = imageMimeFromSignature(bytes);
+  const expectedMimes = file.mimetype === 'image/jpg' ? ['image/jpeg'] : [file.mimetype];
+
+  if (!actualMime || !expectedMimes.includes(actualMime)) {
+    return { valid: false, error: 'El contenido del archivo no coincide con el tipo MIME declarado' };
+  }
+  return { valid: true };
+}
+
+
 /**
  * Valida un archivo de imagen
  * @param {Object} file - Archivo de multer
@@ -53,6 +90,10 @@ export function validateImageFile(file) {
   const extension = file.originalname.toLowerCase().substring(file.originalname.lastIndexOf('.'));
   if (!ALLOWED_IMAGE_EXTENSIONS.includes(extension)) {
     return { valid: false, error: 'Extensión de archivo no permitida' };
+  }
+
+  if (!IMAGE_MIME_EXTENSIONS[file.mimetype].includes(extension)) {
+    return { valid: false, error: 'El tipo MIME no coincide con la extensión del archivo' };
   }
 
   // Validar que el nombre del archivo no contenga caracteres peligrosos

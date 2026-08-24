@@ -10,6 +10,7 @@ import process from 'process';
 import { config } from './src/config/config.js';
 import { errorHandler } from './src/utils/errors.js';
 import { logger } from './src/utils/logger.js';
+import { buildAutoservicioHealth } from './src/utils/autoservicioHealth.js';
 // Inicializar contenedor de dependencias
 import './src/di/setup.js';
 // Importar servicio de email para inicializarlo al arrancar
@@ -36,7 +37,7 @@ import imagenesEquipoRoutes from './src/routes/imagenesEquipoRoutes.js';
 import imagenesAmbienteRoutes from './src/routes/imagenesAmbienteRoutes.js';
 import schedulerService from './src/services/schedulerService.js';
 import socketService from './src/services/socketService.js';
-import { ensureAutoservicioSchema } from './src/controller/equiposController.js';
+import { ensureAutoservicioSchema, getAutoservicioReadiness } from './src/controller/equiposController.js';
 import defaultDb from './src/config/dbconfig.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -146,10 +147,12 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 // Cookie parser
 app.use(cookieParser());
 
-// Servir archivos estáticos (imágenes de equipos y fotos de perfil)
+// Sólo los recursos explícitamente públicos se sirven como estáticos.
+// Las evidencias de equipos se entregan mediante el endpoint autenticado.
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use('/uploads/ambientes', express.static(path.join(__dirname, 'uploads', 'ambientes')));
+app.use('/uploads/perfiles', express.static(path.join(__dirname, 'uploads', 'perfiles')));
 
 // Morgan - Logging de requests (optimizado)
 // En producción, usar formato más eficiente
@@ -169,10 +172,10 @@ if (process.env.NODE_ENV === 'development') {
 
 // Health check
 app.get('/health', (req, res) => {
-  res.json({
-    status: 'ok',
+  const health = buildAutoservicioHealth(getAutoservicioReadiness());
+  res.status(health.statusCode).json({
+    ...health.body,
     env: process.env.NODE_ENV || 'development',
-    timestamp: new Date().toISOString(),
   });
 });
 

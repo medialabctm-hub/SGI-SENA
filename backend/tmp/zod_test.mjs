@@ -1,1 +1,0 @@
-import { z } from 'zod'; const s1 = z.enum(['A','B'], { error: 'Valor invalido' }); try { s1.parse('C'); } catch(e) { console.log('error key:', e.issues[0].message); } const s2 = z.enum(['A','B']); s2.parse.toString().includes('message'); try { s2.parse('C'); } catch(e) { console.log('default msg:', e.issues[0].message); }

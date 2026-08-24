@@ -150,7 +150,7 @@ export default function Equipos() {
     try {
       setBuscandoCuentadante(true)
       setErrores(prev => {
-        const { cuentadante, ...rest } = prev
+        const { cuentadante: _cuentadante, ...rest } = prev
         return rest
       })
       setCuentadanteEncontrado(null)
@@ -259,7 +259,7 @@ export default function Equipos() {
         },
         body: JSON.stringify(payload)
       })
-      const data = await parseApiResponse(resp, 'No se pudo registrar el elemento del inventario')
+      await parseApiResponse(resp, 'No se pudo registrar el elemento del inventario')
       setToast({
         message: `Elemento del inventario registrado correctamente`,
         type: 'success'
@@ -431,7 +431,7 @@ export default function Equipos() {
                               setForm(prev => ({ ...prev, id_cuentadante: '' }))
                               if (errores.cuentadante) {
                                 setErrores(prev => {
-                                  const { cuentadante, ...rest } = prev
+                                  const { cuentadante: _cuentadante, ...rest } = prev
                                   return rest
                                 })
                               }

@@ -44,52 +44,14 @@ export default function Config() {
         const data = await res.json()
         if (data?.user) {
           setUser(data.user)
-          try { localStorage.setItem('user', JSON.stringify(data.user)) } catch (e) {
+          try { localStorage.setItem('user', JSON.stringify(data.user)) } catch {
             // localStorage puede fallar en modo privado o cuando está lleno; ignorar silenciosamente
           }
         }
-      } catch (err) { /* ignore */ }
+      } catch { /* ignore */ }
     }
     fetchMe()
   }, [])
-
-  function SecurityPanel() {
-    const [current, setCurrent] = useState('')
-    const [newPass, setNewPass] = useState('')
-    const [confirm, setConfirm] = useState('')
-    async function changePassword(e) {
-      e.preventDefault()
-      if (!current || !newPass) return setToast({ message: 'Completa los campos', type: 'error' })
-      if (newPass !== confirm) return setToast({ message: 'Las contraseñas no coinciden', type: 'error' })
-      // En este backend no hay endpoint para cambiar contraseña; mostrar aviso
-      setToast({ message: 'Funcionalidad de cambio de contraseña requiere endpoint en backend.', type: 'info' })
-    }
-    return (
-      <div className="form-equipos config-security-container">
-        <h3>Cambiar contraseña</h3>
-        <form onSubmit={changePassword}>
-          <div className="form-grid">
-            <div className="form-row"><label>Contraseña actual</label><input type="password" value={current} onChange={e => setCurrent(e.target.value)} /></div>
-            <div className="form-row"><label>Nueva contraseña</label><input type="password" value={newPass} onChange={e => setNewPass(e.target.value)} /></div>
-            <div className="form-row"><label>Confirmar nueva</label><input type="password" value={confirm} onChange={e => setConfirm(e.target.value)} /></div>
-          </div>
-          <div className="config-security-submit">
-            <button className="btn-verde" type="submit">Actualizar contraseña</button>
-          </div>
-        </form>
-      </div>
-    )
-  }
-
-
-  function Placeholder({ title, children }) {
-    return (
-      <div className="form-equipos config-placeholder-container">
-        <h3>{title}</h3>
-        <div className="config-placeholder-content">{children}</div>
-      </div>
-    )
-  }
 
   return (
     <div className="page simple-page config-page">

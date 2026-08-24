@@ -226,7 +226,7 @@ export const translateDbError = (err) => {
 /**
  * Middleware para manejar errores de forma centralizada
  */
-export const errorHandler = (err, req, res, next) => {
+export const errorHandler = (err, req, res, _next) => {
   // Log del error técnico completo (solo servidor, nunca al cliente)
   logger.error('Error capturado por errorHandler', {
     error: err.message,

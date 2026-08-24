@@ -7,7 +7,7 @@
  * - Propiedad de recursos (el usuario solo puede acceder a sus propios recursos)
  */
 
-import { hasPermission, hasAnyPermission, isAdmin, hasPermissionFromDB } from '../config/permissions.js'
+import { isAdmin, hasPermissionFromDB } from '../config/permissions.js'
 import defaultDb from '../config/dbconfig.js'
 
 /**

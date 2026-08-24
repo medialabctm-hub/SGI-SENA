@@ -4,6 +4,7 @@ import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 import fs from 'fs';
 import { logger } from '../utils/logger.js';
+import { validateImageContent, validateImageFile } from './fileValidation.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -32,8 +33,6 @@ const storage = multer.diskStorage({
     cb(null, filename);
   },
 });
-
-import { validateImageFile } from './fileValidation.js';
 
 // Filtro de archivos: solo imágenes (usando validación mejorada)
 const fileFilter = (req, file, cb) => {
@@ -66,6 +65,12 @@ export const uploadEquipoImage = multer({
 
 // Middleware para manejar errores de Multer
 export const handleUploadError = (err, req, res, next) => {
+  if (err) {
+    const files = req.files || (req.file ? [req.file] : []);
+    files.forEach((file) => {
+      if (file?.filename) deleteImageFile(file.filename);
+    });
+  }
   if (err instanceof multer.MulterError) {
     if (err.code === 'LIMIT_FILE_SIZE') {
       return res.status(400).json({ error: 'El archivo es demasiado grande. Tamaño máximo: 10MB' });
@@ -85,12 +90,31 @@ export const handleUploadError = (err, req, res, next) => {
 
 // Función para obtener la ruta relativa de la imagen
 export const getImagePath = (filename) => {
-  return `/uploads/equipos/${filename}`;
+  if (!isSafeEvidenceFilename(filename)) {
+    throw new Error('Nombre de archivo de evidencia no válido');
+  }
+  return `/api/equipos/imagenes/archivo/${encodeURIComponent(filename)}`;
+};
+
+export const isSafeEvidenceFilename = (filename) => (
+  typeof filename === 'string'
+  && filename.length > 0
+  && path.basename(filename) === filename
+  && !filename.includes('..')
+  && /^[a-zA-Z0-9][a-zA-Z0-9._-]*$/.test(filename)
+);
+
+export const getImageFilePath = (filename) => {
+  if (!isSafeEvidenceFilename(filename)) {
+    throw new Error('Nombre de archivo de evidencia no válido');
+  }
+  return path.join(uploadsDir, filename);
 };
 
 // Función para eliminar archivo físico
 export const deleteImageFile = (filename) => {
-  const filePath = path.join(uploadsDir, filename);
+  if (!isSafeEvidenceFilename(filename)) return false;
+  const filePath = getImageFilePath(filename);
   
   if (fs.existsSync(filePath)) {
     try {
@@ -102,6 +126,20 @@ export const deleteImageFile = (filename) => {
     }
   }
   return false;
+};
+
+export const validateUploadedImageContent = async (req, res, next) => {
+  const files = req.files || (req.file ? [req.file] : []);
+  for (const file of files) {
+    const validation = await validateImageContent(file);
+    if (!validation.valid) {
+      files.forEach((uploadedFile) => {
+        if (uploadedFile?.filename) deleteImageFile(uploadedFile.filename);
+      });
+      return res.status(400).json({ error: validation.error });
+    }
+  }
+  return next();
 };
 
 // Configuración de Multer para endpoint público (verificación de ambiente / asignación aprendices)

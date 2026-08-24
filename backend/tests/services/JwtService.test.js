@@ -112,7 +112,7 @@ describe('JwtService', () => {
       const token = shortService.sign({ id: 99 });
 
       // Esperar a que expire
-      await new Promise((r) => setTimeout(r, 50));
+      await new Promise((r) => { setTimeout(r, 50); });
 
       expect(() => service.verify(token)).toThrow('Token expirado');
     });

@@ -12,19 +12,6 @@ function esFechaHoraPasada(fechaYYYYMMDD, horaInicioHHMMSS) {
   return inicioClaseStr <= ahoraColombia;
 }
 
-function normalizarHora(hora) {
-  const horaStr = String(hora);
-  if (horaStr.split(':').length === 2) {
-    return `${horaStr}:00`;
-  }
-  return horaStr;
-}
-
-function crearDateTime(fecha, hora) {
-  const horaNormalizada = normalizarHora(hora);
-  return new Date(`${fecha}T${horaNormalizada}`);
-}
-
 function puedeGestionarClase(req, clase) {
   const role = req.user?.rol;
   if (role !== 'Instructor' && role !== 'Cuentadante') return true;
@@ -917,10 +904,10 @@ export async function agregarParticipantes(req, res) {
     );
 
     const idsAprendicesValidos = aprendices.map(a => a.id_usuario);
-    const idsInvalidos = participantes.filter(id => !idsAprendicesValidos.includes(id));
+    const idsInvalidos = participantes.filter(idAprendiz => !idsAprendicesValidos.includes(idAprendiz));
 
     if (idsInvalidos.length > 0) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         error: 'Algunos participantes no son aprendices válidos',
         ids_invalidos: idsInvalidos
       });
@@ -933,7 +920,7 @@ export async function agregarParticipantes(req, res) {
     );
 
     const idsExistentes = existentes.map(e => e.id_aprendiz);
-    const idsNuevos = participantes.filter(id => !idsExistentes.includes(id));
+    const idsNuevos = participantes.filter(idAprendiz => !idsExistentes.includes(idAprendiz));
 
     if (idsNuevos.length === 0) {
       return res.status(409).json({ error: 'Todos los participantes ya están registrados en esta clase' });

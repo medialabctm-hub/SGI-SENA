@@ -1,7 +1,6 @@
 import defaultDb from '../config/dbconfig.js';
 import multer from 'multer';
 import xlsx from 'xlsx';
-import { crearClase } from './clasesController.js';
 import { logger } from '../utils/logger.js';
 import { handleControllerError } from '../utils/controllerHelpers.js';
 
@@ -197,10 +196,10 @@ export async function importarHorariosExcel(req, res) {
         }
         
         // Validar que al menos fecha única O (fecha_inicio + fecha_fin + dias_semana) esté presente
-        const tieneFechaUnica = fechaRaw && fechaRaw.length > 0;
-        const tieneRangoConDias = fechaInicioRaw && fechaFinRaw && diasSemanaRaw;
-        
-        if (!tieneFechaUnica && !tieneRangoConDias) {
+        const filaTieneFechaUnica = fechaRaw && fechaRaw.length > 0;
+        const filaTieneRangoConDias = fechaInicioRaw && fechaFinRaw && diasSemanaRaw;
+
+        if (!filaTieneFechaUnica && !filaTieneRangoConDias) {
           resultados.errores.push({
             fila: i + 1,
             error: 'Debe proporcionar: Fecha (clase única) O Fecha Inicio + Fecha Fin + Días de Semana (clases recurrentes)',

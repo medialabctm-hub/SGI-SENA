@@ -221,22 +221,34 @@ export async function deshabilitarAsignacionesActivas(db, codigoEquipo, deshabil
  * Obtener los ambientes válidos para un aprendiz basado en su ficha y clases
  * Un aprendiz solo puede recibir equipos de los ambientes donde tiene clases activas
  * @param {Object} db - Instancia de la base de datos
- * @param {number} idAprendiz - ID del usuario aprendiz
+ * @param {number} idAprendiz - ID del usuario o del registro en Aprendices
+ * @param {Object} options - Contexto opcional para aprendices sin cuenta
  * @returns {Promise<Array<number>>} Array de IDs de ambientes válidos
  */
-export async function obtenerAmbientesValidosAprendiz(db, idAprendiz) {
+export async function obtenerAmbientesValidosAprendiz(db, idAprendiz, options = {}) {
   // Obtener la ficha del aprendiz desde la tabla Aprendices o desde Participantes_Clase
   // Primero intentar obtener desde Usuarios si tiene ficha asociada, luego desde clases
-  
-  // Opción 1: Si el aprendiz tiene ficha directa en Aprendices (tabla de aprendices importados)
-  const [[aprendizData]] = await db.execute(
-    `SELECT a.ficha 
-     FROM Aprendices a
-     INNER JOIN Usuarios u ON a.documento = u.cedula
-     WHERE u.id_usuario = ? AND u.estado = 'Activo'
-     LIMIT 1`,
-    [idAprendiz]
-  );
+
+  // Opción 1: aprendiz importado sin cuenta; no depende de una fila en Usuarios.
+  let aprendizData;
+  if (options.idAprendiz) {
+    const [[aprendizImportado]] = await db.execute(
+      `SELECT ficha FROM Aprendices WHERE id_aprendiz = ? LIMIT 1`,
+      [options.idAprendiz]
+    );
+    aprendizData = aprendizImportado;
+  } else {
+    // Opción 2: aprendiz con cuenta, conservando la búsqueda histórica por id_usuario.
+    const [[aprendizConCuenta]] = await db.execute(
+      `SELECT a.ficha
+       FROM Aprendices a
+       INNER JOIN Usuarios u ON a.documento = u.cedula
+       WHERE u.id_usuario = ? AND u.estado = 'Activo'
+       LIMIT 1`,
+      [idAprendiz]
+    );
+    aprendizData = aprendizConCuenta;
+  }
 
   const fichaAprendiz = aprendizData?.ficha || null;
 
@@ -280,9 +292,10 @@ export async function obtenerAmbientesValidosAprendiz(db, idAprendiz) {
  * @param {Object} db - Instancia de la base de datos
  * @param {number} codigoEquipo - Código del equipo
  * @param {number} idAprendiz - ID del usuario aprendiz
+ * @param {Object} options - Contexto opcional para aprendices sin cuenta (ver obtenerAmbientesValidosAprendiz)
  * @returns {Promise<Object>} { valido: boolean, razon: string|null, ambiente_equipo: number|null, ambientes_validos: Array<number> }
  */
-export async function verificarAmbienteEquipoAprendiz(db, codigoEquipo, idAprendiz) {
+export async function verificarAmbienteEquipoAprendiz(db, codigoEquipo, idAprendiz, options = {}) {
   // Obtener el ambiente del equipo
   const [[equipo]] = await db.execute(
     `SELECT e.id_ambiente, a.nombre_ambiente
@@ -304,7 +317,7 @@ export async function verificarAmbienteEquipoAprendiz(db, codigoEquipo, idAprend
   const ambienteEquipo = equipo.id_ambiente;
 
   // Obtener ambientes válidos para el aprendiz
-  const ambientesValidos = await obtenerAmbientesValidosAprendiz(db, idAprendiz);
+  const ambientesValidos = await obtenerAmbientesValidosAprendiz(db, idAprendiz, options);
 
   if (ambientesValidos.length === 0) {
     return {

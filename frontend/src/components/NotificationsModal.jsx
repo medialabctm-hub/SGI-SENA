@@ -127,7 +127,6 @@ function NotificationsModal({
       }
 
       // Determinar el tipo de toast según la acción
-      const esAceptar = accion.tipo === 'aceptar_consentimiento'
       const esRechazar = accion.tipo === 'rechazar_consentimiento'
       const tipoToast = esRechazar ? 'error' : 'success'
 

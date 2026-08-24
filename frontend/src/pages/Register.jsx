@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { FiMail, FiLock, FiEye, FiEyeOff, FiUser, FiCreditCard, FiPhone } from 'react-icons/fi'
-import { validarRegistro, validarContraseña, validarEmail, validarTelefono, validarCaracteresEspeciales, validarEspaciosInicioFinalNombre } from '../utils/validaciones';
+import { validarRegistro, validarCaracteresEspeciales, validarEspaciosInicioFinalNombre } from '../utils/validaciones';
 import Toast from '../components/Toast';
 import InteractiveBackground from '../components/InteractiveBackground';
 import CustomSelect from '../components/CustomSelect';
@@ -50,15 +50,6 @@ export default function Register() {
 
   async function handleSubmit(e) {
     e.preventDefault()
-    const datos = {
-      nombre_usuario: name,
-      cedula_usuario: cedula,
-      correo_usuario: email,
-      telefono_usuario: telefono,
-      contraseña_usuario: password,
-      confirmar_contraseña: confirmPassword,
-      rol_usuario: rol
-    }
     const nuevosErrores = {}
     if (password !== confirmPassword) {
       nuevosErrores.confirmar_contraseña = 'Las contraseñas no coinciden'
@@ -109,7 +100,7 @@ export default function Register() {
           codigo_invitacion: codigoInvitacion.trim() || null
         })
       })
-      const data = await parseApiResponse(res, 'No se pudo completar el registro')
+      await parseApiResponse(res, 'No se pudo completar el registro')
       setToast({ message: 'Registro exitoso, ahora puede iniciar sesión', type: 'success' })
       setTimeout(() => navigate('/login'), 1500)
     } catch (err) {

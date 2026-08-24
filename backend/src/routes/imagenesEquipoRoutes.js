@@ -6,12 +6,14 @@ import {
   eliminarImagenEquipo,
   marcarImagenPrincipal,
   actualizarImagenEquipo,
+  descargarImagenEquipo,
 } from '../controller/imagenesEquipoController.js';
 import { authenticate } from '../middleware/authMiddleware.js';
 import { requirePermission, requireAnyPermission } from '../middleware/authorization.js';
 import { PERMISSIONS } from '../config/permissions.js';
 import { writeLimiter, readLimiter } from '../middleware/rateLimiter.js';
-import { uploadEquipoImage, handleUploadError } from '../middleware/uploadMiddleware.js';
+import { uploadEquipoImage, handleUploadError, validateUploadedImageContent } from '../middleware/uploadMiddleware.js';
+import { requireEquipmentEvidenceScope, resolveCodigoEquipoFromImage } from '../middleware/equipmentEvidenceScope.js';
 
 const router = express.Router();
 
@@ -26,9 +28,31 @@ router.post(
   authenticate,
   writeLimiter,
   requirePermission(PERMISSIONS.EQUIPOS.UPDATE),
+  requireEquipmentEvidenceScope(),
   uploadEquipoImage.array('imagenes', 10), // Máximo 10 imágenes
   handleUploadError,
+  validateUploadedImageContent,
   subirImagenesEquipo
+);
+
+// The file itself is private: URLs returned by the API are protected and the
+// static /uploads mount explicitly refuses the equipment directory.
+router.get(
+  '/imagenes/archivo/:filename',
+  authenticate,
+  readLimiter,
+  requireAnyPermission([PERMISSIONS.EQUIPOS.VIEW, PERMISSIONS.EQUIPOS.VIEW_OWN]),
+  requireEquipmentEvidenceScope({
+    resolveCodigoEquipo: async (req) => {
+      const { default: db } = await import('../config/dbconfig.js');
+      const [[image]] = await db.execute(
+        'SELECT codigo_equipo FROM Imagenes_Equipo WHERE nombre_archivo = ? LIMIT 1',
+        [req.params.filename]
+      );
+      return image?.codigo_equipo;
+    },
+  }),
+  descargarImagenEquipo
 );
 
 // Listar todas las imágenes de un equipo
@@ -41,6 +65,7 @@ router.get(
     PERMISSIONS.EQUIPOS.VIEW,
     PERMISSIONS.EQUIPOS.VIEW_OWN,
   ]),
+  requireEquipmentEvidenceScope(),
   listarImagenesEquipo
 );
 
@@ -54,6 +79,7 @@ router.get(
     PERMISSIONS.EQUIPOS.VIEW,
     PERMISSIONS.EQUIPOS.VIEW_OWN,
   ]),
+  requireEquipmentEvidenceScope({ resolveCodigoEquipo: resolveCodigoEquipoFromImage }),
   obtenerImagenEquipo
 );
 
@@ -64,6 +90,7 @@ router.put(
   authenticate,
   writeLimiter,
   requirePermission(PERMISSIONS.EQUIPOS.UPDATE),
+  requireEquipmentEvidenceScope({ resolveCodigoEquipo: resolveCodigoEquipoFromImage }),
   actualizarImagenEquipo
 );
 
@@ -74,6 +101,7 @@ router.patch(
   authenticate,
   writeLimiter,
   requirePermission(PERMISSIONS.EQUIPOS.UPDATE),
+  requireEquipmentEvidenceScope({ resolveCodigoEquipo: resolveCodigoEquipoFromImage }),
   marcarImagenPrincipal
 );
 
@@ -84,6 +112,7 @@ router.delete(
   authenticate,
   writeLimiter,
   requirePermission(PERMISSIONS.EQUIPOS.UPDATE),
+  requireEquipmentEvidenceScope({ resolveCodigoEquipo: resolveCodigoEquipoFromImage }),
   eliminarImagenEquipo
 );
 

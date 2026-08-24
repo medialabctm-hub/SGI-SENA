@@ -692,6 +692,7 @@ CREATE TABLE Historial_Uso_Equipos (
   documento_externo VARCHAR(50) NULL COMMENT 'Documento del aprendiz cuando el préstamo se hizo por autoservicio (sin cuenta)',
   nombre_externo VARCHAR(200) NULL COMMENT 'Nombre del aprendiz cuando el préstamo se hizo por autoservicio (sin cuenta)',
   id_aprendiz INT NULL COMMENT 'Referencia al roster de Aprendices cuando el préstamo se hizo por autoservicio',
+  idempotency_key VARCHAR(128) NULL COMMENT 'Identidad del reintento de autoservicio',
   fecha_hora_inicio DATETIME NOT NULL COMMENT 'Fecha y hora en que el usuario inició sesión',
   fecha_hora_fin DATETIME NULL COMMENT 'Fecha y hora en que el usuario cerró sesión. NULL si aún está en uso',
   estado ENUM('En Uso', 'Finalizado') DEFAULT 'En Uso' COMMENT 'Estado de la sesión',
@@ -710,7 +711,8 @@ CREATE TABLE Historial_Uso_Equipos (
   INDEX idx_usuario_fecha (id_usuario, fecha_hora_inicio DESC),
   INDEX idx_clase (id_clase),
   INDEX idx_documento_externo (documento_externo),
-  INDEX idx_id_aprendiz (id_aprendiz)
+  INDEX idx_id_aprendiz (id_aprendiz),
+  UNIQUE INDEX uq_autoservicio_idempotency_key (idempotency_key)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
 COMMENT = 'Historial de uso de equipos: registra quién inició sesión y de qué hora a qué hora';
 

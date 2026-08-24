@@ -17,7 +17,7 @@ export class Observer {
    * @param {string} event - Tipo de evento
    * @param {Object} data - Datos del evento
    */
-  update(event, data) {
+  update(_event, _data) {
     throw new Error('Método update debe ser implementado por las subclases');
   }
 }

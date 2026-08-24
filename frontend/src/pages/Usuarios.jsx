@@ -47,13 +47,12 @@ export default function Usuarios() {
       if (userData) {
         setCurrentUser(JSON.parse(userData));
       }
-    } catch (error) {
+    } catch {
       // Error silencioso: si falla, simplemente no se carga el usuario
     }
   }, []);
 
   const isAdmin = currentUser?.nombre_rol === 'Administrador';
-  const isInstructor = currentUser?.nombre_rol === 'Instructor';
 
   const fetchUsers = async () => {
     setLoading(true);

@@ -408,7 +408,7 @@ export async function importarEquipos(req, res) {
       
       // Primera pasada: procesar "descripcion" primero
       for (const key in row) {
-        if (row.hasOwnProperty(key)) {
+        if (Object.prototype.hasOwnProperty.call(row, key)) {
           const normalizedKey = normalizeColumnName(key);
           if (normalizedKey === 'descripcion') {
             const finalKey = columnMapping[normalizedKey] || normalizedKey;
@@ -417,10 +417,10 @@ export async function importarEquipos(req, res) {
           }
         }
       }
-      
+
       // Segunda pasada: procesar el resto de columnas
       for (const key in row) {
-        if (row.hasOwnProperty(key) && !processedKeys.has(key)) {
+        if (Object.prototype.hasOwnProperty.call(row, key) && !processedKeys.has(key)) {
           const normalizedKey = normalizeColumnName(key);
           const finalKey = columnMapping[normalizedKey] || normalizedKey;
           // Solo asignar si la clave final no existe (evitar sobrescribir "descripcion")
@@ -443,8 +443,7 @@ export async function importarEquipos(req, res) {
     };
 
     const userId = req.user?.id || null;
-    const userRole = req.user?.rol || null;
-    
+
     // Obtener id_cuentadante del body si se proporciona (OBLIGATORIO para Administradores)
     // Nota: Con multer, los campos del FormData están en req.body
     const id_cuentadante_importacion = req.body?.id_cuentadante 
@@ -583,7 +582,6 @@ export async function obtenerEstadoImportacionEquipos(req, res) {
 export async function obtenerDuplicadosPendientes(req, res) {
   try {
     const { id_importacion } = req.query;
-    const userId = req.user?.id;
     const userRole = req.user?.rol;
 
     // Solo Administrador y Cuentadante pueden ver duplicados

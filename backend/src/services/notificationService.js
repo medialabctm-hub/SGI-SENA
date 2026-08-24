@@ -1,5 +1,5 @@
 import defaultDb from '../config/dbconfig.js'
-import { getUserLanguage, translate } from '../utils/translations.js'
+import { translate } from '../utils/translations.js'
 import socketService from './socketService.js'
 
 const ALLOWED_TYPES = new Set(['info', 'aviso', 'alerta', 'critica'])

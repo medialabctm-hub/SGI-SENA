@@ -87,6 +87,32 @@ test('parseApiResponse acepta una respuesta 409 marcada explícitamente como ide
   assert.equal(data.data.aprendiz.id_aprendiz, 22);
 });
 
+test('buildErrorMessage explica el rate limit y permite reintentar', () => {
+  const error = new ApiError('Too many requests', 429, {
+    code: 'RATE_LIMITED',
+    message: 'Demasiadas solicitudes. Espera unos segundos e inténtalo de nuevo.',
+  });
+
+  assert.equal(
+    buildErrorMessage(error),
+    'Demasiadas solicitudes. Espera unos segundos e inténtalo de nuevo.'
+  );
+});
+
+test('buildErrorMessage conserva mensajes accionables de envelopes 404, 409, 429 y 500', () => {
+  const cases = [
+    [404, 'No encontramos un aprendiz con ese documento.'],
+    [409, 'Este equipo ya está siendo usado por otra persona en este momento.'],
+    [429, 'Demasiadas solicitudes. Espera unos segundos e inténtalo de nuevo.'],
+    [500, 'El préstamo fue registrado; actualiza la página para confirmar el estado.'],
+  ];
+
+  for (const [status, userMessage] of cases) {
+    const error = new ApiError('Error técnico', status, { userMessage });
+    assert.equal(buildErrorMessage(error), userMessage);
+  }
+});
+
 test('buildEquipoAssignmentPayload conserva la forma de usuario con cuenta', () => {
   assert.deepEqual(
     api.buildEquipoAssignmentPayload({
@@ -102,6 +128,36 @@ test('buildEquipoAssignmentPayload conserva la forma de usuario con cuenta', () 
       tipo_responsabilidad: 'Principal',
     }
   );
+});
+
+test('handleSessionExpiration dispara auth:changed y limpia token/user antes de redirigir', () => {
+  const events = [];
+  const store = { token: 'abc', user: '{"id_usuario":1}' };
+  globalThis.window = {
+    location: { pathname: '/dashboard' },
+    dispatchEvent: (event) => events.push(event.type),
+  };
+  globalThis.localStorage = {
+    getItem: (key) => (key in store ? store[key] : null),
+    removeItem: (key) => { delete store[key]; },
+  };
+  // setTimeout ya existe en el proceso de Node (a diferencia de window/localStorage):
+  // se guarda y se restaura, nunca se borra, para no dejar el timer roto para el
+  // resto de los tests de este archivo.
+  const realSetTimeout = globalThis.setTimeout;
+  globalThis.setTimeout = () => {}; // no ejercitamos el redirect diferido en este test
+
+  try {
+    api.handleSessionExpiration();
+
+    assert.deepEqual(events, ['auth:changed']);
+    assert.equal('token' in store, false);
+    assert.equal('user' in store, false);
+  } finally {
+    delete globalThis.window;
+    delete globalThis.localStorage;
+    globalThis.setTimeout = realSetTimeout;
+  }
 });
 
 test('buildEquipoAssignmentPayload conserva id_aprendiz y documento_externo sin id_usuario', () => {

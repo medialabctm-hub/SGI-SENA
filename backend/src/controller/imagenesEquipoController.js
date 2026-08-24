@@ -1,7 +1,16 @@
 import defaultDb from '../config/dbconfig.js';
 import { logger } from '../utils/logger.js';
 import { NotFoundError, ValidationError } from '../utils/errors.js';
-import { getImagePath, deleteImageFile } from '../middleware/uploadMiddleware.js';
+import { getImagePath, getImageFilePath, deleteImageFile } from '../middleware/uploadMiddleware.js';
+import { validateImageContent } from '../middleware/fileValidation.js';
+
+function hasEvidenceScope(req, res) {
+  // Direct controller tests may omit auth, but every routed request has a user
+  // and must carry the scope marker created by the route middleware.
+  if (!req.user || req.evidenceScope?.canAccess === true) return true;
+  res.status(403).json({ error: 'Acceso denegado al ambiente del equipo' });
+  return false;
+}
 
 /**
  * Subir una o múltiples imágenes para un equipo
@@ -21,6 +30,25 @@ export async function subirImagenesEquipo(req, res, next) {
       return res.status(400).json({ error: 'No se proporcionaron archivos para subir' });
     }
 
+    const codigoEquipoNum = parseInt(codigoEquipo, 10);
+    if (isNaN(codigoEquipoNum)) {
+      files.forEach((file) => deleteImageFile(file.filename));
+      return res.status(400).json({ error: 'Código de equipo inválido' });
+    }
+
+    if (!hasEvidenceScope(req, res)) {
+      files.forEach((file) => deleteImageFile(file.filename));
+      return res.status(403).json({ error: 'Acceso denegado al ambiente del equipo' });
+    }
+
+    for (const file of files) {
+      const contentValidation = await validateImageContent(file);
+      if (!contentValidation.valid) {
+        files.forEach((uploadedFile) => deleteImageFile(uploadedFile.filename));
+        return res.status(400).json({ error: contentValidation.error });
+      }
+    }
+
     // Verificar que el equipo existe
     const [[equipo]] = await defaultDb.execute(
       'SELECT codigo_equipo FROM Elementos WHERE codigo_equipo = ?',
@@ -36,12 +64,6 @@ export async function subirImagenesEquipo(req, res, next) {
     }
 
     const imagenesSubidas = [];
-    const codigoEquipoNum = parseInt(codigoEquipo, 10);
-
-    if (isNaN(codigoEquipoNum)) {
-      return res.status(400).json({ error: 'Código de equipo inválido' });
-    }
-
     const esPrincipal = es_principal === 'true' || es_principal === true;
 
     // Estrategia: Insertar primero con es_principal = 0 para evitar el conflicto del trigger
@@ -123,12 +145,25 @@ export async function subirImagenesEquipo(req, res, next) {
   }
 }
 
+/** Entrega una evidencia privada después de que la ruta validó RBAC y alcance. */
+export async function descargarImagenEquipo(req, res, next) {
+  try {
+    const { filename } = req.params;
+    if (!hasEvidenceScope(req, res)) return undefined;
+    return res.sendFile(getImageFilePath(filename));
+  } catch (error) {
+    return next(error);
+  }
+}
+
 /**
  * Listar todas las imágenes de un equipo
  */
 export async function listarImagenesEquipo(req, res, next) {
   try {
     const { codigoEquipo } = req.params;
+
+    if (!hasEvidenceScope(req, res)) return undefined;
 
     if (!codigoEquipo) {
       throw new ValidationError('El código del equipo es requerido');
@@ -168,6 +203,8 @@ export async function obtenerImagenEquipo(req, res, next) {
   try {
     const { idImagen } = req.params;
 
+    if (!hasEvidenceScope(req, res)) return undefined;
+
     const [[imagen]] = await defaultDb.execute(
       `SELECT 
         id_imagen_equipo,
@@ -201,6 +238,8 @@ export async function eliminarImagenEquipo(req, res, next) {
   try {
     const { idImagen } = req.params;
     const userId = req.user?.id_usuario;
+
+    if (!hasEvidenceScope(req, res)) return undefined;
 
     // Obtener información de la imagen
     const [[imagen]] = await defaultDb.execute(
@@ -240,6 +279,8 @@ export async function marcarImagenPrincipal(req, res, next) {
   try {
     const { idImagen } = req.params;
     const userId = req.user?.id_usuario;
+
+    if (!hasEvidenceScope(req, res)) return undefined;
 
     // Obtener información de la imagen
     const [[imagen]] = await defaultDb.execute(
@@ -285,6 +326,8 @@ export async function actualizarImagenEquipo(req, res, next) {
   try {
     const { idImagen } = req.params;
     const { tipo_imagen, descripcion } = req.body;
+
+    if (!hasEvidenceScope(req, res)) return undefined;
 
     // Verificar que la imagen existe
     const [[imagen]] = await defaultDb.execute(

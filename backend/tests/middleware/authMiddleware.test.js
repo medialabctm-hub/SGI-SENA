@@ -1,4 +1,4 @@
-﻿import { jest, describe, it, expect } from '@jest/globals';
+import { jest, describe, it, expect } from '@jest/globals';
 import { fileURLToPath } from 'url';
 import { resolve, dirname } from 'path';
 

@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Tests para middleware/authorization
  *
  * Cubre: requireRole, requirePermission, requireOwnership,
@@ -241,7 +241,7 @@ describe('requirePermissionAndOwnership()', () => {
     const getOwner = jest.fn().mockResolvedValue(99);
     await requirePermissionAndOwnership('equipos:update', getOwner)(req, res, next);
     // Esperar microtareas (la fn interna no est\u00e1 awaited)
-    await new Promise((r) => setImmediate(r));
+    await new Promise((r) => { setImmediate(r); });
     expect(next).toHaveBeenCalledWith();
     expect(res.status).not.toHaveBeenCalled();
   });
@@ -252,7 +252,7 @@ describe('requirePermissionAndOwnership()', () => {
     const { req, res, next } = makeContext({ id: 5, rol: 'Instructor' });
     const getOwner = jest.fn().mockResolvedValue(5);
     await requirePermissionAndOwnership('equipos:update', getOwner)(req, res, next);
-    await new Promise((r) => setImmediate(r));
+    await new Promise((r) => { setImmediate(r); });
     expect(next).toHaveBeenCalledWith();
   });
 
@@ -262,7 +262,7 @@ describe('requirePermissionAndOwnership()', () => {
     const { req, res, next } = makeContext({ id: 5, rol: 'Instructor' });
     const getOwner = jest.fn().mockResolvedValue(99); // otro due\u00f1o
     await requirePermissionAndOwnership('equipos:update', getOwner)(req, res, next);
-    await new Promise((r) => setImmediate(r));
+    await new Promise((r) => { setImmediate(r); });
     expect(res.status).toHaveBeenCalledWith(403);
     expect(next).not.toHaveBeenCalledWith();
   });
@@ -273,7 +273,7 @@ describe('requirePermissionAndOwnership()', () => {
     const { req, res, next } = makeContext({ id: 5, rol: 'Aprendiz' });
     const getOwner = jest.fn().mockResolvedValue(5);
     await requirePermissionAndOwnership('equipos:delete', getOwner)(req, res, next);
-    await new Promise((r) => setImmediate(r));
+    await new Promise((r) => { setImmediate(r); });
     expect(res.status).toHaveBeenCalledWith(403);
   });
 });

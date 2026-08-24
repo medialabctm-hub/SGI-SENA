@@ -85,7 +85,6 @@ export default function AsignarEquipo() {
   }, [subscribe, activeTab])
 
   const isInstructor = user?.nombre_rol === 'Instructor'
-  const isAdmin = user?.nombre_rol === 'Administrador'
 
   async function fetchAsignaciones() {
     setLoadingAsignaciones(true)

@@ -98,7 +98,9 @@ app.use(cookieParser());
 
 const __filenameApp = fileURLToPath(import.meta.url);
 const __dirnameApp = dirname(__filenameApp);
-app.use('/uploads', express.static(path.join(__dirnameApp, '..', 'uploads')));
+// Equipment evidence is served only by its authenticated API route.
+app.use('/uploads/ambientes', express.static(path.join(__dirnameApp, '..', 'uploads', 'ambientes')));
+app.use('/uploads/perfiles', express.static(path.join(__dirnameApp, '..', 'uploads', 'perfiles')));
 
 if (process.env.NODE_ENV === 'development') {
   app.use(morgan('dev'));

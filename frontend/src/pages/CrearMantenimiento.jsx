@@ -262,7 +262,7 @@ export default function CrearMantenimiento() {
           type: 'error' 
         })
       }
-    } catch (err) {
+    } catch {
       setToast({ message: 'Error de conexión con el servidor', type: 'error' })
     } finally {
       setLoading(false)
