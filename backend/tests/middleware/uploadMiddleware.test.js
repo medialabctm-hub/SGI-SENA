@@ -5,6 +5,7 @@ import {
   handleUploadError,
   getImagePath,
   deleteImageFile,
+  backfillLegacyEquipoImagePaths,
 } from '../../src/middleware/uploadMiddleware.js';
 import { logger } from '../../src/utils/logger.js';
 
@@ -129,5 +130,74 @@ describe('uploadMiddleware', () => {
     existsSpy.mockRestore();
     unlinkSpy.mockRestore();
     errorSpy.mockRestore();
+  });
+
+  describe('backfillLegacyEquipoImagePaths', () => {
+    it('reescribe filas con ruta_imagen legada (/uploads/equipos/) al formato de endpoint autenticado', async () => {
+      const execute = jest.fn()
+        .mockResolvedValueOnce([[
+          { id_imagen_equipo: 51, nombre_archivo: '1787074695288-51-image.jpg' },
+          { id_imagen_equipo: 62, nombre_archivo: '1787075246545-62-image.jpg' },
+        ]])
+        .mockResolvedValueOnce([{ affectedRows: 1 }])
+        .mockResolvedValueOnce([{ affectedRows: 1 }]);
+      const db = { execute };
+
+      const result = await backfillLegacyEquipoImagePaths(db);
+
+      expect(execute).toHaveBeenNthCalledWith(
+        1,
+        expect.stringMatching(/SELECT id_imagen_equipo, nombre_archivo FROM Imagenes_Equipo WHERE ruta_imagen LIKE \?/),
+        ['/uploads/equipos/%']
+      );
+      expect(execute).toHaveBeenNthCalledWith(
+        2,
+        expect.stringMatching(/UPDATE Imagenes_Equipo SET ruta_imagen = \? WHERE id_imagen_equipo = \?/),
+        ['/api/equipos/imagenes/archivo/1787074695288-51-image.jpg', 51]
+      );
+      expect(execute).toHaveBeenNthCalledWith(
+        3,
+        expect.stringMatching(/UPDATE Imagenes_Equipo SET ruta_imagen = \? WHERE id_imagen_equipo = \?/),
+        ['/api/equipos/imagenes/archivo/1787075246545-62-image.jpg', 62]
+      );
+      expect(result).toEqual({ migradas: 2, omitidas: 0 });
+    });
+
+    it('es idempotente: no hace UPDATEs cuando no quedan filas con el prefijo legado', async () => {
+      const execute = jest.fn().mockResolvedValueOnce([[]]);
+      const db = { execute };
+
+      const result = await backfillLegacyEquipoImagePaths(db);
+
+      expect(execute).toHaveBeenCalledTimes(1);
+      expect(result).toEqual({ migradas: 0, omitidas: 0 });
+    });
+
+    it('omite y loguea filas cuyo nombre_archivo es inválido en lugar de fallar toda la migración', async () => {
+      const execute = jest.fn()
+        .mockResolvedValueOnce([[
+          { id_imagen_equipo: 99, nombre_archivo: '../escape.png' },
+          { id_imagen_equipo: 100, nombre_archivo: 'valido.png' },
+        ]])
+        .mockResolvedValueOnce([{ affectedRows: 1 }]);
+      const db = { execute };
+      const warnSpy = jest.spyOn(logger, 'warn').mockImplementation(() => {});
+
+      const result = await backfillLegacyEquipoImagePaths(db);
+
+      expect(result).toEqual({ migradas: 1, omitidas: 1 });
+      expect(warnSpy).toHaveBeenCalledWith(
+        'No se pudo migrar ruta_imagen legada: nombre_archivo inválido',
+        expect.objectContaining({ id_imagen_equipo: 99 })
+      );
+      // Solo el UPDATE de la fila válida (100) — la fila 99 no debe intentar UPDATE.
+      expect(execute).toHaveBeenCalledTimes(2);
+      expect(execute).toHaveBeenNthCalledWith(
+        2,
+        expect.stringMatching(/UPDATE Imagenes_Equipo/),
+        ['/api/equipos/imagenes/archivo/valido.png', 100]
+      );
+      warnSpy.mockRestore();
+    });
   });
 });

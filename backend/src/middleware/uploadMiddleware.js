@@ -111,6 +111,56 @@ export const getImageFilePath = (filename) => {
   return path.join(uploadsDir, filename);
 };
 
+// Prefijo legado: antes de la migración de seguridad (commit 2ddeb3f), getImagePath()
+// devolvía rutas estáticas públicas bajo /uploads/equipos/. Esas rutas ya no se sirven
+// (server.js solo expone /uploads/ambientes y /uploads/perfiles) por lo que cualquier fila
+// de Imagenes_Equipo insertada antes de ese cambio sigue apuntando a una URL muerta.
+const LEGACY_RUTA_IMAGEN_PREFIX = '/uploads/equipos/';
+
+/**
+ * Reescribe los valores legados de Imagenes_Equipo.ruta_imagen (formato estático público
+ * /uploads/equipos/<archivo>) al formato de endpoint autenticado actual devuelto por
+ * getImagePath(). Idempotente: solo toca filas cuyo prefijo coincide con el formato legado,
+ * por lo que ejecutarla repetidamente (p. ej. en cada arranque) no tiene efecto tras la
+ * primera pasada exitosa.
+ */
+export const backfillLegacyEquipoImagePaths = async (db) => {
+  const [filasLegadas] = await db.execute(
+    `SELECT id_imagen_equipo, nombre_archivo FROM Imagenes_Equipo WHERE ruta_imagen LIKE ?`,
+    [`${LEGACY_RUTA_IMAGEN_PREFIX}%`]
+  );
+
+  if (!filasLegadas || filasLegadas.length === 0) {
+    return { migradas: 0, omitidas: 0 };
+  }
+
+  let migradas = 0;
+  let omitidas = 0;
+
+  for (const fila of filasLegadas) {
+    const { id_imagen_equipo: idImagen, nombre_archivo: nombreArchivo } = fila;
+
+    if (!isSafeEvidenceFilename(nombreArchivo)) {
+      omitidas += 1;
+      logger.warn('No se pudo migrar ruta_imagen legada: nombre_archivo inválido', {
+        id_imagen_equipo: idImagen,
+        nombre_archivo: nombreArchivo,
+      });
+      continue;
+    }
+
+    const nuevaRuta = getImagePath(nombreArchivo);
+    await db.execute(
+      'UPDATE Imagenes_Equipo SET ruta_imagen = ? WHERE id_imagen_equipo = ?',
+      [nuevaRuta, idImagen]
+    );
+    migradas += 1;
+  }
+
+  logger.info('Backfill de ruta_imagen legada completado', { migradas, omitidas });
+  return { migradas, omitidas };
+};
+
 // Función para eliminar archivo físico
 export const deleteImageFile = (filename) => {
   if (!isSafeEvidenceFilename(filename)) return false;

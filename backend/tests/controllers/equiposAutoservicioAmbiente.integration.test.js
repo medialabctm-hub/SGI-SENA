@@ -84,7 +84,7 @@ function baseRouter({ ambientesFicha }) {
     }
     if (/Participantes_Clase/.test(sql)) return [[]]; // sin cuenta -> nunca hay filas aquí
     if (/FROM Clases c\s+WHERE c\.codigo_ficha/.test(sql)) return [ambientesFicha];
-    if (/SELECT id_historial, documento_externo FROM Historial_Uso_Equipos/.test(sql)) return [[]]; // sin uso activo previo
+    if (/FROM Historial_Uso_Equipos\s+WHERE codigo_equipo = \? AND estado = 'En Uso'/.test(sql)) return [[]]; // sin uso activo previo
     return [{ insertId: 12345 }]; // INSERT final
   };
 }

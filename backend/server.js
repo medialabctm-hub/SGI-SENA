@@ -38,6 +38,7 @@ import imagenesAmbienteRoutes from './src/routes/imagenesAmbienteRoutes.js';
 import schedulerService from './src/services/schedulerService.js';
 import socketService from './src/services/socketService.js';
 import { ensureAutoservicioSchema, getAutoservicioReadiness } from './src/controller/equiposController.js';
+import { backfillLegacyEquipoImagePaths } from './src/middleware/uploadMiddleware.js';
 import defaultDb from './src/config/dbconfig.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -248,6 +249,20 @@ const startServer = (port) => {
         await ensureAutoservicioSchema(defaultDb);
       } catch (schemaErr) {
         logger.error('No se pudo asegurar el schema de autoservicio al iniciar', { error: schemaErr.message });
+      }
+
+      // Backfill de rutas de imágenes de equipos legadas: filas insertadas antes de la
+      // migración de seguridad que cerró el acceso estático público a /uploads/equipos
+      // (commit 2ddeb3f) siguen apuntando a esa URL muerta. Reescribirlas al formato de
+      // endpoint autenticado actual. Idempotente y no bloqueante: un fallo aquí no debe
+      // impedir que el servidor arranque.
+      try {
+        const resultado = await backfillLegacyEquipoImagePaths(defaultDb);
+        if (resultado.migradas > 0) {
+          logger.info('Rutas de imágenes de equipos legadas migradas al iniciar', resultado);
+        }
+      } catch (backfillErr) {
+        logger.error('No se pudo migrar rutas de imágenes de equipos legadas al iniciar', { error: backfillErr.message });
       }
 
       // Scheduler ACTIVADO para automatización de clases
