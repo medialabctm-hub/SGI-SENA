@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import * as loanRequest from './loanRequest.js';
 
-const { createRequestGuard, normalizeLoanResponse } = loanRequest;
+const { createRequestGuard, normalizeLoanResponse, formatLoanStartTime } = loanRequest;
 
 test('createRequestGuard aborta la solicitud anterior y distingue la vigente', () => {
   const guard = createRequestGuard();
@@ -86,6 +86,21 @@ test('normalizeLoanResponse rechaza envelopes ausentes, colecciones y campos de 
       /respuesta del préstamo es inválida/i
     );
   }
+});
+
+test('formatLoanStartTime formatea una fecha-hora ISO válida a HH:MM', () => {
+  const formatted = formatLoanStartTime('2026-08-26T14:05:00-05:00');
+  assert.match(formatted, /^\d{1,2}:\d{2}\s?(a\.?\s?m\.?|p\.?\s?m\.?)$/i);
+});
+
+test('formatLoanStartTime devuelve null cuando no hay fecha_hora_inicio (regresión: confirmación sin horas)', () => {
+  assert.equal(formatLoanStartTime(undefined), null);
+  assert.equal(formatLoanStartTime(null), null);
+  assert.equal(formatLoanStartTime(''), null);
+});
+
+test('formatLoanStartTime devuelve null ante un valor de fecha inválido', () => {
+  assert.equal(formatLoanStartTime('no-es-una-fecha'), null);
 });
 
 test('submitLoanRequest no confirma un préstamo cuando el envelope de éxito es inválido', async () => {

@@ -55,4 +55,32 @@ describe('SolicitarEquipo', () => {
     expect(screen.getByLabelText('Número de documento')).toBeVisible();
     expect(screen.getByRole('button', { name: 'Continuar' })).toBeEnabled();
   });
+
+  it('muestra la hora de inicio del préstamo en la confirmación (regresión: solicitud sin horas)', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        data: { aprendiz: { nombre: 'Ana' } },
+      }), { status: 200, headers: { 'Content-Type': 'application/json' } }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        success: true,
+        data: {
+          equipo: { placa: 'P-1', tipo: 'Portátil', modelo: 'Latitude' },
+          aprendiz: { nombre: 'Ana' },
+          clase: { nombre_clase: 'Matemáticas' },
+          fecha_hora_inicio: '2026-08-26T14:05:00-05:00',
+        },
+      }), { status: 201, headers: { 'Content-Type': 'application/json' } }));
+    vi.stubGlobal('fetch', fetchMock);
+    renderRequestForm();
+
+    fireEvent.change(screen.getByLabelText('Número de documento'), { target: { value: '123' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Continuar' }));
+
+    const placaInput = await screen.findByLabelText('Placa del equipo');
+    fireEvent.change(placaInput, { target: { value: 'P-1' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Solicitar equipo' }));
+
+    await screen.findByText('Equipo asignado');
+    expect(screen.getByText(/a las/i)).toBeInTheDocument();
+  });
 });

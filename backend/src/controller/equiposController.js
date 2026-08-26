@@ -4363,7 +4363,7 @@ async function ensureAutoservicioSchemaInternal(db) {
 async function buscarSolicitudAutoservicioPorClave(db, idempotencyKey) {
   const [[solicitud]] = await db.execute(
     `SELECT hu.id_historial, hu.documento_externo, hu.nombre_externo, hu.codigo_equipo, hu.id_clase,
-            e.placa, e.tipo, e.modelo, c.nombre_clase
+            hu.fecha_hora_inicio, e.placa, e.tipo, e.modelo, c.nombre_clase
      FROM Historial_Uso_Equipos hu
      INNER JOIN Elementos e ON e.codigo_equipo = hu.codigo_equipo
      LEFT JOIN Clases c ON c.id_clase = hu.id_clase
@@ -4395,7 +4395,8 @@ const respuestaSolicitudAutoservicio = (solicitud) => ({
       nombre: solicitud.nombre_externo,
       documento: String(solicitud.documento_externo || '').trim()
     },
-    clase: { id_clase: solicitud.id_clase, nombre_clase: solicitud.nombre_clase }
+    clase: { id_clase: solicitud.id_clase, nombre_clase: solicitud.nombre_clase },
+    fecha_hora_inicio: solicitud.fecha_hora_inicio
   }
 });
 
@@ -4542,7 +4543,7 @@ export async function iniciarUsoAutoservicio(req, res) {
     }
 
     const [[usoActivo]] = await connection.execute(
-      `SELECT id_historial, documento_externo FROM Historial_Uso_Equipos
+      `SELECT id_historial, documento_externo, fecha_hora_inicio FROM Historial_Uso_Equipos
        WHERE codigo_equipo = ? AND estado = 'En Uso'
        ORDER BY fecha_hora_inicio DESC LIMIT 1 FOR UPDATE`,
       [equipo.codigo_equipo]
@@ -4557,7 +4558,8 @@ export async function iniciarUsoAutoservicio(req, res) {
             id_historial: usoActivo.id_historial,
             equipo: { codigo_equipo: equipo.codigo_equipo, placa: equipo.placa, tipo: equipo.tipo, modelo: equipo.modelo },
             aprendiz: { nombre: aprendiz.nombre, documento: String(aprendiz.documento).trim() },
-            clase: { id_clase: claseActiva.id_clase, nombre_clase: claseActiva.nombre_clase }
+            clase: { id_clase: claseActiva.id_clase, nombre_clase: claseActiva.nombre_clase },
+            fecha_hora_inicio: usoActivo.fecha_hora_inicio
           }
         };
         await connection.commit();
@@ -4572,10 +4574,11 @@ export async function iniciarUsoAutoservicio(req, res) {
       });
     }
 
+    const fechaHoraInicio = new Date();
     const [result] = await connection.execute(
       `INSERT INTO Historial_Uso_Equipos
        (codigo_equipo, id_usuario, nombre_usuario, documento_externo, nombre_externo, id_aprendiz, idempotency_key, fecha_hora_inicio, estado, id_clase, observaciones)
-       VALUES (?, NULL, ?, ?, ?, ?, ?, NOW(), 'En Uso', ?, ?)`,
+       VALUES (?, NULL, ?, ?, ?, ?, ?, ?, 'En Uso', ?, ?)`,
       [
         equipo.codigo_equipo,
         aprendiz.nombre,
@@ -4583,6 +4586,7 @@ export async function iniciarUsoAutoservicio(req, res) {
         aprendiz.nombre,
         aprendiz.id_aprendiz,
         idempotencyKey || null,
+        fechaHoraInicio,
         claseActiva.id_clase,
         `Autoservicio: solicitado por el aprendiz (documento ${documentoNormalizado})`
       ]
@@ -4615,7 +4619,8 @@ export async function iniciarUsoAutoservicio(req, res) {
         id_historial: result.insertId,
         equipo: { codigo_equipo: equipo.codigo_equipo, placa: equipo.placa, tipo: equipo.tipo, modelo: equipo.modelo },
         aprendiz: { nombre: aprendiz.nombre, documento: aprendiz.documento },
-        clase: { id_clase: claseActiva.id_clase, nombre_clase: claseActiva.nombre_clase }
+        clase: { id_clase: claseActiva.id_clase, nombre_clase: claseActiva.nombre_clase },
+        fecha_hora_inicio: fechaHoraInicio
       }
     });
   } catch (err) {

@@ -135,3 +135,13 @@ export function normalizeLoanResponse(data) {
   }
   return loan;
 }
+
+export function formatLoanStartTime(fechaHoraInicio) {
+  if (!fechaHoraInicio) return null;
+  const parsed = new Date(fechaHoraInicio);
+  if (Number.isNaN(parsed.getTime())) return null;
+  return new Intl.DateTimeFormat('es-CO', {
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(parsed);
+}

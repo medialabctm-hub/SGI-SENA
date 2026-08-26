@@ -6,6 +6,7 @@ import InteractiveBackground from '../components/InteractiveBackground';
 import { buildErrorMessage, parseApiResponse } from '../utils/api';
 import {
   createRequestGuard,
+  formatLoanStartTime,
   isRequestTimeout,
   submitLoanRequest,
 } from '../utils/loanRequest';
@@ -152,7 +153,10 @@ export default function SolicitarEquipo() {
           <h1 className="title">Equipo asignado</h1>
           <p className="subtitle subtitle-centered">
             Placa <strong>{prestamo?.equipo?.placa}</strong> ({prestamo?.equipo?.tipo} {prestamo?.equipo?.modelo}) asignada a{' '}
-            <strong>{prestamo?.aprendiz?.nombre}</strong>.
+            <strong>{prestamo?.aprendiz?.nombre}</strong>
+            {formatLoanStartTime(prestamo?.fecha_hora_inicio) ? (
+              <> a las <strong>{formatLoanStartTime(prestamo.fecha_hora_inicio)}</strong></>
+            ) : null}.
             <br /><br />
             Se liberará automáticamente cuando termine la clase{prestamo?.clase?.nombre_clase ? ` "${prestamo.clase.nombre_clase}"` : ''}.
           </p>
