@@ -91,6 +91,16 @@ export default function DetalleEquipo() {
   const authenticatedPrincipal = authenticatedImages.find(
     (image) => image.id_imagen_equipo === imagenPrincipal?.id_imagen_equipo
   );
+  // Marca por url (no por imagen) las cargas que fallaron con onError. Al usar la propia
+  // blob: url como clave, si el hook resuelve una url nueva (o distinta) para la misma
+  // imagen, esta marca queda automáticamente obsoleta y el <img> se intenta renderizar de
+  // nuevo -- evita que un onError transitorio oculte la imagen para siempre vía mutación
+  // imperativa de estilo que React nunca revertiría.
+  const [brokenImageUrls, setBrokenImageUrls] = useState(() => new Set());
+  const markImageBroken = url => {
+    if (!url) return;
+    setBrokenImageUrls(prev => (prev.has(url) ? prev : new Set(prev).add(url)));
+  };
 
   useEffect(() => {
     try {
@@ -1356,17 +1366,29 @@ export default function DetalleEquipo() {
                 {imagenPrincipal ? (
                   <div>
                     <div className="detalle-equipo-image-wrapper">
-                      <img
-                        src={authenticatedPrincipal?.url || ''}
-                        alt={imagenPrincipal.descripcion || 'Imagen del equipo'}
-                        onError={e => {
-                          console.error(
-                            'Error al cargar imagen:',
-                            imagenPrincipal.ruta_imagen
-                          );
-                          e.target.style.display = 'none';
-                        }}
-                      />
+                      {authenticatedPrincipal?.url &&
+                      !brokenImageUrls.has(authenticatedPrincipal.url) ? (
+                        <img
+                          src={authenticatedPrincipal.url}
+                          alt={imagenPrincipal.descripcion || 'Imagen del equipo'}
+                          onError={() => {
+                            console.error(
+                              'Error al cargar imagen:',
+                              imagenPrincipal.ruta_imagen
+                            );
+                            markImageBroken(authenticatedPrincipal.url);
+                          }}
+                        />
+                      ) : (
+                        <div className="detalle-equipo-image-empty">
+                          <div className="detalle-equipo-image-empty-content">
+                            <FiImage
+                              size={64}
+                              className="detalle-equipo-image-empty-icon"
+                            />
+                          </div>
+                        </div>
+                      )}
                     </div>
                     <div className="detalle-equipo-image-info-box">
                       {imagenPrincipal.descripcion && (
@@ -1427,22 +1449,27 @@ export default function DetalleEquipo() {
                       onClick={() => openImageViewer(index)}
                     >
                       <div className="detalle-equipo-gallery-thumbnail-image">
-                        <img
-                          src={imagen.url || ''}
-                          alt={imagen.descripcion || 'Imagen del equipo'}
-                          onError={e => {
-                            console.error(
-                              'Error al cargar imagen:',
-                              imagen.ruta_imagen
-                            );
-                            e.target.style.display = 'none';
-                            const placeholder = e.target.nextElementSibling;
-                            if (placeholder) {
-                              placeholder.style.display = 'flex';
-                            }
-                          }}
-                        />
-                        <div className="detalle-equipo-gallery-thumbnail-placeholder">
+                        {imagen.url && !brokenImageUrls.has(imagen.url) ? (
+                          <img
+                            src={imagen.url}
+                            alt={imagen.descripcion || 'Imagen del equipo'}
+                            onError={() => {
+                              console.error(
+                                'Error al cargar imagen:',
+                                imagen.ruta_imagen
+                              );
+                              markImageBroken(imagen.url);
+                            }}
+                          />
+                        ) : null}
+                        <div
+                          className="detalle-equipo-gallery-thumbnail-placeholder"
+                          style={
+                            imagen.url && !brokenImageUrls.has(imagen.url)
+                              ? undefined
+                              : { display: 'flex' }
+                          }
+                        >
                           <FiImage size={24} />
                         </div>
                         {imagen.es_principal && (
