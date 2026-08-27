@@ -4,7 +4,7 @@ import Sidebar from '../components/Sidebar'
 import Toast from '../components/Toast'
 import ConfirmModal from '../components/ConfirmModal'
 import CustomSelect from '../components/CustomSelect'
-import { FiAlertCircle, FiEye, FiCheckCircle, FiXCircle, FiEdit, FiPackage, FiFileText, FiSearch, FiCheck, FiX, FiList, FiType, FiTrash2, FiDownload, FiHash, FiUser, FiCalendar, FiClock, FiInfo } from 'react-icons/fi'
+import { FiAlertCircle, FiEye, FiCheckCircle, FiXCircle, FiEdit, FiPackage, FiFileText, FiSearch, FiCheck, FiX, FiList, FiType, FiTrash2, FiDownload, FiHash, FiUser, FiCalendar, FiClock, FiInfo, FiImage } from 'react-icons/fi'
 import { parseApiResponse, buildErrorMessage, descargarPDFNovedadRoboPerdida } from '../utils/api'
 import { useSocket } from '../contexts/SocketContext'
 import jsPDF from 'jspdf'
@@ -57,6 +57,16 @@ export default function Novedades() {
   const [equipoEncontradoReporte, setEquipoEncontradoReporte] = useState(null)
   const [buscandoEquipoReporte, setBuscandoEquipoReporte] = useState(false)
   const [loadingCrearReporte, setLoadingCrearReporte] = useState(false)
+
+  // Estados para el reporte de equipos con fotos (filtro por cuentadante o ambiente)
+  const [showEquiposFotosModal, setShowEquiposFotosModal] = useState(false)
+  const [modoEquiposFotos, setModoEquiposFotos] = useState('ambiente')
+  const [ambientesReporte, setAmbientesReporte] = useState([])
+  const [idAmbienteEquiposFotos, setIdAmbienteEquiposFotos] = useState('')
+  const [documentoCuentadanteReporte, setDocumentoCuentadanteReporte] = useState('')
+  const [cuentadanteReporteEncontrado, setCuentadanteReporteEncontrado] = useState(null)
+  const [buscandoCuentadanteReporte, setBuscandoCuentadanteReporte] = useState(false)
+  const [generandoEquiposFotosPDF, setGenerandoEquiposFotosPDF] = useState(false)
 
   useEffect(() => {
     try {
@@ -704,6 +714,96 @@ export default function Novedades() {
   }
 
   const isAdmin = user?.nombre_rol === 'Administrador'
+  const isCuentadante = user?.nombre_rol === 'Cuentadante'
+
+  async function fetchAmbientesReporte() {
+    try {
+      const token = localStorage.getItem('token')
+      const res = await fetch('/api/ambientes/activos', {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      const data = await parseApiResponse(res)
+      setAmbientesReporte(Array.isArray(data) ? data : [])
+    } catch (err) {
+      console.error('Error al obtener ambientes:', err)
+      setAmbientesReporte([])
+    }
+  }
+
+  function abrirModalEquiposFotos() {
+    setModoEquiposFotos('ambiente')
+    setIdAmbienteEquiposFotos('')
+    setDocumentoCuentadanteReporte('')
+    setCuentadanteReporteEncontrado(null)
+    setShowEquiposFotosModal(true)
+    fetchAmbientesReporte()
+  }
+
+  async function buscarCuentadanteReporte() {
+    if (!documentoCuentadanteReporte.trim()) {
+      setToast({ message: 'Ingresa un número de documento', type: 'error' })
+      return
+    }
+
+    setBuscandoCuentadanteReporte(true)
+    setCuentadanteReporteEncontrado(null)
+    try {
+      const token = localStorage.getItem('token')
+      const res = await fetch(`/api/equipos/cuentadantes/buscar/${encodeURIComponent(documentoCuentadanteReporte.trim())}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      const data = await parseApiResponse(res, 'Cuentadante no encontrado')
+      setCuentadanteReporteEncontrado(data.cuentadante)
+      setToast({ message: 'Cuentadante encontrado correctamente', type: 'success' })
+    } catch (err) {
+      setToast({ message: buildErrorMessage(err, 'Error al buscar cuentadante'), type: 'error' })
+      setCuentadanteReporteEncontrado(null)
+    } finally {
+      setBuscandoCuentadanteReporte(false)
+    }
+  }
+
+  async function generarEquiposFotosPDF() {
+    setGenerandoEquiposFotosPDF(true)
+    setToast(null)
+    try {
+      const token = localStorage.getItem('token')
+      const params = new URLSearchParams()
+      params.append('modo', modoEquiposFotos)
+
+      if (modoEquiposFotos === 'ambiente') {
+        params.append('id_ambiente', idAmbienteEquiposFotos)
+      } else if (isAdmin) {
+        params.append('id_cuentadante', cuentadanteReporteEncontrado.id_usuario)
+      }
+
+      const res = await fetch(`/api/reportes/equipos/pdf?${params.toString()}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}))
+        throw new Error(errorData.error || 'Error al generar el reporte de equipos')
+      }
+
+      const blob = await res.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `Reporte_Equipos_Fotos_${new Date().toISOString().split('T')[0]}.pdf`
+      document.body.appendChild(a)
+      a.click()
+      window.URL.revokeObjectURL(url)
+      document.body.removeChild(a)
+
+      setToast({ message: 'PDF generado y descargado correctamente', type: 'success' })
+      setShowEquiposFotosModal(false)
+    } catch (err) {
+      setToast({ message: buildErrorMessage(err, 'Error al generar el reporte de equipos'), type: 'error' })
+    } finally {
+      setGenerandoEquiposFotosPDF(false)
+    }
+  }
 
   return (
     <div className="page simple-page">
@@ -998,6 +1098,16 @@ export default function Novedades() {
                       <FiFileText size={18} />
                       Crear Reporte
                     </button>
+                    {(isAdmin || isCuentadante) && (
+                      <button
+                        onClick={abrirModalEquiposFotos}
+                        className="novedades-tab"
+                        title="Generar reporte de equipos con fotos por cuentadante o ambiente"
+                      >
+                        <FiImage size={18} />
+                        Reporte de Equipos con Fotos
+                      </button>
+                    )}
                   </div>
                 )}
 
@@ -1676,6 +1786,149 @@ export default function Novedades() {
             onConfirm={handleDeleteReporte}
             onCancel={() => setDeleteConfirm({ open: false, id: null })}
           />
+
+          {/* Modal para generar reporte de equipos con fotos (por cuentadante o por ambiente) */}
+          {showEquiposFotosModal && (
+            <div className="reportes-modal-overlay" onClick={() => setShowEquiposFotosModal(false)}>
+              <div className="reportes-modal-sheet" onClick={(e) => e.stopPropagation()}>
+                <div className="reportes-modal-header">
+                  <h3 className="reportes-modal-title">Reporte de Equipos con Fotos</h3>
+                  <button
+                    onClick={() => setShowEquiposFotosModal(false)}
+                    className="reportes-modal-close-btn"
+                  >
+                    ×
+                  </button>
+                </div>
+
+                <div className="reportes-modal-body">
+                  <p className="reportes-modal-description">
+                    Genera un PDF con placa, nombre, descripción y fotos de los equipos. Elige si quieres filtrar
+                    por cuentadante o por ambiente (salón).
+                  </p>
+
+                  <div className="form-group">
+                    <label>Filtrar por</label>
+                    <CustomSelect
+                      name="modo_equipos_fotos"
+                      value={modoEquiposFotos}
+                      onChange={(e) => {
+                        setModoEquiposFotos(e.target.value)
+                        setDocumentoCuentadanteReporte('')
+                        setCuentadanteReporteEncontrado(null)
+                        setIdAmbienteEquiposFotos('')
+                      }}
+                      options={[
+                        { value: 'ambiente', label: 'Ambiente (salón)' },
+                        { value: 'cuentadante', label: 'Cuentadante' }
+                      ]}
+                      placeholder="Selecciona un filtro"
+                    />
+                  </div>
+
+                  {modoEquiposFotos === 'ambiente' ? (
+                    <div className="form-group">
+                      <label>Ambiente</label>
+                      <CustomSelect
+                        name="id_ambiente_equipos_fotos"
+                        value={idAmbienteEquiposFotos}
+                        onChange={(e) => setIdAmbienteEquiposFotos(e.target.value)}
+                        options={ambientesReporte.map(amb => ({
+                          value: amb.id_ambiente.toString(),
+                          label: `${amb.codigo_ambiente} - ${amb.nombre_ambiente}`
+                        }))}
+                        placeholder="Selecciona un ambiente"
+                      />
+                    </div>
+                  ) : isAdmin ? (
+                    <div className="form-group">
+                      <label>Documento del cuentadante</label>
+                      <div className="search-equipo-wrapper">
+                        <input
+                          type="text"
+                          value={documentoCuentadanteReporte}
+                          onChange={(e) => setDocumentoCuentadanteReporte(e.target.value)}
+                          onKeyPress={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault()
+                              buscarCuentadanteReporte()
+                            }
+                          }}
+                          placeholder="Ingresa el número de documento del cuentadante"
+                          className="search-equipo-input"
+                        />
+                        <button
+                          type="button"
+                          onClick={buscarCuentadanteReporte}
+                          disabled={buscandoCuentadanteReporte || !documentoCuentadanteReporte.trim()}
+                          className="btn-search-equipo"
+                        >
+                          {buscandoCuentadanteReporte ? 'Buscando...' : (
+                            <>
+                              <FiSearch size={16} />
+                              Buscar
+                            </>
+                          )}
+                        </button>
+                      </div>
+
+                      {cuentadanteReporteEncontrado && (
+                        <div className="equipo-found-card">
+                          <div className="equipo-found-header">
+                            <FiCheck size={20} color="#43a047" />
+                            <span>Cuentadante encontrado</span>
+                          </div>
+                          <div className="equipo-found-info">
+                            <div><strong>Nombre:</strong> {cuentadanteReporteEncontrado.nombre_usuario}</div>
+                            <div><strong>Documento:</strong> {cuentadanteReporteEncontrado.cedula}</div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <p className="reportes-modal-description">
+                      Se generará el reporte del inventario de equipos a tu cargo.
+                    </p>
+                  )}
+
+                  <div className="reportes-modal-info-box">
+                    <strong>Información incluida en el PDF:</strong>
+                    <ul>
+                      <li>Placa y nombre del equipo</li>
+                      <li>Descripción del equipo</li>
+                      <li>Fotos registradas del equipo (hasta 3 por equipo)</li>
+                    </ul>
+                  </div>
+
+                  <div className="reportes-modal-actions">
+                    <button
+                      onClick={() => setShowEquiposFotosModal(false)}
+                      className="btn-secondary btn-modern reportes-modal-action-button"
+                      disabled={generandoEquiposFotosPDF}
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      onClick={generarEquiposFotosPDF}
+                      className="btn-primary btn-modern reportes-modal-action-button"
+                      disabled={
+                        generandoEquiposFotosPDF ||
+                        (modoEquiposFotos === 'ambiente' && !idAmbienteEquiposFotos) ||
+                        (modoEquiposFotos === 'cuentadante' && isAdmin && !cuentadanteReporteEncontrado)
+                      }
+                    >
+                      {generandoEquiposFotosPDF ? 'Generando...' : (
+                        <>
+                          <FiDownload size={16} />
+                          Generar y Descargar PDF
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </main>
       </div>
     </div>

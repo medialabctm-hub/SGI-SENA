@@ -1,74 +1,93 @@
-import express from 'express'
-import { authenticate } from '../middleware/authMiddleware.js'
-import { requireAnyPermission } from '../middleware/authorization.js'
-import { PERMISSIONS } from '../config/permissions.js'
-import { crearReporte, listarReportes, obtenerReportePorId, actualizarReporte, eliminarReporte, obtenerTiposReporte, generarReportePDF } from '../controller/reportesController.js'
-import { writeLimiter, strictLimiter } from '../middleware/rateLimiter.js'
-import { validate, crearReporteSchema, actualizarReporteSchema } from '../validators/reportesValidator.js'
+import express from 'express';
+import { authenticate } from '../middleware/authMiddleware.js';
+import { requireAnyPermission } from '../middleware/authorization.js';
+import { PERMISSIONS } from '../config/permissions.js';
+import {
+  crearReporte,
+  listarReportes,
+  obtenerReportePorId,
+  actualizarReporte,
+  eliminarReporte,
+  obtenerTiposReporte,
+  generarReportePDF,
+  generarReporteEquiposFotosPDF,
+} from '../controller/reportesController.js';
+import {
+  writeLimiter,
+  strictLimiter,
+  readLimiter,
+} from '../middleware/rateLimiter.js';
+import {
+  validate,
+  crearReporteSchema,
+  actualizarReporteSchema,
+} from '../validators/reportesValidator.js';
 
-const router = express.Router()
+const router = express.Router();
 
 // Todas las rutas requieren autenticación
-router.use(authenticate)
+router.use(authenticate);
 
 // Crear reporte - Todos los roles pueden crear - Protegido con rate limiting y validación
-router.post('/', 
+router.post(
+  '/',
   writeLimiter,
   validate(crearReporteSchema),
-  requireAnyPermission([
-    PERMISSIONS.REPORTES.CREATE
-  ]),
+  requireAnyPermission([PERMISSIONS.REPORTES.CREATE]),
   crearReporte
-)
+);
 
 // Listar reportes
 // Admin e Instructor: ven todos
 // Aprendiz: solo sus propios reportes (filtrado en controlador)
-router.get('/', 
-  requireAnyPermission([
-    PERMISSIONS.REPORTES.VIEW
-  ]),
+router.get(
+  '/',
+  requireAnyPermission([PERMISSIONS.REPORTES.VIEW]),
   listarReportes
-)
+);
 
 // Obtener tipos de reporte disponibles (DEBE ir antes de /:id)
-router.get('/tipos', obtenerTiposReporte)
+router.get('/tipos', obtenerTiposReporte);
 
 // Generar reporte en PDF (DEBE ir antes de /:id)
 // Solo Administradores y Cuentadantes pueden generar PDFs
-router.get('/pdf', 
-  requireAnyPermission([
-    PERMISSIONS.REPORTES.EXPORT
-  ]),
+router.get(
+  '/pdf',
+  requireAnyPermission([PERMISSIONS.REPORTES.EXPORT]),
   generarReportePDF
-)
+);
+
+// Generar reporte de equipos con fotos, filtrado por cuentadante o por ambiente (DEBE ir antes de /:id)
+// Solo Administradores y Cuentadantes pueden generar este reporte (validado también en el controlador)
+router.get(
+  '/equipos/pdf',
+  readLimiter,
+  requireAnyPermission([PERMISSIONS.REPORTES.EXPORT]),
+  generarReporteEquiposFotosPDF
+);
 
 // Obtener detalle de reporte
-router.get('/:id', 
-  requireAnyPermission([
-    PERMISSIONS.REPORTES.VIEW
-  ]),
+router.get(
+  '/:id',
+  requireAnyPermission([PERMISSIONS.REPORTES.VIEW]),
   obtenerReportePorId
-)
+);
 
 // Actualizar reporte - Solo Administrador - Protegido con validación
-router.put('/:id', 
+router.put(
+  '/:id',
   writeLimiter,
   validate(actualizarReporteSchema),
-  requireAnyPermission([
-    PERMISSIONS.REPORTES.UPDATE
-  ]),
+  requireAnyPermission([PERMISSIONS.REPORTES.UPDATE]),
   actualizarReporte
-)
+);
 
 // Eliminar reporte - Solo Administrador - Protegido con rate limiting
-router.delete('/:id', 
+router.delete(
+  '/:id',
   strictLimiter,
-  requireAnyPermission([
-    PERMISSIONS.REPORTES.DELETE
-  ]),
+  requireAnyPermission([PERMISSIONS.REPORTES.DELETE]),
   eliminarReporte
-)
+);
 
-export default router
-
+export default router;
