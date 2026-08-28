@@ -70,7 +70,7 @@ const mockPdfDoc = {
   pipe: jest.fn(),
   end: jest.fn(),
   y: 100,
-  page: { height: 792 },
+  page: { height: 792, margins: { bottom: 50 } },
   bufferedPageRange: jest.fn().mockReturnValue({ count: 1 }),
   setHeader: jest.fn(),
 };

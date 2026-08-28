@@ -34,6 +34,7 @@ import LoadingDemo from './pages/LoadingDemo';
 // import HistorialUsoEquipo from './pages/HistorialUsoEquipo';
 import DetalleEquipo from './pages/DetalleEquipo';
 import BuscarCuentadante from './pages/BuscarCuentadante';
+import DocumentoEquipos from './pages/DocumentoEquipos';
 import Perfil from './pages/Perfil';
 import ProtectedRoute from './components/ProtectedRoute';
 import RedirectIfAuth from './components/RedirectIfAuth';
@@ -337,6 +338,14 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <BuscarCuentadante />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/equipos/documento"
+            element={
+              <ProtectedRoute>
+                <DocumentoEquipos />
               </ProtectedRoute>
             }
           />

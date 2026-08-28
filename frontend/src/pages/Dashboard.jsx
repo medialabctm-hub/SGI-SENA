@@ -203,14 +203,14 @@ export default function Dashboard() {
               )}
               {(isAdmin || isCuentadante) && (
                 <button
-                  className="quick-action-card secondary"
-                  onClick={() => nav('/reportes?accion=fotos')}
+                  className="quick-action-card info"
+                  onClick={() => nav('/equipos/documento')}
                 >
                   <div className="quick-action-icon">
                     <FiImage />
                   </div>
                   <div className="quick-action-content">
-                    <h4>Reporte de Equipos con Fotos</h4>
+                    <h4>Documento de Equipos</h4>
                     <p>Generar PDF por cuentadante o por ambiente</p>
                   </div>
                 </button>

@@ -46,9 +46,16 @@ jest.unstable_mockModule(
   })
 );
 
-const { generarReporteEquiposFotosPDF } = await import(
+const { generarReportePDF, generarReporteEquiposFotosPDF } = await import(
   source('../../src/controller/reportesController.js')
 );
+
+// Cuenta páginas reales del PDF contando objetos con /Type /Page (sin la 's' de
+// /Type /Pages, que es el nodo raíz del árbol de páginas, no una página en sí).
+function contarPaginasPDF(buffer) {
+  const matches = buffer.toString('latin1').match(/\/Type\s*\/Page(?!s)/g);
+  return matches ? matches.length : 0;
+}
 
 function mockReq(overrides = {}) {
   return {
@@ -114,5 +121,71 @@ describe('generarReporteEquiposFotosPDF (pdfkit real, regresión de paginación)
     const pdfBuffer = Buffer.concat(chunks);
     expect(pdfBuffer.length).toBeGreaterThan(0);
     expect(pdfBuffer.subarray(0, 5).toString('latin1')).toBe('%PDF-');
+
+    // Regresión: el pie de página no debe insertar páginas adicionales casi
+    // vacías. Con 25 equipos de descripción larga el contenido real ya ocupa
+    // más de una página, así que el conteo debe quedarse en un número pequeño
+    // (2-3 páginas reales), no duplicarse por cada página existente.
+    const totalPaginas = contarPaginasPDF(pdfBuffer);
+    expect(totalPaginas).toBeGreaterThan(1);
+    expect(totalPaginas).toBeLessThan(6);
+  });
+});
+
+describe('generarReportePDF (pdfkit real, regresión de paginación)', () => {
+  beforeEach(() => {
+    mockExecute.mockReset();
+  });
+
+  it('no agrega páginas casi vacías al escribir el pie de página en un reporte de varios ambientes', async () => {
+    const ambientes = [
+      { id: 1, nombre: 'Lab 1', codigo: 'L01' },
+      { id: 2, nombre: 'Lab 2', codigo: 'L02' },
+    ];
+    const equipos = ambientes.flatMap(amb =>
+      Array.from({ length: 20 }, (_, i) => ({
+        codigo_equipo: amb.id * 100 + i,
+        placa: `A${amb.id}${String(i).padStart(3, '0')}`,
+        tipo: 'Computador de Escritorio',
+        modelo: 'Dell OptiPlex 7090',
+        consecutivo: `C${i}`,
+        descripcion: 'Descripción de prueba',
+        r_centro: '123',
+        estado_fisico: 'Bueno',
+        id_ambiente: amb.id,
+        nombre_ambiente: amb.nombre,
+        codigo_ambiente: amb.codigo,
+        nombre_categoria: 'Computadores',
+        cuentadante_principal: 'Juan Pérez',
+        cuentadante_cedula: '123456',
+      }))
+    );
+
+    mockExecute
+      .mockResolvedValueOnce([equipos]) // consulta principal de equipos
+      .mockResolvedValueOnce([[]]) // instructores del ambiente 1 (vacío para simplificar)
+      .mockResolvedValueOnce([[]]) // instructores del ambiente 2
+      .mockResolvedValueOnce([[]]) // resumen: instructores únicos del ambiente 1
+      .mockResolvedValueOnce([[]]); // resumen: instructores únicos del ambiente 2
+
+    const req = mockReq({ query: {} });
+    const res = realRes();
+
+    const chunks = [];
+    res.on('data', chunk => chunks.push(chunk));
+    const finished = new Promise((resolve, reject) => {
+      res.on('end', resolve);
+      res.on('error', reject);
+    });
+
+    await generarReportePDF(req, res);
+    await finished;
+
+    const pdfBuffer = Buffer.concat(chunks);
+    expect(pdfBuffer.length).toBeGreaterThan(0);
+
+    const totalPaginas = contarPaginasPDF(pdfBuffer);
+    expect(totalPaginas).toBeGreaterThan(1);
+    expect(totalPaginas).toBeLessThan(8);
   });
 });
