@@ -137,12 +137,17 @@ export default function Novedades() {
     // Verificar si hay un parámetro de URL para la pestaña o si la ruta es /reportes
     const urlParams = new URLSearchParams(window.location.search)
     const tabParam = urlParams.get('tab')
+    const accionParam = urlParams.get('accion')
     const currentPath = window.location.pathname
-    
+
     if (currentPath === '/reportes' || currentPath === '/reportes/crear' || tabParam === 'reportes') {
       setActiveTab('reportes')
       if (currentPath === '/reportes/crear' || tabParam === 'crear') {
         setReportesTab('crear')
+      }
+      // Acceso directo desde el Dashboard: abre de una vez el modal de reporte de equipos con fotos
+      if (accionParam === 'fotos') {
+        abrirModalEquiposFotos()
       }
     } else if (tabParam === 'crear') {
       setActiveTab('crear')
