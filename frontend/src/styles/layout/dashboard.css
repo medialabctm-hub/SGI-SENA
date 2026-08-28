@@ -434,6 +434,11 @@
   color: white;
 }
 
+.quick-action-card.info {
+  background: var(--info-600);
+  color: white;
+}
+
 .quick-action-card:hover {
   transform: translateY(-4px);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
@@ -456,6 +461,10 @@
 }
 
 .quick-action-card.secondary .quick-action-icon {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+.quick-action-card.info .quick-action-icon {
   background: rgba(255, 255, 255, 0.25);
 }
 

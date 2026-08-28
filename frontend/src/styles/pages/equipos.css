@@ -801,6 +801,10 @@
   background: var(--success-800);
 }
 
+.form-icon-wrapper-blue {
+  background: linear-gradient(135deg, var(--info-500) 0%, var(--info-600) 100%);
+}
+
 .form-header-content {
   flex: 1;
 }

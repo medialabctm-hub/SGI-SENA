@@ -9,7 +9,7 @@ import PDFDocument from 'pdfkit';
 import { handleControllerError } from '../utils/controllerHelpers.js';
 import { getImageFilePath } from '../middleware/uploadMiddleware.js';
 
-// Roles habilitados para generar el reporte de equipos con fotos (por cuentadante o por ambiente)
+// Roles habilitados para generar el documento de equipos con fotos (por cuentadante o por ambiente)
 const ROLES_REPORTE_EQUIPOS_FOTOS = ['Administrador', 'Cuentadante'];
 
 // Extensiones de imagen que pdfkit puede incrustar de forma nativa
@@ -886,9 +886,15 @@ export async function generarReportePDF(req, res) {
     );
 
     // Pie de página
+    // IMPORTANTE: se escribe cerca del borde inferior físico de la página, dentro
+    // del margen inferior del documento. Sin anular ese margen, pdfkit interpreta
+    // que el texto se desborda y agrega automáticamente una página nueva (casi
+    // vacía) por cada página real, duplicando el número de páginas del PDF.
     const totalPages = doc.bufferedPageRange().count;
     for (let i = 0; i < totalPages; i++) {
       doc.switchToPage(i);
+      const margenInferiorOriginal = doc.page.margins.bottom;
+      doc.page.margins.bottom = 0;
       doc.fontSize(8).font('Helvetica-Oblique').fillColor('gray');
       doc.text(
         `Página ${i + 1} de ${totalPages} - Generado el ${new Date().toLocaleDateString('es-ES')}`,
@@ -932,7 +938,7 @@ export async function generarReporteEquiposFotosPDF(req, res) {
     if (!ROLES_REPORTE_EQUIPOS_FOTOS.includes(userRole)) {
       return res.status(403).json({
         error:
-          'Solo el Administrador o el Cuentadante pueden generar el reporte de equipos con fotos',
+          'Solo el Administrador o el Cuentadante pueden generar el documento de equipos con fotos',
       });
     }
 
@@ -990,7 +996,7 @@ export async function generarReporteEquiposFotosPDF(req, res) {
       equipos = rows;
 
       encabezado = {
-        titulo: 'REPORTE DE EQUIPOS POR CUENTADANTE',
+        titulo: 'DOCUMENTO DE EQUIPOS POR CUENTADANTE',
         subtitulo: `Cuentadante: ${cuentadante.nombre_usuario} (${cuentadante.cedula})`,
       };
     } else {
@@ -1013,7 +1019,7 @@ export async function generarReporteEquiposFotosPDF(req, res) {
 
         if (!responsabilidad) {
           return res.status(403).json({
-            error: 'No tienes permiso para generar el reporte de este ambiente',
+            error: 'No tienes permiso para generar el documento de este ambiente',
           });
         }
       }
@@ -1042,7 +1048,7 @@ export async function generarReporteEquiposFotosPDF(req, res) {
       equipos = rows;
 
       encabezado = {
-        titulo: 'REPORTE DE EQUIPOS POR AMBIENTE',
+        titulo: 'DOCUMENTO DE EQUIPOS POR AMBIENTE',
         subtitulo: `Ambiente: ${ambiente.nombre_ambiente} (${ambiente.codigo_ambiente})`,
       };
     }
@@ -1082,7 +1088,7 @@ export async function generarReporteEquiposFotosPDF(req, res) {
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader(
       'Content-Disposition',
-      `attachment; filename="Reporte_Equipos_${Date.now()}.pdf"`
+      `attachment; filename="Documento_Equipos_${Date.now()}.pdf"`
     );
     doc.pipe(res);
 
@@ -1182,7 +1188,7 @@ export async function generarReporteEquiposFotosPDF(req, res) {
               embebida = true;
             }
           } catch (imgErr) {
-            logger.warn('No se pudo incrustar imagen en reporte de equipos', {
+            logger.warn('No se pudo incrustar imagen en documento de equipos', {
               error: imgErr.message,
               codigo_equipo: equipo.codigo_equipo,
               archivo: foto.nombre_archivo,
@@ -1226,9 +1232,15 @@ export async function generarReporteEquiposFotosPDF(req, res) {
       .font('Helvetica-Bold')
       .text(`Total de equipos: ${equipos.length}`, { align: 'right' });
 
+    // IMPORTANTE: se escribe cerca del borde inferior físico de la página, dentro
+    // del margen inferior del documento. Sin anular ese margen, pdfkit interpreta
+    // que el texto se desborda y agrega automáticamente una página nueva (casi
+    // vacía) por cada página real, duplicando el número de páginas del PDF.
     const totalPages = doc.bufferedPageRange().count;
     for (let i = 0; i < totalPages; i++) {
       doc.switchToPage(i);
+      const margenInferiorOriginal = doc.page.margins.bottom;
+      doc.page.margins.bottom = 0;
       doc.fontSize(8).font('Helvetica-Oblique').fillColor('gray');
       doc.text(
         `Página ${i + 1} de ${totalPages} - Generado el ${new Date().toLocaleDateString('es-ES')}`,
@@ -1240,7 +1252,7 @@ export async function generarReporteEquiposFotosPDF(req, res) {
 
     doc.end();
   } catch (err) {
-    logger.error('Error al generar reporte de equipos con fotos', {
+    logger.error('Error al generar documento de equipos con fotos', {
       error: err.message,
       stack: err.stack,
     });
@@ -1249,7 +1261,7 @@ export async function generarReporteEquiposFotosPDF(req, res) {
         err,
         res,
         'generarReporteEquiposFotosPDF',
-        'No se pudo generar el reporte de equipos'
+        'No se pudo generar el documento de equipos'
       );
     }
     // Las cabeceras ya se enviaron (el PDF empezó a transmitirse): no se puede
