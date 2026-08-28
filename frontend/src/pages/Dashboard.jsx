@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import Header from '../components/Header'
 import Sidebar from '../components/Sidebar'
 import Toast from '../components/Toast'
-import { FiPlus, FiAlertCircle, FiPackage, FiCheckCircle, FiDollarSign, FiTool, FiBarChart2, FiClipboard } from 'react-icons/fi'
+import { FiPlus, FiAlertCircle, FiPackage, FiCheckCircle, FiDollarSign, FiTool, FiBarChart2, FiClipboard, FiImage } from 'react-icons/fi'
 import { parseApiResponse, handleError } from '../utils/api'
 import { useSocket } from '../contexts/SocketContext'
 import '../styles/layout/dashboard.css'
@@ -198,6 +198,20 @@ export default function Dashboard() {
                   <div className="quick-action-content">
                     <h4>Registrar Novedad</h4>
                     <p>Reportar una incidencia o problema</p>
+                  </div>
+                </button>
+              )}
+              {(isAdmin || isCuentadante) && (
+                <button
+                  className="quick-action-card secondary"
+                  onClick={() => nav('/reportes?accion=fotos')}
+                >
+                  <div className="quick-action-icon">
+                    <FiImage />
+                  </div>
+                  <div className="quick-action-content">
+                    <h4>Reporte de Equipos con Fotos</h4>
+                    <p>Generar PDF por cuentadante o por ambiente</p>
                   </div>
                 </button>
               )}
