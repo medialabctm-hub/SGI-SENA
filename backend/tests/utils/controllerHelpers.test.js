@@ -14,6 +14,8 @@ jest.mock(
   { virtual: true }
 );
 
+// Jest ESM mocks must be registered before loading the module under test.
+// eslint-disable-next-line import/first
 import {
   handleControllerError,
 } from '../../src/utils/controllerHelpers.js';

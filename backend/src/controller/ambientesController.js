@@ -734,7 +734,7 @@ export async function asignarAmbienteInstructor(req, res) {
 
     return res.status(201).json({
       ok: true,
-      message: `Ambiente "${ambiente.nombre_ambiente}" asignado correctamente a ${instructor.nombre_usuario} para ${asignacionesCreadas.length} fechas`,
+      message: `Ambiente "${ambiente.nombre_ambiente}" asignado correctamente a ${responsable.nombre_usuario} para ${asignacionesCreadas.length} fechas`,
       cantidad_asignaciones: asignacionesCreadas.length,
       fecha_inicio,
       fecha_fin,

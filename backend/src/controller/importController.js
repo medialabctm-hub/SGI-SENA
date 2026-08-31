@@ -407,7 +407,7 @@ export async function importarEquipos(req, res) {
       const processedKeys = new Set();
       
       // Primera pasada: procesar "descripcion" primero
-      for (const key in row) {
+      for (const key of Object.keys(row)) {
         if (Object.prototype.hasOwnProperty.call(row, key)) {
           const normalizedKey = normalizeColumnName(key);
           if (normalizedKey === 'descripcion') {
@@ -419,7 +419,7 @@ export async function importarEquipos(req, res) {
       }
 
       // Segunda pasada: procesar el resto de columnas
-      for (const key in row) {
+      for (const key of Object.keys(row)) {
         if (Object.prototype.hasOwnProperty.call(row, key) && !processedKeys.has(key)) {
           const normalizedKey = normalizeColumnName(key);
           const finalKey = columnMapping[normalizedKey] || normalizedKey;
@@ -1013,15 +1013,15 @@ export async function importarUsuarios(req, res) {
 
       try {
         // Mapear columnas del Excel
-        const nombreUsuario = String(row['nombre_usuario'] || row['Nombre'] || row['NOMBRE_USUARIO'] || '').trim();
-        const cedula = String(row['cedula'] || row['Cédula'] || row['CEDULA'] || '').trim();
-        const tipoDocumento = String(row['tipo_documento'] || row['Tipo Documento'] || row['TIPO_DOCUMENTO'] || 'CC').trim();
-        const tipoDocumentoOtro = row['tipo_documento_otro'] || row['Tipo Documento Otro'] || row['TIPO_DOCUMENTO_OTRO'] || null;
-        const telefono = row['telefono'] || row['Teléfono'] || row['TELEFONO'] || null;
-        const correo = row['correo'] || row['Correo'] || row['CORREO'] || row['email'] || row['Email'] || null;
-        const rol = String(row['rol'] || row['Rol'] || row['ROL'] || 'Aprendiz').trim();
-        const contrasena = row['contrasena'] || row['Contraseña'] || row['CONTRASENA'] || row['password'] || null;
-        const estado = String(row['estado'] || row['Estado'] || row['ESTADO'] || 'Activo').trim();
+        const nombreUsuario = String(row.nombre_usuario || row.Nombre || row.NOMBRE_USUARIO || '').trim();
+        const cedula = String(row.cedula || row['Cédula'] || row.CEDULA || '').trim();
+        const tipoDocumento = String(row.tipo_documento || row['Tipo Documento'] || row.TIPO_DOCUMENTO || 'CC').trim();
+        const tipoDocumentoOtro = row.tipo_documento_otro || row['Tipo Documento Otro'] || row.TIPO_DOCUMENTO_OTRO || null;
+        const telefono = row.telefono || row['Teléfono'] || row.TELEFONO || null;
+        const correo = row.correo || row.Correo || row.CORREO || row.email || row.Email || null;
+        const rol = String(row.rol || row.Rol || row.ROL || 'Aprendiz').trim();
+        const contrasena = row.contrasena || row['Contraseña'] || row.CONTRASENA || row.password || null;
+        const estado = String(row.estado || row.Estado || row.ESTADO || 'Activo').trim();
 
         // Validaciones básicas
         if (!nombreUsuario || !cedula) {
@@ -1274,11 +1274,11 @@ export async function importarAprendices(req, res) {
       const numeroFila = i + 2;
 
       try {
-        const ficha = String(row['Ficha'] || row['ficha'] || row['FICHA'] || '').trim() || null;
-        const nombre = String(row['Nombre'] || row['nombre'] || row['NOMBRE'] || '').trim();
-        const documento = String(row['Documento'] || row['documento'] || row['CEDULA'] || row['Documento Identidad'] || '').trim();
-        let tipoDocumento = String(row['Tipo Documento'] || row['tipo_documento'] || row['TIPO_DOCUMENTO'] || row['Tipo de Documento'] || 'CC').trim();
-        const tipoDocumentoOtro = String(row['Tipo Documento Otro'] || row['tipo_documento_otro'] || row['TIPO_DOCUMENTO_OTRO'] || '').trim() || null;
+        const ficha = String(row.Ficha || row.ficha || row.FICHA || '').trim() || null;
+        const nombre = String(row.Nombre || row.nombre || row.NOMBRE || '').trim();
+        const documento = String(row.Documento || row.documento || row.CEDULA || row['Documento Identidad'] || '').trim();
+        let tipoDocumento = String(row['Tipo Documento'] || row.tipo_documento || row.TIPO_DOCUMENTO || row['Tipo de Documento'] || 'CC').trim();
+        const tipoDocumentoOtro = String(row['Tipo Documento Otro'] || row.tipo_documento_otro || row.TIPO_DOCUMENTO_OTRO || '').trim() || null;
         const tipoAprendiz = incluyeTipoAprendiz
           ? String(row[encabezadoTipoAprendiz] ?? '').trim()
           : null;
@@ -1429,7 +1429,7 @@ export async function importarAprendices(req, res) {
 
         resultados.exitosos += 1;
       } catch (error) {
-        resultados.errores.push({ fila: numeroFila, documento: row['Documento'] || 'N/A', error: error.message || 'Error desconocido' });
+        resultados.errores.push({ fila: numeroFila, documento: row.Documento || 'N/A', error: error.message || 'Error desconocido' });
         resultados.fallidos += 1;
       }
     }

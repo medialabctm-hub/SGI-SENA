@@ -267,8 +267,7 @@ export const actualizarAsignacionEquipoSchema = z.object({
   hora_fin: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9](:00)?$/, 'Formato de hora inválido (debe ser HH:MM o HH:MM:SS)').optional().nullable(),
   horaFin: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9](:00)?$/, 'Formato de hora inválido (debe ser HH:MM o HH:MM:SS)').optional().nullable(),
   observaciones: z.string().max(1000, 'Las observaciones no pueden exceder 1000 caracteres').optional().nullable(),
-}).transform((data) => {
-  return {
+}).transform(data => ({
     ficha: data.ficha,
     nombre_externo: data.nombre_externo,
     documento_externo: data.documento_externo,
@@ -276,8 +275,7 @@ export const actualizarAsignacionEquipoSchema = z.object({
     hora_inicio: data.hora_inicio || data.horaInicio || null,
     hora_fin: data.hora_fin || data.horaFin || null,
     observaciones: data.observaciones,
-  };
-}).refine((data) => {
+})).refine(data => {
   // Si se especifica horario, tanto hora_inicio como hora_fin son obligatorios
   if ((data.hora_inicio && !data.hora_fin) || (!data.hora_inicio && data.hora_fin)) {
     return false;
@@ -357,17 +355,15 @@ const schemaFormatoAntiguo = z.object({
   documento: z.string().min(5, 'El documento de identificación debe tener al menos 5 caracteres').max(20, 'El documento no puede exceder 20 caracteres'),
   // CAMPOS DESACTIVADOS - No se reciben desde página externa
   // dias_semana, diasSemana, hora_inicio, horaInicio, hora_fin, horaFin
-}).transform((data) => {
+}).transform(data => ({
   // Convertir formato antiguo a formato nuevo (con array de usuarios)
-  return {
-    placa: data.placa,
-    ambiente: data.ambiente,
-    usuarios: [{
-      ficha: data.ficha ? data.ficha.trim() : null,
-      documento: data.documento,
-    }]
-  };
-});
+  placa: data.placa,
+  ambiente: data.ambiente,
+  usuarios: [{
+    ficha: data.ficha ? data.ficha.trim() : null,
+    documento: data.documento,
+  }]
+}));
 
 // Schema para formato nuevo (array de usuarios). Ambiente opcional para uso desde web/app con auth.
 const schemaFormatoNuevo = z.object({

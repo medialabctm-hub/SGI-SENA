@@ -5,6 +5,8 @@
  */
 
 import { describe, it, expect, jest } from '@jest/globals';
+// Jest ESM mocks must be registered before loading the module under test.
+// eslint-disable-next-line import/first
 import {
   registrarEquipoSchema,
   actualizarEquipoSchema,
@@ -227,6 +229,7 @@ describe('Middleware validate() de equipos', () => {
 // ──────────────────────────────────────────────
 // asignarEquipoSchema
 // ──────────────────────────────────────────────
+// eslint-disable-next-line import/first
 import {
   asignarEquipoSchema,
   verificarInventarioSchema,

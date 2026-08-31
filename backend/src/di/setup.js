@@ -25,30 +25,18 @@ import process from 'process';
 container.register('db', dbWrapper, true);
 
 // Registrar repositorios (singleton)
-container.register('userRepository', (c) => {
-  return new UserRepository(c.resolve('db'));
-}, true);
+container.register('userRepository', c => new UserRepository(c.resolve('db')), true);
 
-container.register('roleRepository', (c) => {
-  return new RoleRepository(c.resolve('db'));
-}, true);
+container.register('roleRepository', c => new RoleRepository(c.resolve('db')), true);
 
-container.register('invitationCodeRepository', (c) => {
-  return new InvitationCodeRepository(c.resolve('db'));
-}, true);
+container.register('invitationCodeRepository', c => new InvitationCodeRepository(c.resolve('db')), true);
 
-container.register('equipoRepository', (c) => {
-  return new EquipoRepository(c.resolve('db'));
-}, true);
+container.register('equipoRepository', c => new EquipoRepository(c.resolve('db')), true);
 
-container.register('ambienteRepository', (c) => {
-  return new AmbienteRepository(c.resolve('db'));
-}, true);
+container.register('ambienteRepository', c => new AmbienteRepository(c.resolve('db')), true);
 
 // Registrar servicios de utilidad (singleton)
-container.register('passwordService', () => {
-  return new PasswordService(10);
-}, true);
+container.register('passwordService', () => new PasswordService(10), true);
 
 container.register('jwtService', () => {
   const secret = process.env.JWT_SECRET;
@@ -62,29 +50,23 @@ container.register('jwtService', () => {
 container.register('logger', logger, true);
 
 // Registrar servicios de negocio (singleton)
-container.register('authService', (c) => {
-  return new AuthService(
+container.register('authService', c => new AuthService(
     c.resolve('userRepository'),
     c.resolve('roleRepository'),
     c.resolve('passwordService'),
     c.resolve('jwtService'),
     c.resolve('logger')
-  );
-}, true);
+  ), true);
 
-container.register('invitationCodeService', (c) => {
-  return new InvitationCodeService(
+container.register('invitationCodeService', c => new InvitationCodeService(
     c.resolve('invitationCodeRepository'),
     c.resolve('logger')
-  );
-}, true);
+  ), true);
 
-container.register('equipoService', (c) => {
-  return new EquipoService(
+container.register('equipoService', c => new EquipoService(
     c.resolve('equipoRepository'),
     c.resolve('logger')
-  );
-}, true);
+  ), true);
 
 export { container };
 

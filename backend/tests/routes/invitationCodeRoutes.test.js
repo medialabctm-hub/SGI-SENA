@@ -31,9 +31,9 @@ const mockRes = () => ({
   json: jest.fn().mockReturnThis(),
 });
 
-const getRoute = (router, path, method) => {
-  return router.stack.find((layer) => layer.route?.path === path && layer.route.methods[method]);
-};
+const getRoute = (router, path, method) => router.stack.find(
+  layer => layer.route?.path === path && layer.route.methods[method]
+);
 
 describe('invitationCodeRoutes', () => {
   beforeEach(() => {

@@ -4,6 +4,7 @@ import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 import fs from 'fs';
 import { logger } from '../utils/logger.js';
+import { validateImageFile } from './fileValidation.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -32,8 +33,6 @@ const storage = multer.diskStorage({
     cb(null, filename);
   },
 });
-
-import { validateImageFile } from './fileValidation.js';
 
 // Filtro de archivos: solo imágenes (usando validación mejorada)
 const fileFilter = (req, file, cb) => {
@@ -74,9 +73,7 @@ export const handleProfileUploadError = (err, req, res, next) => {
 };
 
 // Función para obtener la ruta relativa de la foto de perfil
-export const getProfileImagePath = (filename) => {
-  return `/uploads/perfiles/${filename}`;
-};
+export const getProfileImagePath = filename => `/uploads/perfiles/${filename}`;
 
 // Función para eliminar archivo físico de foto de perfil
 export const deleteProfileImageFile = (filename) => {
