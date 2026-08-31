@@ -26,8 +26,7 @@ const validateCodeSchema = z.object({
   rol: z.string().min(1)
 });
 
-const validate = (schema) => {
-  return (req, res, next) => {
+const validate = schema => (req, res, next) => {
     try {
       const validated = schema.parse(req.body);
       req.body = validated;
@@ -48,7 +47,6 @@ const validate = (schema) => {
       }
       next(err);
     }
-  };
 };
 
 // Ruta pública para validar código (usada en el formulario de registro)

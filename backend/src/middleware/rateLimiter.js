@@ -85,10 +85,7 @@ export const passwordResetLimiter = rateLimit({
  */
 export const writeLimiter = rateLimit({
   windowMs: 1 * 60 * 1000, // 1 minuto
-  max: (req) => {
-    // Usuarios autenticados tienen límite más alto
-    return req.user?.id ? 150 : 100;
-  },
+  max: req => req.user?.id ? 150 : 100,
   standardHeaders: true,
   legacyHeaders: false,
   message: { 
@@ -114,10 +111,7 @@ export const writeLimiter = rateLimit({
  */
 export const readLimiter = rateLimit({
   windowMs: 1 * 60 * 1000, // 1 minuto
-  max: (req) => {
-    // Usuarios autenticados tienen límite más alto
-    return req.user?.id ? 300 : 200;
-  },
+  max: req => req.user?.id ? 300 : 200,
   standardHeaders: true,
   legacyHeaders: false,
   message: { 
@@ -166,9 +160,7 @@ export const strictLimiter = rateLimit({
  */
 export const searchLimiter = rateLimit({
   windowMs: 1 * 60 * 1000, // 1 minuto
-  max: (req) => {
-    return req.user?.id ? 80 : 50;
-  },
+  max: req => req.user?.id ? 80 : 50,
   standardHeaders: true,
   legacyHeaders: false,
   message: { 

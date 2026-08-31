@@ -40,6 +40,8 @@ describe('Logger - comportamiento por nivel de log', () => {
   it('debe llamar console.warn cuando el nivel permite WARN [line 49]', async () => {
     process.env.LOG_LEVEL = 'WARN';
     // Importar dinámicamente para obtener un Logger con el nivel actualizado
+    // The query string intentionally creates a fresh ESM module instance.
+    // eslint-disable-next-line import/no-unresolved
     const { logger: freshLogger } = await import('../../src/utils/logger.js?warn=1');
     freshLogger.warn('test warn message');
     // Como el módulo puede estar cacheado, chequeamos el comportamiento directo

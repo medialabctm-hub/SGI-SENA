@@ -39,15 +39,13 @@ if (!process.env.JWT_AUDIENCE) {
 }
   
 // Variables de base de datos: acepta tanto formato estándar como Railway
-const getDbConfig = () => {
-  return {
-    host: process.env.DB_HOST || process.env.MYSQLHOST || process.env.MYSQL_HOST,
-    user: process.env.DB_USER || process.env.MYSQLUSER || process.env.MYSQL_USER,
-    password: process.env.DB_PASSWORD || process.env.MYSQLPASSWORD || process.env.MYSQL_PASSWORD,
-    database: process.env.DB_NAME || process.env.MYSQLDATABASE || process.env.MYSQL_DATABASE,
-    port: process.env.DB_PORT || process.env.MYSQLPORT || process.env.MYSQL_PORT || 3306,
-  };
-};
+const getDbConfig = () => ({
+  host: process.env.DB_HOST || process.env.MYSQLHOST || process.env.MYSQL_HOST,
+  user: process.env.DB_USER || process.env.MYSQLUSER || process.env.MYSQL_USER,
+  password: process.env.DB_PASSWORD || process.env.MYSQLPASSWORD || process.env.MYSQL_PASSWORD,
+  database: process.env.DB_NAME || process.env.MYSQLDATABASE || process.env.MYSQL_DATABASE,
+  port: process.env.DB_PORT || process.env.MYSQLPORT || process.env.MYSQL_PORT || 3306,
+});
 
 const dbConfig = getDbConfig();
 

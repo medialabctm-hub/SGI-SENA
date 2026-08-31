@@ -97,8 +97,9 @@ export function validateImageFile(file) {
   }
 
   // Validar que el nombre del archivo no contenga caracteres peligrosos
-  const dangerousChars = /[<>:"/\\|?*\x00-\x1f]/;
-  if (dangerousChars.test(file.originalname)) {
+  const dangerousChars = /[<>:"/\\|?*]/;
+  const hasControlCharacter = [...file.originalname].some(character => character.charCodeAt(0) < 0x20);
+  if (dangerousChars.test(file.originalname) || hasControlCharacter) {
     return { valid: false, error: 'El nombre del archivo contiene caracteres no permitidos' };
   }
 
@@ -132,8 +133,9 @@ export function validateExcelFile(file) {
   }
 
   // Validar que el nombre del archivo no contenga caracteres peligrosos
-  const dangerousChars = /[<>:"/\\|?*\x00-\x1f]/;
-  if (dangerousChars.test(file.originalname)) {
+  const dangerousChars = /[<>:"/\\|?*]/;
+  const hasControlCharacter = [...file.originalname].some(character => character.charCodeAt(0) < 0x20);
+  if (dangerousChars.test(file.originalname) || hasControlCharacter) {
     return { valid: false, error: 'El nombre del archivo contiene caracteres no permitidos' };
   }
 

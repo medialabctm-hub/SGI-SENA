@@ -36,7 +36,9 @@ export default function DetalleAmbiente() {
     try {
       const userData = localStorage.getItem('user');
       if (userData) setCurrentUser(JSON.parse(userData));
-    } catch {}
+    } catch {
+      // Ignorar datos corruptos del almacenamiento local.
+    }
   }, []);
 
   const loadAmbiente = async () => {

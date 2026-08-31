@@ -46,8 +46,8 @@ const mockRes = () => ({
   json: jest.fn().mockReturnThis(),
 });
 
-const getRouteHandler = (path, method, index = 0) => {
-  const layer = router.stack.find((entry) => entry.route?.path === path && entry.route.methods[method]);
+const getRouteHandler = (routePath, method, index = 0) => {
+  const layer = router.stack.find((entry) => entry.route?.path === routePath && entry.route.methods[method]);
   return layer.route.stack[index].handle;
 };
 

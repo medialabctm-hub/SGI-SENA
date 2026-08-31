@@ -71,6 +71,7 @@ describe('Subject', () => {
         super();
         this.calls = [];
       }
+
       update(event, data) {
         this.calls.push({ event, data });
       }
@@ -97,6 +98,7 @@ describe('Subject', () => {
     }
     class GoodObserver extends Observer {
       constructor() { super(); this.called = false; }
+
       update() { this.called = true; }
     }
 

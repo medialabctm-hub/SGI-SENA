@@ -7,9 +7,10 @@ const __dirname = path.dirname(__filename);
 
 // ── Mocks ──────────────────────────────────────────────────────────────────
 const mockExecute = jest.fn();
+const mockGetConnection = jest.fn();
 jest.unstable_mockModule(path.resolve(__dirname, '../../src/config/dbconfig.js'), () => ({
-  default: { execute: mockExecute },
-  pool: { execute: mockExecute }
+  default: { execute: mockExecute, pool: { getConnection: mockGetConnection } },
+  pool: { execute: mockExecute, getConnection: mockGetConnection }
 }));
 
 const mockLogger = { info: jest.fn(), error: jest.fn(), warn: jest.fn(), debug: jest.fn() };
@@ -399,6 +400,7 @@ describe('listarAmbientesActivos', () => {
 describe('asignarAmbienteInstructor', () => {
   beforeEach(() => {
     mockExecute.mockReset();
+    mockGetConnection.mockReset();
     jest.clearAllMocks();
     mockValidarRangoFechas.mockReturnValue({ valid: true });
     mockValidarRangoHoras.mockReturnValue({ valid: true });
@@ -451,6 +453,42 @@ describe('asignarAmbienteInstructor', () => {
     const res = mockRes();
     await asignarAmbienteInstructor(req, res);
     expect(res.status).toHaveBeenCalledWith(404);
+  });
+
+  it('assigns successfully using the responsible user name', async () => {
+    const connection = {
+      beginTransaction: jest.fn(),
+      execute: jest.fn().mockResolvedValueOnce([{ insertId: 7 }]),
+      commit: jest.fn(),
+      rollback: jest.fn(),
+      release: jest.fn()
+    };
+    mockExecute
+      .mockResolvedValueOnce([[{ id_ambiente: 1, nombre_ambiente: 'Lab 1' }]])
+      .mockResolvedValueOnce([[{ id_usuario: 1, nombre_usuario: 'Maria', nombre_rol: 'Instructor' }]])
+      .mockResolvedValueOnce([[]]);
+    mockGetConnection.mockResolvedValueOnce(connection);
+    const req = mockReq({
+      body: {
+        id_ambiente: 1,
+        id_instructor: 1,
+        fecha_inicio: '2024-01-01',
+        fecha_fin: '2024-01-31',
+        dias_semana: ['Lunes'],
+        hora_inicio: '08:00',
+        hora_fin: '10:00'
+      }
+    });
+    const res = mockRes();
+
+    await asignarAmbienteInstructor(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(201);
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
+      message: expect.stringContaining('Maria')
+    }));
+    expect(connection.commit).toHaveBeenCalled();
+    expect(connection.release).toHaveBeenCalled();
   });
 
   it('returns 500 on DB error', async () => {

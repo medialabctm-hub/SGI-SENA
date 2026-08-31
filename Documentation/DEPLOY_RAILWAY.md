@@ -6,6 +6,41 @@ trae todo lo necesario: `railway.json`/`railway.toml` (build por Dockerfile),
 Node interno) y `start.sh` (arranque de ambos procesos y manejo del puerto
 dinámico de Railway).
 
+## Gate de reproducibilidad del release
+
+El release se construye únicamente desde archivos versionados. Estos son los
+artefactos intencionales del despliegue y deben existir en el commit que se
+entrega:
+
+- `Dockerfile`, `.dockerignore` y `start.sh`.
+- `railway.json` y `railway.toml`.
+- `frontend/nginx-main.conf` y `frontend/nginx-server.conf`.
+- `backend/package-lock.json`, `frontend/package-lock.json` y
+  `package-lock.json` raíz.
+- `backend/scripts/smoke-test.js` y `frontend/src/utils/loanRequest.js`.
+- `Documentation/DEPLOY_RAILWAY.md` y el esquema versionado
+  `BD/SGI_SENA.sql`.
+
+`node_modules/`, `dist/`, `coverage/`, `.env*` y los logs están excluidos por
+`.gitignore` y `.dockerignore`; no se deben agregar con `git add -f`. La
+documentación general bajo `Documentation/` permanece ignorada, pero este
+runbook tiene una excepción explícita porque forma parte del gate de release.
+
+Antes de desplegar, comprobar el árbol y guardar la salida junto con la
+revisión:
+
+```bash
+git status --short --untracked-files=all
+git ls-files --error-unmatch Dockerfile railway.json railway.toml start.sh \
+  frontend/src/utils/loanRequest.js backend/scripts/smoke-test.js \
+  Documentation/DEPLOY_RAILWAY.md
+git ls-files | grep -E '(^|/)(node_modules|dist|coverage)(/|$)'
+```
+
+La última consulta debe no devolver resultados. Un archivo funcional nuevo,
+como `frontend/src/utils/loanRequest.js`, se valida por `git ls-files`; no se
+considera suficiente que exista solo en el disco local.
+
 > ⚠️ **Antes de empezar — seguridad**: NO reutilizar la base de datos MySQL del
 > despliegue anterior. Sus credenciales root están commiteadas en
 > `backend/env.local.example` de este repo (y en el historial de git), por lo
@@ -119,7 +154,86 @@ curl -X POST https://<dominio>.up.railway.app/api/auth/login \
 
 El frontend web queda en `https://<dominio>.up.railway.app/`.
 
-## 8. Conectar la app móvil
+### Smoke reproducible
+
+El smoke apunta al servicio completo (nginx), no al puerto interno del
+backend. `BASE_URL` es obligatorio para probar Railway y, si se omite,
+`npm run test:smoke` usa `http://localhost:5173` para el frontend de Vite.
+Por defecto comprueba `/health`, el HTML del frontend y el proxy `/api` con un
+payload inválido de préstamo que debe devolver `400` sin tocar la base de
+datos:
+
+```bash
+BASE_URL=https://<dominio>.up.railway.app npm run test:smoke
+```
+
+El flujo completo de préstamo es mutante y está opt-in. Solo ejecutarlo contra
+un aprendiz, equipo y clase de prueba dedicados, con la clase activa y el
+schema de autoservicio listo:
+
+```bash
+BASE_URL=https://<dominio>.up.railway.app \
+SMOKE_LOAN=1 \
+SMOKE_DOCUMENTO=<documento-fixture> \
+SMOKE_PLACA=<placa-fixture> \
+SMOKE_IDEMPOTENCY_KEY=smoke-mdl-73-fixture \
+npm run test:smoke
+```
+
+La identidad idempotente permite repetir la comprobación sin crear otro
+registro para la misma solicitud. Después de una ejecución nueva, cerrar el
+préstamo de la fixture según el procedimiento operativo antes de reutilizar el
+equipo. Sin un servicio local/desplegado accesible, el smoke de red no puede
+ejecutarse: los tests Jest del script cubren el contrato con `fetch` mockeado,
+pero no sustituyen esta verificación del entorno.
+
+## 8. Rollback y evidencia del artefacto
+
+### Criterios de rollback
+
+Iniciar rollback si ocurre cualquiera de estas condiciones después del deploy:
+
+- `GET /health` no devuelve `200` con `status: "ok"`.
+- `/` no devuelve el HTML de la SPA, o el proxy `/api` devuelve la SPA en vez
+  de una respuesta de API.
+- El smoke controlado falla, devuelve un envelope de préstamo incompleto o
+  crea duplicados para la misma `Idempotency-Key`.
+- Hay errores 5xx sostenidos, reinicios del contenedor o pérdida de acceso al
+  volumen de `uploads`.
+
+En Railway, abrir **Deployments**, seleccionar el último despliegue saludable
+anterior y usar **Redeploy**. Confirmar luego `/health`, `/`, `/api` y los logs.
+Este cambio no incorpora una migración destructiva de BD; si un release futuro
+incluye migraciones, respaldar MySQL antes y no restaurar el esquema de forma
+automática al hacer rollback de la aplicación.
+
+### Registro de evidencia
+
+Guardar estos datos en el ticket o nota del release, sin incluir secretos:
+
+```text
+Commit desplegado: <git rev-parse --verify HEAD>
+Deployment ID de Railway: <id visible en Deployments>
+Digest de imagen: sha256:<digest visible en Railway>
+URL verificada: https://<dominio>.up.railway.app
+Fecha/hora UTC del smoke: <timestamp>
+Resultado: health / frontend / proxy / préstamo controlado
+```
+
+Para el artefacto local previo al deploy, registrar también el identificador
+producido por `docker image inspect`:
+
+```bash
+git rev-parse --verify HEAD
+docker build --pull -t sgi-sena:<commit-corto> .
+docker image inspect --format='{{.Id}}' sgi-sena:<commit-corto>
+```
+
+El digest de Railway y el commit desplegado son la evidencia de producción;
+el identificador local solo demuestra qué imagen se construyó antes de
+publicarla.
+
+## 9. Conectar la app móvil
 
 En el repo SGI-SENA-MOBILE:
 
