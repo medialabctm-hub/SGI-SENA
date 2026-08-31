@@ -729,6 +729,14 @@ export async function iniciarClase(req, res) {
 
 /**
  * Finalizar una clase (cambiar estado a "Finalizada" y cerrar responsabilidades)
+ *
+ * Cierre atómico (MDL-76): todas las escrituras (clase, ambiente y préstamos de
+ * Historial_Uso_Equipos, incluidos los de autoservicio) ocurren dentro de
+ * `sp_finalizar_clase`, que corre en su propia transacción con rollback
+ * automático ante cualquier error (ver `backend/scripts/migrate-autoservicio-cierre-clase.sql`
+ * y la documentación en `backend/src/utils/equipmentClaim.js`). Este controlador
+ * no hace ninguna escritura fuera del CALL, así que un fallo del procedimiento
+ * no puede dejar estado parcial.
  */
 export async function finalizarClase(req, res) {
   try {

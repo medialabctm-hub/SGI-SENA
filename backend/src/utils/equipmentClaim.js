@@ -5,6 +5,27 @@
  * writes its responsibility or usage row. The row lock is deliberately
  * centralized so the different entry points cannot drift to different claim
  * semantics.
+ *
+ * Comportamiento garantizado (préstamo normal y autoservicio, MDL-76):
+ * - `SELECT ... FOR UPDATE` sobre la fila de `Elementos` serializa cualquier
+ *   solicitud concurrente por el mismo equipo: la segunda solicitud bloquea
+ *   hasta que la primera confirme (commit) o revierta (rollback), momento en
+ *   el que vuelve a leer el estado ya definitivo. Por eso dos solicitudes
+ *   concurrentes nunca pueden reclamar el mismo equipo.
+ * - Todos los flujos que reclaman un equipo abren su transacción con este
+ *   módulo: préstamo normal (`asignarEquipo`, `registrarUsoEquipoExterno`) y
+ *   autoservicio de aprendices sin cuenta (`iniciarUsoAutoservicio`), todos en
+ *   `backend/src/controller/equiposController.js`. Cualquier error entre el
+ *   claim y el commit revierte con `connection.rollback()` (ver los bloques
+ *   catch de esas funciones), dejando equipo/ambiente/historial sin cambios.
+ * - El cierre de una clase (que libera equipo, ambiente e historial de uso a
+ *   la vez) usa un mecanismo distinto pero con la misma garantía atómica: el
+ *   procedimiento `sp_finalizar_clase` (`backend/scripts/migrate-autoservicio-cierre-clase.sql`)
+ *   envuelve sus UPDATE en `START TRANSACTION` / `COMMIT` con un
+ *   `EXIT HANDLER FOR SQLEXCEPTION` que hace `ROLLBACK; RESIGNAL;`.
+ * - Prueba de concurrencia real (single winner, cero estados parciales) en
+ *   `backend/tests/integration/equipmentClaim.mysql.test.js`, ejecutable con
+ *   `npm run test:mysql` (requiere MySQL 8, ver README de esa carpeta).
  */
 const equipmentSelect = (selector) => {
   if (selector?.codigoEquipo !== undefined && selector?.codigoEquipo !== null) {
