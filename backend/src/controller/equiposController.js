@@ -4273,9 +4273,13 @@ async function verificarReadinessAutoservicio(db) {
 
 function assertAutoservicioReady(readiness) {
   if (readiness.ready) return readiness;
-  throw new Error(
+  // AppError con 503: handleControllerError debe propagar este status y este mensaje
+  // accionable tal cual (en vez de degradarlos a un 500 genérico), para que el
+  // endpoint público le diga al usuario que el autoservicio no está listo y por qué.
+  throw new AppError(
     `Autoservicio no está listo: faltan ${readiness.missing.join(', ')}. ` +
-    'Ejecute node scripts/migrate-autoservicio-cierre-clase.js con credenciales MySQL de administrador.'
+    'Ejecute node scripts/migrate-autoservicio-cierre-clase.js con credenciales MySQL de administrador.',
+    503
   );
 }
 

@@ -67,6 +67,42 @@ describe('contratos de asignación y autoservicio', () => {
     verificarAmbienteEquipoAprendiz.mockResolvedValue({ valido: true });
   });
 
+  // IMPORTANTE: este test debe ejecutarse antes que cualquier otro que deje el
+  // schema de autoservicio en estado "listo": autoservicioSchemaListo es un
+  // flag de módulo compartido por todos los tests de este archivo (el
+  // controlador se importa una sola vez arriba), así que una vez otro test lo
+  // pone en true, ensureAutoservicioSchema deja de volver a validar el schema.
+  it('responde 503 accionable y no reclama conexión cuando el esquema de autoservicio no está listo', async () => {
+    mockExecute.mockImplementation(async (sql) => {
+      if (/COLUMN_NAME = 'id_usuario'/.test(sql)) return [[{ IS_NULLABLE: 'YES' }]];
+      if (/COLUMN_NAME IN/.test(sql)) return [[
+        { COLUMN_NAME: 'id_usuario', IS_NULLABLE: 'YES' },
+        { COLUMN_NAME: 'documento_externo' },
+        { COLUMN_NAME: 'nombre_externo' },
+        { COLUMN_NAME: 'id_aprendiz' },
+        { COLUMN_NAME: 'idempotency_key' }
+      ]];
+      if (/INFORMATION_SCHEMA\.STATISTICS/.test(sql)) return [[
+        { INDEX_NAME: 'idx_documento_externo', COLUMN_NAME: 'documento_externo', SEQ_IN_INDEX: 1, NON_UNIQUE: 1 },
+        { INDEX_NAME: 'idx_id_aprendiz', COLUMN_NAME: 'id_aprendiz', SEQ_IN_INDEX: 1, NON_UNIQUE: 1 },
+        { INDEX_NAME: 'uq_autoservicio_idempotency_key', COLUMN_NAME: 'idempotency_key', SEQ_IN_INDEX: 1, NON_UNIQUE: 0 }
+      ]];
+      // Sin marcador AUTOSERVICIO_CIERRE_V1: la rutina de cierre todavía no fue migrada.
+      if (/INFORMATION_SCHEMA\.ROUTINES/.test(sql)) return [[{ ROUTINE_COMMENT: '' }]];
+      return [[]];
+    });
+
+    const response = res();
+    await iniciarUsoAutoservicio({ body: { documento: 'D1', placa: 'P3' } }, response);
+
+    expect(response.status).toHaveBeenCalledWith(503);
+    expect(response.json).toHaveBeenCalledWith(expect.objectContaining({
+      userMessage: expect.stringMatching(/AUTOSERVICIO_CIERRE_V1.*migrate-autoservicio-cierre-clase\.js/i)
+    }));
+    // No debe abrir conexión/transacción: el gate de readiness corta antes de escribir nada.
+    expect(mockGetConnection).not.toHaveBeenCalled();
+  });
+
   it('no recrea el procedimiento de cierre desde una petición pública', async () => {
     mockExecute.mockImplementation(async (sql) => {
       if (/COLUMN_NAME = 'id_usuario'/.test(sql)) return [[{ IS_NULLABLE: 'YES' }]];
