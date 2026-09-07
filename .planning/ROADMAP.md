@@ -6,7 +6,7 @@ Esta hoja de ruta organiza la segunda tanda de trabajo que se incorporará a la 
 
 ## Phases
 
-- [ ] **Phase 1: Security and Railway hardening wave** — cerrar MDL-127, MDL-131 y MDL-134 con evidencia local reproducible.
+- [x] **Phase 1: Security and Railway hardening wave** — cerrar MDL-127, MDL-131 y MDL-134 con evidencia local reproducible.
 
 ## Phase Details
 
@@ -24,13 +24,12 @@ Esta hoja de ruta organiza la segunda tanda de trabajo que se incorporará a la 
 
 Plans:
 
-- [ ] 01-01 — MDL-127: migración de JWT a cookies `httpOnly`.
-- [ ] 01-02 — MDL-131: rate limit y consumo atómico de códigos de invitación.
-- [ ] 01-03 — MDL-134: contrato de `PORT` en Railway y revisión de idempotencia.
+- [x] 01-01 — MDL-127: migración de JWT a cookies `httpOnly`.
+- [x] 01-02 — MDL-131: rate limit y consumo atómico de códigos de invitación.
+- [x] 01-03 — MDL-134: contrato de `PORT` en Railway y revisión de idempotencia.
 
 ## Progress
 
 | Phase | Plans | Status | Notes |
 |---|---:|---|---|
-| 1 | 0/3 | Planning | Workers se delegarán en worktrees independientes desde PR #29 |
-
+| 1 | 3/3 | Complete | Tres commits integrados en el coordinador; Linear y PR #29 quedan en revisión |

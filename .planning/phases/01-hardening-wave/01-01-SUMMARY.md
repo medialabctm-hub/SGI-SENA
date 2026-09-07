@@ -2,7 +2,7 @@
 
 ## Estado
 
-**PASS (implementación + validación estática y backend automatizada). Frontend: tests automatizados NO ejecutados en esta sesión (bloqueo de herramientas), gap explícito abajo.**
+**PASS (implementación, validación estática, backend automatizado y pruebas frontend focalizadas). La suite frontend completa no se ejecutó por el bloqueo del runner agrupado; el gap queda explícito abajo.**
 
 ## Contrato de sesión elegido
 
@@ -40,7 +40,7 @@
 - `cd backend && npm test -- --testPathIgnorePatterns=ambientesService` (suite completa) → **89 suites (1 omitida por convención del repo), 1888/1894 tests PASS, 6 skipped, 0 failed.**
 - `cd backend && npm run lint` → **0 errores** (375 warnings, todos preexistentes; verificado que ninguno corresponde a los archivos tocados salvo 2 warnings preexistentes ya presentes antes del cambio).
 
-**Frontend — validación estática PASS, tests automatizados NO ejecutados (gap)**
+**Frontend — build y pruebas focalizadas PASS; suite completa pendiente**
 - `cd frontend && npx eslint src` (corrida completa, una sola vez, exitosa) → **0 errores**, 101 warnings (estilo preexistente; 1 warning nuevo de "unused eslint-disable" en `pages/config/Notifications.jsx`, no bloqueante).
 - Búsquedas estáticas (`rg`) sobre `frontend/src`, excluyendo tests:
   - `Bearer \$\{` → **0 coincidencias**.
@@ -48,14 +48,16 @@
   - `localStorage\.setItem\('token'` → **0 coincidencias**.
   - `localStorage\.removeItem\('token'\)` → **2 coincidencias** (`Header.jsx` confirmLogout, `utils/api.js` handleSessionExpiration) — limpieza defensiva intencional de una clave que ya no se escribe nunca, no una lectura/escritura funcional.
 - `git diff --check` → limpio (solo avisos informativos de conversión LF→CRLF de Git en Windows, sin errores de whitespace; se corrigieron 2 archivos con finales de línea mixtos introducidos por el propio cambio).
-- **Gap explícito:** la suite de Vitest del frontend (`cd frontend && npm test`) no pudo ejecutarse hasta el final en esta sesión por bloqueos repetidos de la herramienta de comandos (timeouts/hangs con `npx vitest`/`npx eslint` en ejecuciones posteriores a la primera). Se actualizaron y/o crearon los tests focalizados de sesión (`ProtectedRoute.test.jsx`, `Header.test.jsx`, `Login.test.jsx` nuevo, `config/api.test.js` nuevo, `useLocalStorage.test.js`), y se verificó por lectura que su lógica es coherente con la implementación final, pero **no hay evidencia de ejecución real de Vitest en esta sesión**. Recomendación: correr `cd frontend && npm test` antes de mergear.
+- **Evidencia del coordinador:** `pnpm --dir frontend test -- --pool=threads --maxWorkers=1 --testTimeout=10000 --hookTimeout=10000` ejecutado por archivo: `ProtectedRoute.test.jsx` 5/5, `Header.test.jsx` 3/3, `Login.test.jsx` 3/3, `config/api.test.js` 3/3 y `useLocalStorage.test.js` 3/3; total **17/17 PASS**. También `pnpm --dir frontend build` pasó con 423 módulos transformados.
+- **Correcciones encontradas durante la verificación:** la primera versión dejó `ProtectedRoute` en loading para un 401 sin perfil local y los tests de Login no montaban el componente; ambas regresiones se corrigieron en el commit coordinador `b893066` y quedaron cubiertas por las pruebas anteriores.
+- **Gap explícito:** la suite Vitest completa no se ejecutó hasta el final: la batería agrupada quedó encolada y el runner fue interrumpido después de superar el umbral operativo. La prueba aislada de `ProtectedRoute` reprodujo primero un FAIL real y luego pasó tras la corrección. La validación de ESLint completa fue reportada como 0 errores por el worker, pero el intento local del coordinador quedó bloqueado porque `frontend/eslint.config.js` importa `globals`, dependencia transitiva no enlazada por la instalación pnpm sin lockfile; no se agregó metadata fuera del alcance.
 
 ## No incluido en este commit (fuera de alcance MDL-127)
 
 - `package-lock.json`: no se tocó en ningún workspace.
 - MDL-131 / MDL-134: sin cambios relacionados.
 - `/api/auth/login-placa` (app de escritorio): sin cambios; sigue devolviendo el JWT en el body a propósito (no es un flujo de navegador).
-- Ejecución de Vitest en frontend (ver gap arriba).
+- Suite Vitest completa en frontend (ver gap arriba); sí se ejecutaron los cinco archivos focalizados.
 
 ## Reproducibilidad
 
