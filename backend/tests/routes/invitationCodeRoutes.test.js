@@ -8,6 +8,8 @@ const getInvitationCodeByIdMock = jest.fn();
 const deleteInvitationCodeMock = jest.fn();
 const deactivateInvitationCodeMock = jest.fn();
 const validateInvitationCodeMock = jest.fn();
+const invitationIpLimiterMock = jest.fn((req, res, next) => next());
+const invitationCodeLimiterMock = jest.fn((req, res, next) => next());
 
 jest.mock('../../src/middleware/authMiddleware.js', () => ({
   authenticate: mockAuth,
@@ -24,6 +26,11 @@ jest.mock('../../src/controller/invitationCodeController.js', () => ({
   deleteInvitationCode: deleteInvitationCodeMock,
   deactivateInvitationCode: deactivateInvitationCodeMock,
   validateInvitationCode: validateInvitationCodeMock,
+}), { virtual: true });
+
+jest.mock('../../src/middleware/rateLimiter.js', () => ({
+  invitationIpLimiter: invitationIpLimiterMock,
+  invitationCodeLimiter: invitationCodeLimiterMock,
 }), { virtual: true });
 
 const mockRes = () => ({
@@ -59,7 +66,7 @@ describe('invitationCodeRoutes', () => {
   it('POST /validate debe responder 400 cuando el body es invalido', async () => {
     const { default: router } = await import('../../src/routes/invitationCodeRoutes.js');
     const route = getRoute(router, '/validate', 'post');
-    const validateMiddleware = route.route.stack[0].handle;
+    const validateMiddleware = route.route.stack[2].handle;
     const res = mockRes();
 
     validateMiddleware({ body: { rol: 'Administrador' } }, res, jest.fn());
@@ -75,7 +82,7 @@ describe('invitationCodeRoutes', () => {
   it('POST /validate debe continuar cuando el body es valido', async () => {
     const { default: router } = await import('../../src/routes/invitationCodeRoutes.js');
     const route = getRoute(router, '/validate', 'post');
-    const validateMiddleware = route.route.stack[0].handle;
+    const validateMiddleware = route.route.stack[2].handle;
     const next = jest.fn();
     const req = { body: { codigo: 'ABC123', rol: 'Instructor' } };
 
@@ -83,6 +90,17 @@ describe('invitationCodeRoutes', () => {
 
     expect(next).toHaveBeenCalled();
     expect(req.body).toEqual({ codigo: 'ABC123', rol: 'Instructor' });
+  });
+
+  it('POST /validate debe aplicar los limites IP e identificador antes de validar', async () => {
+    const { default: router } = await import('../../src/routes/invitationCodeRoutes.js');
+    const route = getRoute(router, '/validate', 'post');
+
+    expect(route.route.stack).toHaveLength(4);
+    expect(route.route.stack[0].handle).toEqual(expect.any(Function));
+    expect(route.route.stack[1].handle).toEqual(expect.any(Function));
+    expect(route.route.stack[2].handle).toEqual(expect.any(Function));
+    expect(route.route.stack[3].handle.name).toBe('validateInvitationCode');
   });
 
   it('POST / debe responder 400 cuando falta rol_destinado', async () => {

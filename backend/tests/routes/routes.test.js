@@ -61,6 +61,8 @@ jest.mock('../../src/middleware/rateLimiter.js', () => ({
   strictLimiter: mockMiddleware,
   searchLimiter: mockMiddleware,
   webhookLimiter: mockMiddleware,
+  invitationIpLimiter: mockMiddleware,
+  invitationCodeLimiter: mockMiddleware,
 }), { virtual: true });
 
 // Mock de controladores de ambientes

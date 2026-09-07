@@ -21,12 +21,14 @@ const {
   strictLimiter,
   searchLimiter,
   publicLookupLimiter,
+  invitationIpLimiter,
+  invitationCodeLimiter,
   webhookLimiter,
 } = await import('../../src/middleware/rateLimiter.js');
 
 describe('rateLimiter config', () => {
   it('debe registrar todos los limiters esperados', () => {
-    expect(rateLimitMock).toHaveBeenCalledTimes(9);
+    expect(rateLimitMock).toHaveBeenCalledTimes(11);
     expect(authLimiter.__options.windowMs).toBe(15 * 60 * 1000);
     expect(registerLimiter.__options.windowMs).toBe(60 * 60 * 1000);
     expect(passwordResetLimiter.__options.windowMs).toBe(60 * 60 * 1000);
@@ -46,6 +48,30 @@ describe('rateLimiter config', () => {
 
     const res = { status: jest.fn().mockReturnThis(), json: jest.fn().mockReturnThis() };
     publicLookupLimiter.__options.handler({}, res);
+    expect(res.status).toHaveBeenCalledWith(429);
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ success: false, retryAfter: 15 }));
+  });
+
+  it('invitationIpLimiter limita por IP y invitationCodeLimiter por identificador anonimizado', () => {
+    expect(invitationIpLimiter.__options.windowMs).toBe(15 * 60 * 1000);
+    expect(invitationIpLimiter.__options.max).toBe(10);
+    expect(invitationCodeLimiter.__options.windowMs).toBe(15 * 60 * 1000);
+    expect(invitationCodeLimiter.__options.max).toBe(5);
+
+    const req = {
+      ip: '10.2.2.2',
+      body: { codigo: 'SECRETO-1', rol: 'Instructor' },
+      connection: { remoteAddress: '10.0.0.2' },
+    };
+    const ipKey = invitationIpLimiter.__options.keyGenerator(req);
+    const codeKey = invitationCodeLimiter.__options.keyGenerator(req);
+
+    expect(ipKey).toBe('invitation_ip_10.2.2.2');
+    expect(codeKey).toMatch(/^invitation_identifier_[0-9a-f]{64}$/);
+    expect(codeKey).not.toContain('SECRETO-1');
+
+    const res = { status: jest.fn().mockReturnThis(), json: jest.fn().mockReturnThis() };
+    invitationCodeLimiter.__options.handler(req, res);
     expect(res.status).toHaveBeenCalledWith(429);
     expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ success: false, retryAfter: 15 }));
   });

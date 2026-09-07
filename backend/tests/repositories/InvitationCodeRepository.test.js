@@ -124,6 +124,146 @@ describe('InvitationCodeRepository', () => {
   });
 
   // ──────────────────────────────────────────────
+  // consumeCode()
+  // ──────────────────────────────────────────────
+  describe('consumeCode()', () => {
+    const makeConnection = () => ({
+      beginTransaction: jest.fn().mockResolvedValue(undefined),
+      execute: jest.fn(),
+      commit: jest.fn().mockResolvedValue(undefined),
+      rollback: jest.fn().mockResolvedValue(undefined),
+      release: jest.fn(),
+    });
+
+    it('debe bloquear la fila y actualizar el cupo dentro de una transacción', async () => {
+      const connection = makeConnection();
+      const code = {
+        id_codigo: 8,
+        codigo: 'ATOMIC-001',
+        rol_destinado: 'Instructor',
+        fecha_expiracion: null,
+        max_usos: 2,
+        usos_actuales: 1,
+        estado: 'Activo',
+      };
+      connection.execute
+        .mockResolvedValueOnce([[code]])
+        .mockResolvedValueOnce([{ affectedRows: 1 }]);
+      db.pool.getConnection.mockResolvedValue(connection);
+
+      const result = await repo.consumeCode('ATOMIC-001');
+
+      expect(connection.beginTransaction).toHaveBeenCalledTimes(1);
+      expect(connection.execute).toHaveBeenNthCalledWith(
+        1,
+        expect.stringMatching(/SELECT[\s\S]*FOR UPDATE/i),
+        ['ATOMIC-001']
+      );
+      expect(connection.execute).toHaveBeenNthCalledWith(
+        2,
+        expect.stringMatching(/SET usos_actuales = usos_actuales \+ 1[\s\S]*max_usos/i),
+        [8]
+      );
+      expect(connection.commit).toHaveBeenCalledTimes(1);
+      expect(connection.release).toHaveBeenCalledTimes(1);
+      expect(result).toEqual(expect.objectContaining({ consumed: true, reason: 'consumed' }));
+      expect(result.code.usos_actuales).toBe(2);
+      expect(result.code.estado).toBe('Agotado');
+    });
+
+    it('debe marcar agotado sin incrementar cuando el cupo ya está consumido', async () => {
+      const connection = makeConnection();
+      const code = {
+        id_codigo: 9,
+        codigo: 'ATOMIC-FULL',
+        rol_destinado: 'Instructor',
+        fecha_expiracion: null,
+        max_usos: 1,
+        usos_actuales: 1,
+        estado: 'Activo',
+      };
+      connection.execute
+        .mockResolvedValueOnce([[code]])
+        .mockResolvedValueOnce([{ affectedRows: 1 }]);
+      db.pool.getConnection.mockResolvedValue(connection);
+
+      const result = await repo.consumeCode('ATOMIC-FULL');
+
+      expect(result).toEqual(expect.objectContaining({ consumed: false, reason: 'exhausted' }));
+      expect(connection.execute).toHaveBeenNthCalledWith(
+        2,
+        expect.stringContaining('SET estado = ?'),
+        ['Agotado', 9]
+      );
+      expect(connection.commit).toHaveBeenCalledTimes(1);
+    });
+
+    it('debe serializar dos consumos concurrentes sin superar el último cupo', async () => {
+      const state = {
+        id_codigo: 10,
+        codigo: 'RACE-001',
+        rol_destinado: 'Instructor',
+        fecha_expiracion: null,
+        max_usos: 1,
+        usos_actuales: 0,
+        estado: 'Activo',
+      };
+      let lockTail = Promise.resolve();
+      const connections = [];
+      const acquireLock = async () => {
+        const previous = lockTail;
+        let release;
+        lockTail = new Promise((resolve) => { release = resolve; });
+        await previous;
+        return release;
+      };
+      const makeSerializedConnection = () => {
+        let releaseLock;
+        const connection = makeConnection();
+        connection.execute.mockImplementation(async (query) => {
+          if (/FOR UPDATE/i.test(query)) {
+            releaseLock = await acquireLock();
+            return [[{ ...state }]];
+          }
+          if (/SET usos_actuales = usos_actuales \+ 1/i.test(query)) {
+            if (state.estado !== 'Activo' || state.usos_actuales >= state.max_usos) {
+              return [{ affectedRows: 0 }];
+            }
+            state.usos_actuales += 1;
+            state.estado = 'Agotado';
+            return [{ affectedRows: 1 }];
+          }
+          if (/SET estado = \?/i.test(query)) {
+            state.estado = 'Agotado';
+            return [{ affectedRows: 1 }];
+          }
+          throw new Error(`Consulta no simulada: ${query}`);
+        });
+        connection.commit.mockImplementation(async () => {
+          releaseLock?.();
+        });
+        connection.rollback.mockImplementation(async () => {
+          releaseLock?.();
+        });
+        connections.push(connection);
+        return connection;
+      };
+      db.pool.getConnection.mockImplementation(async () => makeSerializedConnection());
+
+      const results = await Promise.all([
+        repo.consumeCode('RACE-001'),
+        repo.consumeCode('RACE-001'),
+      ]);
+
+      expect(results.filter(result => result.consumed)).toHaveLength(1);
+      expect(results.filter(result => !result.consumed && result.reason === 'exhausted')).toHaveLength(1);
+      expect(state.usos_actuales).toBe(1);
+      expect(connections).toHaveLength(2);
+      expect(connections.every(connection => connection.commit.mock.calls.length === 1)).toBe(true);
+    });
+  });
+
+  // ──────────────────────────────────────────────
   // updateStatus()
   // ──────────────────────────────────────────────
   describe('updateStatus()', () => {

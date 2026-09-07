@@ -1,4 +1,5 @@
 import rateLimit from 'express-rate-limit';
+import crypto from 'node:crypto';
 
 /**
  * Configuraciones de rate limiting reutilizables
@@ -21,6 +22,32 @@ const getIdentifier = (req) => {
   }
   // Si no, usar IP
   return req.ip || req.connection.remoteAddress;
+};
+
+const getClientIp = (req) => req.ip || req.socket?.remoteAddress || req.connection?.remoteAddress || 'unknown';
+
+const hashIdentifier = (value) => crypto
+  .createHash('sha256')
+  .update(String(value).trim().toUpperCase())
+  .digest('hex');
+
+const getInvitationIdentifier = (req) => {
+  const source = req.body?.codigo
+    ?? req.body?.documento
+    ?? req.body?.placa
+    ?? req.query?.codigo
+    ?? req.query?.documento
+    ?? req.query?.placa;
+
+  return source == null || String(source).trim() === '' ? 'missing' : source;
+};
+
+const invitationRateLimitHandler = (req, res) => {
+  res.status(429).json({
+    success: false,
+    error: 'Demasiados intentos de validación. Por favor intenta nuevamente en 15 minutos.',
+    retryAfter: 15,
+  });
 };
 
 /**
@@ -202,6 +229,34 @@ export const publicLookupLimiter = rateLimit({
       retryAfter: 15
     });
   }
+});
+
+/**
+ * Límites independientes para la validación pública de invitaciones.
+ *
+ * El primer límite evita que un cliente distribuya códigos desde una misma
+ * IP; el segundo evita repetir indefinidamente un código desde IPs rotantes.
+ * El identificador del código se hashea para que el store del limiter no
+ * conserve el secreto en claro.
+ */
+export const invitationIpLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  skipSuccessfulRequests: false,
+  keyGenerator: (req) => `invitation_ip_${getClientIp(req)}`,
+  handler: invitationRateLimitHandler,
+});
+
+export const invitationCodeLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  skipSuccessfulRequests: false,
+  keyGenerator: (req) => `invitation_identifier_${hashIdentifier(getInvitationIdentifier(req))}`,
+  handler: invitationRateLimitHandler,
 });
 
 /**

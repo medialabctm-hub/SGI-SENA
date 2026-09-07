@@ -9,6 +9,7 @@ import {
 } from '../controller/invitationCodeController.js';
 import { authenticate } from '../middleware/authMiddleware.js';
 import { requireRole } from '../middleware/authorization.js';
+import { invitationCodeLimiter, invitationIpLimiter } from '../middleware/rateLimiter.js';
 import { z } from 'zod';
 
 const router = express.Router();
@@ -50,7 +51,13 @@ const validate = schema => (req, res, next) => {
 };
 
 // Ruta pública para validar código (usada en el formulario de registro)
-router.post('/validate', validate(validateCodeSchema), validateInvitationCode);
+router.post(
+  '/validate',
+  invitationIpLimiter,
+  invitationCodeLimiter,
+  validate(validateCodeSchema),
+  validateInvitationCode
+);
 
 // Rutas protegidas - Solo administradores
 router.use(authenticate);
