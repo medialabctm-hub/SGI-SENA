@@ -19,6 +19,7 @@ import { JwtService } from '../services/JwtService.js';
 import { AuthService } from '../services/authService.js';
 import { InvitationCodeService } from '../services/invitationCodeService.js';
 import { EquipoService } from '../services/equipoService.js';
+import { config } from '../config/config.js';
 import process from 'process';
 
 // Registrar base de datos (singleton) - usa el wrapper compartido de dbconfig.js
@@ -43,7 +44,11 @@ container.register('jwtService', () => {
   if (!secret) {
     throw new Error('JWT_SECRET no configurado');
   }
-  return new JwtService(secret, process.env.JWT_EXPIRES_IN || '1d');
+  return new JwtService(secret, config.jwt.expiresIn || '1d', {
+    algorithm: config.jwt.algorithm,
+    issuer: config.jwt.issuer,
+    audience: config.jwt.audience,
+  });
 }, true);
 
 // Registrar logger (singleton)

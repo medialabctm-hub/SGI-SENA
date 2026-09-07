@@ -76,7 +76,6 @@ const requiredEnvVars = [
   "BREVO_API_KEY",
   "BREVO_SENDER_EMAIL",
   "JWT_SECRET",
-  "COOKIE_SECRET",
   "CORS_ORIGIN",
   "FRONTEND_URL",
 ];
@@ -164,16 +163,12 @@ export const config = {
     refreshExpiresIn: process.env.JWT_REFRESH_EXPIRES_IN || "7d",
     issuer: process.env.JWT_ISSUER || "gse-app",
     audience: process.env.JWT_AUDIENCE || "gse-users",
+    algorithm: "HS256",
   },
 
   // Configuración de CORS
   cors: {
     origin: process.env.CORS_ORIGIN,
-  },
-
-  // Configuración de cookies
-  cookie: {
-    secret: process.env.COOKIE_SECRET,
   },
 
   // Configuración de correo electrónico (Brevo API)
@@ -211,10 +206,6 @@ export const validateConfig = () => {
       errors.push(
         "JWT_SECRET debe ser configurado con un valor seguro en producción",
       );
-    }
-
-    if (!process.env.COOKIE_SECRET) {
-      errors.push("COOKIE_SECRET es requerido en producción");
     }
 
     if (!process.env.CORS_ORIGIN) {

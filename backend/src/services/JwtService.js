@@ -10,12 +10,25 @@ import jwt from 'jsonwebtoken';
  * permitiendo cambiar la implementación sin afectar otros servicios.
  */
 export class JwtService {
-  constructor(secret, expiresIn = '1d') {
+  constructor(secret, expiresIn = '1d', options = {}) {
     if (!secret) {
       throw new Error('JWT_SECRET es requerido');
     }
+
+    // Acepta el constructor histórico (secret, expiresIn) y permite que DI
+    // pase el contrato JWT explícito sin convertirlo en una opción del token.
+    const serviceOptions = expiresIn && typeof expiresIn === 'object'
+      ? expiresIn
+      : options;
+    const configuredExpiresIn = expiresIn && typeof expiresIn === 'object'
+      ? expiresIn.expiresIn || '1d'
+      : expiresIn;
+
     this.secret = secret;
-    this.expiresIn = expiresIn;
+    this.expiresIn = configuredExpiresIn;
+    this.algorithm = serviceOptions.algorithm || 'HS256';
+    this.issuer = serviceOptions.issuer || 'gse-app';
+    this.audience = serviceOptions.audience || 'gse-users';
   }
 
   /**
@@ -25,9 +38,14 @@ export class JwtService {
    * @returns {string} Token JWT
    */
   sign(payload, options = {}) {
+    const { expiresIn, algorithm, issuer, audience, ...additionalOptions } = options;
+
     return jwt.sign(payload, this.secret, {
-      expiresIn: options.expiresIn || this.expiresIn,
-      ...options,
+      ...additionalOptions,
+      expiresIn: expiresIn || this.expiresIn,
+      algorithm: this.algorithm,
+      issuer: this.issuer,
+      audience: this.audience,
     });
   }
 
@@ -39,7 +57,11 @@ export class JwtService {
    */
   verify(token) {
     try {
-      return jwt.verify(token, this.secret);
+      return jwt.verify(token, this.secret, {
+        algorithms: [this.algorithm],
+        issuer: this.issuer,
+        audience: this.audience,
+      });
     } catch (error) {
       if (error.name === 'TokenExpiredError') {
         throw new Error('Token expirado');

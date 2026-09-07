@@ -40,7 +40,6 @@ services:
       DB_NAME: ${DB_NAME:-GestionEquipo}
       DB_PORT: 3306
       JWT_SECRET: ${JWT_SECRET:-your-super-secret-jwt-key-change-in-production}
-      COOKIE_SECRET: ${COOKIE_SECRET:-your-cookie-secret-change-in-production}
       EMAIL_USER: ${EMAIL_USER}
       EMAIL_PASSWORD: ${EMAIL_PASSWORD}
       BREVO_API_KEY: ${BREVO_API_KEY}

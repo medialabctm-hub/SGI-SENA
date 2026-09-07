@@ -90,11 +90,13 @@ DB_NAME=${{MySQL.MYSQLDATABASE}}
 
 # Generar valores fuertes: openssl rand -base64 48
 JWT_SECRET=<secreto-fuerte-1>
-COOKIE_SECRET=<secreto-fuerte-2>
 JWT_EXPIRES_IN=24h
 JWT_REFRESH_EXPIRES_IN=7d
 JWT_ISSUER=gse-app
 JWT_AUDIENCE=gse-users
+
+# La cookie httpOnly sgi_session transporta el JWT firmado; cookie-parser solo
+# la parsea y no requiere un secreto adicional para cookies firmadas.
 
 # API key real de https://app.brevo.com/settings/keys/api
 # (sin ella el servidor NO arranca; con placeholder arranca pero no envía correos)

@@ -99,7 +99,6 @@ DB_USER=tu_usuario
 DB_PASSWORD=tu_contraseña
 DB_NAME=GestionEquipo
 JWT_SECRET=tu-secreto-jwt-seguro
-COOKIE_SECRET=tu-secreto-cookie-seguro
 CORS_ORIGIN=http://localhost:5173
 FRONTEND_URL=http://localhost:5173
 ```

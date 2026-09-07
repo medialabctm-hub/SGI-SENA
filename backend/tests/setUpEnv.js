@@ -10,7 +10,6 @@ process.env.DB_PASSWORD = process.env.DB_PASSWORD || 'test';
 process.env.DB_NAME = process.env.DB_NAME || 'test';
 process.env.DB_PORT = process.env.DB_PORT || '3306';
 process.env.JWT_SECRET = process.env.JWT_SECRET || 'test-secret-key';
-process.env.COOKIE_SECRET = process.env.COOKIE_SECRET || 'test-cookie-secret';
 process.env.CORS_ORIGIN = process.env.CORS_ORIGIN || 'http://localhost:5173';
 process.env.FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
 process.env.BREVO_API_KEY = process.env.BREVO_API_KEY || 'test-brevo-key';

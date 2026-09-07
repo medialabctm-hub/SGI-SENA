@@ -113,6 +113,7 @@ const applySecurityMiddleware = (app) => {
   app.use(xssClean());
   app.use(express.json({ limit: '10mb' }));
   app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+  // La cookie httpOnly contiene un JWT firmado; no se usan cookies firmadas.
   app.use(cookieParser());
 
   // Los uploads privados conservan sus URLs históricas, pero nunca se sirven
