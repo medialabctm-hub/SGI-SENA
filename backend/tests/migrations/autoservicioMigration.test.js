@@ -6,6 +6,7 @@ import { fileURLToPath } from 'url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const migrationPath = path.resolve(__dirname, '../../scripts/migrate-autoservicio-cierre-clase.sql');
 const serverPath = path.resolve(__dirname, '../../server.js');
+const appPath = path.resolve(__dirname, '../../src/app.js');
 
 async function importControllerWithDb(execute) {
   jest.resetModules();
@@ -163,7 +164,10 @@ describe('MDL-77: bootstrap y readiness de autoservicio', () => {
 
   it('conecta el healthcheck del servidor con un helper testeable de readiness', async () => {
     const server = await readFile(serverPath, 'utf8');
+    const app = await readFile(appPath, 'utf8');
 
-    expect(server).toMatch(/buildAutoservicioHealth/);
+    expect(server).toMatch(/createApp/);
+    expect(app).toMatch(/buildAutoservicioHealth/);
+    expect(app).toMatch(/app\.get\(['"]\/health['"]/);
   });
 });

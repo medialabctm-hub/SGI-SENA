@@ -44,6 +44,19 @@ describe('smoke test de Railway', () => {
     expect(log.log).toHaveBeenCalledWith(expect.stringMatching(/mutación/i));
   });
 
+  it('detiene el smoke cuando autoservicio no está listo', async () => {
+    const calls = [];
+    const fetchImpl = jest.fn(async (url) => {
+      calls.push(url);
+      return jsonResponse({ status: 'not_ready', autoservicio: { ready: false } }, 503);
+    });
+
+    await expect(runSmoke({ env: baseEnvironment, fetchImpl, log: { log: jest.fn() } }))
+      .rejects.toThrow(/Health check falló/);
+
+    expect(calls).toEqual(['https://railway.example/health']);
+  });
+
   it('ejecuta el préstamo controlado con la identidad idempotente configurada', async () => {
     const calls = [];
     const fetchImpl = jest.fn(async (url, options = {}) => {
