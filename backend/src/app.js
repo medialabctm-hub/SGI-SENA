@@ -13,18 +13,19 @@ import xssClean from 'xss-clean';
 import morgan from 'morgan';
 import cookieParser from 'cookie-parser';
 import process from 'process';
-import path from 'path';
-import { fileURLToPath } from 'url';
-import { dirname } from 'path';
 
 import { config } from './config/config.js';
+import { PERMISSIONS } from './config/permissions.js';
 import { errorHandler } from './utils/errors.js';
 import { buildAutoservicioHealth } from './utils/autoservicioHealth.js';
 import { getAutoservicioReadiness } from './controller/equiposController.js';
+import { serveEnvironmentImage, serveProfileImage } from './controller/privateUploadController.js';
 
 // DI y email se cargan al importar server.js; en tests solo necesitamos la app.
 import './di/setup.js';
 
+import { authenticate } from './middleware/authMiddleware.js';
+import { requirePermission } from './middleware/authorization.js';
 import authRoutes from './routes/authRoutes.js';
 import equiposRoutes from './routes/equiposRoutes.js';
 import ambientesRoutes from './routes/ambientesRoutes.js';
@@ -114,11 +115,15 @@ const applySecurityMiddleware = (app) => {
   app.use(express.urlencoded({ extended: true, limit: '10mb' }));
   app.use(cookieParser());
 
-  const __filenameApp = fileURLToPath(import.meta.url);
-  const __dirnameApp = dirname(__filenameApp);
-  // Las evidencias de equipos se entregan mediante el endpoint autenticado.
-  app.use('/uploads/ambientes', express.static(path.join(__dirnameApp, '..', 'uploads', 'ambientes')));
-  app.use('/uploads/perfiles', express.static(path.join(__dirnameApp, '..', 'uploads', 'perfiles')));
+  // Los uploads privados conservan sus URLs históricas, pero nunca se sirven
+  // como static: metadata, sesión y permisos preceden a cualquier sendFile.
+  app.get('/uploads/perfiles/:filename', authenticate, serveProfileImage);
+  app.get(
+    '/uploads/ambientes/:filename',
+    authenticate,
+    requirePermission(PERMISSIONS.AMBIENTES.VIEW),
+    serveEnvironmentImage
+  );
 
   if (process.env.NODE_ENV === 'development') {
     app.use(morgan('dev'));
