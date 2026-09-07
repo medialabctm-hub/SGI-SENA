@@ -34,6 +34,27 @@ quedan separadas como gaps y no se presentan como verificadas.
 - `git diff --check` y revisión de nombres: no hay lockfiles nuevos ni cambios
   ajenos al alcance de la wave.
 
+## Linear audit
+
+Después de integrar los tres planes se leyó cada issue con `orca linear issue
+--full --json` y se verificó estado, proyecto, padre, etiquetas, comentarios y
+attachments. Las seis issues de la PR #29 quedaron así:
+
+| Issue | Estado | Padre | Etiquetas | Comentarios | Attachment |
+|---|---|---|---|---:|---|
+| MDL-125 | In Review | MDL-15 | Security, Backend, Improvement | 1 | PR #29 |
+| MDL-128 | In Review | MDL-15 | Security, Operations, Improvement | 1 | PR #29 |
+| MDL-129 | In Review | MDL-9 | Build, Improvement | 1 | PR #29 |
+| MDL-127 | In Review | MDL-15 | Security, Frontend, Improvement | 1 | PR #29 |
+| MDL-131 | In Review | MDL-15 | Security, Backend, Improvement | 1 | PR #29 |
+| MDL-134 | In Review | MDL-9 | Operations, Release, Improvement | 1 | PR #29 |
+
+Todas pertenecen al proyecto `SGI – Evidencias y Cierre`. Los comentarios
+registran el commit integrado, las pruebas ejecutadas y los gaps restantes;
+las referencias a PR #29 están deduplicadas a una por issue. La estructura
+respeta la jerarquía existente: MDL-15 agrupa hallazgos de seguridad y MDL-9
+agrupa deploy/validación final.
+
 ## Corrections during verification
 
 - `ProtectedRoute` ahora distingue un 401 inicial sin perfil local de una sesión

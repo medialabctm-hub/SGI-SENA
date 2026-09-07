@@ -32,4 +32,4 @@ Plans:
 
 | Phase | Plans | Status | Notes |
 |---|---:|---|---|
-| 1 | 3/3 | Complete | Tres commits integrados en el coordinador; Linear y PR #29 quedan en revisión |
+| 1 | 3/3 | Complete | Tres commits integrados; las seis issues asociadas a PR #29 tienen metadata normalizada, comentarios de evidencia y estado `In Review` |
