@@ -32,6 +32,7 @@ describe('Login (MDL-127: JWT -> cookie httpOnly)', () => {
     }), { status: 200, headers: { 'Content-Type': 'application/json' } }));
     vi.stubGlobal('fetch', fetchMock);
 
+    renderLogin();
     await fillAndSubmit();
 
     expect(await screen.findByText('Inicio de sesión exitoso')).toBeInTheDocument();
@@ -52,6 +53,7 @@ describe('Login (MDL-127: JWT -> cookie httpOnly)', () => {
     }), { status: 200, headers: { 'Content-Type': 'application/json' } }));
     vi.stubGlobal('fetch', fetchMock);
 
+    renderLogin();
     await fillAndSubmit();
 
     await screen.findByText('Inicio de sesión exitoso');
@@ -71,6 +73,7 @@ describe('Login (MDL-127: JWT -> cookie httpOnly)', () => {
     }), { status: 200, headers: { 'Content-Type': 'application/json' } }));
     vi.stubGlobal('fetch', fetchMock);
 
+    renderLogin();
     await fillAndSubmit();
     await screen.findByText('Inicio de sesión exitoso');
 

@@ -20,6 +20,8 @@ export default function ProtectedRoute({ children }) {
         return;
       }
 
+      const hadLocalSession = Boolean(localStorage.getItem('user'));
+
       try {
         // Verificar si el usuario requiere cambio de contraseña.
         // La cookie httpOnly de sesión viaja automáticamente con credentials
@@ -36,6 +38,14 @@ export default function ProtectedRoute({ children }) {
         }
       } catch (error) {
         if (error?.status === 401) {
+          // En la primera visita puede no existir siquiera el perfil local.
+          // En ese caso no hay una sesión previa que notificar: denegar la ruta
+          // para que Navigate lleve inmediatamente a login.
+          if (!hadLocalSession) {
+            setAuthorized(false);
+            setLoading(false);
+            return;
+          }
           // parseApiResponse ya disparó handleSessionExpiration: limpió la sesión y
           // programó el hard-redirect a /login en 1.5s. Mostramos el mismo toast que
           // ve el resto de la app y mantenemos la pantalla de carga (no loading=false,
