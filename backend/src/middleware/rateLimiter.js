@@ -179,6 +179,32 @@ export const searchLimiter = rateLimit({
 });
 
 /**
+ * Rate limiter estricto para verificación pública de documentos (sin autenticación)
+ * Mismo umbral que authLimiter: este endpoint permite adivinar números de documento
+ * válidos por fuerza bruta, un riesgo de enumeración equivalente al de un login
+ * 10 intentos cada 15 minutos por IP
+ */
+export const publicLookupLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutos
+  max: 10, // máximo 10 intentos
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    success: false,
+    error: 'Demasiados intentos de verificación. Por favor intenta nuevamente en 15 minutos.',
+    retryAfter: 15
+  },
+  keyGenerator: (req) => getIdentifier(req),
+  handler: (req, res) => {
+    res.status(429).json({
+      success: false,
+      error: 'Demasiados intentos de verificación. Por favor intenta nuevamente en 15 minutos.',
+      retryAfter: 15
+    });
+  }
+});
+
+/**
  * Rate limiter para webhooks externos
  * 100 peticiones por minuto
  */

@@ -20,16 +20,34 @@ const {
   readLimiter,
   strictLimiter,
   searchLimiter,
+  publicLookupLimiter,
   webhookLimiter,
 } = await import('../../src/middleware/rateLimiter.js');
 
 describe('rateLimiter config', () => {
   it('debe registrar todos los limiters esperados', () => {
-    expect(rateLimitMock).toHaveBeenCalledTimes(8);
+    expect(rateLimitMock).toHaveBeenCalledTimes(9);
     expect(authLimiter.__options.windowMs).toBe(15 * 60 * 1000);
     expect(registerLimiter.__options.windowMs).toBe(60 * 60 * 1000);
     expect(passwordResetLimiter.__options.windowMs).toBe(60 * 60 * 1000);
     expect(webhookLimiter.__options.max).toBe(100);
+  });
+
+  it('publicLookupLimiter debe ser tan estricto como authLimiter (10 intentos / 15 min por IP)', () => {
+    expect(publicLookupLimiter.__options.windowMs).toBe(15 * 60 * 1000);
+    expect(publicLookupLimiter.__options.max).toBe(10);
+
+    const key = publicLookupLimiter.__options.keyGenerator({
+      user: null,
+      ip: '10.2.2.2',
+      connection: { remoteAddress: '10.0.0.2' },
+    });
+    expect(key).toBe('10.2.2.2');
+
+    const res = { status: jest.fn().mockReturnThis(), json: jest.fn().mockReturnThis() };
+    publicLookupLimiter.__options.handler({}, res);
+    expect(res.status).toHaveBeenCalledWith(429);
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ success: false, retryAfter: 15 }));
   });
 
   it('authLimiter keyGenerator debe usar user_<id> cuando hay usuario autenticado', () => {

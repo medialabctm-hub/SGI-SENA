@@ -59,6 +59,7 @@ jest.mock('../../src/middleware/rateLimiter.js', () => ({
   strictLimiter: noop,
   searchLimiter: noop,
   webhookLimiter: noop,
+  publicLookupLimiter: noop,
   passwordResetLimiter: noop,
 }), { virtual: true });
 
@@ -169,7 +170,8 @@ jest.mock('../../src/controller/mantenimientoController.js', () => ({
 }), { virtual: true });
 
 jest.mock('../../src/controller/aprendicesController.js', () => ({
-  listarAprendices: jest.fn(), actualizarAprendiz: jest.fn(), eliminarAprendiz: jest.fn(),
+  listarAprendices: jest.fn(), crearAprendiz: jest.fn(), actualizarAprendiz: jest.fn(),
+  eliminarAprendiz: jest.fn(), verificarAprendizPorDocumento: jest.fn(),
 }), { virtual: true });
 
 jest.mock('../../src/controller/clasesController.js', () => ({
