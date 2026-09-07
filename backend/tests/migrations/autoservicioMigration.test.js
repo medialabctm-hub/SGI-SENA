@@ -5,6 +5,7 @@ import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const migrationPath = path.resolve(__dirname, '../../scripts/migrate-autoservicio-cierre-clase.sql');
+const schemaPath = path.resolve(__dirname, '../../../BD/SGI_SENA.sql');
 const serverPath = path.resolve(__dirname, '../../server.js');
 const appPath = path.resolve(__dirname, '../../src/app.js');
 
@@ -47,6 +48,22 @@ describe('MDL-77: bootstrap y readiness de autoservicio', () => {
     expect(sql).not.toMatch(/^\s*DROP PROCEDURE\b/im);
   });
 
+  it('serializa el cierre y hace no-op un reintento de una clase ya finalizada', async () => {
+    const sql = await readFile(migrationPath, 'utf8');
+
+    expect(sql).toMatch(/SELECT\s+id_ambiente,\s*id_instructor,\s*estado_clase[\s\S]*FOR UPDATE/i);
+    expect(sql).toMatch(/DECLARE EXIT HANDLER FOR SQLEXCEPTION[\s\S]*ROLLBACK;/i);
+    expect(sql).toMatch(/IF v_estado_clase = 'Finalizada' THEN[\s\S]*no se aplicaron cambios\./i);
+    expect(sql).toMatch(/IF v_estado_clase <> 'En Curso' THEN/i);
+  });
+
+  it('mantiene la misma guarda V2 en el esquema fuente versionado', async () => {
+    const sql = await readFile(schemaPath, 'utf8');
+
+    expect(sql).toMatch(/COMMENT 'AUTOSERVICIO_CIERRE_V2'[\s\S]*SELECT id_ambiente, id_instructor, estado_clase[\s\S]*FOR UPDATE/i);
+    expect(sql).toMatch(/COMMENT 'AUTOSERVICIO_CIERRE_V2'[\s\S]*no se aplicaron cambios\./i);
+  });
+
   it('reporta la versión cuando el esquema limpio ya contiene columnas, índices y rutina requeridos', async () => {
     const execute = jest.fn(async (sql) => {
       if (/COLUMN_NAME = 'id_usuario'/.test(sql)) return [[{ IS_NULLABLE: 'YES' }]];
@@ -66,14 +83,14 @@ describe('MDL-77: bootstrap y readiness de autoservicio', () => {
           { INDEX_NAME: 'uq_autoservicio_idempotency_key', COLUMN_NAME: 'idempotency_key', SEQ_IN_INDEX: 1, NON_UNIQUE: 0 }
         ]];
       }
-      if (/INFORMATION_SCHEMA\.ROUTINES/.test(sql)) return [[{ ROUTINE_COMMENT: 'AUTOSERVICIO_CIERRE_V1' }]];
+      if (/INFORMATION_SCHEMA\.ROUTINES/.test(sql)) return [[{ ROUTINE_COMMENT: 'AUTOSERVICIO_CIERRE_V2' }]];
       return [[]];
     });
     const { ensureAutoservicioSchema } = await importControllerWithDb(execute);
 
     await expect(ensureAutoservicioSchema({ execute })).resolves.toEqual({
       ready: true,
-      migrationVersion: 'AUTOSERVICIO_CIERRE_V1',
+      migrationVersion: 'AUTOSERVICIO_CIERRE_V2',
       missing: []
     });
   });
@@ -103,7 +120,7 @@ describe('MDL-77: bootstrap y readiness de autoservicio', () => {
     const { ensureAutoservicioSchema } = await importControllerWithDb(execute);
 
     await expect(ensureAutoservicioSchema({ execute })).rejects.toThrow(
-      /AUTOSERVICIO_CIERRE_V1.*migrate-autoservicio-cierre-clase\.js/i
+      /AUTOSERVICIO_CIERRE_V2.*migrate-autoservicio-cierre-clase\.js/i
     );
   });
 
@@ -126,7 +143,7 @@ describe('MDL-77: bootstrap y readiness de autoservicio', () => {
           { INDEX_NAME: 'uq_autoservicio_idempotency_key', COLUMN_NAME: 'idempotency_key', SEQ_IN_INDEX: 1, NON_UNIQUE: 1 }
         ]];
       }
-      if (/INFORMATION_SCHEMA\.ROUTINES/.test(sql)) return [[{ ROUTINE_COMMENT: 'AUTOSERVICIO_CIERRE_V1' }]];
+      if (/INFORMATION_SCHEMA\.ROUTINES/.test(sql)) return [[{ ROUTINE_COMMENT: 'AUTOSERVICIO_CIERRE_V2' }]];
       return [[]];
     });
     const { ensureAutoservicioSchema } = await importControllerWithDb(execute);
@@ -152,7 +169,7 @@ describe('MDL-77: bootstrap y readiness de autoservicio', () => {
         { INDEX_NAME: 'uq_autoservicio_idempotency_key', COLUMN_NAME: 'idempotency_key', SEQ_IN_INDEX: 1, NON_UNIQUE: 0 },
         { INDEX_NAME: 'uq_autoservicio_idempotency_key', COLUMN_NAME: 'codigo_equipo', SEQ_IN_INDEX: 2, NON_UNIQUE: 0 }
       ]];
-      if (/INFORMATION_SCHEMA\.ROUTINES/.test(sql)) return [[{ ROUTINE_COMMENT: 'AUTOSERVICIO_CIERRE_V1' }]];
+      if (/INFORMATION_SCHEMA\.ROUTINES/.test(sql)) return [[{ ROUTINE_COMMENT: 'AUTOSERVICIO_CIERRE_V2' }]];
       return [[]];
     });
     const { ensureAutoservicioSchema } = await importControllerWithDb(execute);

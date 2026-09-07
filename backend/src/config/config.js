@@ -37,7 +37,11 @@ if (!process.env.JWT_ISSUER) {
 if (!process.env.JWT_AUDIENCE) {
   process.env.JWT_AUDIENCE = 'gse-users';
 }
-  
+
+// En el contenedor de Railway PORT pertenece al proceso público (nginx).
+// BACKEND_PORT tiene prioridad para que Node conserve su puerto interno.
+const getBackendPort = () => process.env.BACKEND_PORT || process.env.PORT || 3000;
+
 // Variables de base de datos: acepta tanto formato estándar como Railway
 const getDbConfig = () => ({
   host: process.env.DB_HOST || process.env.MYSQLHOST || process.env.MYSQL_HOST,
@@ -138,9 +142,8 @@ const missingEnvVars = requiredEnvVars.filter((envVar) => {
 export const config = {
   // Configuración del servidor
   server: {
-    // En producción con Docker, el backend siempre usa 3000 (interno)
-    // Railway asigna PORT para nginx, no para el backend
-    PORT: process.env.BACKEND_PORT || process.env.PORT || 3000,
+    // BACKEND_PORT es interno (3000 por defecto); PORT pertenece a nginx/Railway.
+    PORT: getBackendPort(),
     mode: process.env.NODE_ENV,
   },
 
@@ -228,12 +231,12 @@ export const getConfig = (env = process.env.NODE_ENV) => {
 
   if (env === "production") {
     // Configuraciones específicas para producción
-    currentConfig.server.port = process.env.PORT || 3000;
+    currentConfig.server.port = getBackendPort();
     currentConfig.cors.origin = process.env.CORS_ORIGIN;
     currentConfig.jwt.secret = process.env.JWT_SECRET;
   } else if (env === "development") {
     // Configuraciones específicas para desarrollo
-    currentConfig.server.port = process.env.PORT || 3000;
+    currentConfig.server.port = getBackendPort();
     currentConfig.cors.origin =
       process.env.CORS_ORIGIN || "http://localhost:5173";
     currentConfig.logging.level = "debug";

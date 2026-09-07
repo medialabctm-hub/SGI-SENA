@@ -87,7 +87,7 @@ describe('contratos de asignación y autoservicio', () => {
         { INDEX_NAME: 'idx_id_aprendiz', COLUMN_NAME: 'id_aprendiz', SEQ_IN_INDEX: 1, NON_UNIQUE: 1 },
         { INDEX_NAME: 'uq_autoservicio_idempotency_key', COLUMN_NAME: 'idempotency_key', SEQ_IN_INDEX: 1, NON_UNIQUE: 0 }
       ]];
-      // Sin marcador AUTOSERVICIO_CIERRE_V1: la rutina de cierre todavía no fue migrada.
+      // Sin marcador AUTOSERVICIO_CIERRE_V2: la rutina de cierre todavía no fue migrada.
       if (/INFORMATION_SCHEMA\.ROUTINES/.test(sql)) return [[{ ROUTINE_COMMENT: '' }]];
       return [[]];
     });
@@ -97,7 +97,7 @@ describe('contratos de asignación y autoservicio', () => {
 
     expect(response.status).toHaveBeenCalledWith(503);
     expect(response.json).toHaveBeenCalledWith(expect.objectContaining({
-      userMessage: expect.stringMatching(/AUTOSERVICIO_CIERRE_V1.*migrate-autoservicio-cierre-clase\.js/i)
+      userMessage: expect.stringMatching(/AUTOSERVICIO_CIERRE_V2.*migrate-autoservicio-cierre-clase\.js/i)
     }));
     // No debe abrir conexión/transacción: el gate de readiness corta antes de escribir nada.
     expect(mockGetConnection).not.toHaveBeenCalled();
@@ -118,7 +118,7 @@ describe('contratos de asignación y autoservicio', () => {
         { INDEX_NAME: 'idx_id_aprendiz', COLUMN_NAME: 'id_aprendiz', SEQ_IN_INDEX: 1, NON_UNIQUE: 1 },
         { INDEX_NAME: 'uq_autoservicio_idempotency_key', COLUMN_NAME: 'idempotency_key', SEQ_IN_INDEX: 1, NON_UNIQUE: 0 }
       ]];
-      if (/INFORMATION_SCHEMA\.ROUTINES/.test(sql)) return [[{ ROUTINE_COMMENT: 'AUTOSERVICIO_CIERRE_V1' }]];
+      if (/INFORMATION_SCHEMA\.ROUTINES/.test(sql)) return [[{ ROUTINE_COMMENT: 'AUTOSERVICIO_CIERRE_V2' }]];
       return [[]];
     });
 

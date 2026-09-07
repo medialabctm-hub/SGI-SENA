@@ -122,6 +122,7 @@ describe('getConfig()', () => {
   beforeEach(() => {
     originalEnv = {
       PORT: process.env.PORT,
+      BACKEND_PORT: process.env.BACKEND_PORT,
       CORS_ORIGIN: process.env.CORS_ORIGIN,
       JWT_SECRET: process.env.JWT_SECRET,
     };
@@ -130,6 +131,8 @@ describe('getConfig()', () => {
   afterEach(() => {
     if (originalEnv.PORT !== undefined) process.env.PORT = originalEnv.PORT;
     else delete process.env.PORT;
+    if (originalEnv.BACKEND_PORT !== undefined) process.env.BACKEND_PORT = originalEnv.BACKEND_PORT;
+    else delete process.env.BACKEND_PORT;
     if (originalEnv.CORS_ORIGIN !== undefined) process.env.CORS_ORIGIN = originalEnv.CORS_ORIGIN;
     else delete process.env.CORS_ORIGIN;
     if (originalEnv.JWT_SECRET !== undefined) process.env.JWT_SECRET = originalEnv.JWT_SECRET;
@@ -165,6 +168,15 @@ describe('getConfig()', () => {
     process.env.JWT_SECRET = 'jwt-secret-production-test';
     const cfg = getConfig('production');
     expect(cfg.jwt.secret).toBe('jwt-secret-production-test');
+  });
+
+  it('debe preferir BACKEND_PORT sobre el PORT público de Railway', () => {
+    process.env.PORT = '8080';
+    process.env.BACKEND_PORT = '3000';
+
+    const cfg = getConfig('production');
+
+    expect(cfg.server.port).toBe('3000');
   });
 
   it('debe retornar la configuración por defecto para un entorno desconocido', () => {

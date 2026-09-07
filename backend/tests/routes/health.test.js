@@ -12,7 +12,7 @@ describe('GET /health', () => {
     const readyApp = createApp({
       readinessProvider: () => ({
         ready: true,
-        migrationVersion: 'AUTOSERVICIO_CIERRE_V1',
+        migrationVersion: 'AUTOSERVICIO_CIERRE_V2',
         missing: [],
       }),
     });
@@ -31,7 +31,7 @@ describe('GET /health', () => {
     const notReadyApp = createApp({
       readinessProvider: () => ({
         ready: false,
-        migrationVersion: 'AUTOSERVICIO_CIERRE_V1',
+        migrationVersion: 'AUTOSERVICIO_CIERRE_V2',
         missing: ['marcador de migración'],
       }),
     });

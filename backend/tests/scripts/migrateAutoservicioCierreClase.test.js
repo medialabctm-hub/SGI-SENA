@@ -1,6 +1,6 @@
 import { jest } from '@jest/globals';
 
-const migrationSql = "CREATE PROCEDURE sp_finalizar_clase() COMMENT 'AUTOSERVICIO_CIERRE_V1' BEGIN SELECT 1; END";
+const migrationSql = "CREATE PROCEDURE sp_finalizar_clase() COMMENT 'AUTOSERVICIO_CIERRE_V2' BEGIN SELECT 1; END";
 
 describe('runner MySQL 8 de migración de cierre de autoservicio', () => {
   it('crea conexión solo con DB_* sin importar configuración global de la aplicación', async () => {
@@ -22,7 +22,7 @@ describe('runner MySQL 8 de migración de cierre de autoservicio', () => {
 
   it('no altera la rutina cuando el marcador ya está instalado', async () => {
     const { runAutoservicioCierreMigration } = await import('../../scripts/migrate-autoservicio-cierre-clase.js');
-    const connection = { query: jest.fn().mockResolvedValueOnce([[{ ROUTINE_COMMENT: 'AUTOSERVICIO_CIERRE_V1' }]]) };
+    const connection = { query: jest.fn().mockResolvedValueOnce([[{ ROUTINE_COMMENT: 'AUTOSERVICIO_CIERRE_V2' }]]) };
 
     await expect(runAutoservicioCierreMigration({ connection, migrationSql })).resolves.toEqual({ applied: false });
     expect(connection.query).toHaveBeenCalledTimes(1);
@@ -70,7 +70,7 @@ describe('runner MySQL 8 de migración de cierre de autoservicio', () => {
         calls.push(sql);
         if (/SELECT ROUTINE_COMMENT/.test(sql)) return [[routineComment ? { ROUTINE_COMMENT: routineComment } : undefined]];
         if (/SHOW CREATE PROCEDURE/.test(sql)) throw Object.assign(new Error('missing'), { code: 'ER_SP_DOES_NOT_EXIST' });
-        if (/CREATE PROCEDURE sp_finalizar_clase\(\)/.test(sql)) routineComment = 'AUTOSERVICIO_CIERRE_V1';
+        if (/CREATE PROCEDURE sp_finalizar_clase\(\)/.test(sql)) routineComment = 'AUTOSERVICIO_CIERRE_V2';
         return [[]];
       })
     };

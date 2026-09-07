@@ -4209,7 +4209,7 @@ export async function registrarUsoEquipoExterno(req, res) {
 // AUTOSERVICIO DE APRENDICES (SIN CUENTA)
 // ============================================
 
-const AUTOSERVICIO_CIERRE_VERSION = 'AUTOSERVICIO_CIERRE_V1';
+const AUTOSERVICIO_CIERRE_VERSION = 'AUTOSERVICIO_CIERRE_V2';
 const AUTOSERVICIO_COLUMNAS = ['documento_externo', 'nombre_externo', 'id_aprendiz', 'idempotency_key'];
 const AUTOSERVICIO_INDICES_REQUERIDOS = [
   { nombre: 'idx_documento_externo', columna: 'documento_externo', nonUnique: 1, etiqueta: 'índice idx_documento_externo sobre documento_externo' },

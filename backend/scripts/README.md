@@ -15,7 +15,7 @@ frontend. No ejecute
 es la definición que el runner mysql2 envía como un único `CREATE PROCEDURE`.
 
 El runner consulta `ROUTINE_COMMENT`. Si ya encuentra
-`AUTOSERVICIO_CIERRE_V1`, no modifica nada. Si debe reemplazar la rutina,
+`AUTOSERVICIO_CIERRE_V2`, no modifica nada. Si debe reemplazar la rutina,
 primero crea y elimina una rutina temporal de validación; después guarda el
 resultado de `SHOW CREATE PROCEDURE`, crea la nueva versión y restaura ese
 respaldo si la creación falla tras el `DROP`. MySQL no ofrece reemplazo atómico

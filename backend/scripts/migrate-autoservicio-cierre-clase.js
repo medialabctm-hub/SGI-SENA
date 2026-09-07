@@ -3,7 +3,7 @@ import mysql from 'mysql2/promise';
 import path from 'path';
 import { fileURLToPath, pathToFileURL } from 'url';
 
-const VERSION = 'AUTOSERVICIO_CIERRE_V1';
+const VERSION = 'AUTOSERVICIO_CIERRE_V2';
 const ROUTINE = 'sp_finalizar_clase';
 const VALIDATION_ROUTINE = 'sp_finalizar_clase_mdl77_validation';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));

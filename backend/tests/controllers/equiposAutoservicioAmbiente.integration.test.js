@@ -72,7 +72,7 @@ function baseRouter({ ambientesFicha }) {
       { INDEX_NAME: 'idx_id_aprendiz', COLUMN_NAME: 'id_aprendiz', SEQ_IN_INDEX: 1, NON_UNIQUE: 1 },
       { INDEX_NAME: 'uq_autoservicio_idempotency_key', COLUMN_NAME: 'idempotency_key', SEQ_IN_INDEX: 1, NON_UNIQUE: 0 }
     ]];
-    if (/INFORMATION_SCHEMA\.ROUTINES/.test(sql)) return [[{ ROUTINE_COMMENT: 'AUTOSERVICIO_CIERRE_V1' }]];
+    if (/INFORMATION_SCHEMA\.ROUTINES/.test(sql)) return [[{ ROUTINE_COMMENT: 'AUTOSERVICIO_CIERRE_V2' }]];
     if (/FROM Aprendices\s+WHERE documento/.test(sql)) return [[APRENDIZ]];
     if (/FROM Elementos\s+WHERE placa/.test(sql)) return [[EQUIPO]];
     if (/LEFT JOIN Estado_Equipo/.test(sql)) return [[{ estado_fisico: 'Bueno', estado_operativo: 'Disponible' }]];

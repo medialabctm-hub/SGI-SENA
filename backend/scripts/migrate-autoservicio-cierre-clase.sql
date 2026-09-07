@@ -4,14 +4,15 @@
 -- The runner reads this single CREATE PROCEDURE statement through mysql2,
 -- validates it using a temporary routine, and restores the prior routine if
 -- replacing sp_finalizar_clase fails. The marker is ROUTINE_COMMENT:
---   AUTOSERVICIO_CIERRE_V1
+--   AUTOSERVICIO_CIERRE_V2
 -- It is intentionally free of DELIMITER, PREPARE, EXECUTE and DROP statements.
 
 CREATE PROCEDURE sp_finalizar_clase(IN p_id_clase INT, IN p_fecha_fin_real DATETIME)
-COMMENT 'AUTOSERVICIO_CIERRE_V1'
+COMMENT 'AUTOSERVICIO_CIERRE_V2'
 BEGIN
-    DECLARE v_id_ambiente INT;
-    DECLARE v_id_instructor INT;
+    DECLARE v_id_ambiente INT DEFAULT NULL;
+    DECLARE v_id_instructor INT DEFAULT NULL;
+    DECLARE v_estado_clase VARCHAR(30) DEFAULT NULL;
     DECLARE v_fecha_fin DATETIME;
     DECLARE v_detalles_uso JSON;
     DECLARE v_array_length INT;
@@ -26,17 +27,27 @@ BEGIN
 
     START TRANSACTION;
 
-    SELECT id_ambiente, id_instructor INTO v_id_ambiente, v_id_instructor
-    FROM Clases WHERE id_clase = p_id_clase;
+    SELECT id_ambiente, id_instructor, estado_clase
+    INTO v_id_ambiente, v_id_instructor, v_estado_clase
+    FROM Clases WHERE id_clase = p_id_clase FOR UPDATE;
 
     IF v_id_ambiente IS NULL THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Clase no encontrada';
     END IF;
-    IF p_fecha_fin_real IS NULL THEN
-        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'fecha_fin_real es obligatoria. El sistema es 100% manual.';
-    END IF;
 
-    SET v_fecha_fin = p_fecha_fin_real;
+    IF v_estado_clase = 'Finalizada' THEN
+        -- Reintentos posteriores no vuelven a escribir fechas ni estados.
+        COMMIT;
+        SELECT 'Clase ya estaba finalizada; no se aplicaron cambios.' AS mensaje;
+    ELSE
+        IF v_estado_clase <> 'En Curso' THEN
+            SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'La clase no está en curso';
+        END IF;
+        IF p_fecha_fin_real IS NULL THEN
+            SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'fecha_fin_real es obligatoria. El sistema es 100% manual.';
+        END IF;
+
+        SET v_fecha_fin = p_fecha_fin_real;
     UPDATE Responsabilidades_Ambiente
     SET estado_responsabilidad = 'Finalizada', fecha_fin = v_fecha_fin
     WHERE id_clase = p_id_clase AND estado_responsabilidad = 'Activa';
@@ -77,4 +88,5 @@ BEGIN
     COMMIT;
 
     SELECT 'Clase finalizada correctamente. Responsabilidades y asignaciones de equipos revertidas.' AS mensaje;
+    END IF;
 END

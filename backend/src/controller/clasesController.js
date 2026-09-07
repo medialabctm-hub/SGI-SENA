@@ -736,7 +736,9 @@ export async function iniciarClase(req, res) {
  * automático ante cualquier error (ver `backend/scripts/migrate-autoservicio-cierre-clase.sql`
  * y la documentación en `backend/src/utils/equipmentClaim.js`). Este controlador
  * no hace ninguna escritura fuera del CALL, así que un fallo del procedimiento
- * no puede dejar estado parcial.
+ * no puede dejar estado parcial. La rutina V2 bloquea la fila de `Clases` y
+ * convierte un segundo `CALL` concurrente o posterior en un no-op que conserva
+ * `fecha_fin_real`.
  */
 export async function finalizarClase(req, res) {
   try {

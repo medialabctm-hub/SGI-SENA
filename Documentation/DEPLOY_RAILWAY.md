@@ -15,8 +15,9 @@ entrega:
 - `Dockerfile`, `.dockerignore` y `start.sh`.
 - `railway.json` y `railway.toml`.
 - `frontend/nginx-main.conf` y `frontend/nginx-server.conf`.
-- `backend/package-lock.json`, `frontend/package-lock.json` y
-  `package-lock.json` raíz.
+- Los lockfiles ya versionados que consume cada etapa (`backend/package-lock.json`,
+  `frontend/package-lock.json` y `package-lock.json` raíz). MDL-134 no agrega ni
+  regenera ningún `package-lock.json`.
 - `backend/scripts/smoke-test.js` y `frontend/src/utils/loanRequest.js`.
 - `Documentation/DEPLOY_RAILWAY.md` y el esquema versionado
   `BD/SGI_SENA.sql`.
@@ -105,8 +106,45 @@ CORS_ORIGIN=https://<dominio>.up.railway.app
 FRONTEND_URL=https://<dominio>.up.railway.app
 ```
 
-Nota: NO definir `PORT` manualmente — Railway lo inyecta y `start.sh` lo usa
-para nginx (el backend interno siempre corre en 3000).
+Nota: NO definir `PORT` manualmente en Railway — Railway lo inyecta y `start.sh`
+lo conserva para el proceso público. El backend interno se configura con
+`BACKEND_PORT` y por defecto corre en `3000`; `NGINX_PORT` solo debe usarse como
+override explícito en una ejecución local controlada.
+
+### Contrato de puertos, arranque y healthcheck
+
+| Variable | Default | Consumidor | Contrato |
+| --- | --- | --- | --- |
+| `PORT` | Railway lo inyecta; `80` solo como fallback local | Railway/Docker y healthcheck público | Es el puerto público y nunca se sobrescribe con el puerto interno. |
+| `NGINX_PORT` | `${PORT:-80}` | `start.sh`/nginx | Puerto público que escucha nginx; en Railway se deja sin definir para heredar `PORT`. |
+| `BACKEND_PORT` | `3000` | `start.sh`/Node | Puerto interno de Node en `127.0.0.1`; no se expone a Railway. |
+
+`start.sh` valida que los dos puertos internos sean numéricos, válidos y
+distintos, exporta únicamente `NGINX_PORT` y `BACKEND_PORT`, y deja `PORT`
+intacto. Antes de ejecutar nginx reescribe de forma determinista la directiva
+`listen` y el upstream `$api_backend`; por ello una segunda ejecución no deja
+la configuración apuntando al puerto anterior. `backend/src/config/config.js`
+da prioridad a `BACKEND_PORT` en `config.server.PORT`, que es el valor que
+`backend/server.js` usa al crear el listener de Node.
+
+En una ejecución local del contenedor, los valores pueden hacerse explícitos:
+
+```env
+PORT=8080
+NGINX_PORT=8080
+BACKEND_PORT=3000
+```
+
+El script comprueba durante cinco intentos que el backend responda en
+`http://127.0.0.1:${BACKEND_PORT}/health` antes de iniciar nginx; si el backend
+todavía no responde, continúa con una advertencia para que nginx pueda iniciar.
+El `HEALTHCHECK` de la imagen y la verificación externa de Railway deben consultar
+el puerto público (`http://127.0.0.1:${PORT:-80}/health` dentro de la imagen o
+`GET https://<dominio>.up.railway.app/health` fuera de ella). No se ejecutó un
+despliegue real ni se presenta este documento como UAT: sin Docker operativo o
+un servicio Railway accesible, la prueba de listener, proxy y healthcheck queda
+`BLOCKED` por infraestructura; los tests estáticos y de configuración solo
+verifican el contrato versionado.
 
 ## 4. Volumen para uploads
 

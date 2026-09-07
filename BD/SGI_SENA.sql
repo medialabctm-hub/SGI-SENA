@@ -1267,35 +1267,54 @@ END;
 -- Procedimiento mejorado para finalizar una clase
 -- Revierte las asignaciones de equipos cuando la clase finaliza
 -- CORRECCIÓN: Usa JOIN en lugar de subconsulta IN para evitar errores de MySQL
+-- MDL-134: bloquea la clase y hace los reintentos ya finalizados no-op.
 DROP PROCEDURE IF EXISTS sp_finalizar_clase//
 CREATE PROCEDURE sp_finalizar_clase(IN p_id_clase INT, IN p_fecha_fin_real DATETIME)
-COMMENT 'AUTOSERVICIO_CIERRE_V1'
+COMMENT 'AUTOSERVICIO_CIERRE_V2'
 BEGIN
-    DECLARE v_id_ambiente INT;
-    DECLARE v_id_instructor INT;
+    DECLARE v_id_ambiente INT DEFAULT NULL;
+    DECLARE v_id_instructor INT DEFAULT NULL;
+    DECLARE v_estado_clase VARCHAR(30) DEFAULT NULL;
     DECLARE v_fecha_fin DATETIME;
     DECLARE v_detalles_uso JSON;
     DECLARE v_array_length INT;
     DECLARE v_index INT DEFAULT 0;
     DECLARE v_registro JSON;
     DECLARE v_id_clase_registro INT;
-    
-    -- Obtener datos de la clase
-    SELECT id_ambiente, id_instructor INTO v_id_ambiente, v_id_instructor
-    FROM Clases WHERE id_clase = p_id_clase;
-    
+
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        ROLLBACK;
+        RESIGNAL;
+    END;
+
+    START TRANSACTION;
+
+    -- Bloquear la fila para serializar dos cierres concurrentes de la misma clase.
+    SELECT id_ambiente, id_instructor, estado_clase
+    INTO v_id_ambiente, v_id_instructor, v_estado_clase
+    FROM Clases WHERE id_clase = p_id_clase FOR UPDATE;
+
     IF v_id_ambiente IS NULL THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Clase no encontrada';
     END IF;
-    
-    -- SISTEMA 100% MANUAL: p_fecha_fin_real es obligatorio
-    -- No usar NOW() como fallback para evitar automatización
-    IF p_fecha_fin_real IS NULL THEN
-        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'fecha_fin_real es obligatoria. El sistema es 100% manual.';
-    END IF;
-    
-    SET v_fecha_fin = p_fecha_fin_real;
-    
+
+    IF v_estado_clase = 'Finalizada' THEN
+        -- Reintentos posteriores no vuelven a escribir fechas ni estados.
+        COMMIT;
+        SELECT 'Clase ya estaba finalizada; no se aplicaron cambios.' AS mensaje;
+    ELSE
+        IF v_estado_clase <> 'En Curso' THEN
+            SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'La clase no está en curso';
+        END IF;
+
+        -- SISTEMA 100% MANUAL: p_fecha_fin_real es obligatorio.
+        IF p_fecha_fin_real IS NULL THEN
+            SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'fecha_fin_real es obligatoria. El sistema es 100% manual.';
+        END IF;
+
+        SET v_fecha_fin = p_fecha_fin_real;
+
     -- 1. Finalizar todas las responsabilidades de ambiente asociadas a esta clase
     UPDATE Responsabilidades_Ambiente 
     SET estado_responsabilidad = 'Finalizada',
@@ -1358,7 +1377,10 @@ BEGIN
     WHERE id_clase = p_id_clase
       AND estado = 'En Uso';
 
+    COMMIT;
+
     SELECT 'Clase finalizada correctamente. Responsabilidades y asignaciones de equipos revertidas.' AS mensaje;
+    END IF;
 END;
 //
 
