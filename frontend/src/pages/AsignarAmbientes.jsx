@@ -82,9 +82,8 @@ export default function AsignarAmbientes() {
     setLoading(true)
     setToast(null)
     try {
-      const token = localStorage.getItem('token')
       const res = await fetch('/api/ambientes/asignaciones', {
-        headers: { Authorization: `Bearer ${token}` }
+        credentials: 'include'
       })
       const data = await parseApiResponse(res, 'No se pudo obtener las asignaciones')
       setAsignaciones(Array.isArray(data) ? data : [])
@@ -98,9 +97,8 @@ export default function AsignarAmbientes() {
 
   async function fetchAmbientes() {
     try {
-      const token = localStorage.getItem('token')
       const res = await fetch('/api/ambientes/activos', {
-        headers: { Authorization: `Bearer ${token}` }
+        credentials: 'include'
       })
       const data = await parseApiResponse(res, 'No se pudo obtener los ambientes')
       setAmbientes(Array.isArray(data) ? data : [])
@@ -113,10 +111,9 @@ export default function AsignarAmbientes() {
   // Cargar instructores y cuentadantes (ambos pueden ser asignados a ambientes)
   async function fetchResponsablesAmbiente() {
     try {
-      const token = localStorage.getItem('token')
       const [resInstructor, resCuentadante] = await Promise.all([
-        fetch('/api/auth/users?rol=Instructor', { headers: { Authorization: `Bearer ${token}` } }),
-        fetch('/api/auth/users?rol=Cuentadante', { headers: { Authorization: `Bearer ${token}` } })
+        fetch('/api/auth/users?rol=Instructor', { credentials: 'include' }),
+        fetch('/api/auth/users?rol=Cuentadante', { credentials: 'include' })
       ])
       const dataInstructor = await parseApiResponse(resInstructor, 'No se pudo obtener instructores')
       const dataCuentadante = await parseApiResponse(resCuentadante, 'No se pudo obtener cuentadantes')
@@ -192,13 +189,11 @@ export default function AsignarAmbientes() {
     setLoading(true)
     setToast(null)
     try {
-      const token = localStorage.getItem('token')
       const res = await fetch('/api/ambientes/asignar', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
-        },
+          'Content-Type': 'application/json'},
+        credentials: 'include',
         body: JSON.stringify({
           id_ambiente: parseInt(form.id_ambiente),
           id_instructor: parseInt(form.id_instructor),
@@ -238,10 +233,9 @@ export default function AsignarAmbientes() {
     setLoading(true)
     setToast(null)
     try {
-      const token = localStorage.getItem('token')
       const res = await fetch(`/api/ambientes/asignaciones/${confirmDelete.id}`, {
         method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` }
+        credentials: 'include'
       })
       const data = await parseApiResponse(res, 'No se pudo desasignar el ambiente')
       setToast({ message: data.message || 'Ambiente desasignado correctamente', type: 'success' })

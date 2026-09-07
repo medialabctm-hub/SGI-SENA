@@ -147,7 +147,7 @@ export default function DetalleAmbiente() {
       files.forEach(file => formData.append('imagenes', file));
       const res = await fetch(`/api/ambientes/${id}/imagenes`, {
         method: 'POST',
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+        credentials: 'include',
         body: formData
       });
       const data = await parseApiResponse(res, 'Error al subir imágenes');

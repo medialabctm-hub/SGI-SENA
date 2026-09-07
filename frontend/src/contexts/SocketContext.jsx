@@ -11,20 +11,24 @@ export function SocketProvider({ children }) {
   const [socket, setSocket] = useState(null);
   const [connected, setConnected] = useState(false);
   const [error, setError] = useState(null);
-  const [token, setToken] = useState(() => localStorage.getItem('token'));
+  // MDL-127: ya no existe un JWT en el navegador. `hasSession` es solo el
+  // indicador local no sensible (perfil cacheado por Login.jsx) que decide si
+  // vale la pena intentar la conexión; la autenticación real del handshake la
+  // hace el backend con la cookie httpOnly de sesión (withCredentials).
+  const [hasSession, setHasSession] = useState(() => Boolean(localStorage.getItem('user')));
 
   useEffect(() => {
-    const syncToken = () => setToken(localStorage.getItem('token'));
-    window.addEventListener('storage', syncToken);
-    window.addEventListener('auth:changed', syncToken);
+    const syncSession = () => setHasSession(Boolean(localStorage.getItem('user')));
+    window.addEventListener('storage', syncSession);
+    window.addEventListener('auth:changed', syncSession);
     return () => {
-      window.removeEventListener('storage', syncToken);
-      window.removeEventListener('auth:changed', syncToken);
+      window.removeEventListener('storage', syncSession);
+      window.removeEventListener('auth:changed', syncSession);
     };
   }, []);
 
   useEffect(() => {
-    if (!token) {
+    if (!hasSession) {
       setSocket(null);
       setConnected(false);
       return undefined;
@@ -34,11 +38,12 @@ export function SocketProvider({ children }) {
     // En desarrollo, usar el proxy de Vite (mismo origen)
     // En producción, usar el mismo origen
     // Socket.io funciona mejor con URLs relativas cuando hay proxy
+    // MDL-127: el backend autentica el handshake exclusivamente con la cookie
+    // httpOnly de sesión (withCredentials la envía); no se manda ningún token
+    // leído del navegador.
     const socketUrl = window.location.origin;
     const newSocket = io(socketUrl, {
-      auth: {
-        token: token,
-      },
+      withCredentials: true,
       transports: ['websocket', 'polling'],
       reconnection: true,
       reconnectionDelay: 1000,
@@ -85,7 +90,7 @@ export function SocketProvider({ children }) {
         newSocket.disconnect();
       }
     };
-  }, [token]);
+  }, [hasSession]);
 
   /**
    * Suscribirse a un evento

@@ -39,9 +39,8 @@ export default function HistorialMovimientos() {
     setLoading(true)
     setToast(null)
     try {
-      const token = localStorage.getItem('token')
       const res = await fetch(`/api/equipos/${encodeURIComponent(codigo)}/historial-movimientos`, {
-        headers: { Authorization: `Bearer ${token}` }
+        credentials: 'include'
       })
       const data = await parseApiResponse(res, 'No se pudo obtener el historial de movimientos')
       setEquipo(data.equipo)

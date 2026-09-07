@@ -25,9 +25,8 @@ export default function RevisarDuplicados({ idImportacion, onProcesarCompleto })
     try {
       setLoading(true)
       setError(null)
-      const token = localStorage.getItem('token')
       const res = await fetch(`/api/import/duplicados?id_importacion=${encodeURIComponent(idImportacion)}`, {
-        headers: { Authorization: `Bearer ${token}` }
+        credentials: 'include'
       })
       const data = await parseApiResponse(res, 'Error al cargar duplicados')
       const duplicadosPendientes = (data.duplicados || []).filter(d => d.estado === 'Pendiente')
@@ -52,13 +51,11 @@ export default function RevisarDuplicados({ idImportacion, onProcesarCompleto })
     try {
       setProcesandoId(idDuplicado)
       setError(null)
-      const token = localStorage.getItem('token')
       const res = await fetch('/api/import/duplicados/procesar', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
-        },
+          'Content-Type': 'application/json'},
+        credentials: 'include',
         body: JSON.stringify({
           id_duplicado: idDuplicado,
           accion
@@ -103,13 +100,11 @@ export default function RevisarDuplicados({ idImportacion, onProcesarCompleto })
     try {
       setProcesando(true)
       setError(null)
-      const token = localStorage.getItem('token')
       const res = await fetch('/api/import/duplicados/procesar-masivo', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
-        },
+          'Content-Type': 'application/json'},
+        credentials: 'include',
         body: JSON.stringify({ decisiones: decisionesArray })
       })
       const data = await parseApiResponse(res, 'Error al procesar duplicados')

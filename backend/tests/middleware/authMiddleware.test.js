@@ -26,6 +26,17 @@ function makeContext(h = null) {
   };
 }
 
+function makeCookieContext(cookieToken, h = null) {
+  return {
+    req: {
+      headers: h ? { authorization: h } : {},
+      cookies: { sgi_session: cookieToken },
+    },
+    res: { status: jest.fn().mockReturnThis(), json: jest.fn() },
+    next: jest.fn(),
+  };
+}
+
 const mockUser = {
   id_usuario: 42,
   nombre_usuario: 'Juan Perez',
@@ -100,6 +111,41 @@ describe('authenticate()', () => {
     await authenticate(req, res, next);
     expect(next).toHaveBeenCalled();
     expect(next.mock.calls[0][0]).toBeInstanceOf(Error);
+  });
+
+  it('debe autenticar con la cookie httpOnly de sesion (sgi_session) sin header Authorization', async () => {
+    const mockJwt = { verify: jest.fn().mockReturnValue({ id: 42 }) };
+    const mockRepo = { findById: jest.fn().mockResolvedValue(mockUser) };
+    mockCreate.mockImplementation((n) => n === 'jwtService' ? mockJwt : mockRepo);
+    const { req, res, next } = makeCookieContext('cookie.jwt.value');
+    await authenticate(req, res, next);
+    expect(mockJwt.verify).toHaveBeenCalledWith('cookie.jwt.value');
+    expect(next).toHaveBeenCalledWith();
+    expect(req.user.id).toBe(42);
+  });
+
+  it('debe priorizar la cookie de sesion sobre un header Authorization presente', async () => {
+    const mockJwt = { verify: jest.fn().mockReturnValue({ id: 42 }) };
+    const mockRepo = { findById: jest.fn().mockResolvedValue(mockUser) };
+    mockCreate.mockImplementation((n) => n === 'jwtService' ? mockJwt : mockRepo);
+    // Header con un valor no-JWT (compatibilidad con codigo legado que aun
+    // envia un Authorization con el indicador local no sensible): si la
+    // cookie gana, jamas se intenta verificar ese header.
+    const { req, res, next } = makeCookieContext('cookie.jwt.value', 'Bearer active');
+    await authenticate(req, res, next);
+    expect(mockJwt.verify).toHaveBeenCalledWith('cookie.jwt.value');
+    expect(mockJwt.verify).not.toHaveBeenCalledWith('active');
+    expect(next).toHaveBeenCalledWith();
+  });
+
+  it('debe caer al header Authorization cuando no hay cookie de sesion', async () => {
+    const mockJwt = { verify: jest.fn().mockReturnValue({ id: 42 }) };
+    const mockRepo = { findById: jest.fn().mockResolvedValue(mockUser) };
+    mockCreate.mockImplementation((n) => n === 'jwtService' ? mockJwt : mockRepo);
+    const { req, res, next } = makeContext('Bearer header.jwt.value');
+    await authenticate(req, res, next);
+    expect(mockJwt.verify).toHaveBeenCalledWith('header.jwt.value');
+    expect(next).toHaveBeenCalledWith();
   });
 
   it('debe llamar next(err) si req.headers lanza una excepci\u00f3n (outer catch)', async () => {

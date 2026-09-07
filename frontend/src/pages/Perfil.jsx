@@ -49,14 +49,14 @@ export default function Perfil() {
   const fetchUserData = useCallback(async () => {
     setLoading(true);
     try {
-      const token = localStorage.getItem('token');
-      if (!token) {
+      const user = localStorage.getItem('user');
+      if (!user) {
         navigate('/login');
         return;
       }
       
       const res = await fetch('/api/auth/me', {
-        headers: { Authorization: `Bearer ${token}` }
+        credentials: 'include'
       });
       
       if (res.ok) {
@@ -105,10 +105,10 @@ export default function Perfil() {
     setToast(null);
 
     try {
-      const token = localStorage.getItem('token');
+      const user = localStorage.getItem('user');
       const userId = userData?.id_usuario || userData?.id;
       
-      if (!token || !userId) {
+      if (!user || !userId) {
         throw new Error('No autorizado');
       }
 
@@ -117,9 +117,7 @@ export default function Perfil() {
 
       const res = await fetch(`/api/auth/user/${userId}/foto-perfil`, {
         method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        credentials: 'include',
         body: formData,
       });
 
@@ -147,8 +145,8 @@ export default function Perfil() {
   };
 
   const handleSave = async () => {
-    const token = localStorage.getItem('token');
-    if (!token) return setToast({ message: 'No autorizado', type: 'error' });
+    const user = localStorage.getItem('user');
+    if (!user) return setToast({ message: 'No autorizado', type: 'error' });
     const id = userData?.id_usuario || userData?.id;
     if (!id) return setToast({ message: 'ID de usuario no disponible', type: 'error' });
     
@@ -156,7 +154,8 @@ export default function Perfil() {
     try {
       const res = await fetch(`/api/auth/user/${id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        headers: { 'Content-Type': 'application/json'},
+        credentials: 'include',
         body: JSON.stringify({
           nombre: form.nombre_usuario,
           cedula: form.cedula,
@@ -182,8 +181,8 @@ export default function Perfil() {
   };
 
   const handleDeleteAccount = async () => {
-    const token = localStorage.getItem('token');
-    if (!token) return setToast({ message: 'No autorizado', type: 'error' });
+    const user = localStorage.getItem('user');
+    if (!user) return setToast({ message: 'No autorizado', type: 'error' });
     const id = userData?.id_usuario || userData?.id;
     if (!id) return setToast({ message: 'ID de usuario no disponible', type: 'error' });
     
@@ -191,13 +190,13 @@ export default function Perfil() {
     try {
       const res = await fetch(`/api/auth/user/${id}`, {
         method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` }
+        credentials: 'include'
       });
       await parseApiResponse(res, 'No se pudo eliminar la cuenta');
       setToast({ message: 'Tu cuenta ha sido eliminada correctamente', type: 'success' });
       // Cerrar sesión y redirigir al login
       setTimeout(() => {
-        localStorage.removeItem('token');
+        localStorage.removeItem('user');
         localStorage.removeItem('user');
         window.location.href = '/login';
       }, 1500);

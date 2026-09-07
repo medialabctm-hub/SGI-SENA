@@ -15,35 +15,59 @@ const renderProtected = () => render(
   </MemoryRouter>
 );
 
-describe('ProtectedRoute', () => {
+describe('ProtectedRoute (MDL-127: sesión verificada por cookie httpOnly, sin token local)', () => {
   afterEach(() => {
     vi.restoreAllMocks();
     localStorage.clear();
   });
 
-  it('sin token, redirige a /login de inmediato sin llamar a la API', () => {
-    const fetchMock = vi.fn();
+  it('sin cookie de sesión (backend responde 401 en /api/auth/me), redirige a /login', async () => {
+    // No hay ningún indicador local: la guarda NO decide nada por sí misma,
+    // siempre pregunta al backend.
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      error: 'No autorizado',
+    }), { status: 401, headers: { 'Content-Type': 'application/json' } }));
     vi.stubGlobal('fetch', fetchMock);
 
     renderProtected();
 
-    expect(screen.getByText('Pantalla de login')).toBeInTheDocument();
-    expect(fetchMock).not.toHaveBeenCalled();
+    expect(await screen.findByText('Pantalla de login')).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledWith('/api/auth/me', { credentials: 'include' });
   });
 
-  it('con token y sesión válida, renderiza el contenido protegido', async () => {
-    localStorage.setItem('token', 'jwt-valido');
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({
+  it('con cookie de sesión válida, renderiza el contenido protegido', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({
       user: { requiere_cambio_contrasena: false },
-    }), { status: 200, headers: { 'Content-Type': 'application/json' } })));
+    }), { status: 200, headers: { 'Content-Type': 'application/json' } }));
+    vi.stubGlobal('fetch', fetchMock);
 
     renderProtected();
 
     expect(await screen.findByText('Contenido protegido')).toBeInTheDocument();
   });
 
+  it('verifica la sesión vía cookie httpOnly (credentials incluidas, sin header Authorization ni token local)', async () => {
+    // MDL-127: la guarda de ruta no lee ni envía ningún secreto/indicador del
+    // navegador; la sesión se valida exclusivamente con la cookie httpOnly del
+    // backend, incluso sin nada en localStorage.
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      user: { requiere_cambio_contrasena: false },
+    }), { status: 200, headers: { 'Content-Type': 'application/json' } }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    renderProtected();
+    await screen.findByText('Contenido protegido');
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const [url, options] = fetchMock.mock.calls[0];
+    expect(url).toBe('/api/auth/me');
+    expect(options).toEqual({ credentials: 'include' });
+    expect(options.headers).toBeUndefined();
+  });
+
   it('con 401 (sesión expirada), muestra el toast, limpia la sesión y no navega antes de tiempo', async () => {
-    localStorage.setItem('token', 'jwt-vencido');
+    // "user" es el único indicador local no sensible; se usa aquí solo para
+    // que handleSessionExpiration (api.js) sepa que había una sesión que limpiar.
     localStorage.setItem('user', JSON.stringify({ nombre_usuario: 'Ana' }));
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({
       error: 'Token expirado',
@@ -64,7 +88,6 @@ describe('ProtectedRoute', () => {
   });
 
   it('con 403, deniega el acceso sin limpiar la sesión guardada ni mostrar el toast de sesión expirada', async () => {
-    localStorage.setItem('token', 'jwt-sin-permiso');
     localStorage.setItem('user', JSON.stringify({ nombre_usuario: 'Ana' }));
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({
       error: 'No autorizado',
@@ -73,7 +96,6 @@ describe('ProtectedRoute', () => {
     renderProtected();
 
     expect(await screen.findByText('Pantalla de login')).toBeInTheDocument();
-    expect(localStorage.getItem('token')).toBe('jwt-sin-permiso');
     expect(localStorage.getItem('user')).toBe(JSON.stringify({ nombre_usuario: 'Ana' }));
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });

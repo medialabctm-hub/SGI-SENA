@@ -35,8 +35,8 @@ export default function UsersManagement() {
   async function handleExportCSV() {
     setExporting(true)
     try {
-      const token = localStorage.getItem('token')
-      if (!token) {
+      const user = localStorage.getItem('user');
+      if (!user) {
         setToast({ message: 'No autorizado. Por favor inicia sesión nuevamente', type: 'error' })
         return
       }

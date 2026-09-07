@@ -88,9 +88,8 @@ export default function ImportarEquipos({ onImportComplete, onEstadoDuplicadosCh
   const fetchCuentadantePrincipal = async () => {
     try {
       setLoadingCuentadante(true)
-      const token = localStorage.getItem('token')
       const res = await fetch('/api/equipos/cuentadante-principal', {
-        headers: { Authorization: `Bearer ${token}` }
+        credentials: 'include'
       })
       const data = await parseApiResponse(res, 'Error al obtener cuentadante principal')
       setCuentadanteActual(data.cuentadante_principal || '')
@@ -113,9 +112,8 @@ export default function ImportarEquipos({ onImportComplete, onEstadoDuplicadosCh
       setBuscandoCuentadante(true)
       setError(null)
       setCuentadanteEncontrado(null)
-      const token = localStorage.getItem('token')
       const res = await fetch(`/api/auth/user/cedula/${encodeURIComponent(cuentadantePrincipal.trim())}`, {
-        headers: { Authorization: `Bearer ${token}` }
+        credentials: 'include'
       })
       
       if (res.ok) {
@@ -194,10 +192,9 @@ export default function ImportarEquipos({ onImportComplete, onEstadoDuplicadosCh
         formData.append('id_cuentadante', cuentadanteEncontrado.id_usuario.toString())
       }
 
-      const token = localStorage.getItem('token')
       const res = await fetch('/api/import/equipos', {
         method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
+        credentials: 'include',
         body: formData
       })
 
@@ -209,7 +206,7 @@ export default function ImportarEquipos({ onImportComplete, onEstadoDuplicadosCh
         const poll = async () => {
           while (!pollingAbort) {
             const statusRes = await fetch(`/api/import/equipos/status/${encodeURIComponent(jobId)}`, {
-              headers: { Authorization: `Bearer ${token}` }
+              credentials: 'include'
             })
             if (statusRes.status === 404) {
               setError('La importación expiró o no se encontró. Intente de nuevo.')

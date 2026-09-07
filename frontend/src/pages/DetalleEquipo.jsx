@@ -141,11 +141,10 @@ export default function DetalleEquipo() {
   async function fetchEquipo() {
     setLoading(true);
     try {
-      const token = localStorage.getItem('token');
       const res = await fetch(
         `/api/equipos/${encodeURIComponent(codigoEquipo)}`,
         {
-          headers: { Authorization: `Bearer ${token}` },
+          credentials: 'include',
         }
       );
       const data = await parseApiResponse(res, 'No se pudo cargar el equipo');
@@ -162,11 +161,10 @@ export default function DetalleEquipo() {
 
   async function fetchImagenes() {
     try {
-      const token = localStorage.getItem('token');
       const res = await fetch(
         `/api/equipos/${encodeURIComponent(codigoEquipo)}/imagenes`,
         {
-          headers: { Authorization: `Bearer ${token}` },
+          credentials: 'include',
         }
       );
       const data = await parseApiResponse(
@@ -207,7 +205,6 @@ export default function DetalleEquipo() {
 
   async function handleUpdateAsignacion() {
     try {
-      const token = localStorage.getItem('token');
       const { id_responsable } = editAsignacionModal.asignacion;
 
       const payload = {
@@ -227,8 +224,8 @@ export default function DetalleEquipo() {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
         },
+        credentials: 'include',
         body: JSON.stringify(payload),
       });
 
@@ -260,7 +257,6 @@ export default function DetalleEquipo() {
     setRegistrarUsoLoading(true);
     setToast(null);
     try {
-      const token = localStorage.getItem('token');
       const usuario = {
         documento: doc,
         ficha: null,
@@ -281,8 +277,8 @@ export default function DetalleEquipo() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
         },
+        credentials: 'include',
         body: JSON.stringify(payload),
       });
       const data = await parseApiResponse(res, 'No se pudo registrar el uso');
@@ -332,10 +328,9 @@ export default function DetalleEquipo() {
     setDeleteAsignacionConfirm({ open: false, id: null });
 
     try {
-      const token = localStorage.getItem('token');
       const res = await fetch(`/api/equipos/asignaciones/${asignacionId}`, {
         method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` },
+        credentials: 'include',
       });
 
       const data = await parseApiResponse(
@@ -516,7 +511,6 @@ export default function DetalleEquipo() {
     setToast(null);
 
     try {
-      const token = localStorage.getItem('token');
       const formData = new FormData();
 
       selectedFiles.forEach(file => {
@@ -536,9 +530,7 @@ export default function DetalleEquipo() {
         `/api/equipos/${encodeURIComponent(codigoEquipo)}/imagenes`,
         {
           method: 'POST',
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+          credentials: 'include',
           body: formData,
         }
       );
@@ -579,10 +571,9 @@ export default function DetalleEquipo() {
     setToast(null);
 
     try {
-      const token = localStorage.getItem('token');
       const res = await fetch(`/api/equipos/imagenes/${idImagen}`, {
         method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` },
+        credentials: 'include',
       });
       await parseApiResponse(res, 'No se pudo eliminar la imagen');
       setToast({ message: 'Imagen eliminada correctamente', type: 'success' });
@@ -599,10 +590,9 @@ export default function DetalleEquipo() {
 
   async function handleMarcarPrincipal(idImagen) {
     try {
-      const token = localStorage.getItem('token');
       const res = await fetch(`/api/equipos/imagenes/${idImagen}/principal`, {
         method: 'PATCH',
-        headers: { Authorization: `Bearer ${token}` },
+        credentials: 'include',
       });
       await parseApiResponse(res, 'No se pudo marcar la imagen como principal');
       setToast({ message: 'Imagen marcada como principal', type: 'success' });

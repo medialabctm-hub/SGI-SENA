@@ -10,20 +10,9 @@ export default function ProtectedRoute({ children }) {
   const [authorized, setAuthorized] = useState(false);
   const [toast, setToast] = useState(null);
   const location = useLocation();
-  // Se captura una sola vez al montar (no en cada render): handleSessionExpiration
-  // borra el token de localStorage de forma síncrona antes de que este componente
-  // pueda mostrar el toast, y una lectura en vivo aquí haría que !token se volviera
-  // true en el siguiente render, disparando <Navigate> antes de tiempo.
-  const [token] = useState(() => localStorage.getItem('token'));
 
   useEffect(() => {
     const checkUser = async () => {
-      if (!token) {
-        setAuthorized(false);
-        setLoading(false);
-        return;
-      }
-
       // Si ya estamos en la página de cambiar contraseña, permitir acceso
       if (location.pathname === '/cambiar-contrasena') {
         setAuthorized(true);
@@ -32,11 +21,11 @@ export default function ProtectedRoute({ children }) {
       }
 
       try {
-        // Verificar si el usuario requiere cambio de contraseña
+        // Verificar si el usuario requiere cambio de contraseña.
+        // La cookie httpOnly de sesión viaja automáticamente con credentials
+        // incluidas; no se envía (ni existe) un secreto leído del navegador.
         const res = await fetch('/api/auth/me', {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
+          credentials: 'include',
         });
         const data = await parseApiResponse(res, 'No se pudo verificar la sesión');
 
@@ -65,9 +54,9 @@ export default function ProtectedRoute({ children }) {
     };
 
     checkUser();
-  }, [token, location.pathname]);
+  }, [location.pathname]);
 
-  if (!token || (!loading && !authorized)) {
+  if (!loading && !authorized) {
     return <Navigate to="/login" replace />;
   }
 

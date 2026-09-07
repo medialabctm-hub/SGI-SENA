@@ -89,9 +89,8 @@ export default function AsignarEquipo() {
   async function fetchAsignaciones() {
     setLoadingAsignaciones(true)
     try {
-      const token = localStorage.getItem('token')
       const res = await fetch('/api/equipos/asignaciones', {
-        headers: { Authorization: `Bearer ${token}` }
+        credentials: 'include'
       })
       const data = await parseApiResponse(res, 'No se pudo cargar las asignaciones')
       setAsignaciones(Array.isArray(data) ? data : [])
@@ -141,10 +140,9 @@ export default function AsignarEquipo() {
     setLoadingAsignaciones(true)
     setToast(null)
     try {
-      const token = localStorage.getItem('token')
       const res = await fetch(`/api/equipos/asignaciones/${id}`, {
         method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` }
+        credentials: 'include'
       })
       const data = await parseApiResponse(res, 'No se pudo eliminar la habilitación')
       setToast({ message: data.message || 'Habilitación eliminada correctamente', type: 'success' })
@@ -165,9 +163,8 @@ export default function AsignarEquipo() {
     try {
       setBuscandoEquipo(true)
       setEquipoEncontrado(null)
-      const token = localStorage.getItem('token')
       const res = await fetch(`/api/equipos/${encodeURIComponent(codigoInventario.trim())}`, {
-        headers: { Authorization: `Bearer ${token}` }
+        credentials: 'include'
       })
       
       if (res.ok) {
@@ -205,9 +202,8 @@ export default function AsignarEquipo() {
     try {
       setBuscandoUsuario(true)
       setUsuarioEncontrado(null)
-      const token = localStorage.getItem('token')
       const res = await fetch(`/api/auth/user/cedula/${encodeURIComponent(cedulaUsuario.trim())}`, {
-        headers: { Authorization: `Bearer ${token}` }
+        credentials: 'include'
       })
       
       if (res.ok) {
@@ -295,13 +291,11 @@ export default function AsignarEquipo() {
 
     try {
       setLoading(true)
-      const token = localStorage.getItem('token')
       const res = await fetch('/api/equipos/asignar', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
-        },
+          'Content-Type': 'application/json'},
+        credentials: 'include',
         body: JSON.stringify(buildEquipoAssignmentPayload(form))
       })
 

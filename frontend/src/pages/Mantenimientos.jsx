@@ -122,11 +122,10 @@ export default function Mantenimientos() {
   async function cargarOpcionesMantenimiento() {
     try {
       setCargandoOpciones(true)
-      const token = localStorage.getItem('token')
       
       // Cargar tipos de mantenimiento
       const resTipos = await fetch('/api/mantenimiento/tipos', {
-        headers: { Authorization: `Bearer ${token}` }
+        credentials: 'include'
       })
       if (resTipos.ok) {
         const tipos = await parseApiResponse(resTipos)
@@ -141,7 +140,7 @@ export default function Mantenimientos() {
 
       // Cargar estados de mantenimiento
       const resEstados = await fetch('/api/mantenimiento/estados', {
-        headers: { Authorization: `Bearer ${token}` }
+        credentials: 'include'
       })
       if (resEstados.ok) {
         const estados = await parseApiResponse(resEstados)
@@ -167,9 +166,8 @@ export default function Mantenimientos() {
   // Cargar estados de mantenimiento desde la API
   async function cargarEstadosMantenimiento() {
     try {
-      const token = localStorage.getItem('token')
       const res = await fetch('/api/mantenimiento/estados', {
-        headers: { Authorization: `Bearer ${token}` }
+        credentials: 'include'
       })
       if (res.ok) {
         const estados = await parseApiResponse(res)
@@ -185,9 +183,8 @@ export default function Mantenimientos() {
   async function fetchMantenimientos() {
     setLoading(true)
     try {
-      const token = localStorage.getItem('token')
       const res = await fetch('/api/mantenimiento', {
-        headers: { Authorization: `Bearer ${token}` }
+        credentials: 'include'
       })
       const data = await parseApiResponse(res, 'No se pudo cargar los mantenimientos')
       setMantenimientos(Array.isArray(data) ? data : [])
@@ -282,13 +279,11 @@ export default function Mantenimientos() {
 
     setLoading(true)
     try {
-      const token = localStorage.getItem('token')
       const res = await fetch(`/api/mantenimiento/${selectedMantenimiento.id_mantenimiento}/estado`, {
         method: 'PUT',
         headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
-        },
+          'Content-Type': 'application/json'},
+        credentials: 'include',
         body: JSON.stringify({
           estado_mantenimiento: nuevoEstado
         })
@@ -326,10 +321,9 @@ export default function Mantenimientos() {
     setLoading(true)
     setToast(null)
     try {
-      const token = localStorage.getItem('token')
       const res = await fetch(`/api/mantenimiento/${id}`, {
         method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` }
+        credentials: 'include'
       })
       const data = await parseApiResponse(res, 'No se pudo eliminar el mantenimiento')
       setToast({ message: data.message || 'Mantenimiento eliminado correctamente', type: 'success' })
@@ -354,9 +348,8 @@ export default function Mantenimientos() {
     try {
       setBuscandoEquipo(true)
       setEquipoEncontrado(null)
-      const token = localStorage.getItem('token')
       const res = await fetch(`/api/equipos/${encodeURIComponent(codigoInventario.trim())}`, {
-        headers: { Authorization: `Bearer ${token}` }
+        credentials: 'include'
       })
       
       if (res.ok) {
@@ -394,9 +387,8 @@ export default function Mantenimientos() {
     try {
       setBuscandoTecnico(true)
       setTecnicoEncontrado(null)
-      const token = localStorage.getItem('token')
       const res = await fetch(`/api/auth/user/cedula/${encodeURIComponent(cedulaTecnico.trim())}`, {
-        headers: { Authorization: `Bearer ${token}` }
+        credentials: 'include'
       })
       
       if (res.ok) {
@@ -451,7 +443,6 @@ export default function Mantenimientos() {
 
     try {
       setLoadingCrear(true)
-      const token = localStorage.getItem('token')
       
       const payload = {
         ...form,
@@ -464,9 +455,8 @@ export default function Mantenimientos() {
       const res = await fetch('/api/mantenimiento', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
-        },
+          'Content-Type': 'application/json'},
+        credentials: 'include',
         body: JSON.stringify(payload)
       })
 
@@ -1024,13 +1014,11 @@ export default function Mantenimientos() {
                         onClick={async () => {
                           try {
                             setLoading(true)
-                            const token = localStorage.getItem('token')
                             const res = await fetch(`/api/mantenimiento/${selectedMantenimiento.id_mantenimiento}/fecha-mantenimiento`, {
                               method: 'PUT',
                               headers: {
-                                'Content-Type': 'application/json',
-                                Authorization: `Bearer ${token}`
-                              },
+                                'Content-Type': 'application/json'},
+                              credentials: 'include',
                               body: JSON.stringify({ fecha_mantenimiento: nuevaFechaMantenimiento })
                             })
                             const data = await parseApiResponse(res, 'Error al actualizar fecha')
@@ -1115,13 +1103,11 @@ export default function Mantenimientos() {
                         onClick={async () => {
                           try {
                             setLoading(true)
-                            const token = localStorage.getItem('token')
                             const res = await fetch(`/api/mantenimiento/${selectedMantenimiento.id_mantenimiento}/fecha-proximo`, {
                               method: 'PUT',
                               headers: {
-                                'Content-Type': 'application/json',
-                                Authorization: `Bearer ${token}`
-                              },
+                                'Content-Type': 'application/json'},
+                              credentials: 'include',
                               body: JSON.stringify({ fecha_proximo: nuevaFechaProximo })
                             })
                             const data = await parseApiResponse(res, 'Error al actualizar fecha')

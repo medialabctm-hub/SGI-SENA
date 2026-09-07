@@ -249,7 +249,11 @@ const isSessionExpired = (status, message = '') => {
 export const handleSessionExpiration = () => {
   if (typeof window === 'undefined' || sessionExpirationTriggered) return;
   if (AUTH_PATHS.some((path) => window.location.pathname.startsWith(path))) return;
-  if (!localStorage.getItem('token')) return;
+  // MDL-127: ya no existe un JWT (ni un indicador con ese nombre) en el
+  // navegador; "user" es el único indicador local no sensible de que hubo un
+  // login. `removeItem('token')` se conserva como limpieza defensiva por si
+  // queda un valor residual de una sesión abierta antes de este cambio.
+  if (!localStorage.getItem('user')) return;
 
   sessionExpirationTriggered = true;
   localStorage.removeItem('token');
@@ -345,12 +349,11 @@ export const handleError = (error, setToast, fallback = 'Ocurrió un problema. P
   }
 };
 
-export const getAuthHeaders = () => {
-  const token = localStorage.getItem('token');
-  return token
-    ? { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
-    : { 'Content-Type': 'application/json' };
-};
+// MDL-127: la sesión ya no viaja en un JWT legible desde el navegador, sino en
+// una cookie httpOnly que el navegador adjunta solo si el fetch incluye
+// credentials. Se mantiene el nombre por compatibilidad con los ~50 call
+// sites existentes que construyen sus headers con este helper.
+export const getAuthHeaders = () => ({ 'Content-Type': 'application/json' });
 
 /**
  * Descarga el PDF de acta de novedad por robo/pérdida.
@@ -358,9 +361,8 @@ export const getAuthHeaders = () => {
  * @returns {Promise<void>} Resuelve al completar la descarga o rechaza si falla
  */
 export async function descargarPDFNovedadRoboPerdida(idNovedad) {
-  const token = localStorage.getItem('token');
   const res = await fetch(`/api/novedades/${idNovedad}/pdf`, {
-    headers: { Authorization: `Bearer ${token}` }
+    credentials: 'include',
   });
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));

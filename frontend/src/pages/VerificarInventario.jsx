@@ -73,7 +73,6 @@ export default function VerificarInventario() {
     setLoading(true)
     setToast(null)
     try {
-      const token = localStorage.getItem('token')
       
       // SISTEMA 100% MANUAL: No hay sincronización automática
       // Los estados se determinan únicamente por estado_responsabilidad = 'Activa'
@@ -82,7 +81,7 @@ export default function VerificarInventario() {
       
       // Luego obtener los ambientes
       const res = await fetch('/api/equipos/verificacion/ambientes', {
-        headers: { Authorization: `Bearer ${token}` }
+        credentials: 'include'
       })
       const data = await parseApiResponse(res, 'No se pudo obtener los equipos de los ambientes')
       setAmbientes(data.ambientes || [])
@@ -108,13 +107,11 @@ export default function VerificarInventario() {
     setLoading(true)
     setToast(null)
     try {
-      const token = localStorage.getItem('token')
       const res = await fetch('/api/equipos/verificacion', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
-        },
+          'Content-Type': 'application/json'},
+        credentials: 'include',
         body: JSON.stringify({
           codigo_equipo: codigoEquipo,
           estado_verificacion: estado,
@@ -164,13 +161,11 @@ export default function VerificarInventario() {
     setLoading(true)
     setToast(null)
     try {
-      const token = localStorage.getItem('token')
       const res = await fetch('/api/novedades', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
-        },
+          'Content-Type': 'application/json'},
+        credentials: 'include',
         body: JSON.stringify({
           codigo_equipo: selectedEquipo.codigo_equipo,
           tipo_novedad: novedadForm.tipo_novedad,

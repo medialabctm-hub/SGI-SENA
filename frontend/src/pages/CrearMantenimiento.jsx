@@ -56,11 +56,10 @@ export default function CrearMantenimiento() {
     async function cargarOpcionesMantenimiento() {
       try {
         setCargandoOpciones(true)
-        const token = localStorage.getItem('token')
         
         // Cargar tipos de mantenimiento
         const resTipos = await fetch('/api/mantenimiento/tipos', {
-          headers: { Authorization: `Bearer ${token}` }
+          credentials: 'include'
         })
         if (resTipos.ok) {
           const tipos = await parseApiResponse(resTipos)
@@ -80,7 +79,7 @@ export default function CrearMantenimiento() {
 
         // Cargar estados de mantenimiento
         const resEstados = await fetch('/api/mantenimiento/estados', {
-          headers: { Authorization: `Bearer ${token}` }
+          credentials: 'include'
         })
         if (resEstados.ok) {
           const estados = await parseApiResponse(resEstados)
@@ -120,9 +119,8 @@ export default function CrearMantenimiento() {
     try {
       setBuscandoEquipo(true)
       setEquipoEncontrado(null)
-      const token = localStorage.getItem('token')
       const res = await fetch(`/api/equipos/${encodeURIComponent(codigoInventario.trim())}`, {
-        headers: { Authorization: `Bearer ${token}` }
+        credentials: 'include'
       })
       
       if (res.ok) {
@@ -160,9 +158,8 @@ export default function CrearMantenimiento() {
     try {
       setBuscandoTecnico(true)
       setTecnicoEncontrado(null)
-      const token = localStorage.getItem('token')
       const res = await fetch(`/api/auth/user/cedula/${encodeURIComponent(cedulaTecnico.trim())}`, {
-        headers: { Authorization: `Bearer ${token}` }
+        credentials: 'include'
       })
       
       if (res.ok) {
@@ -217,7 +214,6 @@ export default function CrearMantenimiento() {
 
     try {
       setLoading(true)
-      const token = localStorage.getItem('token')
       
       // Preparar datos para enviar
       const payload = {
@@ -231,9 +227,8 @@ export default function CrearMantenimiento() {
       const res = await fetch('/api/mantenimiento', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
-        },
+          'Content-Type': 'application/json'},
+        credentials: 'include',
         body: JSON.stringify(payload)
       })
 

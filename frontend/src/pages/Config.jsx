@@ -37,9 +37,9 @@ export default function Config() {
   useEffect(() => {
     async function fetchMe() {
       try {
-        const token = localStorage.getItem('token')
-        if (!token) return
-        const res = await fetch('/api/auth/me', { headers: { Authorization: `Bearer ${token}` } })
+        const user = localStorage.getItem('user');
+        if (!user) return
+        const res = await fetch('/api/auth/me', { credentials: 'include' })
         if (!res.ok) return
         const data = await res.json()
         if (data?.user) {

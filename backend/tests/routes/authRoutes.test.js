@@ -9,6 +9,7 @@ import { describe, it, expect, jest } from '@jest/globals';
 jest.mock('../../src/controller/authController.js', () => ({
   registerUser: jest.fn(),
   loginUser: jest.fn(),
+  logoutUser: jest.fn(),
   loginUserWithPlaca: jest.fn(),
   listRolesPublic: jest.fn(),
   deleteUser: jest.fn(),
@@ -76,6 +77,18 @@ describe('authRoutes', () => {
     expect(paths).toContain('/login');
     expect(paths).toContain('/register');
     expect(paths).toContain('/login-placa');
+  });
+
+  it('debe registrar la ruta POST /logout (revoca la cookie httpOnly de sesión)', async () => {
+    const mod = await import('../../src/routes/authRoutes.js');
+    const router = mod.default;
+    const logoutRoute = router.stack
+      .filter(l => l.route)
+      .map(l => ({ path: l.route.path, methods: Object.keys(l.route.methods) }))
+      .find(r => r.path === '/logout');
+
+    expect(logoutRoute).toBeDefined();
+    expect(logoutRoute.methods).toContain('post');
   });
 
   it('debe registrar rutas GET /me, /users, /roles', async () => {

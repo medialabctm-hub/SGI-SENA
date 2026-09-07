@@ -84,6 +84,9 @@ export default function Header() {
 
   const confirmLogout = () => {
     setShowConfirm(false);
+    // MDL-127: revocar la cookie httpOnly de sesión en el backend. Fire-and-forget:
+    // la limpieza local y la redirección no deben depender de la red.
+    fetch('/api/auth/logout', { method: 'POST', credentials: 'include' }).catch(() => {});
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     window.dispatchEvent(new Event('auth:changed'));
@@ -99,8 +102,11 @@ export default function Header() {
 
   const fetchNotifications = useCallback(
     async ({ silent = false } = {}) => {
-      const token = localStorage.getItem('token');
-      if (!token) {
+      // MDL-127: 'user' (perfil no sensible cacheado por Login.jsx) es el indicador
+      // local de "hay sesión"; la autorización real la valida el backend vía la
+      // cookie httpOnly que credentials:'include' adjunta automáticamente.
+      const user = localStorage.getItem('user');
+      if (!user) {
         setNotifications([]);
         setUnreadCount(0);
         return;
@@ -110,9 +116,7 @@ export default function Header() {
       }
       try {
         const res = await fetch('/api/notifications?limit=15', {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+          credentials: 'include',
         });
         const data = await parseApiResponse(
           res,
@@ -143,12 +147,10 @@ export default function Header() {
 
   const handleOpenPerfil = async () => {
     try {
-      const token = localStorage.getItem('token');
-      if (!token) return;
+      const user = localStorage.getItem('user');
+      if (!user) return;
       const res = await fetch('/api/auth/me', {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        credentials: 'include',
       });
       if (res.ok) {
         const data = await res.json();
@@ -177,14 +179,12 @@ export default function Header() {
 
   const markNotificationAsRead = useCallback(
     async (id) => {
-      const token = localStorage.getItem('token');
-      if (!token) return;
+      const user = localStorage.getItem('user');
+      if (!user) return;
       try {
         const res = await fetch(`/api/notifications/${id}/read`, {
           method: 'PATCH',
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+          credentials: 'include',
         });
         await parseApiResponse(
           res,
@@ -209,14 +209,12 @@ export default function Header() {
   );
 
   const markAllNotificationsAsRead = useCallback(async () => {
-    const token = localStorage.getItem('token');
-    if (!token) return;
+    const user = localStorage.getItem('user');
+    if (!user) return;
     try {
       const res = await fetch('/api/notifications/read-all', {
         method: 'PATCH',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        credentials: 'include',
       });
       await parseApiResponse(res, 'No se pudo marcar todas las notificaciones');
       setNotifications((prev) =>
@@ -266,11 +264,11 @@ export default function Header() {
       if (!notificacionClase || classNotificationModal) return
 
       try {
-        const token = localStorage.getItem('token')
-        if (!token || !notificacionClase.metadata?.id_clase) return
+        const user = localStorage.getItem('user')
+        if (!user || !notificacionClase.metadata?.id_clase) return
 
         const res = await fetch(`/api/clases/${notificacionClase.metadata.id_clase}`, {
-          headers: { Authorization: `Bearer ${token}` }
+          credentials: 'include',
         })
 
         if (res.ok) {

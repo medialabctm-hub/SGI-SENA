@@ -87,9 +87,8 @@ export default function ConsultarEquipo() {
   useEffect(() => {
     async function cargarAmbientes() {
       try {
-        const token = localStorage.getItem('token')
         const res = await fetch('/api/ambientes/activos', {
-          headers: { Authorization: `Bearer ${token}` }
+          credentials: 'include'
         })
         const data = await parseApiResponse(res, 'No se pudieron cargar los ambientes')
         setAmbientes(Array.isArray(data) ? data : [])
@@ -113,10 +112,9 @@ export default function ConsultarEquipo() {
     let cancelled = false
     async function fetchDisponibles() {
       try {
-        const token = localStorage.getItem('token')
         const res = await fetch(
           `/api/equipos/autorizacion-movimiento/disponibles?codigo_equipo=${editingCodigo}&id_ambiente_destino=${idDestino}`,
-          { headers: { Authorization: `Bearer ${token}` } }
+          { credentials: 'include' }
         )
         const data = await parseApiResponse(res, '')
         if (!cancelled) setAutorizacionesDisponibles(data.autorizaciones || [])
@@ -134,9 +132,8 @@ export default function ConsultarEquipo() {
     let isMounted = true
     async function verificarAmbientesCuentadante() {
       try {
-        const token = localStorage.getItem('token')
         const res = await fetch('/api/equipos/verificacion/ambientes', {
-          headers: { Authorization: `Bearer ${token}` }
+          credentials: 'include'
         })
         const data = await parseApiResponse(res, 'No se pudo verificar ambientes')
         if (isMounted && data?.ambientes?.length > 0) {
@@ -170,9 +167,8 @@ export default function ConsultarEquipo() {
     async function cargarEquiposInicial() {
       setLoading(true)
       try {
-        const token = localStorage.getItem('token')
         const res = await fetch(urlListadoEquipos(), {
-          headers: { Authorization: `Bearer ${token}` }
+          credentials: 'include'
         })
         const data = await parseApiResponse(res, 'No se pudo listar los equipos')
         const equiposList = data?.equipos || (Array.isArray(data) ? data : [])
@@ -197,9 +193,8 @@ export default function ConsultarEquipo() {
     }
     setLoading(true)
     try {
-      const token = localStorage.getItem('token')
       const res = await fetch(urlListadoEquipos(codigo), {
-        headers: { Authorization: `Bearer ${token}` }
+        credentials: 'include'
       })
       const data = await parseApiResponse(res, 'No se pudo consultar el equipo')
       const equiposList = data?.equipos || (Array.isArray(data) ? data : [])
@@ -216,9 +211,8 @@ export default function ConsultarEquipo() {
     setToast(null)
     setLoading(true)
     try {
-      const token = localStorage.getItem('token')
       const res = await fetch(urlListadoEquipos(), {
-        headers: { Authorization: `Bearer ${token}` }
+        credentials: 'include'
       })
       const data = await parseApiResponse(res, 'No se pudo listar los equipos')
       const equiposList = data?.equipos || (Array.isArray(data) ? data : [])
@@ -334,13 +328,11 @@ export default function ConsultarEquipo() {
         }
       }
 
-      const token = localStorage.getItem('token')
       const res = await fetch(`/api/equipos/${encodeURIComponent(editingCodigo)}`, {
         method: 'PUT',
         headers: { 
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
-        },
+          'Content-Type': 'application/json'},
+        credentials: 'include',
         body: JSON.stringify(payload)
       })
       const data = await parseApiResponse(res, 'No se pudo actualizar el equipo')
@@ -371,10 +363,9 @@ export default function ConsultarEquipo() {
     setLoading(true)
     setToast(null)
     try {
-      const token = localStorage.getItem('token')
       const res = await fetch(`/api/equipos/${encodeURIComponent(codigoEq)}`, { 
         method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` }
+        credentials: 'include'
       })
       await parseApiResponse(res, 'No se pudo eliminar el equipo')
       setEquipos(prev => prev.filter(eq => eq.codigo_equipo !== codigoEq))
@@ -464,9 +455,8 @@ export default function ConsultarEquipo() {
     if (equipos.length === 0) {
       setLoading(true)
       try {
-        const token = localStorage.getItem('token')
         const res = await fetch(urlListadoEquipos(), {
-          headers: { Authorization: `Bearer ${token}` }
+          credentials: 'include'
         })
         const data = await parseApiResponse(res, 'No se pudo obtener los equipos para la exportación')
         equiposParaExportar = data?.equipos || (Array.isArray(data) ? data : [])

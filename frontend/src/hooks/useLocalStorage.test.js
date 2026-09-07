@@ -1,9 +1,9 @@
 /**
- * Tests para useLocalStorage y useAuthToken
+ * Tests para useLocalStorage
  */
 import { describe, it, expect, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
-import { useLocalStorage, useAuthToken } from './useLocalStorage';
+import { useLocalStorage } from './useLocalStorage';
 
 describe('useLocalStorage', () => {
   beforeEach(() => {
@@ -27,22 +27,5 @@ describe('useLocalStorage', () => {
       result.current[1]({ y: 2 });
     });
     expect(result.current[0]).toEqual({ y: 2 });
-  });
-});
-
-describe('useAuthToken', () => {
-  beforeEach(() => {
-    localStorage.clear();
-  });
-
-  it('devuelve null cuando no hay token', () => {
-    const { result } = renderHook(() => useAuthToken());
-    expect(result.current[0]).toBe(null);
-  });
-
-  it('lee el token de localStorage', () => {
-    localStorage.setItem('token', 'mi-token');
-    const { result } = renderHook(() => useAuthToken());
-    expect(result.current[0]).toBe('mi-token');
   });
 });

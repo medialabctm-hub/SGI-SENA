@@ -59,9 +59,8 @@ export default function MisEquipos() {
   async function fetchMisEquipos() {
     setLoading(true);
     try {
-      const token = localStorage.getItem('token');
       const res = await fetch('/api/equipos/mis-equipos/asignados', {
-        headers: { Authorization: `Bearer ${token}` },
+        credentials: 'include',
       });
       const data = await parseApiResponse(
         res,

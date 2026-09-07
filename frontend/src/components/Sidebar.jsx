@@ -45,10 +45,10 @@ export default function Sidebar({ user }) {
   const [pendientesAutorizacion, setPendientesAutorizacion] = useState(0)
   useEffect(() => {
     if (user?.nombre_rol !== 'Administrador' && user?.nombre_rol !== 'Cuentadante') return
-    const token = localStorage.getItem('token')
-    if (!token) return
+    const hasSession = localStorage.getItem('user');
+    if (!hasSession) return
     fetch('/api/equipos/autorizacion-movimiento/pendientes/count', {
-      headers: { Authorization: `Bearer ${token}` }
+      credentials: 'include'
     })
       .then(r => r.ok ? r.json() : { count: 0 })
       .then(d => setPendientesAutorizacion(d?.count ?? 0))

@@ -1,6 +1,7 @@
 import {
   registerUser,
   loginUser,
+  logoutUser,
   loginUserWithPlaca,
   listRolesPublic,
   deleteUser,
@@ -34,6 +35,9 @@ router.post('/register', registerLimiter, validate(registerSchema), registerUser
 
 // Login de usuario (público) - Protegido con rate limiting
 router.post('/login', authLimiter, validate(loginSchema), loginUser);
+
+// Logout de usuario (público, idempotente) - revoca la cookie httpOnly de sesión
+router.post('/logout', logoutUser);
 
 // Login de usuario con validación de placa (público) - Para app de escritorio
 router.post('/login-placa', authLimiter, loginUserWithPlaca);

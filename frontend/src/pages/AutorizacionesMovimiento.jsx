@@ -88,10 +88,9 @@ export default function AutorizacionesMovimiento() {
   // Cargar datos para formulario de solicitud
   useEffect(() => {
     if (!user || !puedeSolicitar) return
-    const token = localStorage.getItem('token')
     Promise.all([
-      fetch('/api/equipos?limit=5000', { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()).then(d => d.equipos || d || []).catch(() => []),
-      fetch('/api/ambientes/activos', { headers: { Authorization: `Bearer ${token}` } }).then(r => parseApiResponse(r, 'Ambientes')).then(d => (Array.isArray(d) ? d : [])).catch(() => [])
+      fetch('/api/equipos?limit=5000', { credentials: 'include' }).then(r => r.json()).then(d => d.equipos || d || []).catch(() => []),
+      fetch('/api/ambientes/activos', { credentials: 'include' }).then(r => parseApiResponse(r, 'Ambientes')).then(d => (Array.isArray(d) ? d : [])).catch(() => [])
     ]).then(([equipos, ambs]) => {
       setEquiposVerificados((equipos || []).filter(e => e.status_verificacion === 'Verificado'))
       setAmbientes(ambs || [])
@@ -108,9 +107,8 @@ export default function AutorizacionesMovimiento() {
     let cancelado = false
     setCargandoAutorizador(true)
     setAutorizador(null)
-    const token = localStorage.getItem('token')
     fetch(`/api/equipos/autorizacion-movimiento/autorizador?codigo_equipo=${encodeURIComponent(form.codigo_equipo)}`, {
-      headers: { Authorization: `Bearer ${token}` }
+      credentials: 'include'
     })
       .then(r => parseApiResponse(r, 'No se pudo determinar el responsable del equipo'))
       .then(data => {
@@ -173,10 +171,10 @@ export default function AutorizacionesMovimiento() {
     setLoadingSolicitud(true)
     setToast(null)
     try {
-      const token = localStorage.getItem('token')
       const res = await fetch('/api/equipos/autorizacion-movimiento', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        headers: { 'Content-Type': 'application/json'},
+        credentials: 'include',
         body: JSON.stringify({
           codigo_equipo: Number(form.codigo_equipo),
           id_ambiente_destino: Number(form.id_ambiente_destino),
@@ -200,8 +198,7 @@ export default function AutorizacionesMovimiento() {
     setLoadingGestion(true)
     setToast(null)
     try {
-      const token = localStorage.getItem('token')
-      const res = await fetch('/api/equipos/autorizacion-movimiento/pendientes', { headers: { Authorization: `Bearer ${token}` } })
+      const res = await fetch('/api/equipos/autorizacion-movimiento/pendientes', { credentials: 'include' })
       const data = await parseApiResponse(res, 'No se pudieron cargar las solicitudes')
       setSolicitudes(data.solicitudes || [])
     } catch (err) {
@@ -216,9 +213,8 @@ export default function AutorizacionesMovimiento() {
     setLoadingGestion(true)
     setToast(null)
     try {
-      const token = localStorage.getItem('token')
       const params = filtroHistorial ? `?estado=${filtroHistorial}` : ''
-      const res = await fetch(`/api/equipos/autorizacion-movimiento/historial${params}`, { headers: { Authorization: `Bearer ${token}` } })
+      const res = await fetch(`/api/equipos/autorizacion-movimiento/historial${params}`, { credentials: 'include' })
       const data = await parseApiResponse(res, 'No se pudo cargar el historial')
       setHistorial(data.solicitudes || [])
     } catch (err) {
@@ -241,8 +237,7 @@ export default function AutorizacionesMovimiento() {
     setLoadingGestion(true)
     setToast(null)
     try {
-      const token = localStorage.getItem('token')
-      const res = await fetch(`/api/equipos/autorizacion-movimiento/${id}/aprobar`, { method: 'PUT', headers: { Authorization: `Bearer ${token}` } })
+      const res = await fetch(`/api/equipos/autorizacion-movimiento/${id}/aprobar`, { method: 'PUT', credentials: 'include' })
       await parseApiResponse(res, 'No se pudo aprobar')
       setToast({ message: 'Solicitud aprobada. El solicitante puede ejecutar el movimiento.', type: 'success' })
       fetchPendientes()
@@ -259,10 +254,10 @@ export default function AutorizacionesMovimiento() {
     setLoadingGestion(true)
     setToast(null)
     try {
-      const token = localStorage.getItem('token')
       const res = await fetch(`/api/equipos/autorizacion-movimiento/${id}/rechazar`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        headers: { 'Content-Type': 'application/json'},
+        credentials: 'include',
         body: JSON.stringify({ observacion_rechazo: rechazarModal.observacion || null })
       })
       await parseApiResponse(res, 'No se pudo rechazar')

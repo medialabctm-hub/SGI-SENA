@@ -33,9 +33,8 @@ export default function DocumentoEquipos() {
   useEffect(() => {
     async function fetchAmbientes() {
       try {
-        const token = localStorage.getItem('token')
         const res = await fetch('/api/ambientes/activos', {
-          headers: { Authorization: `Bearer ${token}` }
+          credentials: 'include'
         })
         const data = await parseApiResponse(res)
         setAmbientes(Array.isArray(data) ? data : [])
@@ -59,9 +58,8 @@ export default function DocumentoEquipos() {
     setBuscandoCuentadante(true)
     setCuentadanteEncontrado(null)
     try {
-      const token = localStorage.getItem('token')
       const res = await fetch(`/api/equipos/cuentadantes/buscar/${encodeURIComponent(documentoCuentadante.trim())}`, {
-        headers: { Authorization: `Bearer ${token}` }
+        credentials: 'include'
       })
       const data = await parseApiResponse(res, 'Cuentadante no encontrado')
       setCuentadanteEncontrado(data.cuentadante)
@@ -78,7 +76,6 @@ export default function DocumentoEquipos() {
     setGenerando(true)
     setToast(null)
     try {
-      const token = localStorage.getItem('token')
       const params = new URLSearchParams()
       params.append('modo', modo)
 
@@ -89,7 +86,7 @@ export default function DocumentoEquipos() {
       }
 
       const res = await fetch(`/api/reportes/equipos/pdf?${params.toString()}`, {
-        headers: { Authorization: `Bearer ${token}` }
+        credentials: 'include'
       })
 
       if (!res.ok) {

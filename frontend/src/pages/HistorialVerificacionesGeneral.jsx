@@ -51,9 +51,8 @@ export default function HistorialVerificacionesGeneral() {
 
   async function fetchAmbientes() {
     try {
-      const token = localStorage.getItem('token')
       const res = await fetch('/api/ambientes', {
-        headers: { Authorization: `Bearer ${token}` }
+        credentials: 'include'
       })
       const data = await parseApiResponse(res)
       setAmbientes(data || [])
