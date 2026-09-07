@@ -6,6 +6,8 @@
  *
  * El préstamo real solo se ejecuta con SMOKE_LOAN=1 y fixtures explícitos:
  *   SMOKE_LOAN=1 SMOKE_DOCUMENTO=<documento> SMOKE_PLACA=<placa>
+ *
+ * El health check exige que el autoservicio esté listo antes de continuar.
  */
 
 import process from 'node:process';
@@ -93,10 +95,14 @@ function getControlledLoan(env) {
 
 async function checkHealth(fetchImpl, baseUrl, log) {
   const result = await request(fetchImpl, baseUrl, '/health');
-  if (result.status !== 200 || result.json?.status !== 'ok') {
+  if (
+    result.status !== 200 ||
+    result.json?.status !== 'ok' ||
+    result.json?.autoservicio?.ready !== true
+  ) {
     throw new Error(`Health check falló: ${responseSummary(result)}`);
   }
-  log.log('Health check passed');
+  log.log('Health check passed: autoservicio ready');
 }
 
 async function checkFrontend(fetchImpl, baseUrl, log) {
@@ -126,7 +132,7 @@ async function checkApiProxy(fetchImpl, baseUrl, log) {
 async function checkControlledLoan(fetchImpl, baseUrl, loan, log) {
   const verifyPath = `/api/aprendices/verificar/${encodeURIComponent(loan.documento)}`;
   const verified = await request(fetchImpl, baseUrl, verifyPath);
-  if (verified.status !== 200 || verified.json?.ok !== true) {
+  if (verified.status !== 200 || verified.json?.existe !== true) {
     throw new Error(`Verificación del fixture de préstamo falló: ${responseSummary(verified)}`);
   }
 

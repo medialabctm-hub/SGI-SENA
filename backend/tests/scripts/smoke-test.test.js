@@ -25,7 +25,7 @@ describe('smoke test de Railway', () => {
     const calls = [];
     const fetchImpl = jest.fn(async (url, options = {}) => {
       calls.push({ url, options });
-      if (url.endsWith('/health')) return jsonResponse({ status: 'ok' });
+      if (url.endsWith('/health')) return jsonResponse({ status: 'ok', autoservicio: { ready: true } });
       if (url.endsWith('/')) return htmlResponse();
       return jsonResponse({ success: false }, 400);
     });
@@ -48,13 +48,13 @@ describe('smoke test de Railway', () => {
     const calls = [];
     const fetchImpl = jest.fn(async (url, options = {}) => {
       calls.push({ url, options });
-      if (url.endsWith('/health')) return jsonResponse({ status: 'ok' });
+      if (url.endsWith('/health')) return jsonResponse({ status: 'ok', autoservicio: { ready: true } });
       if (url.endsWith('/')) return htmlResponse();
       if (url.endsWith('/autoservicio/iniciar-uso') && Object.keys(JSON.parse(options.body || '{}')).length === 0) {
         return jsonResponse({ success: false }, 400);
       }
       if (url.endsWith('/api/aprendices/verificar/D1')) {
-        return jsonResponse({ ok: true, documento: 'D1' });
+        return jsonResponse({ existe: true });
       }
       return jsonResponse({
         success: true,
