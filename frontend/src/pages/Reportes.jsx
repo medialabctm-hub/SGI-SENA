@@ -61,11 +61,10 @@ export default function Reportes() {
     async function cargarOpcionesReporte() {
       try {
         setCargandoOpciones(true)
-        const token = localStorage.getItem('token')
         
         // Cargar tipos de reporte
         const resTipos = await fetch('/api/reportes/tipos', {
-          headers: { Authorization: `Bearer ${token}` }
+          credentials: 'include'
         })
         if (resTipos.ok) {
           const tipos = await parseApiResponse(resTipos)
@@ -113,9 +112,8 @@ export default function Reportes() {
 
   async function fetchAmbientes() {
     try {
-      const token = localStorage.getItem('token')
       const res = await fetch('/api/ambientes/activos', {
-        headers: { Authorization: `Bearer ${token}` }
+        credentials: 'include'
       })
       const data = await parseApiResponse(res)
       setAmbientes(Array.isArray(data) ? data : [])
@@ -128,9 +126,8 @@ export default function Reportes() {
   async function fetchReportes() {
     setLoading(true)
     try {
-      const token = localStorage.getItem('token')
       const res = await fetch('/api/reportes', {
-        headers: { Authorization: `Bearer ${token}` }
+        credentials: 'include'
       })
       const data = await parseApiResponse(res, 'No se pudo cargar los reportes')
       setReportes(Array.isArray(data) ? data : [])
@@ -153,9 +150,8 @@ export default function Reportes() {
     try {
       setBuscandoEquipo(true)
       setEquipoEncontrado(null)
-      const token = localStorage.getItem('token')
       const res = await fetch(`/api/equipos/${encodeURIComponent(codigoInventario.trim())}`, {
-        headers: { Authorization: `Bearer ${token}` }
+        credentials: 'include'
       })
       
       if (res.ok) {
@@ -204,7 +200,6 @@ export default function Reportes() {
 
     try {
       setLoadingCrear(true)
-      const token = localStorage.getItem('token')
       
       // Preparar payload: codigo_equipo solo si existe, sino null
       const payload = {
@@ -219,9 +214,8 @@ export default function Reportes() {
       const res = await fetch('/api/reportes', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
-        },
+          'Content-Type': 'application/json'},
+        credentials: 'include',
         body: JSON.stringify(payload)
       })
 
@@ -304,13 +298,11 @@ export default function Reportes() {
     setLoading(true)
     setToast(null)
     try {
-      const token = localStorage.getItem('token')
       const res = await fetch(`/api/reportes/${editingReporte}`, {
         method: 'PUT',
         headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
-        },
+          'Content-Type': 'application/json'},
+        credentials: 'include',
         body: JSON.stringify(editForm)
       })
       const data = await parseApiResponse(res, 'No se pudo actualizar el reporte')
@@ -332,7 +324,6 @@ export default function Reportes() {
     setGenerandoPDF(true)
     setToast(null)
     try {
-      const token = localStorage.getItem('token')
       const params = new URLSearchParams()
       if (pdfFilters.tipo_reporte) params.append('tipo_reporte', pdfFilters.tipo_reporte)
       if (pdfFilters.id_ambiente) params.append('id_ambiente', pdfFilters.id_ambiente)
@@ -340,7 +331,7 @@ export default function Reportes() {
       if (pdfFilters.fecha_fin) params.append('fecha_fin', pdfFilters.fecha_fin)
 
       const res = await fetch(`/api/reportes/pdf?${params.toString()}`, {
-        headers: { Authorization: `Bearer ${token}` }
+        credentials: 'include'
       })
 
       // Manejar código 403 (no autorizado) específicamente
@@ -382,10 +373,9 @@ export default function Reportes() {
     setLoading(true)
     setToast(null)
     try {
-      const token = localStorage.getItem('token')
       const res = await fetch(`/api/reportes/${id}`, {
         method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` }
+        credentials: 'include'
       })
       const data = await parseApiResponse(res, 'No se pudo eliminar el reporte')
       setToast({ message: data.message || 'Reporte eliminado correctamente', type: 'success' })

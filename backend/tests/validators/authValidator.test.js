@@ -7,6 +7,7 @@
 import { describe, it, expect, jest } from '@jest/globals';
 import {
   loginSchema,
+  loginPlacaSchema,
   registerSchema,
   updateUserSchema,
   validate,
@@ -50,6 +51,56 @@ describe('loginSchema', () => {
     expect(() =>
       loginSchema.parse({ cedula: '1234567890', contrasena: '' })
     ).toThrow();
+  });
+});
+
+describe('loginPlacaSchema', () => {
+  it('debe pasar con cédula, contraseña y placa válidas', () => {
+    expect(() => loginPlacaSchema.parse({
+      cedula: '1234567890',
+      contrasena: 'secreto',
+      placa: 'PC-01',
+    })).not.toThrow();
+  });
+
+  it('debe recortar identificadores sin alterar la contraseña', () => {
+    const result = loginPlacaSchema.parse({
+      cedula: ' 1234567890 ',
+      contrasena: ' pass con espacios ',
+      placa: ' PC-01 ',
+    });
+
+    expect(result.cedula).toBe('1234567890');
+    expect(result.placa).toBe('PC-01');
+    expect(result.contrasena).toBe(' pass con espacios ');
+  });
+
+  it.each([
+    { cedula: '', contrasena: 'secreto', placa: 'PC-01' },
+    { cedula: '123', contrasena: '', placa: 'PC-01' },
+    { cedula: '123', contrasena: 'secreto', placa: '' },
+  ])('debe rechazar campos obligatorios vacíos: %o', (body) => {
+    expect(() => loginPlacaSchema.parse(body)).toThrow();
+  });
+
+  it('debe rechazar identificadores y contraseñas sobredimensionados', () => {
+    expect(() => loginPlacaSchema.parse({
+      cedula: '1'.repeat(21),
+      contrasena: 'secreto',
+      placa: 'PC-01',
+    })).toThrow();
+
+    expect(() => loginPlacaSchema.parse({
+      cedula: '123',
+      contrasena: 'x'.repeat(201),
+      placa: 'PC-01',
+    })).toThrow();
+
+    expect(() => loginPlacaSchema.parse({
+      cedula: '123',
+      contrasena: 'secreto',
+      placa: 'P'.repeat(51),
+    })).toThrow();
   });
 });
 

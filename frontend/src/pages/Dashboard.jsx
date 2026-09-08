@@ -44,17 +44,17 @@ export default function Dashboard() {
 
     try {
       setLoading(true)
-      const token = localStorage.getItem('token')
-      if (!token) {
+      const hasSession = localStorage.getItem('user');
+      if (!hasSession) {
         setLoading(false)
         return
       }
 
       const response = await fetch('/api/estadisticas', {
         headers: {
-          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
-        }
+        },
+        credentials: 'include'
       })
 
       const data = await parseApiResponse(response, 'Error al cargar estadísticas')
@@ -81,10 +81,10 @@ export default function Dashboard() {
   // Contador de solicitudes de autorización pendientes (Administrador y Cuentadante)
   useEffect(() => {
     if (user?.nombre_rol !== 'Administrador' && user?.nombre_rol !== 'Cuentadante') return
-    const token = localStorage.getItem('token')
-    if (!token) return
+    const hasSession = localStorage.getItem('user');
+    if (!hasSession) return
     fetch('/api/equipos/autorizacion-movimiento/pendientes/count', {
-      headers: { Authorization: `Bearer ${token}` }
+      credentials: 'include'
     })
       .then(r => r.ok ? r.json() : { count: 0 })
       .then(d => setPendientesAutorizacion(d?.count ?? 0))

@@ -1,6 +1,7 @@
 import {
   registerUser,
   loginUser,
+  logoutUser,
   loginUserWithPlaca,
   listRolesPublic,
   deleteUser,
@@ -19,7 +20,13 @@ import express from 'express';
 import { authenticate } from '../middleware/authMiddleware.js';
 import { requirePermission, requireOwnership, requireAnyPermissionOrOwnership, requireAdminForRoleChange } from '../middleware/authorization.js';
 import { PERMISSIONS } from '../config/permissions.js';
-import { validate, registerSchema, loginSchema, updateUserSchema } from '../validators/authValidator.js';
+import {
+  validate,
+  registerSchema,
+  loginSchema,
+  loginPlacaSchema,
+  updateUserSchema,
+} from '../validators/authValidator.js';
 import { authLimiter, registerLimiter, passwordResetLimiter } from '../middleware/rateLimiter.js';
 import { uploadProfileImage, handleProfileUploadError } from '../middleware/uploadProfileMiddleware.js';
 
@@ -35,8 +42,11 @@ router.post('/register', registerLimiter, validate(registerSchema), registerUser
 // Login de usuario (público) - Protegido con rate limiting
 router.post('/login', authLimiter, validate(loginSchema), loginUser);
 
+// Logout de usuario (público, idempotente) - revoca la cookie httpOnly de sesión
+router.post('/logout', logoutUser);
+
 // Login de usuario con validación de placa (público) - Para app de escritorio
-router.post('/login-placa', authLimiter, loginUserWithPlaca);
+router.post('/login-placa', authLimiter, validate(loginPlacaSchema), loginUserWithPlaca);
 
 // Solicitar recuperación de contraseña (público) - Protegido con rate limiting
 router.post('/recuperar-contrasena', passwordResetLimiter, solicitarRecuperacionContrasena);

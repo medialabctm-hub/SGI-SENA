@@ -1,15 +1,16 @@
 import { ServiceFactory } from '../factories/ServiceFactory.js';
 import { AuthenticationError } from '../utils/errors.js';
 import { logger } from '../utils/logger.js';
+import { extractSessionToken } from '../utils/sessionCookie.js';
 
 /**
  * Middleware de autenticación JWT
- * Valida el token y adjunta información completa del usuario al request
+ * Valida el token (cookie httpOnly de sesión o header Authorization) y
+ * adjunta información completa del usuario al request
  */
 export async function authenticate(req, res, next) {
   try {
-    const authHeader = req.headers.authorization || '';
-    const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+    const token = extractSessionToken(req);
 
     if (!token) {
       return next(new AuthenticationError('Token no proporcionado'));
@@ -60,8 +61,7 @@ export async function authenticate(req, res, next) {
  */
 export async function optionalAuthenticate(req, res, next) {
   try {
-    const authHeader = req.headers.authorization || '';
-    const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+    const token = extractSessionToken(req);
     if (!token) return next();
 
     try {

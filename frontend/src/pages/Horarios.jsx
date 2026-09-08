@@ -136,10 +136,9 @@ export default function Horarios() {
     // SISTEMA 100% MANUAL: Esta función solo se puede llamar manualmente si es necesario
     // No se ejecuta automáticamente
     try {
-      const token = localStorage.getItem('token')
       await fetch('/api/clases/sincronizar-responsabilidades', {
         method: 'POST',
-        headers: { Authorization: `Bearer ${token}` }
+        credentials: 'include'
       })
       // Actualizar la lista de clases después de sincronizar
       fetchClases()
@@ -152,7 +151,6 @@ export default function Horarios() {
     setLoading(true)
     setToast(null)
     try {
-      const token = localStorage.getItem('token')
       const params = new URLSearchParams()
       if (filtros.id_ambiente) params.append('id_ambiente', filtros.id_ambiente)
       if (filtros.id_instructor) params.append('id_instructor', filtros.id_instructor)
@@ -160,7 +158,7 @@ export default function Horarios() {
       if (filtros.estado_clase) params.append('estado_clase', filtros.estado_clase)
 
       const res = await fetch(`/api/clases?${params.toString()}`, {
-        headers: { Authorization: `Bearer ${token}` }
+        credentials: 'include'
       })
       const data = await parseApiResponse(res, 'No se pudo obtener las clases')
       // El backend ahora retorna { clases: [...], paginacion: {...} }
@@ -176,9 +174,8 @@ export default function Horarios() {
 
   async function fetchAmbientes() {
     try {
-      const token = localStorage.getItem('token')
       const res = await fetch('/api/ambientes', {
-        headers: { Authorization: `Bearer ${token}` }
+        credentials: 'include'
       })
       const data = await parseApiResponse(res)
       setAmbientes(data || [])
@@ -190,10 +187,9 @@ export default function Horarios() {
   // Cargar instructores y cuentadantes (ambos pueden dar clases y aparecer en el filtro)
   async function fetchInstructores() {
     try {
-      const token = localStorage.getItem('token')
       const [resInstructor, resCuentadante] = await Promise.all([
-        fetch('/api/auth/users?rol=Instructor', { headers: { Authorization: `Bearer ${token}` } }),
-        fetch('/api/auth/users?rol=Cuentadante', { headers: { Authorization: `Bearer ${token}` } })
+        fetch('/api/auth/users?rol=Instructor', { credentials: 'include' }),
+        fetch('/api/auth/users?rol=Cuentadante', { credentials: 'include' })
       ])
       const dataInstructor = await parseApiResponse(resInstructor, 'No se pudo obtener instructores')
       const dataCuentadante = await parseApiResponse(resCuentadante, 'No se pudo obtener cuentadantes')
@@ -214,9 +210,8 @@ export default function Horarios() {
   async function fetchNombresClases() {
     try {
       setLoadingNombres(true)
-      const token = localStorage.getItem('token')
       const res = await fetch('/api/clases/nombres', {
-        headers: { Authorization: `Bearer ${token}` }
+        credentials: 'include'
       })
       
       // Manejar errores de permisos
@@ -248,13 +243,11 @@ export default function Horarios() {
     }
     
     try {
-      const token = localStorage.getItem('token')
       const res = await fetch('/api/clases/nombres', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
-        },
+          'Content-Type': 'application/json'},
+        credentials: 'include',
         body: JSON.stringify({ nombre_clase: nombre.trim() })
       })
 
@@ -335,7 +328,6 @@ export default function Horarios() {
     setLoading(true)
     setToast(null)
     try {
-      const token = localStorage.getItem('token')
       // Si es instructor, no enviar id_instructor (el backend lo asigna automáticamente)
       const bodyData = { ...form }
       if (user?.nombre_rol === 'Instructor') {
@@ -379,9 +371,8 @@ export default function Horarios() {
       const res = await fetch('/api/clases', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
-        },
+          'Content-Type': 'application/json'},
+        credentials: 'include',
         body: JSON.stringify(bodyData)
       })
       const data = await parseApiResponse(res, 'No se pudo crear la clase')
@@ -400,7 +391,6 @@ export default function Horarios() {
     setLoading(true)
     setToast(null)
     try {
-      const token = localStorage.getItem('token')
       
       // Preparar datos asegurando formato correcto de fecha
       const bodyData = { ...form }
@@ -430,9 +420,8 @@ export default function Horarios() {
       const res = await fetch(`/api/clases/${editingClase.id_clase}`, {
         method: 'PUT',
         headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
-        },
+          'Content-Type': 'application/json'},
+        credentials: 'include',
         body: JSON.stringify(bodyData)
       })
       const data = await parseApiResponse(res, 'No se pudo actualizar la clase')
@@ -453,10 +442,9 @@ export default function Horarios() {
     setLoading(true)
     setToast(null)
     try {
-      const token = localStorage.getItem('token')
       const res = await fetch(`/api/clases/${confirmDelete.id}/cancelar`, {
         method: 'POST',
-        headers: { Authorization: `Bearer ${token}` }
+        credentials: 'include'
       })
       const data = await parseApiResponse(res, 'No se pudo cancelar la clase')
       setToast({ message: data.message || 'Clase cancelada correctamente', type: 'success' })
@@ -503,13 +491,11 @@ export default function Horarios() {
     setInfoModal({ open: false, message: '', title: '', type: 'info' })
     
     try {
-      const token = localStorage.getItem('token')
       const res = await fetch(`/api/clases/${claseParaIniciar.id}/iniciar`, {
         method: 'POST',
         headers: { 
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}` 
-        }
+          'Content-Type': 'application/json'},
+        credentials: 'include'
       })
       const data = await parseApiResponse(res, 'No se pudo iniciar la clase')
       
@@ -537,13 +523,11 @@ export default function Horarios() {
     setLoading(true)
     setToast(null)
     try {
-      const token = localStorage.getItem('token')
       const res = await fetch(`/api/clases/${idClase}/finalizar`, {
         method: 'POST',
         headers: { 
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}` 
-        }
+          'Content-Type': 'application/json'},
+        credentials: 'include'
       })
       const data = await parseApiResponse(res, 'No se pudo finalizar la clase')
       setToast({ message: data.message || 'Clase finalizada correctamente', type: 'success' })
@@ -690,13 +674,12 @@ export default function Horarios() {
     setImportResult(null)
     
     try {
-      const token = localStorage.getItem('token')
       const formData = new FormData()
       formData.append('archivo', importFile)
 
       const res = await fetch('/api/horarios/importar', {
         method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
+        credentials: 'include',
         body: formData
       })
 
@@ -757,9 +740,8 @@ export default function Horarios() {
 
   async function downloadTemplate() {
     try {
-      const token = localStorage.getItem('token')
       const res = await fetch('/api/horarios/plantilla', {
-        headers: { Authorization: `Bearer ${token}` }
+        credentials: 'include'
       })
       const blob = await res.blob()
       const url = window.URL.createObjectURL(blob)

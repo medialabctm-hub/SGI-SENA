@@ -4,7 +4,7 @@ import { beginEquipmentClaim } from '../../src/utils/equipmentClaim.js';
 import { runAutoservicioCierreMigration } from '../../scripts/migrate-autoservicio-cierre-clase.js';
 
 const describeMysql = process.env.RUN_MYSQL_INTEGRATION === '1' ? describe : describe.skip;
-const MIGRATION_VERSION = 'AUTOSERVICIO_CIERRE_V1';
+const MIGRATION_VERSION = 'AUTOSERVICIO_CIERRE_V2';
 const TRIGGER_NAME = 'mdl71_fail_historial_update';
 
 const pause = (milliseconds) => new Promise((resolve) => {
@@ -308,6 +308,23 @@ describeMysql('MDL-71: concurrencia, migración e idempotencia con MySQL 8 real'
     expect(responsabilidad.estado_responsabilidad).toBe('Finalizada');
     expect(responsable.estado_responsabilidad).toBe('Finalizado');
     expect(Number(historialActivo.total)).toBe(0);
+  });
+
+  it('conserva la fecha del primer cierre en un reintento posterior', async () => {
+    await ensureRoutine();
+    await seedClassUsage();
+
+    await adminConnection.query("CALL sp_finalizar_clase(7, '2026-08-24 12:00:00')");
+    await adminConnection.query("CALL sp_finalizar_clase(7, '2026-08-24 12:05:00')");
+
+    const [[clase]] = await adminConnection.execute(
+      `SELECT estado_clase, DATE_FORMAT(fecha_fin_real, '%Y-%m-%d %H:%i:%s') AS fecha_fin_real
+       FROM Clases WHERE id_clase = 7`
+    );
+    expect(clase).toEqual({
+      estado_clase: 'Finalizada',
+      fecha_fin_real: '2026-08-24 12:00:00'
+    });
   });
 
   it('revierte todo el cierre si una actualización de historial falla', async () => {

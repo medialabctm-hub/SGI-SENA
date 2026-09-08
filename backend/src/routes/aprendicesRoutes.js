@@ -3,7 +3,7 @@ import { listarAprendices, crearAprendiz, actualizarAprendiz, eliminarAprendiz, 
 import { authenticate } from '../middleware/authMiddleware.js'
 import { requirePermission } from '../middleware/authorization.js'
 import { PERMISSIONS } from '../config/permissions.js'
-import { webhookLimiter } from '../middleware/rateLimiter.js'
+import { publicLookupLimiter } from '../middleware/rateLimiter.js'
 
 const router = express.Router()
 
@@ -14,7 +14,7 @@ const router = express.Router()
 // Verificar documento de aprendiz (público) - usado antes de solicitar un equipo por autoservicio
 router.get(
   '/verificar/:documento',
-  webhookLimiter,
+  publicLookupLimiter,
   verificarAprendizPorDocumento
 )
 

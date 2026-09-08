@@ -48,14 +48,13 @@ export default function HistorialUsoEquipo() {
     setLoading(true)
     setToast(null)
     try {
-      const token = localStorage.getItem('token')
       const params = new URLSearchParams()
       if (filtros.fecha_desde) params.append('fecha_desde', filtros.fecha_desde)
       if (filtros.fecha_hasta) params.append('fecha_hasta', filtros.fecha_hasta)
       params.append('limit', '100')
 
       const res = await fetch(`/api/equipos/${codigo}/uso/historial?${params.toString()}`, {
-        headers: { Authorization: `Bearer ${token}` }
+        credentials: 'include'
       })
       const data = await parseApiResponse(res, 'No se pudo obtener el historial de uso')
       setEquipo(data.equipo)

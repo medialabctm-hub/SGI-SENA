@@ -136,8 +136,8 @@ export default function Security() {
 
     setLoading(true)
     try {
-      const token = localStorage.getItem('token')
-      if (!token) {
+      const user = localStorage.getItem('user');
+      if (!user) {
         setToast({ message: 'No autorizado. Por favor inicia sesión nuevamente', type: 'error' })
         return
       }
@@ -145,9 +145,8 @@ export default function Security() {
       const res = await fetch('/api/auth/cambiar-contrasena', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
-        },
+          'Content-Type': 'application/json'},
+        credentials: 'include',
         body: JSON.stringify({
           contrasenaActual: current,
           nuevaContrasena: newPass

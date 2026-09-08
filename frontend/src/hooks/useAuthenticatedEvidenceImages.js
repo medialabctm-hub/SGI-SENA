@@ -11,12 +11,11 @@ export function useAuthenticatedEvidenceImages(images = []) {
     let cancelled = false;
     const objectUrls = [];
     const controller = new AbortController();
-    const token = localStorage.getItem('token');
 
     async function load() {
       const entries = await Promise.all(images.map(async (image) => {
         const response = await fetch(image.ruta_imagen, {
-          headers: { Authorization: `Bearer ${token}` },
+          credentials: 'include',
           signal: controller.signal,
         });
         if (!response.ok) return [image.id_imagen_equipo, null];

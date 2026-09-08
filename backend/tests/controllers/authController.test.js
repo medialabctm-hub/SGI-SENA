@@ -57,6 +57,7 @@ const {
   listRolesPublic,
   registerUser,
   loginUser,
+  logoutUser,
   loginUserWithPlaca,
   me,
   listUsers,
@@ -85,6 +86,8 @@ function mockRes() {
   const res = {};
   res.status = jest.fn().mockReturnValue(res);
   res.json = jest.fn().mockReturnValue(res);
+  res.cookie = jest.fn().mockReturnValue(res);
+  res.clearCookie = jest.fn().mockReturnValue(res);
   return res;
 }
 
@@ -156,11 +159,28 @@ describe('authController', () => {
   });
 
   describe('loginUser', () => {
-    it('hace login y responde json', async () => {
+    it('emite el JWT en una cookie httpOnly y nunca en el body de la respuesta', async () => {
+      mockAuthService.loginUser.mockResolvedValueOnce({
+        token: 'jwt.secret.value',
+        requiereCambioContrasena: false,
+        user: { id_usuario: 1, nombre_usuario: 'Ana' },
+      });
       req.body = { cedula: '1', contrasena: 'x' };
+
       await loginUser(req, res, next);
+
       expect(mockAuthService.loginUser).toHaveBeenCalledWith('1', 'x');
-      expect(res.json).toHaveBeenCalledWith({ ok: true });
+      expect(res.cookie).toHaveBeenCalledWith(
+        'sgi_session',
+        'jwt.secret.value',
+        expect.objectContaining({ httpOnly: true, path: '/', sameSite: 'lax' })
+      );
+      expect(res.json).toHaveBeenCalledWith({
+        requiereCambioContrasena: false,
+        user: { id_usuario: 1, nombre_usuario: 'Ana' },
+      });
+      const jsonPayload = res.json.mock.calls[0][0];
+      expect(jsonPayload.token).toBeUndefined();
     });
 
     it('pasa error a next', async () => {
@@ -168,6 +188,28 @@ describe('authController', () => {
       mockAuthService.loginUser.mockRejectedValueOnce(err);
       await loginUser(req, res, next);
       expect(next).toHaveBeenCalledWith(err);
+      expect(res.cookie).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('logoutUser', () => {
+    it('revoca la cookie httpOnly de sesión y responde json', async () => {
+      await logoutUser(req, res, next);
+
+      expect(res.clearCookie).toHaveBeenCalledWith(
+        'sgi_session',
+        expect.objectContaining({ httpOnly: true, path: '/', sameSite: 'lax' })
+      );
+      expect(res.json).toHaveBeenCalledWith({ message: 'Sesión cerrada correctamente' });
+      expect(next).not.toHaveBeenCalled();
+    });
+
+    it('pasa a next si clearCookie lanza una excepción', async () => {
+      res.clearCookie.mockImplementationOnce(() => { throw new Error('boom'); });
+
+      await logoutUser(req, res, next);
+
+      expect(next).toHaveBeenCalledWith(expect.any(Error));
     });
   });
 

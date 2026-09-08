@@ -53,49 +53,55 @@ describe('aprendicesController', () => {
   });
 
   describe('verificarAprendizPorDocumento', () => {
-    it('resuelve aprendices importados sin consultar Usuarios desde la ruta pública', async () => {
-      stubEnsure();
-      mockExecute.mockResolvedValueOnce([[
-        { id_aprendiz: 12, nombre: 'Aprendiz Importado', documento: ' TI-009 ', ficha: 'F1' }
-      ]]);
+    it('responde solo { existe: true } cuando el documento existe, sin PII', async () => {
+      mockExecute.mockResolvedValueOnce([[{ 1: 1 }]]);
 
       await verificarAprendizPorDocumento({ params: { documento: ' TI-009 ' } }, res);
 
-      expect(res.json).toHaveBeenCalledWith({
-        ok: true,
-        origen: 'aprendiz',
-        id_usuario: null,
-        id_aprendiz: 12,
-        nombre: 'Aprendiz Importado',
-        documento: 'TI-009',
-        ficha: 'F1'
-      });
-      expect(mockExecute.mock.calls.some(([sql]) => /FROM Usuarios/.test(sql))).toBe(false);
+      expect(res.json).toHaveBeenCalledWith({ existe: true });
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(mockExecute.mock.calls.some(([, params]) => params?.[0] === 'TI-009')).toBe(true);
     });
 
-    it('busca el aprendiz importado cuando no existe un usuario activo', async () => {
-      mockExecute.mockImplementation(async (sql) => {
-        if (/FROM Aprendices/.test(sql) && !/INFORMATION_SCHEMA/.test(sql)) {
-          return [[{ id_aprendiz: 12, nombre: 'Aprendiz Importado', documento: ' TI-009 ', ficha: 'F1' }]];
-        }
-        if (/DATA_TYPE/.test(sql)) return [[{ DATA_TYPE: 'varchar', CHARACTER_SET_NAME: 'utf8mb4' }]];
-        if (/SELECT EXISTS/.test(sql)) return [[{ hay_pendientes: 0 }]];
-        return [[{ cnt: 1 }]];
-      });
+    it('responde { existe: false } con 404 cuando el documento no existe', async () => {
+      mockExecute.mockResolvedValueOnce([[undefined]]);
 
-      await verificarAprendizPorDocumento({ params: { documento: ' TI-009 ' } }, res);
+      await verificarAprendizPorDocumento({ params: { documento: 'NO-EXISTE' } }, res);
 
-      expect(res.json).toHaveBeenCalledWith({
-        ok: true,
-        origen: 'aprendiz',
-        id_usuario: null,
-        id_aprendiz: 12,
-        nombre: 'Aprendiz Importado',
-        documento: 'TI-009',
-        ficha: 'F1'
-      });
-      expect(mockExecute.mock.calls.some(([, params]) => params?.[0] === 'TI-009')).toBe(true);
-      expect(mockExecute.mock.calls.some(([sql]) => /FROM Usuarios/.test(sql))).toBe(false);
+      expect(res.status).toHaveBeenCalledWith(404);
+      expect(res.json).toHaveBeenCalledWith({ existe: false });
+    });
+
+    it('responde 400 sin consultar la BD cuando el documento está vacío', async () => {
+      await verificarAprendizPorDocumento({ params: { documento: '   ' } }, res);
+
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith({ existe: false, error: 'El documento es obligatorio' });
+      expect(mockExecute).not.toHaveBeenCalled();
+    });
+
+    it('no ejecuta ensureAprendicesTable ni ninguna sentencia DDL/INFORMATION_SCHEMA en la ruta pública', async () => {
+      mockExecute.mockResolvedValueOnce([[{ 1: 1 }]]);
+
+      await verificarAprendizPorDocumento({ params: { documento: 'TI-009' } }, res);
+
+      // Un único SELECT de existencia: nada de CREATE/ALTER/INFORMATION_SCHEMA en el camino de la petición.
+      expect(mockExecute).toHaveBeenCalledTimes(1);
+      const [sql] = mockExecute.mock.calls[0];
+      expect(sql).toMatch(/^SELECT 1 FROM Aprendices/);
+      expect(mockExecute.mock.calls.some(([callSql]) => /CREATE TABLE|ALTER TABLE|INFORMATION_SCHEMA/i.test(callSql))).toBe(false);
+    });
+
+    it('no filtra datos sensibles ni siquiera cuando ocurre un error de BD', async () => {
+      mockExecute.mockRejectedValueOnce(new Error('connection lost'));
+
+      await verificarAprendizPorDocumento({ params: { documento: 'TI-009' } }, res);
+
+      expect(res.status).toHaveBeenCalledWith(500);
+      const [[body]] = res.json.mock.calls;
+      expect(body).not.toHaveProperty('nombre');
+      expect(body).not.toHaveProperty('ficha');
+      expect(body).not.toHaveProperty('documento');
     });
   });
 

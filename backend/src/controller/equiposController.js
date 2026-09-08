@@ -4209,7 +4209,7 @@ export async function registrarUsoEquipoExterno(req, res) {
 // AUTOSERVICIO DE APRENDICES (SIN CUENTA)
 // ============================================
 
-const AUTOSERVICIO_CIERRE_VERSION = 'AUTOSERVICIO_CIERRE_V1';
+const AUTOSERVICIO_CIERRE_VERSION = 'AUTOSERVICIO_CIERRE_V2';
 const AUTOSERVICIO_COLUMNAS = ['documento_externo', 'nombre_externo', 'id_aprendiz', 'idempotency_key'];
 const AUTOSERVICIO_INDICES_REQUERIDOS = [
   { nombre: 'idx_documento_externo', columna: 'documento_externo', nonUnique: 1, etiqueta: 'índice idx_documento_externo sobre documento_externo' },
@@ -4273,9 +4273,13 @@ async function verificarReadinessAutoservicio(db) {
 
 function assertAutoservicioReady(readiness) {
   if (readiness.ready) return readiness;
-  throw new Error(
+  // AppError con 503: handleControllerError debe propagar este status y este mensaje
+  // accionable tal cual (en vez de degradarlos a un 500 genérico), para que el
+  // endpoint público le diga al usuario que el autoservicio no está listo y por qué.
+  throw new AppError(
     `Autoservicio no está listo: faltan ${readiness.missing.join(', ')}. ` +
-    'Ejecute node scripts/migrate-autoservicio-cierre-clase.js con credenciales MySQL de administrador.'
+    'Ejecute node scripts/migrate-autoservicio-cierre-clase.js con credenciales MySQL de administrador.',
+    503
   );
 }
 

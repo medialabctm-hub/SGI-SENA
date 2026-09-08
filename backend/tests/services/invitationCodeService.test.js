@@ -20,6 +20,7 @@ function makeService() {
     delete: jest.fn().mockResolvedValue(undefined),
     updateStatus: jest.fn().mockResolvedValue(undefined),
     incrementUsage: jest.fn().mockResolvedValue(undefined),
+    consumeCode: jest.fn(),
   };
   const mockLogger = {
     info: jest.fn(),
@@ -33,18 +34,18 @@ function makeService() {
 // generateCode
 // ──────────────────────────────────────────────
 describe('generateCode()', () => {
-  it('debe devolver un string de 12 caracteres en mayúsculas', () => {
+  it('debe devolver un string de 32 caracteres en mayúsculas', () => {
     const { service } = makeService();
     const code = service.generateCode();
     expect(typeof code).toBe('string');
-    expect(code.length).toBe(12);
+    expect(code.length).toBe(32);
     expect(code).toBe(code.toUpperCase());
   });
 
   it('debe devolver solo caracteres hexadecimales en mayúsculas', () => {
     const { service } = makeService();
     const code = service.generateCode();
-    expect(code).toMatch(/^[0-9A-F]{12}$/);
+    expect(code).toMatch(/^[0-9A-F]{32}$/);
   });
 
   it('debe generar códigos distintos en llamadas sucesivas', () => {
@@ -186,58 +187,101 @@ describe('validateCode()', () => {
 // useCode
 // ──────────────────────────────────────────────
 describe('useCode()', () => {
-  it('debe llamar incrementUsage con el código correcto', async () => {
+  it('debe delegar el consumo al repositorio atómico con el código correcto', async () => {
     const { service, mockRepo } = makeService();
-    mockRepo.findByCode.mockResolvedValue({
+    mockRepo.consumeCode.mockResolvedValue({
+      consumed: true,
+      reason: 'consumed',
+      code: {
       codigo: 'ABC123',
       max_usos: 5,
       usos_actuales: 2,
+      },
     });
     await service.useCode('ABC123');
-    expect(mockRepo.incrementUsage).toHaveBeenCalledWith('ABC123');
+    expect(mockRepo.consumeCode).toHaveBeenCalledWith('ABC123');
   });
 
   it('debe llamar logger.info tras usar el código', async () => {
     const { service, mockRepo, mockLogger } = makeService();
-    mockRepo.findByCode.mockResolvedValue({
+    mockRepo.consumeCode.mockResolvedValue({
+      consumed: true,
+      reason: 'consumed',
+      code: {
       codigo: 'ABC123',
       max_usos: 5,
       usos_actuales: 2,
+      },
     });
     await service.useCode('ABC123');
     expect(mockLogger.info).toHaveBeenCalledWith(
       'Código de invitación usado',
-      { codigo: 'ABC123' }
+      { codigo_hash: expect.stringMatching(/^[0-9a-f]{16}$/) }
     );
   });
 
-  it('debe marcar Agotado si usos_actuales alcanza max_usos tras incremento', async () => {
+  it('debe rechazar un código agotado sin hacer un segundo read-then-write', async () => {
     const { service, mockRepo } = makeService();
-    mockRepo.findByCode.mockResolvedValue({
-      codigo: 'FULL123',
-      max_usos: 3,
-      usos_actuales: 3,
+    mockRepo.consumeCode.mockResolvedValue({
+      consumed: false,
+      reason: 'exhausted',
+      code: {
+        codigo: 'FULL123',
+        max_usos: 3,
+        usos_actuales: 3,
+      },
     });
-    await service.useCode('FULL123');
-    expect(mockRepo.updateStatus).toHaveBeenCalledWith('FULL123', 'Agotado');
+    await expect(service.useCode('FULL123')).rejects.toThrow('límite');
+    expect(mockRepo.findByCode).not.toHaveBeenCalled();
+    expect(mockRepo.incrementUsage).not.toHaveBeenCalled();
   });
 
-  it('no debe marcar Agotado si max_usos es 0 (ilimitado)', async () => {
+  it('debe consumir códigos ilimitados cuando el repositorio confirma atomicidad', async () => {
     const { service, mockRepo } = makeService();
-    mockRepo.findByCode.mockResolvedValue({
-      codigo: 'UNLIMITED',
-      max_usos: 0,
-      usos_actuales: 100,
+    mockRepo.consumeCode.mockResolvedValue({
+      consumed: true,
+      reason: 'consumed',
+      code: {
+        codigo: 'UNLIMITED',
+        max_usos: 0,
+        usos_actuales: 101,
+      },
     });
     await service.useCode('UNLIMITED');
     expect(mockRepo.updateStatus).not.toHaveBeenCalled();
   });
 
-  it('no debe marcar Agotado si el código no existe después del incremento', async () => {
+  it('debe rechazar códigos que desaparecen antes del consumo', async () => {
     const { service, mockRepo } = makeService();
-    mockRepo.findByCode.mockResolvedValue(null);
-    await service.useCode('GHOST');
+    mockRepo.consumeCode.mockResolvedValue({ consumed: false, reason: 'not_found', code: null });
+    await expect(service.useCode('GHOST')).rejects.toThrow('inválido');
     expect(mockRepo.updateStatus).not.toHaveBeenCalled();
+  });
+
+  it('debe permitir solo un consumo cuando dos registros compiten por el último cupo', async () => {
+    const { service, mockRepo } = makeService();
+    let usages = 0;
+    mockRepo.consumeCode.mockImplementation(async () => {
+      await new Promise((resolve) => setImmediate(resolve));
+      if (usages >= 1) {
+        return { consumed: false, reason: 'exhausted', code: null };
+      }
+      usages += 1;
+      return {
+        consumed: true,
+        reason: 'consumed',
+        code: { codigo: 'RACE', max_usos: 1, usos_actuales: 1 },
+      };
+    });
+
+    const results = await Promise.allSettled([
+      service.useCode('RACE'),
+      service.useCode('RACE'),
+    ]);
+
+    expect(usages).toBe(1);
+    expect(results.filter(result => result.status === 'fulfilled')).toHaveLength(1);
+    expect(results.filter(result => result.status === 'rejected')).toHaveLength(1);
   });
 });
 
@@ -329,7 +373,10 @@ describe('createCode()', () => {
 
     expect(mockLogger.info).toHaveBeenCalledWith(
       'Código de invitación creado',
-      expect.objectContaining({ rol_destinado: 'Instructor' })
+      expect.objectContaining({
+        rol_destinado: 'Instructor',
+        codigo_hash: expect.stringMatching(/^[0-9a-f]{16}$/),
+      })
     );
   });
 });
@@ -450,7 +497,7 @@ describe('deactivateCode()', () => {
 
     expect(mockLogger.info).toHaveBeenCalledWith(
       'Código de invitación desactivado',
-      { id: 2, codigo: 'XYZ789' }
+      { id: 2, codigo_hash: expect.stringMatching(/^[0-9a-f]{16}$/) }
     );
   });
 });

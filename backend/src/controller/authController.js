@@ -1,6 +1,7 @@
 import { ServiceFactory } from '../factories/ServiceFactory.js';
 import { logger } from '../utils/logger.js';
 import defaultDb from '../config/dbconfig.js';
+import { SESSION_COOKIE_NAME, buildSessionCookieOptions } from '../utils/sessionCookie.js';
 
 /**
  * Controlador de autenticación - Solo orquestación, sin lógica de negocio
@@ -47,14 +48,18 @@ export const registerUser = async (req, res, next) => {
 };
 
 /**
- * Login de usuario
+ * Login de usuario (flujo web).
+ * El JWT nunca se expone en el cuerpo de la respuesta: se transporta
+ * exclusivamente en una cookie httpOnly, para que el navegador no pueda
+ * persistirlo en localStorage/sessionStorage.
  */
 export const loginUser = async (req, res, next) => {
   try {
     const { cedula, contrasena } = req.body;
     const authService = ServiceFactory.create('authService');
-    const result = await authService.loginUser(cedula, contrasena);
-    return res.json(result);
+    const { token, ...sessionResponse } = await authService.loginUser(cedula, contrasena);
+    res.cookie(SESSION_COOKIE_NAME, token, buildSessionCookieOptions());
+    return res.json(sessionResponse);
   } catch (error) {
     logger.error('Error en loginUser', { error: error.message });
     return next(error);
@@ -62,7 +67,24 @@ export const loginUser = async (req, res, next) => {
 };
 
 /**
- * Login de usuario con validación de placa (para app de escritorio)
+ * Cierra la sesión revocando la cookie httpOnly.
+ * Idempotente y público: debe funcionar incluso si el JWT ya expiró.
+ */
+export const logoutUser = async (req, res, next) => {
+  try {
+    res.clearCookie(SESSION_COOKIE_NAME, buildSessionCookieOptions());
+    return res.json({ message: 'Sesión cerrada correctamente' });
+  } catch (error) {
+    logger.error('Error en logoutUser', { error: error.message });
+    return next(error);
+  }
+};
+
+/**
+ * Login de usuario con validación de placa (para app de escritorio).
+ * No forma parte del flujo web/navegador de MDL-127: sigue devolviendo el
+ * token en el cuerpo porque el cliente de escritorio no es un navegador y no
+ * gestiona cookies httpOnly.
  */
 export const loginUserWithPlaca = async (req, res, next) => {
   try {

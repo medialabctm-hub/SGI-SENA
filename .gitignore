@@ -36,8 +36,10 @@ dist-ssr
 # Uploads (imágenes de equipos)
 backend/uploads/
 
-# Documentacion de desarrollo
-Documentation/
+# Documentación de despliegue
+Documentation/*
+!Documentation/
+!Documentation/DEPLOY_RAILWAY.md
 
 # Coverage reports
 coverage/

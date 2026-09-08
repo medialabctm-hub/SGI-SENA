@@ -26,15 +26,3 @@ export const useCurrentUser = () => {
   return useLocalStorage('user', null);
 };
 
-export const useAuthToken = () => {
-  const [token, setToken] = useState(() => {
-    try {
-      return localStorage.getItem('token');
-    } catch {
-      return null;
-    }
-  });
-
-  return [token, setToken];
-};
-

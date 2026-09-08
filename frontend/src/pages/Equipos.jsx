@@ -55,9 +55,8 @@ export default function Equipos() {
   useEffect(() => {
     async function cargarAmbientes() {
       try {
-        const token = localStorage.getItem('token')
         const res = await fetch('/api/ambientes/activos', {
-          headers: { Authorization: `Bearer ${token}` }
+          credentials: 'include'
         })
         const data = await parseApiResponse(res, 'No se pudieron cargar los ambientes')
         setAmbientes(Array.isArray(data) ? data : [])
@@ -73,9 +72,8 @@ export default function Equipos() {
   useEffect(() => {
     async function cargarCategorias() {
       try {
-        const token = localStorage.getItem('token')
         const res = await fetch('/api/equipos/categorias', {
-          headers: { Authorization: `Bearer ${token}` }
+          credentials: 'include'
         })
         const data = await parseApiResponse(res, 'No se pudieron cargar las categorías')
         // Extraer solo los nombres de las categorías
@@ -98,9 +96,8 @@ export default function Equipos() {
     
     const unsubscribeEquipoCreated = subscribe('equipo:created', () => {
       // Recargar categorías cuando se cree un equipo (puede haber nuevas categorías)
-      const token = localStorage.getItem('token')
       fetch('/api/equipos/categorias', {
-        headers: { Authorization: `Bearer ${token}` }
+        credentials: 'include'
       })
         .then(res => parseApiResponse(res))
         .then(data => {
@@ -119,9 +116,8 @@ export default function Equipos() {
     
     const unsubscribeEquipoDeleted = subscribe('equipo:deleted', () => {
       // Recargar categorías cuando se elimine un equipo
-      const token = localStorage.getItem('token')
       fetch('/api/equipos/categorias', {
-        headers: { Authorization: `Bearer ${token}` }
+        credentials: 'include'
       })
         .then(res => parseApiResponse(res))
         .then(data => {
@@ -154,9 +150,8 @@ export default function Equipos() {
         return rest
       })
       setCuentadanteEncontrado(null)
-      const token = localStorage.getItem('token')
       const res = await fetch(`/api/auth/user/cedula/${encodeURIComponent(cedulaCuentadante.trim())}`, {
-        headers: { Authorization: `Bearer ${token}` }
+        credentials: 'include'
       })
       
       if (res.ok) {
@@ -230,7 +225,6 @@ export default function Equipos() {
     setToast(null)
     if (Object.keys(errs).length > 0) return
     try {
-      const token = localStorage.getItem('token')
       // Mapear campos del formulario a los campos que espera el backend
       // tipo: valor fijo "4" (readonly) - se guarda en columna tipo
       // categoria: nombre de la categoría seleccionada - se usa para buscar id_categoria
@@ -254,9 +248,8 @@ export default function Equipos() {
       const resp = await fetch('/api/equipos', {
         method: 'POST',
         headers: { 
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
-        },
+          'Content-Type': 'application/json'},
+        credentials: 'include',
         body: JSON.stringify(payload)
       })
       await parseApiResponse(resp, 'No se pudo registrar el elemento del inventario')

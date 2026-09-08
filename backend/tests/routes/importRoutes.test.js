@@ -68,8 +68,8 @@ const { default: router } = await import(`${path.resolve(__dirname, '../../src/r
 // sobrevive para el primer test que se ejecute. Por eso, para verificar que
 // una ruta quedó protegida, se inspecciona la longitud de su cadena de
 // middlewares en router.stack en vez de aserciones sobre `.mock.calls`.
-const getRouteMiddlewareCount = (path, method) => {
-  const layer = router.stack.find((entry) => entry.route?.path === path && entry.route.methods[method]);
+const getRouteMiddlewareCount = (routePath, method) => {
+  const layer = router.stack.find((entry) => entry.route?.path === routePath && entry.route.methods[method]);
   return layer.route.stack.length;
 };
 

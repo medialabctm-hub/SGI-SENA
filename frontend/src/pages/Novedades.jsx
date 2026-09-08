@@ -74,11 +74,10 @@ export default function Novedades() {
     async function cargarOpcionesNovedad() {
       try {
         setCargandoOpciones(true)
-        const token = localStorage.getItem('token')
         
         // Cargar tipos de novedad
         const resTipos = await fetch('/api/novedades/tipos', {
-          headers: { Authorization: `Bearer ${token}` }
+          credentials: 'include'
         })
         if (resTipos.ok) {
           const tipos = await parseApiResponse(resTipos)
@@ -97,7 +96,7 @@ export default function Novedades() {
 
         // Cargar estados de novedad
         const resEstados = await fetch('/api/novedades/estados', {
-          headers: { Authorization: `Bearer ${token}` }
+          credentials: 'include'
         })
         if (resEstados.ok) {
           const estados = await parseApiResponse(resEstados)
@@ -185,9 +184,8 @@ export default function Novedades() {
   async function fetchNovedades() {
     setLoading(true)
     try {
-      const token = localStorage.getItem('token')
       const res = await fetch('/api/novedades', {
-        headers: { Authorization: `Bearer ${token}` }
+        credentials: 'include'
       })
       const data = await parseApiResponse(res, 'No se pudo cargar las novedades')
       setNovedades(Array.isArray(data) ? data : [])
@@ -208,9 +206,8 @@ export default function Novedades() {
     try {
       setBuscandoEquipo(true)
       setEquipoEncontrado(null)
-      const token = localStorage.getItem('token')
       const res = await fetch(`/api/equipos/${encodeURIComponent(codigoInventario.trim())}`, {
-        headers: { Authorization: `Bearer ${token}` }
+        credentials: 'include'
       })
       
       if (res.ok) {
@@ -259,13 +256,11 @@ export default function Novedades() {
 
     try {
       setLoadingCrear(true)
-      const token = localStorage.getItem('token')
       const res = await fetch('/api/novedades', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
-        },
+          'Content-Type': 'application/json'},
+        credentials: 'include',
         body: JSON.stringify(form)
       })
 
@@ -353,13 +348,11 @@ export default function Novedades() {
 
     setLoading(true)
     try {
-      const token = localStorage.getItem('token')
       const res = await fetch(`/api/novedades/${selectedNovedad.id_novedad}/estado`, {
         method: 'PUT',
         headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
-        },
+          'Content-Type': 'application/json'},
+        credentials: 'include',
         body: JSON.stringify({
           estado_resolucion: nuevoEstado,
           observaciones_resolucion: observacionesResolucion || null
@@ -391,9 +384,8 @@ export default function Novedades() {
   async function fetchReportes() {
     setLoadingReportes(true)
     try {
-      const token = localStorage.getItem('token')
       const res = await fetch('/api/reportes', {
-        headers: { Authorization: `Bearer ${token}` }
+        credentials: 'include'
       })
       const data = await parseApiResponse(res, 'No se pudo cargar los reportes')
       setReportes(Array.isArray(data) ? data : [])
@@ -414,9 +406,8 @@ export default function Novedades() {
     try {
       setBuscandoEquipoReporte(true)
       setEquipoEncontradoReporte(null)
-      const token = localStorage.getItem('token')
       const res = await fetch(`/api/equipos/${encodeURIComponent(codigoInventarioReporte.trim())}`, {
-        headers: { Authorization: `Bearer ${token}` }
+        credentials: 'include'
       })
       
       if (res.ok) {
@@ -465,13 +456,11 @@ export default function Novedades() {
 
     try {
       setLoadingCrearReporte(true)
-      const token = localStorage.getItem('token')
       const res = await fetch('/api/reportes', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
-        },
+          'Content-Type': 'application/json'},
+        credentials: 'include',
         body: JSON.stringify(formReporte)
       })
 
@@ -524,13 +513,11 @@ export default function Novedades() {
     setLoadingReportes(true)
     setToast(null)
     try {
-      const token = localStorage.getItem('token')
       const res = await fetch(`/api/reportes/${editingReporte}`, {
         method: 'PUT',
         headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
-        },
+          'Content-Type': 'application/json'},
+        credentials: 'include',
         body: JSON.stringify(editForm)
       })
       const data = await parseApiResponse(res, 'No se pudo actualizar el reporte')
@@ -556,10 +543,9 @@ export default function Novedades() {
     setLoadingReportes(true)
     setToast(null)
     try {
-      const token = localStorage.getItem('token')
       const res = await fetch(`/api/reportes/${id}`, {
         method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` }
+        credentials: 'include'
       })
       const data = await parseApiResponse(res, 'No se pudo eliminar el reporte')
       setToast({ message: data.message || 'Reporte eliminado correctamente', type: 'success' })

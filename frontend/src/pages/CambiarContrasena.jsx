@@ -19,8 +19,8 @@ export default function CambiarContrasena() {
 
   useEffect(() => {
     // Verificar que el usuario esté autenticado
-    const token = localStorage.getItem('token');
-    if (!token) {
+    const user = localStorage.getItem('user');
+    if (!user) {
       navigate('/login');
     }
   }, [navigate]);
@@ -55,13 +55,11 @@ export default function CambiarContrasena() {
 
     setLoading(true);
     try {
-      const token = localStorage.getItem('token');
       const res = await fetch('/api/auth/cambiar-contrasena', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
+          'Content-Type': 'application/json'},
+        credentials: 'include',
         body: JSON.stringify({
           contrasenaActual,
           nuevaContrasena

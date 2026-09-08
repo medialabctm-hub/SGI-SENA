@@ -127,6 +127,45 @@ describe('socketService', () => {
     expect(next).toHaveBeenCalledWith();
   });
 
+  it('initialize debe autenticar con la cookie httpOnly de sesion (sgi_session), sin auth.token', async () => {
+    socketService.initialize({});
+    mockVerify.mockReturnValueOnce({ id: 21, rol: 'Aprendiz' });
+
+    const next = jest.fn();
+    const socket = {
+      handshake: {
+        auth: {},
+        query: {},
+        headers: { cookie: 'otra=1; sgi_session=cookie.jwt.value; otra2=2' },
+      },
+    };
+
+    await useHandler(socket, next);
+
+    expect(mockVerify).toHaveBeenCalledWith('cookie.jwt.value');
+    expect(socket.userId).toBe(21);
+    expect(next).toHaveBeenCalledWith();
+  });
+
+  it('initialize debe priorizar la cookie de sesion sobre auth.token del handshake', async () => {
+    socketService.initialize({});
+    mockVerify.mockReturnValueOnce({ id: 22, rol: 'Instructor' });
+
+    const next = jest.fn();
+    const socket = {
+      handshake: {
+        auth: { token: 'legacy-flag-token' },
+        query: {},
+        headers: { cookie: 'sgi_session=cookie.jwt.value' },
+      },
+    };
+
+    await useHandler(socket, next);
+
+    expect(mockVerify).toHaveBeenCalledWith('cookie.jwt.value');
+    expect(mockVerify).not.toHaveBeenCalledWith('legacy-flag-token');
+  });
+
   it('debe desconectar socket cuando no existe userId en conexión', () => {
     socketService.initialize({});
 

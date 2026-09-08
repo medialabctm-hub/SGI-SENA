@@ -41,9 +41,8 @@ export default function BuscarCuentadante() {
     setEstadisticas(null)
 
     try {
-      const token = localStorage.getItem('token')
       const res = await fetch(`/api/equipos/cuentadantes/buscar/${encodeURIComponent(documento.trim())}`, {
-        headers: { Authorization: `Bearer ${token}` }
+        credentials: 'include'
       })
 
       const data = await parseApiResponse(res, 'Error al buscar cuentadante')

@@ -23,7 +23,6 @@ const dbVars = [
 
 const appVars = [
   'JWT_SECRET',
-  'COOKIE_SECRET',
   'CORS_ORIGIN',
   'FRONTEND_URL',
   'BREVO_API_KEY',

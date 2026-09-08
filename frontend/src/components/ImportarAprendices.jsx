@@ -47,12 +47,9 @@ export default function ImportarAprendices({ onImportComplete }) {
       const formData = new FormData();
       formData.append('archivo', archivo);
 
-      const token = localStorage.getItem('token');
       const res = await fetch('/api/import/aprendices', {
         method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        credentials: 'include',
         body: formData,
       });
 

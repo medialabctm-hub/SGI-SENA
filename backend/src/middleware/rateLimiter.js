@@ -1,4 +1,5 @@
 import rateLimit from 'express-rate-limit';
+import crypto from 'node:crypto';
 
 /**
  * Configuraciones de rate limiting reutilizables
@@ -21,6 +22,32 @@ const getIdentifier = (req) => {
   }
   // Si no, usar IP
   return req.ip || req.connection.remoteAddress;
+};
+
+const getClientIp = (req) => req.ip || req.socket?.remoteAddress || req.connection?.remoteAddress || 'unknown';
+
+const hashIdentifier = (value) => crypto
+  .createHash('sha256')
+  .update(String(value).trim().toUpperCase())
+  .digest('hex');
+
+const getInvitationIdentifier = (req) => {
+  const source = req.body?.codigo
+    ?? req.body?.documento
+    ?? req.body?.placa
+    ?? req.query?.codigo
+    ?? req.query?.documento
+    ?? req.query?.placa;
+
+  return source == null || String(source).trim() === '' ? 'missing' : source;
+};
+
+const invitationRateLimitHandler = (req, res) => {
+  res.status(429).json({
+    success: false,
+    error: 'Demasiados intentos de validación. Por favor intenta nuevamente en 15 minutos.',
+    retryAfter: 15,
+  });
 };
 
 /**
@@ -85,10 +112,7 @@ export const passwordResetLimiter = rateLimit({
  */
 export const writeLimiter = rateLimit({
   windowMs: 1 * 60 * 1000, // 1 minuto
-  max: (req) => {
-    // Usuarios autenticados tienen límite más alto
-    return req.user?.id ? 150 : 100;
-  },
+  max: req => req.user?.id ? 150 : 100,
   standardHeaders: true,
   legacyHeaders: false,
   message: { 
@@ -114,10 +138,7 @@ export const writeLimiter = rateLimit({
  */
 export const readLimiter = rateLimit({
   windowMs: 1 * 60 * 1000, // 1 minuto
-  max: (req) => {
-    // Usuarios autenticados tienen límite más alto
-    return req.user?.id ? 300 : 200;
-  },
+  max: req => req.user?.id ? 300 : 200,
   standardHeaders: true,
   legacyHeaders: false,
   message: { 
@@ -166,9 +187,7 @@ export const strictLimiter = rateLimit({
  */
 export const searchLimiter = rateLimit({
   windowMs: 1 * 60 * 1000, // 1 minuto
-  max: (req) => {
-    return req.user?.id ? 80 : 50;
-  },
+  max: req => req.user?.id ? 80 : 50,
   standardHeaders: true,
   legacyHeaders: false,
   message: { 
@@ -184,6 +203,60 @@ export const searchLimiter = rateLimit({
       retryAfter: 1
     });
   }
+});
+
+/**
+ * Rate limiter estricto para verificación pública de documentos (sin autenticación)
+ * Mismo umbral que authLimiter: este endpoint permite adivinar números de documento
+ * válidos por fuerza bruta, un riesgo de enumeración equivalente al de un login
+ * 10 intentos cada 15 minutos por IP
+ */
+export const publicLookupLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutos
+  max: 10, // máximo 10 intentos
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    success: false,
+    error: 'Demasiados intentos de verificación. Por favor intenta nuevamente en 15 minutos.',
+    retryAfter: 15
+  },
+  keyGenerator: (req) => getIdentifier(req),
+  handler: (req, res) => {
+    res.status(429).json({
+      success: false,
+      error: 'Demasiados intentos de verificación. Por favor intenta nuevamente en 15 minutos.',
+      retryAfter: 15
+    });
+  }
+});
+
+/**
+ * Límites independientes para la validación pública de invitaciones.
+ *
+ * El primer límite evita que un cliente distribuya códigos desde una misma
+ * IP; el segundo evita repetir indefinidamente un código desde IPs rotantes.
+ * El identificador del código se hashea para que el store del limiter no
+ * conserve el secreto en claro.
+ */
+export const invitationIpLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  skipSuccessfulRequests: false,
+  keyGenerator: (req) => `invitation_ip_${getClientIp(req)}`,
+  handler: invitationRateLimitHandler,
+});
+
+export const invitationCodeLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  skipSuccessfulRequests: false,
+  keyGenerator: (req) => `invitation_identifier_${hashIdentifier(getInvitationIdentifier(req))}`,
+  handler: invitationRateLimitHandler,
 });
 
 /**

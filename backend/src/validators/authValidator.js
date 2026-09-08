@@ -44,6 +44,14 @@ export const loginSchema = z.object({
   contrasena: z.string().min(1, 'La contraseña es requerida'),
 });
 
+// El login de escritorio conserva su contrato de identidad existente; solo
+// limita la entrada antes de llegar al controlador y al servicio de auth.
+export const loginPlacaSchema = z.object({
+  cedula: z.string().trim().min(1, 'La cédula es requerida').max(20, 'La cédula es demasiado larga'),
+  contrasena: z.string().min(1, 'La contraseña es requerida').max(200, 'La contraseña es demasiado larga'),
+  placa: z.string().trim().min(1, 'La placa es requerida').max(50, 'La placa es demasiado larga'),
+});
+
 export const updateUserSchema = z.object({
   nombre: z.string().min(2).max(100).optional(),
   cedula: z.string().min(5).max(20).optional(),

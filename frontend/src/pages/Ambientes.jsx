@@ -54,6 +54,7 @@ export default function Ambientes() {
         setCurrentUser(JSON.parse(userData));
       }
     } catch {
+      // Ignorar datos corruptos del almacenamiento local.
     }
   }, []);
 

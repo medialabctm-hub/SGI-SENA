@@ -1,5 +1,6 @@
 import { Server } from 'socket.io';
 import { logger } from '../utils/logger.js';
+import { extractTokenFromCookieHeader } from '../utils/sessionCookie.js';
 
 /**
  * Servicio de WebSocket para actualizaciones en tiempo real
@@ -26,9 +27,11 @@ class SocketService {
     });
 
     this.io.use(async (socket, next) => {
-      // Autenticación mediante token en query o handshake
-      const token = socket.handshake.auth?.token || socket.handshake.query?.token;
-      
+      // Autenticación mediante cookie httpOnly de sesión (flujo web, prioritaria)
+      // con fallback a token en auth/query del handshake (clientes no navegador).
+      const cookieToken = extractTokenFromCookieHeader(socket.handshake.headers?.cookie);
+      const token = cookieToken || socket.handshake.auth?.token || socket.handshake.query?.token;
+
       if (!token) {
         return next(new Error('Token de autenticación requerido'));
       }

@@ -20,8 +20,8 @@ export default function Notifications() {
   async function fetchPreferences() {
     setLoading(true)
     try {
-      const token = localStorage.getItem('token')
-      if (!token) {
+      const user = localStorage.getItem('user');
+      if (!user) {
         setLoading(false)
         return
       }
@@ -45,8 +45,8 @@ export default function Notifications() {
   async function save() {
     setSaving(true)
     try {
-      const token = localStorage.getItem('token')
-      if (!token) {
+      const user = localStorage.getItem('user');
+      if (!user) {
         setToast({ message: 'No autorizado. Por favor inicia sesión nuevamente', type: 'error' })
         return
       }

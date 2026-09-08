@@ -28,14 +28,12 @@ const corsPublicOptions = {
       return normalizedOrigin === normalizedAllowed;
     })) {
       callback(null, true);
-    } else {
+    } else if (process.env.NODE_ENV === 'development') {
       // En desarrollo, permitir cualquier origen para facilitar pruebas
-      if (process.env.NODE_ENV === 'development') {
-        callback(null, true);
-      } else {
-        // En producción, rechazar orígenes no permitidos
-        callback(new Error(`Origen no permitido por CORS: ${origin}`));
-      }
+      callback(null, true);
+    } else {
+      // En producción, rechazar orígenes no permitidos
+      callback(new Error(`Origen no permitido por CORS: ${origin}`));
     }
   },
   credentials: false, // No necesitamos cookies para endpoints públicos

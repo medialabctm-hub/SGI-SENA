@@ -59,14 +59,14 @@ function NotificationsModal({
       if (notificacionesConsentimiento.length === 0) return
 
       const nuevosEstados = {}
-      const token = localStorage.getItem('token')
-      if (!token) return
+      const user = localStorage.getItem('user');
+      if (!user) return
 
       await Promise.all(
         notificacionesConsentimiento.map(async (notif) => {
           try {
             const res = await fetch(`/api/clases/${notif.metadata.id_clase}`, {
-              headers: { Authorization: `Bearer ${token}` }
+              credentials: 'include'
             })
             if (res.ok) {
               const clase = await res.json()
@@ -91,8 +91,8 @@ function NotificationsModal({
 
     setProcesandoAccion(notification.id)
     try {
-      const token = localStorage.getItem('token')
-      if (!token) {
+      const user = localStorage.getItem('user');
+      if (!user) {
         setToast({ message: 'No hay sesión activa', type: 'error' })
         return
       }
@@ -101,8 +101,8 @@ function NotificationsModal({
         method: accion.metodo || 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
         },
+        credentials: 'include',
         body: accion.metodo !== 'GET' ? JSON.stringify({}) : undefined,
       })
 

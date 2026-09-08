@@ -22,7 +22,6 @@ describe('validateConfig()', () => {
     originalEnv = {
       NODE_ENV: process.env.NODE_ENV,
       JWT_SECRET: process.env.JWT_SECRET,
-      COOKIE_SECRET: process.env.COOKIE_SECRET,
       CORS_ORIGIN: process.env.CORS_ORIGIN,
     };
   });
@@ -31,11 +30,6 @@ describe('validateConfig()', () => {
     // Restaurar valores originales
     process.env.NODE_ENV = originalEnv.NODE_ENV;
     process.env.JWT_SECRET = originalEnv.JWT_SECRET;
-    if (originalEnv.COOKIE_SECRET !== undefined) {
-      process.env.COOKIE_SECRET = originalEnv.COOKIE_SECRET;
-    } else {
-      delete process.env.COOKIE_SECRET;
-    }
     if (originalEnv.CORS_ORIGIN !== undefined) {
       process.env.CORS_ORIGIN = originalEnv.CORS_ORIGIN;
     } else {
@@ -59,7 +53,6 @@ describe('validateConfig()', () => {
   it('debe retornar error si JWT_SECRET es el valor por defecto en producción', () => {
     process.env.NODE_ENV = 'production';
     process.env.JWT_SECRET = 'your-super-secret-jwt-key-change-in-production';
-    process.env.COOKIE_SECRET = 'algún-secreto';
     process.env.CORS_ORIGIN = 'https://app.example.com';
 
     const errors = validateConfig();
@@ -68,7 +61,7 @@ describe('validateConfig()', () => {
     expect(errors.some((e) => e.includes('JWT_SECRET'))).toBe(true);
   });
 
-  it('debe retornar error si falta COOKIE_SECRET en producción', () => {
+  it('no debe exigir un secreto adicional para cookies en producción', () => {
     process.env.NODE_ENV = 'production';
     process.env.JWT_SECRET = 'super-secure-jwt-key-production-2026';
     delete process.env.COOKIE_SECRET;
@@ -76,13 +69,13 @@ describe('validateConfig()', () => {
 
     const errors = validateConfig();
 
-    expect(errors.some((e) => e.includes('COOKIE_SECRET'))).toBe(true);
+    expect(errors.some((e) => e.includes('COOKIE_SECRET'))).toBe(false);
+    expect(errors).toHaveLength(0);
   });
 
   it('debe retornar error si falta CORS_ORIGIN en producción', () => {
     process.env.NODE_ENV = 'production';
     process.env.JWT_SECRET = 'super-secure-jwt-key-production-2026';
-    process.env.COOKIE_SECRET = 'cookie-secret-seguro';
     delete process.env.CORS_ORIGIN;
 
     const errors = validateConfig();
@@ -93,7 +86,6 @@ describe('validateConfig()', () => {
   it('no debe retornar errores en producción con todas las vars correctas', () => {
     process.env.NODE_ENV = 'production';
     process.env.JWT_SECRET = 'super-secure-jwt-key-production-2026';
-    process.env.COOKIE_SECRET = 'cookie-secret-muy-seguro-2026';
     process.env.CORS_ORIGIN = 'https://app.sena.edu.co';
 
     const errors = validateConfig();
@@ -104,7 +96,6 @@ describe('validateConfig()', () => {
   it('debe acumular múltiples errores en producción cuando faltan varias vars', () => {
     process.env.NODE_ENV = 'production';
     process.env.JWT_SECRET = 'your-super-secret-jwt-key-change-in-production';
-    delete process.env.COOKIE_SECRET;
     delete process.env.CORS_ORIGIN;
 
     const errors = validateConfig();
@@ -122,6 +113,7 @@ describe('getConfig()', () => {
   beforeEach(() => {
     originalEnv = {
       PORT: process.env.PORT,
+      BACKEND_PORT: process.env.BACKEND_PORT,
       CORS_ORIGIN: process.env.CORS_ORIGIN,
       JWT_SECRET: process.env.JWT_SECRET,
     };
@@ -130,6 +122,8 @@ describe('getConfig()', () => {
   afterEach(() => {
     if (originalEnv.PORT !== undefined) process.env.PORT = originalEnv.PORT;
     else delete process.env.PORT;
+    if (originalEnv.BACKEND_PORT !== undefined) process.env.BACKEND_PORT = originalEnv.BACKEND_PORT;
+    else delete process.env.BACKEND_PORT;
     if (originalEnv.CORS_ORIGIN !== undefined) process.env.CORS_ORIGIN = originalEnv.CORS_ORIGIN;
     else delete process.env.CORS_ORIGIN;
     if (originalEnv.JWT_SECRET !== undefined) process.env.JWT_SECRET = originalEnv.JWT_SECRET;
@@ -142,6 +136,11 @@ describe('getConfig()', () => {
     expect(cfg).toHaveProperty('db');
     expect(cfg).toHaveProperty('jwt');
     expect(cfg).toHaveProperty('cors');
+  });
+
+  it('debe fijar HS256 como algoritmo JWT', () => {
+    const cfg = getConfig('development');
+    expect(cfg.jwt.algorithm).toBe('HS256');
   });
 
   it('debe retornar logging.level = "debug" en modo development', () => {
@@ -165,6 +164,15 @@ describe('getConfig()', () => {
     process.env.JWT_SECRET = 'jwt-secret-production-test';
     const cfg = getConfig('production');
     expect(cfg.jwt.secret).toBe('jwt-secret-production-test');
+  });
+
+  it('debe preferir BACKEND_PORT sobre el PORT público de Railway', () => {
+    process.env.PORT = '8080';
+    process.env.BACKEND_PORT = '3000';
+
+    const cfg = getConfig('production');
+
+    expect(cfg.server.port).toBe('3000');
   });
 
   it('debe retornar la configuración por defecto para un entorno desconocido', () => {

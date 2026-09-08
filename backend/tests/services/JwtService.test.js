@@ -60,6 +60,18 @@ describe('JwtService', () => {
       expect(decoded.correo).toBe('test@sena.edu.co');
     });
 
+    it('debe fijar issuer, audience y algoritmo aunque el caller intente sobrescribirlos', () => {
+      const token = service.sign(
+        { id: 42 },
+        { issuer: 'attacker', audience: 'attacker', algorithm: 'HS384' },
+      );
+      const decoded = service.decode(token);
+
+      expect(decoded.iss).toBe('gse-app');
+      expect(decoded.aud).toBe('gse-users');
+      expect(() => service.verify(token)).not.toThrow();
+    });
+
     it('debe aceptar expiresIn personalizado en las opciones', () => {
       const token = service.sign({ id: 1 }, { expiresIn: '30s' });
       const decoded = service.decode(token);
@@ -106,6 +118,35 @@ describe('JwtService', () => {
       expect(() => service.verify(token)).toThrow('Token inválido');
     });
 
+    it('debe rechazar un issuer distinto al contrato configurado', () => {
+      const otroIssuer = new JwtService(SECRET, '1h', {
+        issuer: 'otro-emisor',
+        audience: 'gse-users',
+        algorithm: 'HS256',
+      });
+
+      expect(() => service.verify(otroIssuer.sign({ id: 1 }))).toThrow('Token inválido');
+    });
+
+    it('debe rechazar un audience distinto al contrato configurado', () => {
+      const otraAudience = new JwtService(SECRET, '1h', {
+        issuer: 'gse-app',
+        audience: 'otra-audience',
+        algorithm: 'HS256',
+      });
+
+      expect(() => service.verify(otraAudience.sign({ id: 1 }))).toThrow('Token inválido');
+    });
+
+    it('debe rechazar un algoritmo no permitido aunque la firma use el mismo secreto', () => {
+      const token = service.sign({ id: 1 });
+      const [, payload, signature] = token.split('.');
+      const forgedHeader = Buffer.from(JSON.stringify({ alg: 'HS384', typ: 'JWT' })).toString('base64url');
+      const forgedToken = `${forgedHeader}.${payload}.${signature}`;
+
+      expect(() => service.verify(forgedToken)).toThrow('Token inválido');
+    });
+
     it('debe lanzar Error("Token expirado") con un token vencido', async () => {
       // Crear token que vence en 1 segundo
       const shortService = new JwtService(SECRET, '1ms');
@@ -122,7 +163,8 @@ describe('JwtService', () => {
       const jwt = await import('jsonwebtoken');
       const futureToken = jwt.default.sign(
         { id: 1, nbf: Math.floor(Date.now() / 1000) + 3600 },
-        SECRET
+        SECRET,
+        { issuer: 'gse-app', audience: 'gse-users' },
       );
 
       // jwt.verify lanza NotBeforeError, no cubierto por los if anteriores

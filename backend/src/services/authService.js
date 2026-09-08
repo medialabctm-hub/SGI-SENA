@@ -601,7 +601,7 @@ export class AuthService {
     );
 
     // Enviar correo con el token
-    const emailService = (await import('../services/emailService.js')).default;
+    const emailService = (await import('./emailService.js')).default;
     
     // Asegurar que el servicio esté inicializado antes de enviar
     const apiKey = process.env.BREVO_API_KEY;

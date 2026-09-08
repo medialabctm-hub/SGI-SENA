@@ -29,7 +29,9 @@ export const apiUrl = (path) => {
   return `${API_BASE_URL}${cleanPath}`;
 };
 
-// Función helper para fetch con configuración por defecto
+// Función helper para fetch con configuración por defecto.
+// La sesión viaja en una cookie httpOnly (no en localStorage/sessionStorage);
+// `credentials: 'include'` es lo que hace que el navegador la envíe. MDL-127.
 export const apiFetch = async (path, options = {}) => {
   const url = apiUrl(path);
   const defaultOptions = {
@@ -37,14 +39,9 @@ export const apiFetch = async (path, options = {}) => {
       'Content-Type': 'application/json',
       ...options.headers,
     },
+    credentials: 'include',
     ...options,
   };
-
-  // Agregar token si existe
-  const token = localStorage.getItem('token');
-  if (token && !defaultOptions.headers.Authorization) {
-    defaultOptions.headers.Authorization = `Bearer ${token}`;
-  }
 
   return fetch(url, defaultOptions);
 };

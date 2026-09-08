@@ -21,8 +21,8 @@ export const LanguageProvider = ({ children }) => {
 
   const loadLanguage = async () => {
     try {
-      const token = localStorage.getItem('token')
-      if (!token) {
+      const user = localStorage.getItem('user');
+      if (!user) {
         setLanguage('es')
         setLoading(false)
         return
@@ -30,9 +30,9 @@ export const LanguageProvider = ({ children }) => {
 
       const res = await fetch('/api/preferences', {
         headers: {
-          Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json'
-        }
+        },
+        credentials: 'include'
       })
 
       if (res.ok) {

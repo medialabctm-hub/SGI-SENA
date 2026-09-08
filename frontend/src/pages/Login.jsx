@@ -34,11 +34,15 @@ export default function Login() {
     try {
       const res = await fetch('/api/auth/login', {
         method: 'POST',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ cedula, contrasena }),
       });
       const data = await parseApiResponse(res, 'No se pudo iniciar sesión');
-      localStorage.setItem('token', data.token);
+      // MDL-127: el backend ya emitió el JWT en una cookie httpOnly (Set-Cookie);
+      // el body de /login no incluye el token y el navegador nunca guarda nada
+      // parecido a un token. Solo se cachea el perfil (no sensible) para la UI;
+      // la autorización real siempre se verifica contra el servidor (cookie).
       localStorage.setItem('user', JSON.stringify(data.user));
       window.dispatchEvent(new Event('auth:changed'));
       

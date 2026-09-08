@@ -37,17 +37,19 @@ if (!process.env.JWT_ISSUER) {
 if (!process.env.JWT_AUDIENCE) {
   process.env.JWT_AUDIENCE = 'gse-users';
 }
-  
+
+// En el contenedor de Railway PORT pertenece al proceso público (nginx).
+// BACKEND_PORT tiene prioridad para que Node conserve su puerto interno.
+const getBackendPort = () => process.env.BACKEND_PORT || process.env.PORT || 3000;
+
 // Variables de base de datos: acepta tanto formato estándar como Railway
-const getDbConfig = () => {
-  return {
-    host: process.env.DB_HOST || process.env.MYSQLHOST || process.env.MYSQL_HOST,
-    user: process.env.DB_USER || process.env.MYSQLUSER || process.env.MYSQL_USER,
-    password: process.env.DB_PASSWORD || process.env.MYSQLPASSWORD || process.env.MYSQL_PASSWORD,
-    database: process.env.DB_NAME || process.env.MYSQLDATABASE || process.env.MYSQL_DATABASE,
-    port: process.env.DB_PORT || process.env.MYSQLPORT || process.env.MYSQL_PORT || 3306,
-  };
-};
+const getDbConfig = () => ({
+  host: process.env.DB_HOST || process.env.MYSQLHOST || process.env.MYSQL_HOST,
+  user: process.env.DB_USER || process.env.MYSQLUSER || process.env.MYSQL_USER,
+  password: process.env.DB_PASSWORD || process.env.MYSQLPASSWORD || process.env.MYSQL_PASSWORD,
+  database: process.env.DB_NAME || process.env.MYSQLDATABASE || process.env.MYSQL_DATABASE,
+  port: process.env.DB_PORT || process.env.MYSQLPORT || process.env.MYSQL_PORT || 3306,
+});
 
 const dbConfig = getDbConfig();
 
@@ -74,7 +76,6 @@ const requiredEnvVars = [
   "BREVO_API_KEY",
   "BREVO_SENDER_EMAIL",
   "JWT_SECRET",
-  "COOKIE_SECRET",
   "CORS_ORIGIN",
   "FRONTEND_URL",
 ];
@@ -140,9 +141,8 @@ const missingEnvVars = requiredEnvVars.filter((envVar) => {
 export const config = {
   // Configuración del servidor
   server: {
-    // En producción con Docker, el backend siempre usa 3000 (interno)
-    // Railway asigna PORT para nginx, no para el backend
-    PORT: process.env.BACKEND_PORT || process.env.PORT || 3000,
+    // BACKEND_PORT es interno (3000 por defecto); PORT pertenece a nginx/Railway.
+    PORT: getBackendPort(),
     mode: process.env.NODE_ENV,
   },
 
@@ -163,16 +163,12 @@ export const config = {
     refreshExpiresIn: process.env.JWT_REFRESH_EXPIRES_IN || "7d",
     issuer: process.env.JWT_ISSUER || "gse-app",
     audience: process.env.JWT_AUDIENCE || "gse-users",
+    algorithm: "HS256",
   },
 
   // Configuración de CORS
   cors: {
     origin: process.env.CORS_ORIGIN,
-  },
-
-  // Configuración de cookies
-  cookie: {
-    secret: process.env.COOKIE_SECRET,
   },
 
   // Configuración de correo electrónico (Brevo API)
@@ -212,10 +208,6 @@ export const validateConfig = () => {
       );
     }
 
-    if (!process.env.COOKIE_SECRET) {
-      errors.push("COOKIE_SECRET es requerido en producción");
-    }
-
     if (!process.env.CORS_ORIGIN) {
       errors.push("CORS_ORIGIN debe ser configurado en producción");
     }
@@ -230,12 +222,12 @@ export const getConfig = (env = process.env.NODE_ENV) => {
 
   if (env === "production") {
     // Configuraciones específicas para producción
-    currentConfig.server.port = process.env.PORT || 3000;
+    currentConfig.server.port = getBackendPort();
     currentConfig.cors.origin = process.env.CORS_ORIGIN;
     currentConfig.jwt.secret = process.env.JWT_SECRET;
   } else if (env === "development") {
     // Configuraciones específicas para desarrollo
-    currentConfig.server.port = process.env.PORT || 3000;
+    currentConfig.server.port = getBackendPort();
     currentConfig.cors.origin =
       process.env.CORS_ORIGIN || "http://localhost:5173";
     currentConfig.logging.level = "debug";

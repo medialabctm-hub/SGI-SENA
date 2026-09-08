@@ -113,8 +113,9 @@ export const getImageFilePath = (filename) => {
 
 // Prefijo legado: antes de la migración de seguridad (commit 2ddeb3f), getImagePath()
 // devolvía rutas estáticas públicas bajo /uploads/equipos/. Esas rutas ya no se sirven
-// (server.js solo expone /uploads/ambientes y /uploads/perfiles) por lo que cualquier fila
-// de Imagenes_Equipo insertada antes de ese cambio sigue apuntando a una URL muerta.
+// (app.js solo atiende /uploads/ambientes y /uploads/perfiles mediante handlers
+// autenticados) por lo que cualquier fila de Imagenes_Equipo insertada antes de
+// ese cambio sigue apuntando a una URL muerta.
 const LEGACY_RUTA_IMAGEN_PREFIX = '/uploads/equipos/';
 
 /**

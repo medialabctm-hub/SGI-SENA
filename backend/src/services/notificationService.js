@@ -184,10 +184,10 @@ export async function createForUsers({ userIds = [], titulo, cuerpo = '', tipo =
        AND u.estado = 'Activo'
        AND (p.notificaciones_app IS NULL OR p.notificaciones_app = 1)`,
     uniqueIds
-  ).catch(() => {
+  ).catch(() => [
     // Si la tabla de preferencias no existe, usar todos los usuarios
-    return [uniqueIds.map(id => ({ id_usuario: id }))];
-  });
+    uniqueIds.map(id => ({ id_usuario: id }))
+  ]);
 
   const filteredIds = enabledUsers.map(u => u.id_usuario);
   if (!filteredIds.length) {

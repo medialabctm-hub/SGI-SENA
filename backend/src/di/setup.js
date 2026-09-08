@@ -19,72 +19,59 @@ import { JwtService } from '../services/JwtService.js';
 import { AuthService } from '../services/authService.js';
 import { InvitationCodeService } from '../services/invitationCodeService.js';
 import { EquipoService } from '../services/equipoService.js';
+import { config } from '../config/config.js';
 import process from 'process';
 
 // Registrar base de datos (singleton) - usa el wrapper compartido de dbconfig.js
 container.register('db', dbWrapper, true);
 
 // Registrar repositorios (singleton)
-container.register('userRepository', (c) => {
-  return new UserRepository(c.resolve('db'));
-}, true);
+container.register('userRepository', c => new UserRepository(c.resolve('db')), true);
 
-container.register('roleRepository', (c) => {
-  return new RoleRepository(c.resolve('db'));
-}, true);
+container.register('roleRepository', c => new RoleRepository(c.resolve('db')), true);
 
-container.register('invitationCodeRepository', (c) => {
-  return new InvitationCodeRepository(c.resolve('db'));
-}, true);
+container.register('invitationCodeRepository', c => new InvitationCodeRepository(c.resolve('db')), true);
 
-container.register('equipoRepository', (c) => {
-  return new EquipoRepository(c.resolve('db'));
-}, true);
+container.register('equipoRepository', c => new EquipoRepository(c.resolve('db')), true);
 
-container.register('ambienteRepository', (c) => {
-  return new AmbienteRepository(c.resolve('db'));
-}, true);
+container.register('ambienteRepository', c => new AmbienteRepository(c.resolve('db')), true);
 
 // Registrar servicios de utilidad (singleton)
-container.register('passwordService', () => {
-  return new PasswordService(10);
-}, true);
+container.register('passwordService', () => new PasswordService(10), true);
 
 container.register('jwtService', () => {
   const secret = process.env.JWT_SECRET;
   if (!secret) {
     throw new Error('JWT_SECRET no configurado');
   }
-  return new JwtService(secret, process.env.JWT_EXPIRES_IN || '1d');
+  return new JwtService(secret, config.jwt.expiresIn || '1d', {
+    algorithm: config.jwt.algorithm,
+    issuer: config.jwt.issuer,
+    audience: config.jwt.audience,
+  });
 }, true);
 
 // Registrar logger (singleton)
 container.register('logger', logger, true);
 
 // Registrar servicios de negocio (singleton)
-container.register('authService', (c) => {
-  return new AuthService(
+container.register('authService', c => new AuthService(
     c.resolve('userRepository'),
     c.resolve('roleRepository'),
     c.resolve('passwordService'),
     c.resolve('jwtService'),
     c.resolve('logger')
-  );
-}, true);
+  ), true);
 
-container.register('invitationCodeService', (c) => {
-  return new InvitationCodeService(
+container.register('invitationCodeService', c => new InvitationCodeService(
     c.resolve('invitationCodeRepository'),
     c.resolve('logger')
-  );
-}, true);
+  ), true);
 
-container.register('equipoService', (c) => {
-  return new EquipoService(
+container.register('equipoService', c => new EquipoService(
     c.resolve('equipoRepository'),
     c.resolve('logger')
-  );
-}, true);
+  ), true);
 
 export { container };
 

@@ -1,6 +1,12 @@
 import { ValidationError, NotFoundError } from '../utils/errors.js';
 import crypto from 'crypto';
 
+const codeFingerprint = (codigo) => crypto
+  .createHash('sha256')
+  .update(String(codigo).trim().toUpperCase())
+  .digest('hex')
+  .slice(0, 16);
+
 /**
  * InvitationCodeService - Servicio para lógica de negocio de códigos de invitación
  * 
@@ -18,8 +24,8 @@ export class InvitationCodeService {
    * @returns {string} Código generado
    */
   generateCode() {
-    // Genera un código de 12 caracteres alfanuméricos
-    return crypto.randomBytes(6).toString('hex').toUpperCase();
+    // 16 bytes = 128 bits de entropía criptográfica, representados en hex.
+    return crypto.randomBytes(16).toString('hex').toUpperCase();
   }
 
   /**
@@ -73,15 +79,25 @@ export class InvitationCodeService {
    * @returns {Promise<void>}
    */
   async useCode(codigo) {
-    await this.invitationCodeRepository.incrementUsage(codigo);
-    
-    // Verificar si se agotó
-    const code = await this.invitationCodeRepository.findByCode(codigo);
-    if (code && code.max_usos > 0 && code.usos_actuales >= code.max_usos) {
-      await this.invitationCodeRepository.updateStatus(codigo, 'Agotado');
+    const normalizedCode = typeof codigo === 'string' ? codigo.trim() : '';
+    if (!normalizedCode) {
+      throw new ValidationError('El código de invitación es requerido');
     }
 
-    this.logger.info('Código de invitación usado', { codigo });
+    const consumption = await this.invitationCodeRepository.consumeCode(normalizedCode);
+    if (!consumption?.consumed) {
+      const messages = {
+        not_found: 'Código de invitación inválido o no encontrado',
+        inactive: 'El código de invitación está inactivo',
+        expired: 'El código de invitación ha expirado',
+        exhausted: 'El código de invitación ha alcanzado su límite de usos',
+        unavailable: 'El código de invitación ya no está disponible',
+      };
+      throw new ValidationError(messages[consumption?.reason] || messages.unavailable);
+    }
+
+    this.logger.info('Código de invitación usado', { codigo_hash: codeFingerprint(normalizedCode) });
+    return consumption.code;
   }
 
   /**
@@ -120,7 +136,10 @@ export class InvitationCodeService {
       creado_por
     });
 
-    this.logger.info('Código de invitación creado', { codigo, rol_destinado });
+    this.logger.info('Código de invitación creado', {
+      codigo_hash: codeFingerprint(codigo),
+      rol_destinado,
+    });
 
     return {
       id_codigo: result.insertId,
@@ -184,7 +203,10 @@ export class InvitationCodeService {
     }
 
     await this.invitationCodeRepository.updateStatus(code.codigo, 'Inactivo');
-    this.logger.info('Código de invitación desactivado', { id, codigo: code.codigo });
+    this.logger.info('Código de invitación desactivado', {
+      id,
+      codigo_hash: codeFingerprint(code.codigo),
+    });
   }
 }
 

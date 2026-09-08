@@ -43,12 +43,9 @@ export default function ImportarUsuarios({ onImportComplete }) {
       const formData = new FormData()
       formData.append('archivo', archivo)
 
-      const token = localStorage.getItem('token')
       const res = await fetch('/api/import/usuarios', {
         method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`
-        },
+        credentials: 'include',
         body: formData
       })
 

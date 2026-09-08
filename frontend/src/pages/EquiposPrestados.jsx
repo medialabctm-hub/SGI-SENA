@@ -130,9 +130,8 @@ export default function EquiposPrestados() {
     else setLoading(true);
 
     try {
-      const token = localStorage.getItem('token');
       const res = await fetch('/api/equipos/uso/activas', {
-        headers: { Authorization: `Bearer ${token}` },
+        credentials: 'include',
       });
       const data = await parseApiResponse(
         res,

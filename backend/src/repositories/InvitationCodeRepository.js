@@ -62,6 +62,90 @@ export class InvitationCodeRepository extends BaseRepository {
   }
 
   /**
+   * Consume un código de forma serializada.
+   *
+   * La fila se bloquea dentro de una transacción antes de comprobar
+   * expiración/cupo. Así, dos registros concurrentes no pueden observar el
+   * mismo cupo y aumentarlo por encima de max_usos.
+   *
+   * @param {string} codigo - Código de invitación
+   * @returns {Promise<{consumed: boolean, reason: string, code: Object|null}>}
+   */
+  async consumeCode(codigo) {
+    return this.transaction(async (connection) => {
+      const [rows] = await connection.execute(
+        `SELECT id_codigo, codigo, rol_destinado, fecha_expiracion, max_usos,
+                usos_actuales, creado_por, fecha_creacion, estado
+         FROM Invitation_Codes
+         WHERE codigo = ?
+         LIMIT 1
+         FOR UPDATE`,
+        [codigo]
+      );
+
+      const code = rows[0];
+      if (!code) {
+        return { consumed: false, reason: 'not_found', code: null };
+      }
+
+      let reason = null;
+      if (code.estado !== 'Activo') {
+        reason = code.estado === 'Expirado'
+          ? 'expired'
+          : code.estado === 'Agotado'
+            ? 'exhausted'
+            : 'inactive';
+      } else if (code.fecha_expiracion && new Date(code.fecha_expiracion) <= new Date()) {
+        reason = 'expired';
+      } else if (code.max_usos > 0 && code.usos_actuales >= code.max_usos) {
+        reason = 'exhausted';
+      }
+
+      if (reason) {
+        if (code.estado === 'Activo' && (reason === 'expired' || reason === 'exhausted')) {
+          await connection.execute(
+            `UPDATE Invitation_Codes
+             SET estado = ?
+             WHERE id_codigo = ? AND estado = 'Activo'`,
+            [reason === 'expired' ? 'Expirado' : 'Agotado', code.id_codigo]
+          );
+        }
+
+        return { consumed: false, reason, code };
+      }
+
+      const [result] = await connection.execute(
+        `UPDATE Invitation_Codes
+         SET usos_actuales = usos_actuales + 1,
+             estado = CASE
+               WHEN max_usos > 0 AND usos_actuales + 1 >= max_usos THEN 'Agotado'
+               ELSE estado
+             END
+         WHERE id_codigo = ?
+           AND estado = 'Activo'
+           AND (fecha_expiracion IS NULL OR fecha_expiracion > NOW())
+           AND (max_usos = 0 OR usos_actuales < max_usos)`,
+        [code.id_codigo]
+      );
+
+      if (result.affectedRows !== 1) {
+        return { consumed: false, reason: 'unavailable', code };
+      }
+
+      const usosActuales = Number(code.usos_actuales) + 1;
+      return {
+        consumed: true,
+        reason: 'consumed',
+        code: {
+          ...code,
+          usos_actuales: usosActuales,
+          estado: code.max_usos > 0 && usosActuales >= code.max_usos ? 'Agotado' : 'Activo',
+        },
+      };
+    });
+  }
+
+  /**
    * Actualiza el estado de un código
    * @param {string} codigo - Código de invitación
    * @param {string} estado - Nuevo estado

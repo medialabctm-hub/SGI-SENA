@@ -4,11 +4,18 @@
  */
 
 import { describe, it, expect, jest } from '@jest/globals';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const authRoutesSource = fs.readFileSync(path.resolve(__dirname, '../../src/routes/authRoutes.js'), 'utf8');
 
 // Mock de todos los módulos con dependencias externas
 jest.mock('../../src/controller/authController.js', () => ({
   registerUser: jest.fn(),
   loginUser: jest.fn(),
+  logoutUser: jest.fn(),
   loginUserWithPlaca: jest.fn(),
   listRolesPublic: jest.fn(),
   deleteUser: jest.fn(),
@@ -42,6 +49,7 @@ jest.mock('../../src/validators/authValidator.js', () => ({
   validate: jest.fn(() => (req, res, next) => next()),
   registerSchema: {},
   loginSchema: {},
+  loginPlacaSchema: {},
   updateUserSchema: {},
 }), { virtual: true });
 
@@ -76,6 +84,29 @@ describe('authRoutes', () => {
     expect(paths).toContain('/login');
     expect(paths).toContain('/register');
     expect(paths).toContain('/login-placa');
+  });
+
+  it('debe validar login-placa después del rate limiter y antes del controlador', async () => {
+    const mod = await import('../../src/routes/authRoutes.js');
+    const router = mod.default;
+    const loginPlacaRoute = router.stack.find(layer => layer.route?.path === '/login-placa');
+
+    expect(loginPlacaRoute.route.stack).toHaveLength(3);
+    expect(authRoutesSource).toMatch(
+      /router\.post\('\/login-placa',\s*authLimiter,\s*validate\(loginPlacaSchema\),\s*loginUserWithPlaca\)/,
+    );
+  });
+
+  it('debe registrar la ruta POST /logout (revoca la cookie httpOnly de sesión)', async () => {
+    const mod = await import('../../src/routes/authRoutes.js');
+    const router = mod.default;
+    const logoutRoute = router.stack
+      .filter(l => l.route)
+      .map(l => ({ path: l.route.path, methods: Object.keys(l.route.methods) }))
+      .find(r => r.path === '/logout');
+
+    expect(logoutRoute).toBeDefined();
+    expect(logoutRoute.methods).toContain('post');
   });
 
   it('debe registrar rutas GET /me, /users, /roles', async () => {
