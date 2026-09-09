@@ -29,6 +29,7 @@ describe('recibirWebhookExterno', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    mockExecute.mockReset();
     
     process.env.WEBHOOK_SECRET = 'token-correcto';
     config.webhook.secret = 'token-de-configuracion';
