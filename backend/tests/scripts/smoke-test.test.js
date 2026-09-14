@@ -37,10 +37,12 @@ describe('smoke test de Railway', () => {
     expect(calls.map(({ url }) => url)).toEqual([
       'https://railway.example/health',
       'https://railway.example/',
+      'https://railway.example/api/aprendices/verificar/00000000000000000000',
       'https://railway.example/api/equipos/autoservicio/iniciar-uso',
     ]);
-    expect(calls[2].options.method).toBe('POST');
-    expect(JSON.parse(calls[2].options.body)).toEqual({});
+    expect(calls[3].options.method).toBe('POST');
+    expect(JSON.parse(calls[3].options.body)).toEqual({});
+    expect(log.log).toHaveBeenCalledWith(expect.stringMatching(/read-only/i));
     expect(log.log).toHaveBeenCalledWith(expect.stringMatching(/mutación/i));
   });
 
@@ -63,6 +65,9 @@ describe('smoke test de Railway', () => {
       calls.push({ url, options });
       if (url.endsWith('/health')) return jsonResponse({ status: 'ok', autoservicio: { ready: true } });
       if (url.endsWith('/')) return htmlResponse();
+      if (url.endsWith('/api/aprendices/verificar/00000000000000000000')) {
+        return jsonResponse({ existe: false }, 404);
+      }
       if (url.endsWith('/autoservicio/iniciar-uso') && Object.keys(JSON.parse(options.body || '{}')).length === 0) {
         return jsonResponse({ success: false }, 400);
       }

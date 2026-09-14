@@ -40,7 +40,7 @@ await jest.unstable_mockModule(path.resolve(__dirname, '../../src/services/socke
 // sqlQueries.js NO se mockea: verificarAmbienteEquipoAprendiz/obtenerAmbientesValidosAprendiz
 // corren con su implementación real contra mockExecute.
 
-const { iniciarUsoAutoservicio } = await import('../../src/controller/equiposController.js');
+const { iniciarUsoAutoservicio, ensureAutoservicioSchema } = await import('../../src/controller/equiposController.js');
 
 function res() {
   const value = { status: jest.fn(), json: jest.fn() };
@@ -90,6 +90,15 @@ function baseRouter({ ambientesFicha }) {
 }
 
 describe('iniciarUsoAutoservicio + verificarAmbienteEquipoAprendiz (sin mock)', () => {
+  // iniciarUsoAutoservicio ya no ejecuta ensureAutoservicioSchema (ver 03-02):
+  // el guard de readiness solo lee el estado cacheado por el boot. Para que
+  // este suite ejercite el camino "listo" hay que simular ese boot una vez,
+  // explícitamente, antes de correr las pruebas.
+  beforeAll(async () => {
+    mockExecute.mockImplementation(baseRouter({ ambientesFicha: [] }));
+    await ensureAutoservicioSchema({ execute: mockExecute });
+  });
+
   beforeEach(() => {
     jest.clearAllMocks();
     mockExecute.mockReset();
@@ -117,6 +126,9 @@ describe('iniciarUsoAutoservicio + verificarAmbienteEquipoAprendiz (sin mock)', 
     }));
     expect(mockConnection.commit).toHaveBeenCalled();
     expect(mockConnection.rollback).not.toHaveBeenCalled();
+    // Camino listo: ninguna consulta de la petición pública toca metadatos de
+    // esquema ni ejecuta DDL; el guard de readiness ya se resolvió en el boot.
+    expect(mockExecute.mock.calls.some(([sql]) => /INFORMATION_SCHEMA|CREATE TABLE|ALTER TABLE/i.test(sql))).toBe(false);
   });
 
   it('rechaza con 409 APRENDIZ_OUTSIDE_AMBIENTE cuando la ficha no tiene clase en el ambiente del equipo', async () => {

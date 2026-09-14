@@ -9,6 +9,9 @@ const fileValidationPath = path.resolve(__dirname, '../../src/middleware/fileVal
 // Estas pruebas cambian el mock ESM de multer; limpiar el registro evita que
 // otra suite de rutas deje cacheada una implementación incompatible.
 jest.resetModules();
+jest.unmock('multer');
+jest.unmock(fileValidationPath);
+jest.unmock('fs');
 
 const mockValidateImageFile = jest.fn();
 const mockExistsSync = jest.fn(() => false);

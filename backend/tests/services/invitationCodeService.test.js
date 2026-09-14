@@ -262,7 +262,9 @@ describe('useCode()', () => {
     const { service, mockRepo } = makeService();
     let usages = 0;
     mockRepo.consumeCode.mockImplementation(async () => {
-      await new Promise((resolve) => setImmediate(resolve));
+      await new Promise((resolve) => {
+        setImmediate(resolve);
+      });
       if (usages >= 1) {
         return { consumed: false, reason: 'exhausted', code: null };
       }

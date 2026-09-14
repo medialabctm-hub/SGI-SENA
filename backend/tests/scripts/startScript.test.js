@@ -10,8 +10,8 @@ describe('MDL-134: contrato de puertos de start.sh', () => {
   it('preserva PORT y separa los defaults público, nginx e interno', async () => {
     const script = await readFile(startScriptPath, 'utf8');
 
-    expect(script).toContain('NGINX_PORT=${NGINX_PORT:-${PORT:-80}}');
-    expect(script).toContain('BACKEND_PORT=${BACKEND_PORT:-3000}');
+    expect(script).toContain(`NGINX_PORT=\${NGINX_PORT:-\${PORT:-80}}`);
+    expect(script).toContain(`BACKEND_PORT=\${BACKEND_PORT:-3000}`);
     expect(script).toContain('export NGINX_PORT BACKEND_PORT');
     expect(script).not.toMatch(/^\s*export\s+PORT\s*=/m);
   });

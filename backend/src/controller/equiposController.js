@@ -16,6 +16,26 @@ import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 
+const ROLES_EQUIPOS_VISTA_AMPLIA = ['Administrador', 'Instructor', 'Cuentadante'];
+
+function normalizarIdUsuario(rawId) {
+  if (typeof rawId !== 'number' && typeof rawId !== 'string') return null;
+
+  const id = Number(rawId);
+  return Number.isSafeInteger(id) && id > 0 ? id : null;
+}
+
+async function tieneVinculoActivoEquipo(codigoEquipo, userId) {
+  const [[vinculo]] = await defaultDb.execute(
+    `SELECT 1 FROM Responsables_Equipo
+     WHERE codigo_equipo = ? AND id_usuario = ? AND estado_responsabilidad = 'Activo'
+     LIMIT 1`,
+    [codigoEquipo, userId]
+  );
+
+  return Boolean(vinculo);
+}
+
 export async function listarEquipos(req, res) {
   try {
     const equipoService = ServiceFactory.create('equipoService');
@@ -175,8 +195,14 @@ export async function obtenerEquipoPorCodigo(req, res) {
     const { codigo } = req.params;
     const userId = req.user?.id;
     const userRole = req.user?.rol;
+    const tieneAccesoAmplio = ROLES_EQUIPOS_VISTA_AMPLIA.includes(userRole);
+    const userIdNormalizado = normalizarIdUsuario(userId);
     
     if (!codigo) return res.status(400).json({ error: 'codigo requerido' });
+
+    if (!tieneAccesoAmplio && !userIdNormalizado) {
+      return res.status(404).json({ error: 'Equipo no encontrado' });
+    }
 
     const queryBase = `
       SELECT e.codigo_equipo, e.placa AS codigo_inventario, e.tipo, e.modelo, e.consecutivo, e.descripcion,
@@ -244,6 +270,17 @@ export async function obtenerEquipoPorCodigo(req, res) {
           )
       )`;
       scopeParams = [userId];
+    } else if (!tieneAccesoAmplio) {
+      // EQUIPOS.VIEW_OWN: resolver solo equipos vinculados al usuario actual.
+      // El EXISTS evita filtrar después de haber obtenido filas duplicadas por placa.
+      whereClause = ` AND EXISTS (
+        SELECT 1
+        FROM Responsables_Equipo re_scope
+        WHERE re_scope.codigo_equipo = e.codigo_equipo
+          AND re_scope.id_usuario = ?
+          AND re_scope.estado_responsabilidad = 'Activo'
+      )`;
+      scopeParams = [userIdNormalizado];
     }
 
     const params = [codigo, ...scopeParams];
@@ -285,6 +322,10 @@ export async function obtenerEquipoPorCodigo(req, res) {
 
     // Obtener responsables/usuarios asignados al equipo
     // Usar LEFT JOIN para incluir registros externos incluso si el usuario no existe en Usuarios
+    const filtroResponsablePropio = tieneAccesoAmplio ? '' : ' AND re.id_usuario = ?';
+    const paramsResponsables = tieneAccesoAmplio
+      ? [codigoEquipoParaResponsables]
+      : [codigoEquipoParaResponsables, userIdNormalizado];
     const [responsables] = await defaultDb.execute(
       `SELECT 
         re.id_responsable,
@@ -305,9 +346,9 @@ export async function obtenerEquipoPorCodigo(req, res) {
        FROM Responsables_Equipo re
        LEFT JOIN Usuarios u ON re.id_usuario = u.id_usuario
        LEFT JOIN Roles r ON u.id_rol = r.id_rol
-       WHERE re.codigo_equipo = ? AND re.estado_responsabilidad = 'Activo'
+       WHERE re.codigo_equipo = ? AND re.estado_responsabilidad = 'Activo'${filtroResponsablePropio}
        ORDER BY re.fecha_asignacion DESC`,
-      [codigoEquipoParaResponsables]
+      paramsResponsables
     );
 
     // Enriquecer responsables externos con datos de Aprendices si coinciden por documento_externo
@@ -1783,18 +1824,37 @@ export async function consultarHistorialVerificaciones(req, res) {
 export async function obtenerHistorialMovimientos(req, res) {
   try {
     const { codigo } = req.params
-    let codigoEquipo = null
+    const userId = normalizarIdUsuario(req.user?.id)
+    const userRole = req.user?.rol
+    const tieneAccesoAmplio = ROLES_EQUIPOS_VISTA_AMPLIA.includes(userRole)
+
+    if (!tieneAccesoAmplio && !userId) {
+      return res.status(404).json({ error: 'Equipo no encontrado' })
+    }
+
+    let equipo = null
     const codigoNumerico = Number.parseInt(codigo, 10)
     if (Number.isFinite(codigoNumerico)) {
-      codigoEquipo = codigoNumerico
+      const [[equipoEncontrado]] = await defaultDb.execute(
+        `SELECT codigo_equipo, placa AS codigo_inventario, tipo, modelo, consecutivo
+         FROM Elementos WHERE codigo_equipo = ?`,
+        [codigoNumerico]
+      )
+      equipo = equipoEncontrado
     } else {
-      const [[row]] = await defaultDb.execute(
-        'SELECT codigo_equipo FROM Elementos WHERE r_centro = ? LIMIT 1',
+      const [[equipoEncontrado]] = await defaultDb.execute(
+        `SELECT codigo_equipo, placa AS codigo_inventario, tipo, modelo, consecutivo
+         FROM Elementos WHERE r_centro = ? LIMIT 1`,
         [codigo]
       )
-      codigoEquipo = row?.codigo_equipo ?? null
+      equipo = equipoEncontrado
     }
-    if (!codigoEquipo) {
+
+    if (!equipo) {
+      return res.status(404).json({ error: 'Equipo no encontrado' })
+    }
+
+    if (!tieneAccesoAmplio && !(await tieneVinculoActivoEquipo(equipo.codigo_equipo, userId))) {
       return res.status(404).json({ error: 'Equipo no encontrado' })
     }
 
@@ -1821,13 +1881,7 @@ export async function obtenerHistorialMovimientos(req, res) {
        LEFT JOIN Usuarios u_aut ON h.id_autorizado_por = u_aut.id_usuario
        WHERE h.codigo_equipo = ? AND h.tipo_evento = 'Movimiento Ambiente'
        ORDER BY h.fecha_evento DESC`,
-      [codigoEquipo]
-    )
-
-    const [[equipo]] = await defaultDb.execute(
-      `SELECT codigo_equipo, placa AS codigo_inventario, tipo, modelo, consecutivo
-       FROM Elementos WHERE codigo_equipo = ?`,
-      [codigoEquipo]
+      [equipo.codigo_equipo]
     )
 
     return res.json({
@@ -1849,6 +1903,28 @@ export async function obtenerHistorialEquipo(req, res) {
   try {
     const { codigo } = req.params
     const { fecha_desde, fecha_hasta } = req.query
+    const userId = normalizarIdUsuario(req.user?.id)
+    const userRole = req.user?.rol
+    const tieneAccesoAmplio = ROLES_EQUIPOS_VISTA_AMPLIA.includes(userRole)
+
+    if (!tieneAccesoAmplio && !userId) {
+      return res.status(404).json({ error: 'Equipo no encontrado' })
+    }
+
+    const [[equipo]] = await defaultDb.execute(
+      `SELECT codigo_equipo, placa AS codigo_inventario, tipo, modelo, consecutivo
+       FROM Elementos
+       WHERE codigo_equipo = ?`,
+      [codigo]
+    )
+
+    if (!equipo) {
+      return res.status(404).json({ error: 'Equipo no encontrado' })
+    }
+
+    if (!tieneAccesoAmplio && !(await tieneVinculoActivoEquipo(equipo.codigo_equipo, userId))) {
+      return res.status(404).json({ error: 'Equipo no encontrado' })
+    }
 
     let query = `
       SELECT 
@@ -1878,7 +1954,7 @@ export async function obtenerHistorialEquipo(req, res) {
       WHERE vi.codigo_equipo = ?
     `
 
-    const params = [codigo]
+    const params = [equipo.codigo_equipo]
 
     if (fecha_desde) {
       query += ' AND DATE(vi.fecha_verificacion) >= ?'
@@ -1893,14 +1969,6 @@ export async function obtenerHistorialEquipo(req, res) {
     query += ' ORDER BY vi.fecha_verificacion DESC'
 
     const [historial] = await defaultDb.execute(query, params)
-
-    // Obtener información del equipo
-    const [[equipo]] = await defaultDb.execute(
-      `SELECT codigo_equipo, placa AS codigo_inventario, tipo, modelo, consecutivo
-       FROM Elementos
-       WHERE codigo_equipo = ?`,
-      [codigo]
-    )
 
     return res.json({
       equipo,
@@ -2898,22 +2966,64 @@ export async function consultarHistorialUso(req, res) {
 
 /**
  * Obtener historial de uso de un equipo específico
+ *
+ * MDL-13: la ruta acepta tanto EQUIPOS.VIEW (consulta amplia) como
+ * EQUIPOS.VIEW_OWN (Aprendiz). Fail-closed: sin un rol de visibilidad amplia,
+ * se exige identidad válida y que el equipo esté vinculado activamente al
+ * usuario en Responsables_Equipo; de lo contrario se responde 404 sin
+ * distinguir "no existe" de "no autorizado", para no permitir enumeración.
  */
 export async function obtenerHistorialEquipoUso(req, res) {
   try {
     const { codigo } = req.params;
     const { fecha_desde, fecha_hasta, limit = 50 } = req.query;
+    const userId = req.user?.id;
+    const userRole = req.user?.rol;
 
     if (!codigo) {
       return res.status(400).json({ error: 'El código del equipo es requerido' });
+    }
+
+    const tieneAccesoAmplio = ROLES_EQUIPOS_VISTA_AMPLIA.includes(userRole);
+
+    if (!tieneAccesoAmplio && !userId) {
+      return res.status(404).json({ error: 'Equipo no encontrado' });
     }
 
     // Convertir código a número si es posible, sino buscar por placa
     const codigoNum = parseInt(codigo, 10);
     const buscarPorPlaca = isNaN(codigoNum);
 
+    // Resolver el equipo primero (sin exponer aún el historial) para poder
+    // validar el vínculo del Aprendiz antes de consultar Historial_Uso_Equipos.
+    const equipoQuery = buscarPorPlaca
+      ? `SELECT codigo_equipo, placa AS codigo_inventario, tipo, modelo, consecutivo
+         FROM Elementos
+         WHERE placa = ?`
+      : `SELECT codigo_equipo, placa AS codigo_inventario, tipo, modelo, consecutivo
+         FROM Elementos
+         WHERE codigo_equipo = ?`;
+    const [[equipo]] = await defaultDb.execute(equipoQuery, [buscarPorPlaca ? codigo : codigoNum]);
+
+    if (!equipo) {
+      return res.status(404).json({ error: 'Equipo no encontrado' });
+    }
+
+    if (!tieneAccesoAmplio) {
+      const [[vinculo]] = await defaultDb.execute(
+        `SELECT 1 FROM Responsables_Equipo
+         WHERE codigo_equipo = ? AND id_usuario = ? AND estado_responsabilidad = 'Activo'
+         LIMIT 1`,
+        [equipo.codigo_equipo, userId]
+      );
+      if (!vinculo) {
+        // Mismo estado que "no encontrado": evita enumerar equipos ajenos.
+        return res.status(404).json({ error: 'Equipo no encontrado' });
+      }
+    }
+
     let query = `
-      SELECT 
+      SELECT
         hu.id_historial,
         hu.codigo_equipo,
         e.placa AS codigo_inventario,
@@ -2932,10 +3042,16 @@ export async function obtenerHistorialEquipoUso(req, res) {
       FROM Historial_Uso_Equipos hu
       INNER JOIN Elementos e ON hu.codigo_equipo = e.codigo_equipo
       INNER JOIN Usuarios u ON hu.id_usuario = u.id_usuario
-      WHERE ${buscarPorPlaca ? 'e.placa = ?' : 'hu.codigo_equipo = ?'}
+      WHERE hu.codigo_equipo = ?
     `;
 
-    const params = [buscarPorPlaca ? codigo : codigoNum];
+    const params = [equipo.codigo_equipo];
+
+    if (!tieneAccesoAmplio) {
+      // Alcance fail-closed del Aprendiz: solo sus propias sesiones de uso.
+      query += ' AND hu.id_usuario = ?';
+      params.push(userId);
+    }
 
     if (fecha_desde) {
       query += ' AND DATE(hu.fecha_hora_inicio) >= ?';
@@ -2953,20 +3069,6 @@ export async function obtenerHistorialEquipoUso(req, res) {
     query += ` ORDER BY hu.fecha_hora_inicio DESC LIMIT ${safeLimit}`;
 
     const [historial] = await defaultDb.execute(query, params);
-
-    // Obtener información del equipo
-    const equipoQuery = buscarPorPlaca
-      ? `SELECT codigo_equipo, placa AS codigo_inventario, tipo, modelo, consecutivo
-         FROM Elementos
-         WHERE placa = ?`
-      : `SELECT codigo_equipo, placa AS codigo_inventario, tipo, modelo, consecutivo
-         FROM Elementos
-         WHERE codigo_equipo = ?`;
-    const [[equipo]] = await defaultDb.execute(equipoQuery, [buscarPorPlaca ? codigo : codigoNum]);
-
-    if (!equipo) {
-      return res.status(404).json({ error: 'Equipo no encontrado' });
-    }
 
     return res.json({
       equipo,
@@ -4456,7 +4558,11 @@ export async function iniciarUsoAutoservicio(req, res) {
       });
     }
 
-    await ensureAutoservicioSchema(defaultDb);
+    // Guard de readiness estable: solo lee el estado cacheado por el boot
+    // (ver server.js). No consulta ni modifica metadatos de esquema en el
+    // request path — falla cerrado con 503 si el schema no fue asegurado
+    // antes de que este proceso reciba tráfico.
+    assertAutoservicioReady(getAutoservicioReadiness());
 
     connection = await pool.getConnection();
     await connection.beginTransaction();

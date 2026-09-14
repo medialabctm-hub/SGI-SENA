@@ -13,6 +13,7 @@ const noop = jest.fn((req, res, next) => next && next());
 const requirePermissionMock = jest.fn(() => noop);
 const requireRoleMock = jest.fn(() => noop);
 const validateExcelFileMock = jest.fn();
+const validateExcelMock = jest.fn((req, res, next) => next && next());
 const singleMock = jest.fn(() => noop);
 const multerState = { options: null };
 
@@ -56,6 +57,7 @@ jest.unstable_mockModule(path.resolve(__dirname, '../../src/config/permissions.j
 
 jest.unstable_mockModule(path.resolve(__dirname, '../../src/middleware/fileValidation.js'), () => ({
   validateExcelFile: validateExcelFileMock,
+  validateExcel: validateExcelMock,
 }));
 
 // El query string fuerza una instancia ESM nueva cuando otra suite ya cargó
