@@ -20,7 +20,7 @@ created: 2026-09-14
 | **Config file** | `backend/package.json`, `backend/jest.config.js`, `playwright.config.js` |
 | **Quick run command** | `npm test --prefix backend -- --runInBand --forceExit tests/scripts/run-mysql-integration.test.js` |
 | **Full suite command** | `npm test --prefix backend -- --runInBand --forceExit --silent` |
-| **Estimated runtime** | ~111 seconds backend; frontend/E2E se ejecutan por separado |
+| **Estimated runtime** | ~194 seconds backend observado; frontend/E2E se ejecutan por separado |
 
 ## Sampling Rate
 
@@ -47,6 +47,9 @@ created: 2026-09-14
 | 03-04-01 | 03-04 | 1 | MDL-135 | Firma Excel coherente antes del parser y rutas fail-closed | unit/route | `npm test --prefix backend -- --runInBand --forceExit tests/middleware/fileValidation.test.js tests/routes/importRoutes.test.js tests/scripts/smoke-test.test.js` | ✅ | ✅ green |
 | 03-04-02 | 03-04 | 1 | MDL-11/14 | Contratos públicos E2E sin credenciales ni mutación | E2E | `npm run test:e2e` | ✅ | ✅ green |
 | 03-04-03 | 03-04 | 1 | MDL-11 | Sesión de imágenes usa cookie `httpOnly` | unit frontend | `npm test --prefix frontend -- --run --pool=threads --maxWorkers=1 src/hooks/useAuthenticatedEvidenceImages.test.jsx` | ✅ | ✅ green |
+| 03-06-01 | 03-06 | 2 | MDL-13 | Aprendiz solo consulta detalle de equipo vinculado y no recibe responsables ajenos | unit/controller | `npm test --prefix backend -- --runInBand --forceExit --no-cache tests/controllers/equiposController.test.js` | ✅ | ✅ green |
+| 03-06-02 | 03-06 | 2 | MDL-13 | Aprendiz solo consulta verificaciones y movimientos tras vínculo activo; equipo ajeno e identidad inválida fallan cerrado | security regression | mismo comando 03-06 | ✅ | ✅ green |
+| 03-06-03 | 03-06 | 2 | MDL-13 | Administrador, Instructor y Cuentadante conservan visibilidad amplia en las tres lecturas | unit/controller | `npm test --prefix backend -- --runInBand --forceExit --no-cache tests/controllers/equiposController.test.js tests/controllers/aprendicesController.test.js tests/controllers/importController.test.js` | ✅ | ✅ green |
 
 ## Wave 0 Requirements
 

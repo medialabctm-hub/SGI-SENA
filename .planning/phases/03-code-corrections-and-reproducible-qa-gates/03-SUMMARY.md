@@ -1,7 +1,7 @@
 ---
 phase: 03-code-corrections-and-reproducible-qa-gates
 status: completed_with_external_gaps
-plans: 5/5
+plans: 6/6
 issues:
   - MDL-13
   - MDL-11
@@ -19,9 +19,9 @@ issues:
 
 ## Resultado
 
-Los cinco planes de la fase se ejecutaron en worktrees hijos Orca, en una
-sola wave y sin subdelegación. Los cambios fueron revisados e integrados en el
-worktree coordinador. La fase queda **verificada localmente**; no se marca como
+Los seis planes de la fase se ejecutaron en worktrees hijos Orca, en dos waves
+y sin subdelegación. Los cambios fueron revisados e integrados en el worktree
+coordinador. La fase queda **verificada localmente**; no se marca como
 cierre total porque Railway, staging, CI remoto, credenciales autorizadas,
 UAT autenticado y la toma física de evidencias no ocurrieron.
 
@@ -34,11 +34,14 @@ UAT autenticado y la toma física de evidencias no ocurrieron.
 | 03-03 | `ctx_c96044deac25` | Claude | `1afc964` |
 | 03-04 | `ctx_1d622d475c78` | Codex | `ea9a2ac` |
 | 03-05 | `ctx_71d791ecf2f1` | Claude | `fded28e` (child `95c994b`) |
+| 03-06 | `ctx_77ef876d7673` | Codex | `ec2e995` (child `7f4a45b`) |
 
 Cada especificación de worker indicó explícitamente: no crear otra Run, no
 delegar subagentes, no escribir en Linear y no hacer push. Los workers
 reclamables fueron liberados al terminar; el worktree marcado `user_owned` y
-los worktrees históricos se conservaron.
+los worktrees históricos se conservaron. El primer intento de 03-06 partió de
+una base obsoleta, fue detenido y liberado sin integrar cambios; el reemplazo
+se creó desde `c1162db` de la rama padre y fue el que produjo `7f4a45b`.
 
 ## Correcciones integradas
 
@@ -59,11 +62,16 @@ los worktrees históricos se conservaron.
   Admin/Instructor/Cuentadante y aplica alcance fail-closed al Aprendiz:
   identidad válida, vínculo activo en `Responsables_Equipo` y solo su propio
   `Historial_Uso_Equipos`; vínculo ausente responde 404 no enumerable.
+- MDL-13: las lecturas de detalle, verificaciones y movimientos que aceptan
+  `VIEW_OWN` ahora exigen identidad positiva y vínculo activo antes de devolver
+  información; detalle filtra responsables ajenos y los tres roles amplios
+  conservan su visibilidad.
 
 ## Evidencia local
 
 ```text
-Backend completo: 97 suites PASS de 98; 1 suite skipped; 1.984 tests PASS y 7 skipped.
+Backend completo: 97 suites PASS de 98; 1 suite skipped; 2.011 tests PASS y 7 skipped.
+Backend focal MDL-13: 3 suites, 228/228 tests PASS; `equiposController.test.js` 149/149.
 Backend focal importación/Excel: 40/40 tests PASS.
 Backend focal lint heredado: 41/41 tests PASS.
 Backend lint: 0 errores, 400 warnings.

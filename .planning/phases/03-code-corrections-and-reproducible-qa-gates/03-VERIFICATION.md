@@ -28,14 +28,14 @@ completados.
 
 | Gate | Estado | Evidencia |
 |---|---|---|
-| Planes GSD 03-01 a 03-05 | PASS | `query phase-plan-index 3 --raw`: 5/5 con SUMMARY, wave 1, sin incompletos |
-| MDL-13 alcance de trazabilidad | PASS | 9 pruebas nuevas; Aprendiz queda limitado por identidad, vínculo activo y `hu.id_usuario`; roles amplios conservan consulta |
+| Planes GSD 03-01 a 03-06 | PASS | `query phase-plan-index 3 --raw`: 6/6 con SUMMARY, waves 1-2, sin incompletos |
+| MDL-13 alcance de trazabilidad | PASS | 9 pruebas de 03-05 y 27 de 03-06; Aprendiz queda limitado por identidad, vínculo activo y equipo vinculado en detalle, verificaciones, movimientos y uso; roles amplios conservan consulta |
 | Runner MySQL determinista | PASS | 1 suite, 4/4 tests; polling, timeout y cleanup cubiertos |
 | MySQL 8 real | PASS | `npm run test:mysql --prefix backend`: 1 suite, 7/7 tests |
 | Readiness/DDL fuera del request path | PASS | 3 suites, 21/21 tests; 503 antes de conexión y camino listo sin DDL |
 | Rate limits de autoservicio | PASS | 2 suites, 18/18 tests; IP, identificador hasheado y 429 no enumerable |
 | Excel y rutas importadoras | PASS | 40/40 tests focales; firma OLE/ZIP y middleware fail-closed |
-| Backend completo | PASS | 97 suites PASS de 98; 1 skipped; 1.984 PASS y 7 skipped |
+| Backend completo | PASS | 97 suites PASS de 98; 1 skipped; 2.011 PASS y 7 skipped |
 | Backend lint | PASS | 0 errores, 400 warnings preexistentes |
 | Frontend completo | PASS | 10 archivos, 33/33 tests |
 | Frontend lint/build | PASS | lint 0 errores; build completado con warning de chunk |
@@ -50,6 +50,7 @@ completados.
 
 ```text
 npm test --prefix backend -- --runInBand --forceExit --silent
+npm test --prefix backend -- --runInBand --forceExit --no-cache tests/controllers/equiposController.test.js tests/controllers/aprendicesController.test.js tests/controllers/importController.test.js
 npm test --prefix backend -- --runInBand --forceExit --no-cache --silent tests/routes/importRoutes.test.js tests/middleware/fileValidation.test.js
 npm test --prefix backend -- --runInBand --forceExit --no-cache --silent tests/scripts/startScript.test.js tests/services/invitationCodeService.test.js
 npm run test:mysql --prefix backend
@@ -67,7 +68,7 @@ git diff --check
 
 | Requisito | Estado | Justificación |
 |---|---|---|
-| MDL-13 | PASS local / BLOCKED externo | 9 pruebas de alcance/fail-closed y regresión global; falta consulta con datos controlados en entorno autorizado y validación UAT autenticada |
+| MDL-13 | PASS local / BLOCKED externo | 27 pruebas nuevas de alcance/fail-closed más 9 de uso y regresión global; falta consulta con datos controlados en entorno autorizado y validación UAT autenticada |
 | MDL-11 | PASS local / BLOCKED externo | Upload/session tests, shell E2E y build; falta login desplegado/visual/UAT |
 | MDL-14 | PASS local / BLOCKED externo | Smoke y E2E seguros; no sustituye pentest controlado en staging |
 | MDL-15 | PARCIAL | Correcciones de límites y regresión global; faltan negativos staging y evidencia física |
