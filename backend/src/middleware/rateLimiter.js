@@ -260,6 +260,61 @@ export const invitationCodeLimiter = rateLimit({
 });
 
 /**
+ * Límites independientes para el autoservicio de préstamo de equipos
+ * (POST /autoservicio/iniciar-uso).
+ *
+ * El límite por IP evita que un mismo origen agote las solicitudes del
+ * endpoint (por ejemplo, un ambiente de clase completo); el límite por
+ * identificador evita que alguien repita rápidamente el mismo par
+ * documento+placa buscando acertar una combinación válida por fuerza
+ * bruta. El identificador se normaliza (trim + mayúsculas) y se hashea
+ * para que el store del limiter, las claves y los logs no conserven
+ * documento ni placa en claro. Ninguno de los dos límites reemplaza el
+ * gate de clase en curso, roster, autorización de negocio, la
+ * transacción ni la idempotencia del controlador.
+ */
+const getAutoservicioIdentifier = (req) => {
+  const documento = req.body?.documento;
+  const placa = req.body?.placa;
+  const normalizedDocumento = documento == null ? '' : String(documento).trim();
+  const normalizedPlaca = placa == null ? '' : String(placa).trim();
+
+  if (!normalizedDocumento || !normalizedPlaca) {
+    return 'missing';
+  }
+
+  return `${normalizedDocumento}|${normalizedPlaca}`;
+};
+
+const autoservicioRateLimitHandler = (req, res) => {
+  res.status(429).json({
+    success: false,
+    error: 'Demasiados intentos de autoservicio. Por favor intenta nuevamente en 15 minutos.',
+    retryAfter: 15,
+  });
+};
+
+export const autoservicioIpLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  skipSuccessfulRequests: false,
+  keyGenerator: (req) => `autoservicio_ip_${getClientIp(req)}`,
+  handler: autoservicioRateLimitHandler,
+});
+
+export const autoservicioIdentifierLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  skipSuccessfulRequests: false,
+  keyGenerator: (req) => `autoservicio_identifier_${hashIdentifier(getAutoservicioIdentifier(req))}`,
+  handler: autoservicioRateLimitHandler,
+});
+
+/**
  * Rate limiter para webhooks externos
  * 100 peticiones por minuto
  */

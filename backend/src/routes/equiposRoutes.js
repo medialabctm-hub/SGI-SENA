@@ -4,7 +4,7 @@ import { crearSolicitud, listarPendientesParaAutorizador, contarPendientesParaAu
 import { authenticate, optionalAuthenticate } from '../middleware/authMiddleware.js';
 import { requirePermission, requireAnyPermission, requireAnyPermissionIfAuthenticated } from '../middleware/authorization.js';
 import { PERMISSIONS } from '../config/permissions.js';
-import { writeLimiter, readLimiter, strictLimiter, webhookLimiter, searchLimiter } from '../middleware/rateLimiter.js';
+import { writeLimiter, readLimiter, strictLimiter, webhookLimiter, searchLimiter, autoservicioIpLimiter, autoservicioIdentifierLimiter } from '../middleware/rateLimiter.js';
 import { validate, registrarEquipoSchema, actualizarEquipoSchema, asignarEquipoSchema, verificarInventarioSchema, solicitudAutorizacionMovimientoSchema, crearCategoriaSchema, actualizarCategoriaSchema, registrarUsoEquipoSchema, actualizarUsoEquipoSchema, registrarUsoEquipoExternoSchema, actualizarAsignacionEquipoSchema, autoservicioIniciarUsoSchema } from '../validators/equiposValidator.js';
 import { uploadEquipoImagePublico, handleUploadError, validateUploadedImageContent } from '../middleware/uploadMiddleware.js';
 import { parseFormData } from '../middleware/parseFormData.js';
@@ -22,7 +22,12 @@ const router = express.Router();
 // El nombre se obtiene automáticamente buscando el usuario por documento en la BD
 // Las imágenes se guardan en Imagenes_Equipo asociadas al equipo identificado por la placa
 // Registro externo: público sin token; con token exige permiso ASSIGN o ASSIGN_TO_APRENDIZ (web/app).
-router.post('/uso/registro-externo', 
+// NOTA (MDL-126/MDL-15, ver 03-03-SUMMARY.md): solo hay límite por IP (webhookLimiter),
+// aplicado antes de Multer porque el body multipart aún no está parseado en ese punto.
+// Queda BLOCKED/PARCIAL: límite por identificador, API key/firma, capability, cuota
+// diaria y cualquier identidad de kiosko requieren una decisión de política que no se
+// inventa en este plan.
+router.post('/uso/registro-externo',
   corsPublic,
   webhookLimiter,
   uploadEquipoImagePublico.array('imagenes', 10),
@@ -45,7 +50,8 @@ router.post('/uso/registro-externo',
 // Autoservicio: aprendiz sin cuenta ingresa documento + placa para tomar un equipo en préstamo (público)
 // Requiere clase En Curso en el ambiente del equipo; se libera automáticamente al finalizar la clase.
 router.post('/autoservicio/iniciar-uso',
-  webhookLimiter,
+  autoservicioIpLimiter,
+  autoservicioIdentifierLimiter,
   validate(autoservicioIniciarUsoSchema),
   iniciarUsoAutoservicio
 );

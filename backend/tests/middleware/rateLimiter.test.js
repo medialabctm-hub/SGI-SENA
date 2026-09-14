@@ -24,11 +24,13 @@ const {
   invitationIpLimiter,
   invitationCodeLimiter,
   webhookLimiter,
+  autoservicioIpLimiter,
+  autoservicioIdentifierLimiter,
 } = await import('../../src/middleware/rateLimiter.js');
 
 describe('rateLimiter config', () => {
   it('debe registrar todos los limiters esperados', () => {
-    expect(rateLimitMock).toHaveBeenCalledTimes(11);
+    expect(rateLimitMock).toHaveBeenCalledTimes(13);
     expect(authLimiter.__options.windowMs).toBe(15 * 60 * 1000);
     expect(registerLimiter.__options.windowMs).toBe(60 * 60 * 1000);
     expect(passwordResetLimiter.__options.windowMs).toBe(60 * 60 * 1000);
@@ -74,6 +76,78 @@ describe('rateLimiter config', () => {
     invitationCodeLimiter.__options.handler(req, res);
     expect(res.status).toHaveBeenCalledWith(429);
     expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ success: false, retryAfter: 15 }));
+  });
+
+  it('autoservicioIpLimiter y autoservicioIdentifierLimiter limitan por dimensiones independientes', () => {
+    expect(autoservicioIpLimiter.__options.windowMs).toBe(15 * 60 * 1000);
+    expect(autoservicioIpLimiter.__options.max).toBe(20);
+    expect(autoservicioIdentifierLimiter.__options.windowMs).toBe(15 * 60 * 1000);
+    expect(autoservicioIdentifierLimiter.__options.max).toBe(5);
+
+    const reqA = {
+      ip: '10.5.5.5',
+      body: { documento: '123456789', placa: 'EQ-001' },
+      connection: { remoteAddress: '10.0.0.5' },
+    };
+    const reqB = {
+      ip: '10.5.5.5',
+      body: { documento: '987654321', placa: 'EQ-002' },
+      connection: { remoteAddress: '10.0.0.5' },
+    };
+
+    const ipKeyA = autoservicioIpLimiter.__options.keyGenerator(reqA);
+    const ipKeyB = autoservicioIpLimiter.__options.keyGenerator(reqB);
+    expect(ipKeyA).toBe('autoservicio_ip_10.5.5.5');
+    expect(ipKeyA).toBe(ipKeyB); // misma IP -> misma clave, límite compartido por origen
+
+    const identifierKeyA = autoservicioIdentifierLimiter.__options.keyGenerator(reqA);
+    const identifierKeyB = autoservicioIdentifierLimiter.__options.keyGenerator(reqB);
+    expect(identifierKeyA).toMatch(/^autoservicio_identifier_[0-9a-f]{64}$/);
+    expect(identifierKeyA).not.toBe(identifierKeyB); // pares documento+placa distintos -> claves distintas
+    expect(identifierKeyA).not.toContain('123456789');
+    expect(identifierKeyA).not.toContain('EQ-001');
+  });
+
+  it('autoservicioIdentifierLimiter normaliza espacios/mayúsculas y hashea el mismo par igual', () => {
+    const reqLower = {
+      ip: '10.5.5.6',
+      body: { documento: ' 111222333 ', placa: ' eq-010 ' },
+    };
+    const reqUpper = {
+      ip: '10.5.5.7',
+      body: { documento: '111222333', placa: 'EQ-010' },
+    };
+
+    const keyLower = autoservicioIdentifierLimiter.__options.keyGenerator(reqLower);
+    const keyUpper = autoservicioIdentifierLimiter.__options.keyGenerator(reqUpper);
+    expect(keyLower).toBe(keyUpper);
+  });
+
+  it('autoservicioIdentifierLimiter no rompe con body ausente o campos faltantes', () => {
+    const reqSinBody = { ip: '10.5.5.8' };
+    const reqCampoFaltante = { ip: '10.5.5.9', body: { documento: '123' } };
+
+    const keySinBody = autoservicioIdentifierLimiter.__options.keyGenerator(reqSinBody);
+    const keyCampoFaltante = autoservicioIdentifierLimiter.__options.keyGenerator(reqCampoFaltante);
+
+    expect(keySinBody).toMatch(/^autoservicio_identifier_[0-9a-f]{64}$/);
+    expect(keySinBody).toBe(keyCampoFaltante); // ambos colapsan al identificador "missing"
+  });
+
+  it('autoservicioIpLimiter y autoservicioIdentifierLimiter responden 429 estable sin datos sensibles', () => {
+    const res = { status: jest.fn().mockReturnThis(), json: jest.fn().mockReturnThis() };
+
+    autoservicioIpLimiter.__options.handler({}, res);
+    expect(res.status).toHaveBeenCalledWith(429);
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ success: false, retryAfter: 15 }));
+
+    res.status.mockClear();
+    res.json.mockClear();
+    autoservicioIdentifierLimiter.__options.handler({}, res);
+    expect(res.status).toHaveBeenCalledWith(429);
+    const payload = res.json.mock.calls[0][0];
+    expect(payload).toEqual(expect.objectContaining({ success: false, retryAfter: 15 }));
+    expect(JSON.stringify(payload)).not.toMatch(/document|placa/i);
   });
 
   it('authLimiter keyGenerator debe usar user_<id> cuando hay usuario autenticado', () => {
