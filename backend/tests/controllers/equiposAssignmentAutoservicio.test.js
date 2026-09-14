@@ -68,11 +68,26 @@ describe('contratos de asignación y autoservicio', () => {
   });
 
   // IMPORTANTE: este test debe ejecutarse antes que cualquier otro que deje el
-  // schema de autoservicio en estado "listo": autoservicioSchemaListo es un
-  // flag de módulo compartido por todos los tests de este archivo (el
-  // controlador se importa una sola vez arriba), así que una vez otro test lo
-  // pone en true, ensureAutoservicioSchema deja de volver a validar el schema.
-  it('responde 503 accionable y no reclama conexión cuando el esquema de autoservicio no está listo', async () => {
+  // schema de autoservicio en estado "listo": autoservicioReadiness es un
+  // estado de módulo compartido por todos los tests de este archivo (el
+  // controlador se importa una sola vez arriba). Antes de que algo llame a
+  // ensureAutoservicioSchema (el boot), el guard debe fallar cerrado sin
+  // tocar la base de datos en absoluto.
+  it('responde 503 accionable y no reclama conexión cuando el esquema de autoservicio no está listo (sin conexión)', async () => {
+    const response = res();
+    await iniciarUsoAutoservicio({ body: { documento: 'D1', placa: 'P3' } }, response);
+
+    expect(response.status).toHaveBeenCalledWith(503);
+    expect(response.json).toHaveBeenCalledWith(expect.objectContaining({
+      userMessage: expect.stringMatching(/Autoservicio no está listo.*migrate-autoservicio-cierre-clase\.js/i)
+    }));
+    // Guard puramente en memoria: no abre conexión ni ejecuta ninguna consulta,
+    // ni siquiera de metadatos, mientras el schema no fue asegurado en el boot.
+    expect(mockGetConnection).not.toHaveBeenCalled();
+    expect(mockExecute).not.toHaveBeenCalled();
+  });
+
+  it('sigue fallando cerrado sin conexión cuando el ensure de boot corrió y encontró el schema incompleto', async () => {
     mockExecute.mockImplementation(async (sql) => {
       if (/COLUMN_NAME = 'id_usuario'/.test(sql)) return [[{ IS_NULLABLE: 'YES' }]];
       if (/COLUMN_NAME IN/.test(sql)) return [[
@@ -92,6 +107,12 @@ describe('contratos de asignación y autoservicio', () => {
       return [[]];
     });
 
+    // Simula el comando administrativo/boot (server.js) ejecutando el ensure real
+    // contra un schema incompleto: falla, pero deja el estado de readiness cacheado
+    // con el motivo específico.
+    await expect(ensureAutoservicioSchema({ execute: mockExecute })).rejects.toThrow(/AUTOSERVICIO_CIERRE_V2/);
+    mockExecute.mockClear();
+
     const response = res();
     await iniciarUsoAutoservicio({ body: { documento: 'D1', placa: 'P3' } }, response);
 
@@ -99,8 +120,10 @@ describe('contratos de asignación y autoservicio', () => {
     expect(response.json).toHaveBeenCalledWith(expect.objectContaining({
       userMessage: expect.stringMatching(/AUTOSERVICIO_CIERRE_V2.*migrate-autoservicio-cierre-clase\.js/i)
     }));
-    // No debe abrir conexión/transacción: el gate de readiness corta antes de escribir nada.
+    // El request path no reintenta la migración ni consulta metadatos: lee el
+    // estado ya cacheado por el ensure de boot.
     expect(mockGetConnection).not.toHaveBeenCalled();
+    expect(mockExecute).not.toHaveBeenCalled();
   });
 
   it('no recrea el procedimiento de cierre desde una petición pública', async () => {
@@ -211,7 +234,6 @@ describe('contratos de asignación y autoservicio', () => {
 
   it('devuelve códigos estables para 404 y 409 de autoservicio', async () => {
     mockExecute.mockImplementation(async (sql) => {
-      if (/INFORMATION_SCHEMA/.test(sql)) return [[{ IS_NULLABLE: 'YES', cnt: 1 }]];
       if (/FROM Aprendices/.test(sql)) return [[{ id_aprendiz: 1, nombre: 'A', documento: 'D1', ficha: 'F' }]];
       if (/FROM Elementos/.test(sql)) return [[]];
       return [[]];
@@ -226,7 +248,7 @@ describe('contratos de asignación y autoservicio', () => {
       if (/FROM Elementos/.test(sql)) return [[{ codigo_equipo: 3, placa: 'P3', id_ambiente: 1 }]];
       if (/FROM Clases/.test(sql)) return [[{ id_clase: 4, nombre_clase: 'Clase' }]];
       if (/Historial_Uso_Equipos/.test(sql)) return [[{ id_historial: 7, documento_externo: 'D1' }]];
-      return [[{ IS_NULLABLE: 'YES', cnt: 1 }]];
+      return [[]];
     });
     verificarDisponibilidadEquipo.mockResolvedValueOnce({ disponible: false, razon: 'En uso' });
     const conflict = res();
@@ -406,14 +428,6 @@ describe('contratos de asignación y autoservicio', () => {
 
   it('reclama el equipo dentro de una transacción y bloquea su sesión activa', async () => {
     mockGetConnection.mockResolvedValue(mockConnection);
-    mockExecute.mockImplementation(async (sql) => {
-      if (/INFORMATION_SCHEMA/.test(sql)) return [[{ IS_NULLABLE: 'YES', cnt: 1 }]];
-      if (/FROM Aprendices/.test(sql)) return [[{ id_aprendiz: 1, nombre: 'A', documento: 'D1', ficha: 'F' }]];
-      if (/FROM Elementos/.test(sql)) return [[{ codigo_equipo: 3, placa: 'P3', tipo: 'Laptop', modelo: 'M', id_ambiente: 1 }]];
-      if (/FROM Clases/.test(sql)) return [[{ id_clase: 4, nombre_clase: 'Clase' }]];
-      if (/Historial_Uso_Equipos/.test(sql)) return [[]];
-      return [{ insertId: 11 }];
-    });
     mockConnection.execute.mockImplementation(async (sql) => {
       if (/FROM Aprendices/.test(sql)) return [[{ id_aprendiz: 1, nombre: 'A', documento: 'D1', ficha: 'F' }]];
       if (/FROM Elementos/.test(sql)) return [[{ codigo_equipo: 3, placa: 'P3', tipo: 'Laptop', modelo: 'M', id_ambiente: 1 }]];
@@ -435,5 +449,9 @@ describe('contratos de asignación y autoservicio', () => {
     expect(mockConnection.commit).toHaveBeenCalledTimes(1);
     expect(mockConnection.release).toHaveBeenCalledTimes(1);
     expect(response.status).toHaveBeenCalledWith(201);
+    // Camino listo: ninguna consulta de la petición pasa por defaultDb (mockExecute),
+    // solo por la conexión de la transacción. El guard de readiness no ejecuta
+    // metadatos ni DDL aquí.
+    expect(mockExecute).not.toHaveBeenCalled();
   });
 });

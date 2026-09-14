@@ -4456,7 +4456,11 @@ export async function iniciarUsoAutoservicio(req, res) {
       });
     }
 
-    await ensureAutoservicioSchema(defaultDb);
+    // Guard de readiness estable: solo lee el estado cacheado por el boot
+    // (ver server.js). No consulta ni modifica metadatos de esquema en el
+    // request path — falla cerrado con 503 si el schema no fue asegurado
+    // antes de que este proceso reciba tráfico.
+    assertAutoservicioReady(getAutoservicioReadiness());
 
     connection = await pool.getConnection();
     await connection.beginTransaction();
