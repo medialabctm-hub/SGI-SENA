@@ -12,10 +12,7 @@ import {
 import { authenticate } from '../middleware/authMiddleware.js';
 import { requirePermission, requireRole } from '../middleware/authorization.js';
 import { PERMISSIONS } from '../config/permissions.js';
-import * as fileValidation from '../middleware/fileValidation.js';
-
-const { validateExcelFile } = fileValidation;
-const validateUploadedExcel = fileValidation.validateExcel || ((req, res, next) => next());
+import { validateExcelFile, validateExcel } from '../middleware/fileValidation.js';
 
 const router = express.Router();
 
@@ -41,7 +38,7 @@ router.post('/equipos',
   authenticate,
   requirePermission(PERMISSIONS.EQUIPOS.CREATE),
   upload.single('archivo'),
-  validateUploadedExcel,
+  validateExcel,
   importarEquipos
 );
 
@@ -57,7 +54,7 @@ router.post('/usuarios',
   authenticate,
   requirePermission(PERMISSIONS.USERS.CREATE),
   upload.single('archivo'),
-  validateUploadedExcel,
+  validateExcel,
   importarUsuarios
 );
 
@@ -66,7 +63,7 @@ router.post('/aprendices',
   authenticate,
   requirePermission(PERMISSIONS.USERS.CREATE),
   upload.single('archivo'),
-  validateUploadedExcel,
+  validateExcel,
   importarAprendices
 );
 
