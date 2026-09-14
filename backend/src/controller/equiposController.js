@@ -2897,23 +2897,75 @@ export async function consultarHistorialUso(req, res) {
 }
 
 /**
+ * Roles con visibilidad amplia (sin restricción de propietario) sobre el
+ * historial de uso de equipos. Coincide con los roles que en permissions.js
+ * tienen otorgado EQUIPOS.VIEW (Administrador, Instructor, Cuentadante).
+ * Cualquier otro rol (incluido Aprendiz, solo con EQUIPOS.VIEW_OWN) queda
+ * restringido a su propio historial en equipos vinculados a él mediante
+ * Responsables_Equipo.
+ */
+const ROLES_HISTORIAL_USO_AMPLIO = ['Administrador', 'Instructor', 'Cuentadante'];
+
+/**
  * Obtener historial de uso de un equipo específico
+ *
+ * MDL-13: la ruta acepta tanto EQUIPOS.VIEW (consulta amplia) como
+ * EQUIPOS.VIEW_OWN (Aprendiz). Fail-closed: sin un rol de visibilidad amplia,
+ * se exige identidad válida y que el equipo esté vinculado activamente al
+ * usuario en Responsables_Equipo; de lo contrario se responde 404 sin
+ * distinguir "no existe" de "no autorizado", para no permitir enumeración.
  */
 export async function obtenerHistorialEquipoUso(req, res) {
   try {
     const { codigo } = req.params;
     const { fecha_desde, fecha_hasta, limit = 50 } = req.query;
+    const userId = req.user?.id;
+    const userRole = req.user?.rol;
 
     if (!codigo) {
       return res.status(400).json({ error: 'El código del equipo es requerido' });
+    }
+
+    const tieneAccesoAmplio = ROLES_HISTORIAL_USO_AMPLIO.includes(userRole);
+
+    if (!tieneAccesoAmplio && !userId) {
+      return res.status(404).json({ error: 'Equipo no encontrado' });
     }
 
     // Convertir código a número si es posible, sino buscar por placa
     const codigoNum = parseInt(codigo, 10);
     const buscarPorPlaca = isNaN(codigoNum);
 
+    // Resolver el equipo primero (sin exponer aún el historial) para poder
+    // validar el vínculo del Aprendiz antes de consultar Historial_Uso_Equipos.
+    const equipoQuery = buscarPorPlaca
+      ? `SELECT codigo_equipo, placa AS codigo_inventario, tipo, modelo, consecutivo
+         FROM Elementos
+         WHERE placa = ?`
+      : `SELECT codigo_equipo, placa AS codigo_inventario, tipo, modelo, consecutivo
+         FROM Elementos
+         WHERE codigo_equipo = ?`;
+    const [[equipo]] = await defaultDb.execute(equipoQuery, [buscarPorPlaca ? codigo : codigoNum]);
+
+    if (!equipo) {
+      return res.status(404).json({ error: 'Equipo no encontrado' });
+    }
+
+    if (!tieneAccesoAmplio) {
+      const [[vinculo]] = await defaultDb.execute(
+        `SELECT 1 FROM Responsables_Equipo
+         WHERE codigo_equipo = ? AND id_usuario = ? AND estado_responsabilidad = 'Activo'
+         LIMIT 1`,
+        [equipo.codigo_equipo, userId]
+      );
+      if (!vinculo) {
+        // Mismo estado que "no encontrado": evita enumerar equipos ajenos.
+        return res.status(404).json({ error: 'Equipo no encontrado' });
+      }
+    }
+
     let query = `
-      SELECT 
+      SELECT
         hu.id_historial,
         hu.codigo_equipo,
         e.placa AS codigo_inventario,
@@ -2932,10 +2984,16 @@ export async function obtenerHistorialEquipoUso(req, res) {
       FROM Historial_Uso_Equipos hu
       INNER JOIN Elementos e ON hu.codigo_equipo = e.codigo_equipo
       INNER JOIN Usuarios u ON hu.id_usuario = u.id_usuario
-      WHERE ${buscarPorPlaca ? 'e.placa = ?' : 'hu.codigo_equipo = ?'}
+      WHERE hu.codigo_equipo = ?
     `;
 
-    const params = [buscarPorPlaca ? codigo : codigoNum];
+    const params = [equipo.codigo_equipo];
+
+    if (!tieneAccesoAmplio) {
+      // Alcance fail-closed del Aprendiz: solo sus propias sesiones de uso.
+      query += ' AND hu.id_usuario = ?';
+      params.push(userId);
+    }
 
     if (fecha_desde) {
       query += ' AND DATE(hu.fecha_hora_inicio) >= ?';
@@ -2953,20 +3011,6 @@ export async function obtenerHistorialEquipoUso(req, res) {
     query += ` ORDER BY hu.fecha_hora_inicio DESC LIMIT ${safeLimit}`;
 
     const [historial] = await defaultDb.execute(query, params);
-
-    // Obtener información del equipo
-    const equipoQuery = buscarPorPlaca
-      ? `SELECT codigo_equipo, placa AS codigo_inventario, tipo, modelo, consecutivo
-         FROM Elementos
-         WHERE placa = ?`
-      : `SELECT codigo_equipo, placa AS codigo_inventario, tipo, modelo, consecutivo
-         FROM Elementos
-         WHERE codigo_equipo = ?`;
-    const [[equipo]] = await defaultDb.execute(equipoQuery, [buscarPorPlaca ? codigo : codigoNum]);
-
-    if (!equipo) {
-      return res.status(404).json({ error: 'Equipo no encontrado' });
-    }
 
     return res.json({
       equipo,

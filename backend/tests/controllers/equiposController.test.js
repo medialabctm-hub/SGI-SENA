@@ -85,6 +85,7 @@ const {
   registrarInicioUso,
   registrarFinUso,
   obtenerSesionesActivas,
+  obtenerHistorialEquipoUso,
   actualizarAsignacionEquipo,
   obtenerEquiposAmbientesInstructor,
   registrarVerificacionInventario,
@@ -1081,6 +1082,148 @@ describe('obtenerSesionesActivas', () => {
     const req = mockReq({ query: {}, user: { id: 1, rol: 'Administrador' } });
     const res = mockRes();
     await obtenerSesionesActivas(req, res);
+    expect(res.status).toHaveBeenCalledWith(500);
+  });
+});
+
+describe('obtenerHistorialEquipoUso', () => {
+  beforeEach(() => {
+    mockExecute.mockReset();
+    jest.clearAllMocks();
+  });
+
+  const fakeEquipo = { codigo_equipo: 10, codigo_inventario: 'INV-10', tipo: 'Laptop', modelo: 'X', consecutivo: 1 };
+
+  function mockDb({ equipo = fakeEquipo, vinculo = null, historial = [] } = {}) {
+    mockExecute.mockImplementation((sql) => {
+      if (sql.includes('FROM Historial_Uso_Equipos')) {
+        return Promise.resolve([historial]);
+      }
+      if (sql.includes('FROM Responsables_Equipo')) {
+        return Promise.resolve([vinculo ? [vinculo] : []]);
+      }
+      if (sql.includes('FROM Elementos')) {
+        return Promise.resolve([equipo ? [equipo] : []]);
+      }
+      return Promise.resolve([[]]);
+    });
+  }
+
+  it('returns 400 when codigo is missing', async () => {
+    const req = mockReq({ params: {}, user: { id: 1, rol: 'Administrador' } });
+    const res = mockRes();
+    await obtenerHistorialEquipoUso(req, res);
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(mockExecute).not.toHaveBeenCalled();
+  });
+
+  it('allows broad roles (Administrador/Instructor/Cuentadante) to query any equipo without owner filtering', async () => {
+    mockDb({ historial: [{ id_historial: 1, codigo_equipo: 10, id_usuario: 99 }] });
+    const req = mockReq({ params: { codigo: '10' }, user: { id: 1, rol: 'Administrador' } });
+    const res = mockRes();
+
+    await obtenerHistorialEquipoUso(req, res);
+
+    expect(res.status).not.toHaveBeenCalledWith(404);
+    // No debe haberse consultado el vínculo de Responsables_Equipo (acceso amplio).
+    expect(mockExecute.mock.calls.some(([sql]) => sql.includes('FROM Responsables_Equipo'))).toBe(false);
+    // La consulta de historial no debe filtrar por hu.id_usuario para roles amplios.
+    const historialCall = mockExecute.mock.calls.find(([sql]) => sql.includes('FROM Historial_Uso_Equipos'));
+    expect(historialCall[0]).not.toContain('hu.id_usuario = ?');
+    expect(historialCall[1]).toEqual([10]);
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ total: 1 }));
+  });
+
+  it('scopes an Aprendiz to their own historial on an equipo linked via Responsables_Equipo', async () => {
+    mockDb({
+      vinculo: { 1: 1 },
+      historial: [{ id_historial: 5, codigo_equipo: 10, id_usuario: 55 }]
+    });
+    const req = mockReq({ params: { codigo: '10' }, user: { id: 55, rol: 'Aprendiz' } });
+    const res = mockRes();
+
+    await obtenerHistorialEquipoUso(req, res);
+
+    expect(res.status).not.toHaveBeenCalledWith(404);
+    expect(mockExecute.mock.calls.some(([sql]) =>
+      sql.includes('FROM Responsables_Equipo') && sql.includes("estado_responsabilidad = 'Activo'")
+    )).toBe(true);
+    const historialCall = mockExecute.mock.calls.find(([sql]) => sql.includes('FROM Historial_Uso_Equipos'));
+    expect(historialCall[0]).toContain('AND hu.id_usuario = ?');
+    expect(historialCall[1]).toEqual([10, 55]);
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ total: 1 }));
+  });
+
+  it('fails closed (404, no enumeration) when the Aprendiz has no active link to the equipo', async () => {
+    mockDb({ vinculo: null });
+    const req = mockReq({ params: { codigo: '10' }, user: { id: 77, rol: 'Aprendiz' } });
+    const res = mockRes();
+
+    await obtenerHistorialEquipoUso(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(404);
+    expect(res.json).toHaveBeenCalledWith({ error: 'Equipo no encontrado' });
+    // No debe haberse consultado el historial de uso para un equipo no autorizado.
+    expect(mockExecute.mock.calls.some(([sql]) => sql.includes('FROM Historial_Uso_Equipos'))).toBe(false);
+  });
+
+  it('fails closed (404) when there is no valid identity for a restricted role', async () => {
+    const req = mockReq({ params: { codigo: '10' }, user: { rol: 'Aprendiz' } }); // sin id
+    const res = mockRes();
+
+    await obtenerHistorialEquipoUso(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(404);
+    expect(res.json).toHaveBeenCalledWith({ error: 'Equipo no encontrado' });
+    expect(mockExecute).not.toHaveBeenCalled();
+  });
+
+  it('fails closed (404) when there is no req.user at all', async () => {
+    const req = mockReq({ params: { codigo: '10' }, user: undefined });
+    const res = mockRes();
+
+    await obtenerHistorialEquipoUso(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(404);
+    expect(mockExecute).not.toHaveBeenCalled();
+  });
+
+  it('returns 404 when the equipo does not exist (regression, broad role)', async () => {
+    mockDb({ equipo: null });
+    const req = mockReq({ params: { codigo: '999' }, user: { id: 1, rol: 'Administrador' } });
+    const res = mockRes();
+
+    await obtenerHistorialEquipoUso(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(404);
+    expect(res.json).toHaveBeenCalledWith({ error: 'Equipo no encontrado' });
+  });
+
+  it('preserves date filters and limit pagination for broad-access roles (regression)', async () => {
+    mockDb({ historial: [] });
+    const req = mockReq({
+      params: { codigo: '10' },
+      query: { fecha_desde: '2026-01-01', fecha_hasta: '2026-01-31', limit: '5' },
+      user: { id: 1, rol: 'Instructor' }
+    });
+    const res = mockRes();
+
+    await obtenerHistorialEquipoUso(req, res);
+
+    const historialCall = mockExecute.mock.calls.find(([sql]) => sql.includes('FROM Historial_Uso_Equipos'));
+    expect(historialCall[0]).toContain('DATE(hu.fecha_hora_inicio) >= ?');
+    expect(historialCall[0]).toContain('DATE(hu.fecha_hora_inicio) <= ?');
+    expect(historialCall[0]).toContain('LIMIT 5');
+    expect(historialCall[1]).toEqual([10, '2026-01-01', '2026-01-31']);
+  });
+
+  it('returns 500 on DB error', async () => {
+    mockExecute.mockRejectedValueOnce(new Error('DB fail'));
+    const req = mockReq({ params: { codigo: '10' }, user: { id: 1, rol: 'Administrador' } });
+    const res = mockRes();
+
+    await obtenerHistorialEquipoUso(req, res);
+
     expect(res.status).toHaveBeenCalledWith(500);
   });
 });
