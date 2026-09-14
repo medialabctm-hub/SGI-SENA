@@ -2,6 +2,7 @@
 phase: 03-code-corrections-and-reproducible-qa-gates
 status: verified-local
 requirements:
+  - MDL-13
   - MDL-11
   - MDL-14
   - MDL-15
@@ -27,13 +28,14 @@ completados.
 
 | Gate | Estado | Evidencia |
 |---|---|---|
-| Planes GSD 03-01 a 03-04 | PASS | `query phase-plan-index 3 --raw`: 4/4 con SUMMARY, wave 1, sin incompletos |
+| Planes GSD 03-01 a 03-05 | PASS | `query phase-plan-index 3 --raw`: 5/5 con SUMMARY, wave 1, sin incompletos |
+| MDL-13 alcance de trazabilidad | PASS | 9 pruebas nuevas; Aprendiz queda limitado por identidad, vínculo activo y `hu.id_usuario`; roles amplios conservan consulta |
 | Runner MySQL determinista | PASS | 1 suite, 4/4 tests; polling, timeout y cleanup cubiertos |
 | MySQL 8 real | PASS | `npm run test:mysql --prefix backend`: 1 suite, 7/7 tests |
 | Readiness/DDL fuera del request path | PASS | 3 suites, 21/21 tests; 503 antes de conexión y camino listo sin DDL |
 | Rate limits de autoservicio | PASS | 2 suites, 18/18 tests; IP, identificador hasheado y 429 no enumerable |
 | Excel y rutas importadoras | PASS | 40/40 tests focales; firma OLE/ZIP y middleware fail-closed |
-| Backend completo | PASS | 97 suites PASS de 98; 1 skipped; 1.975 PASS y 7 skipped |
+| Backend completo | PASS | 97 suites PASS de 98; 1 skipped; 1.984 PASS y 7 skipped |
 | Backend lint | PASS | 0 errores, 400 warnings preexistentes |
 | Frontend completo | PASS | 10 archivos, 33/33 tests |
 | Frontend lint/build | PASS | lint 0 errores; build completado con warning de chunk |
@@ -65,6 +67,7 @@ git diff --check
 
 | Requisito | Estado | Justificación |
 |---|---|---|
+| MDL-13 | PASS local / BLOCKED externo | 9 pruebas de alcance/fail-closed y regresión global; falta consulta con datos controlados en entorno autorizado y validación UAT autenticada |
 | MDL-11 | PASS local / BLOCKED externo | Upload/session tests, shell E2E y build; falta login desplegado/visual/UAT |
 | MDL-14 | PASS local / BLOCKED externo | Smoke y E2E seguros; no sustituye pentest controlado en staging |
 | MDL-15 | PARCIAL | Correcciones de límites y regresión global; faltan negativos staging y evidencia física |

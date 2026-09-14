@@ -36,6 +36,8 @@ created: 2026-09-14
 
 | Task ID | Plan | Wave | Requirement | Secure Behavior | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|-----------------|-----------|-------------------|-------------|--------|
+| 03-05-01 | 03-05 | 1 | MDL-13 | Aprendiz solo consulta su historial en equipo vinculado; roles amplios conservan consulta | unit/controller | `npm test --prefix backend -- --runInBand --forceExit tests/controllers/equiposController.test.js tests/controllers/aprendicesController.test.js tests/controllers/importController.test.js` | ✅ | ✅ green |
+| 03-05-02 | 03-05 | 1 | MDL-13 | Falta de identidad o vínculo responde 404 sin enumeración | security regression | mismo comando 03-05 | ✅ | ✅ green |
 | 03-01-01 | 03-01 | 1 | MDL-138 | Esperar MySQL listo sin exponer secreto y limpiar recursos | unit/integration | `npm test --prefix backend -- --runInBand --forceExit tests/scripts/run-mysql-integration.test.js` | ✅ | ✅ green |
 | 03-01-02 | 03-01 | 1 | MDL-73 | Compose monta SQL existente sin secretos ficticios | config | `docker compose config --quiet` | ✅ | ✅ green |
 | 03-02-01 | 03-02 | 1 | MDL-130 | Request público sin DDL ni metadata | unit/integration mock | `npm test --prefix backend -- --runInBand --forceExit tests/controllers/equiposAssignmentAutoservicio.test.js tests/controllers/equiposAutoservicioAmbiente.integration.test.js tests/routes/health.test.js` | ✅ | ✅ green |

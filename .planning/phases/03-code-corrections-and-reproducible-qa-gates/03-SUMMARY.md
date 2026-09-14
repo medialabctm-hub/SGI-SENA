@@ -1,8 +1,9 @@
 ---
 phase: 03-code-corrections-and-reproducible-qa-gates
 status: completed_with_external_gaps
-plans: 4/4
+plans: 5/5
 issues:
+  - MDL-13
   - MDL-11
   - MDL-14
   - MDL-15
@@ -18,7 +19,7 @@ issues:
 
 ## Resultado
 
-Los cuatro planes de la fase se ejecutaron en worktrees hijos Orca, en una
+Los cinco planes de la fase se ejecutaron en worktrees hijos Orca, en una
 sola wave y sin subdelegación. Los cambios fueron revisados e integrados en el
 worktree coordinador. La fase queda **verificada localmente**; no se marca como
 cierre total porque Railway, staging, CI remoto, credenciales autorizadas,
@@ -32,6 +33,7 @@ UAT autenticado y la toma física de evidencias no ocurrieron.
 | 03-02 | `ctx_269eb7fc9ed6` | Claude | `1b26ea9` |
 | 03-03 | `ctx_c96044deac25` | Claude | `1afc964` |
 | 03-04 | `ctx_1d622d475c78` | Codex | `ea9a2ac` |
+| 03-05 | `ctx_71d791ecf2f1` | Claude | `fded28e` (child `95c994b`) |
 
 Cada especificación de worker indicó explícitamente: no crear otra Run, no
 delegar subagentes, no escribir en Linear y no hacer push. Los workers
@@ -53,11 +55,15 @@ los worktrees históricos se conservaron.
   alineado con cookies `httpOnly`.
 - Se aislaron mocks de Multer entre suites y se limpiaron tres errores de lint
   heredados para que el gate global sea interpretable.
+- MDL-13: `GET /:codigo/uso/historial` ahora conserva la consulta amplia de
+  Admin/Instructor/Cuentadante y aplica alcance fail-closed al Aprendiz:
+  identidad válida, vínculo activo en `Responsables_Equipo` y solo su propio
+  `Historial_Uso_Equipos`; vínculo ausente responde 404 no enumerable.
 
 ## Evidencia local
 
 ```text
-Backend completo: 97 suites PASS de 98; 1 suite skipped; 1.975 tests PASS y 7 skipped.
+Backend completo: 97 suites PASS de 98; 1 suite skipped; 1.984 tests PASS y 7 skipped.
 Backend focal importación/Excel: 40/40 tests PASS.
 Backend focal lint heredado: 41/41 tests PASS.
 Backend lint: 0 errores, 400 warnings.
@@ -95,6 +101,7 @@ usa como sustituto de despliegue, CI, prueba autenticada o verificación física
 
 | Issue | Estado de código local | Evidencia o bloqueo restante |
 |---|---|---|
+| MDL-13 | PASS local focal/global | Prueba real con datos controlados y limpieza/anonimización requieren entorno autorizado; Railway/UAT autenticado pendientes |
 | MDL-11 | PASS local | Login autenticado desplegado, evidencia visual y UAT pendientes |
 | MDL-14 | PASS local seguro | Pentest/staging controlado pendiente; no se ejecutó DoS |
 | MDL-15 | PARCIAL | Faltan gates de staging/negativos autorizados y evidencia física 303/304 |
