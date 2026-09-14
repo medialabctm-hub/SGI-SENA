@@ -91,6 +91,7 @@ const {
   registrarVerificacionInventario,
   consultarHistorialVerificaciones,
   obtenerHistorialEquipo,
+  obtenerHistorialMovimientos,
   actualizarCuentadantePrincipal,
   obtenerCuentadantePrincipal,
   buscarCuentadantePorDocumento,
@@ -292,6 +293,119 @@ describe('obtenerEquipoPorCodigo', () => {
       [42, 7, 2]
     );
   });
+
+  it('allows an Aprendiz to view only an actively linked equipo and hides other responsables', async () => {
+    const equipo = { codigo_equipo: 10, placa: 'INV-10', tipo: 'Laptop' };
+    const responsablePropio = { id_responsable: 1, id_usuario: 55, nombre_usuario: 'Aprendiz propio' };
+    const responsableAjeno = { id_responsable: 2, id_usuario: 77, nombre_usuario: 'Aprendiz ajeno' };
+
+    mockExecute.mockImplementation((sql) => {
+      if (sql.includes('WHERE e.placa = ?')) {
+        return Promise.resolve([[equipo]]);
+      }
+      if (sql.includes('FROM Responsables_Equipo re')) {
+        return Promise.resolve([sql.includes('re.id_usuario = ?')
+          ? [responsablePropio]
+          : [responsablePropio, responsableAjeno]]);
+      }
+      return Promise.resolve([[]]);
+    });
+
+    const req = mockReq({
+      params: { codigo: 'INV-10' },
+      user: { id: 55, rol: 'Aprendiz' }
+    });
+    const res = mockRes();
+
+    await obtenerEquipoPorCodigo(req, res);
+
+    const response = res.json.mock.calls[0][0];
+    expect(response).toEqual(expect.objectContaining({ codigo_equipo: 10 }));
+    expect(response.responsables).toHaveLength(1);
+    expect(response.responsables[0]).toEqual(expect.objectContaining({ id_responsable: 1 }));
+    expect(response.responsables).not.toEqual(expect.arrayContaining([
+      expect.objectContaining({ id_responsable: 2 })
+    ]));
+  });
+
+  it('fails closed without enumerating an equipo linked to another Aprendiz', async () => {
+    const equipo = { codigo_equipo: 20, placa: 'INV-20', tipo: 'Laptop' };
+    mockExecute.mockImplementation((sql) => {
+      if (sql.includes('WHERE e.placa = ?')) {
+        return Promise.resolve(sql.includes('EXISTS') ? [[]] : [[equipo]]);
+      }
+      return Promise.resolve([[]]);
+    });
+
+    const req = mockReq({
+      params: { codigo: 'INV-20' },
+      user: { id: 55, rol: 'Aprendiz' }
+    });
+    const res = mockRes();
+
+    await obtenerEquipoPorCodigo(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(404);
+    expect(res.json).toHaveBeenCalledWith({ error: 'Equipo no encontrado' });
+    expect(mockExecute.mock.calls.some(([sql]) => sql.includes('FROM Responsables_Equipo re') && sql.includes('LEFT JOIN Usuarios u ON re.id_usuario'))).toBe(false);
+  });
+
+  it.each([0, -1, 'not-a-number', undefined])(
+    'fails closed when the Aprendiz identity is invalid (%s)',
+    async (id) => {
+      const req = mockReq({
+        params: { codigo: 'INV-10' },
+        user: { id, rol: 'Aprendiz' }
+      });
+      const res = mockRes();
+
+      await obtenerEquipoPorCodigo(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(404);
+      expect(res.json).toHaveBeenCalledWith({ error: 'Equipo no encontrado' });
+      expect(mockExecute).not.toHaveBeenCalled();
+    }
+  );
+
+  it.each(['Administrador', 'Instructor', 'Cuentadante'])(
+    'preserves broad visibility for %s',
+    async (rol) => {
+      const equipo = { codigo_equipo: 30, placa: 'INV-30', tipo: 'Laptop' };
+      const responsables = [
+        { id_responsable: 1, id_usuario: 55, nombre_usuario: 'Aprendiz propio' },
+        { id_responsable: 2, id_usuario: 77, nombre_usuario: 'Aprendiz ajeno' }
+      ];
+      mockExecute.mockImplementation((sql) => {
+        if (sql.includes('SELECT DISTINCT ra.id_ambiente') && !sql.includes('FROM Elementos e')) {
+          return Promise.resolve([[]]);
+        }
+        if (sql.includes('WHERE e.placa = ?')) {
+          return Promise.resolve([[equipo]]);
+        }
+        if (sql.includes('FROM Responsables_Equipo re')) {
+          return Promise.resolve([responsables]);
+        }
+        return Promise.resolve([[]]);
+      });
+
+      const req = mockReq({
+        params: { codigo: 'INV-30' },
+        user: { id: 1, rol }
+      });
+      const res = mockRes();
+
+      await obtenerEquipoPorCodigo(req, res);
+
+      expect(res.status).not.toHaveBeenCalledWith(404);
+      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
+        codigo_equipo: 30,
+        responsables: expect.arrayContaining([
+          expect.objectContaining({ id_responsable: 1 }),
+          expect.objectContaining({ id_responsable: 2 })
+        ])
+      }));
+    }
+  );
 
   it('returns 500 on DB error', async () => {
     mockExecute.mockRejectedValueOnce(new Error('DB fail'));
@@ -1428,20 +1542,180 @@ describe('consultarHistorialVerificaciones', () => {
   });
 });
 
+describe('obtenerHistorialMovimientos', () => {
+  beforeEach(() => { mockExecute.mockReset(); jest.clearAllMocks(); });
+
+  const fakeEquipo = { codigo_equipo: 7, codigo_inventario: 'INV-7', tipo: 'Laptop', modelo: 'X', consecutivo: 1 };
+
+  function mockHistorialMovimientosDb({ equipo = fakeEquipo, vinculo = null, movimientos = [] } = {}) {
+    mockExecute.mockImplementation((sql) => {
+      if (sql.includes('FROM Elementos')) {
+        return Promise.resolve([equipo ? [equipo] : []]);
+      }
+      if (sql.includes('FROM Responsables_Equipo')) {
+        return Promise.resolve([vinculo ? [vinculo] : []]);
+      }
+      if (sql.includes('FROM Historial_Equipos')) {
+        return Promise.resolve([movimientos]);
+      }
+      return Promise.resolve([[]]);
+    });
+  }
+
+  it('allows an Aprendiz to read movements after an active own link', async () => {
+    const movimientos = [{ id_historial: 1, codigo_equipo: 7, tipo_evento: 'Movimiento Ambiente' }];
+    mockHistorialMovimientosDb({
+      movimientos,
+      vinculo: { id_responsable: 3, codigo_equipo: 7, id_usuario: 55, estado_responsabilidad: 'Activo' }
+    });
+    const req = mockReq({ params: { codigo: '7' }, user: { id: 55, rol: 'Aprendiz' } });
+    const res = mockRes();
+
+    await obtenerHistorialMovimientos(req, res);
+
+    const calls = mockExecute.mock.calls.map(([sql]) => sql);
+    const linkIndex = calls.findIndex((sql) => sql.includes('FROM Responsables_Equipo'));
+    const historyIndex = calls.findIndex((sql) => sql.includes('FROM Historial_Equipos'));
+    expect(linkIndex).toBeGreaterThanOrEqual(0);
+    expect(linkIndex).toBeLessThan(historyIndex);
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ movimientos, total: 1 }));
+  });
+
+  it('fails closed without querying movements for another Aprendiz equipo', async () => {
+    mockHistorialMovimientosDb({ movimientos: [{ id_historial: 1 }], vinculo: null });
+    const req = mockReq({ params: { codigo: '7' }, user: { id: 55, rol: 'Aprendiz' } });
+    const res = mockRes();
+
+    await obtenerHistorialMovimientos(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(404);
+    expect(res.json).toHaveBeenCalledWith({ error: 'Equipo no encontrado' });
+    expect(mockExecute.mock.calls.some(([sql]) => sql.includes('FROM Historial_Equipos'))).toBe(false);
+  });
+
+  it.each([0, -1, 'invalid', undefined])(
+    'fails closed before any query for an invalid Aprendiz identity (%s)',
+    async (id) => {
+      const req = mockReq({ params: { codigo: '7' }, user: { id, rol: 'Aprendiz' } });
+      const res = mockRes();
+
+      await obtenerHistorialMovimientos(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(404);
+      expect(res.json).toHaveBeenCalledWith({ error: 'Equipo no encontrado' });
+      expect(mockExecute).not.toHaveBeenCalled();
+    }
+  );
+
+  it.each(['Administrador', 'Instructor', 'Cuentadante'])(
+    'preserves broad movement visibility for %s',
+    async (rol) => {
+      const movimientos = [{ id_historial: 8, codigo_equipo: 7, tipo_evento: 'Movimiento Ambiente' }];
+      mockHistorialMovimientosDb({ movimientos });
+      const req = mockReq({ params: { codigo: '7' }, user: { id: 1, rol } });
+      const res = mockRes();
+
+      await obtenerHistorialMovimientos(req, res);
+
+      expect(res.status).not.toHaveBeenCalledWith(404);
+      expect(mockExecute.mock.calls.some(([sql]) => sql.includes('FROM Responsables_Equipo'))).toBe(false);
+      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ movimientos, total: 1 }));
+    }
+  );
+});
+
 describe('obtenerHistorialEquipo', () => {
   beforeEach(() => { mockExecute.mockReset(); jest.clearAllMocks(); });
 
+  const fakeEquipo = { codigo_equipo: 5, codigo_inventario: 'INV-5', tipo: 'Laptop' };
+
+  function mockHistorialVerificacionesDb({ equipo = fakeEquipo, vinculo = null, historial = [] } = {}) {
+    mockExecute.mockImplementation((sql) => {
+      if (sql.includes('FROM Elementos')) {
+        return Promise.resolve([equipo ? [equipo] : []]);
+      }
+      if (sql.includes('FROM Responsables_Equipo')) {
+        return Promise.resolve([vinculo ? [vinculo] : []]);
+      }
+      if (sql.includes('FROM Verificaciones_Inventario')) {
+        return Promise.resolve([historial]);
+      }
+      return Promise.resolve([[]]);
+    });
+  }
+
   it('returns historial and equipo info', async () => {
     const fakeHistorial = [{ id_verificacion: 1, estado_verificacion: 'Verificado' }];
-    const fakeEquipo = { codigo_equipo: 5, tipo: 'Laptop' };
-    mockExecute
-      .mockResolvedValueOnce([fakeHistorial])
-      .mockResolvedValueOnce([[fakeEquipo]]);
+    mockHistorialVerificacionesDb({ historial: fakeHistorial });
     const req = mockReq({ params: { codigo: '5' }, query: {} });
     const res = mockRes();
     await obtenerHistorialEquipo(req, res);
     expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ historial: fakeHistorial, total: 1 }));
   });
+
+  it('allows an Aprendiz to read verifications after an active own link', async () => {
+    const fakeHistorial = [{ id_verificacion: 1, estado_verificacion: 'Verificado' }];
+    mockHistorialVerificacionesDb({
+      historial: fakeHistorial,
+      vinculo: { id_responsable: 9, codigo_equipo: 5, id_usuario: 55, estado_responsabilidad: 'Activo' }
+    });
+    const req = mockReq({ params: { codigo: '5' }, query: {}, user: { id: 55, rol: 'Aprendiz' } });
+    const res = mockRes();
+
+    await obtenerHistorialEquipo(req, res);
+
+    const calls = mockExecute.mock.calls.map(([sql]) => sql);
+    const linkIndex = calls.findIndex((sql) => sql.includes('FROM Responsables_Equipo'));
+    const historyIndex = calls.findIndex((sql) => sql.includes('FROM Verificaciones_Inventario'));
+    expect(linkIndex).toBeGreaterThanOrEqual(0);
+    expect(linkIndex).toBeLessThan(historyIndex);
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ historial: fakeHistorial, total: 1 }));
+  });
+
+  it('fails closed without querying verifications for another Aprendiz equipo', async () => {
+    mockHistorialVerificacionesDb({
+      historial: [{ id_verificacion: 1 }],
+      vinculo: null
+    });
+    const req = mockReq({ params: { codigo: '5' }, query: {}, user: { id: 55, rol: 'Aprendiz' } });
+    const res = mockRes();
+
+    await obtenerHistorialEquipo(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(404);
+    expect(res.json).toHaveBeenCalledWith({ error: 'Equipo no encontrado' });
+    expect(mockExecute.mock.calls.some(([sql]) => sql.includes('FROM Verificaciones_Inventario'))).toBe(false);
+  });
+
+  it.each([0, -1, 'invalid', undefined])(
+    'fails closed before any query for an invalid Aprendiz identity (%s)',
+    async (id) => {
+      const req = mockReq({ params: { codigo: '5' }, query: {}, user: { id, rol: 'Aprendiz' } });
+      const res = mockRes();
+
+      await obtenerHistorialEquipo(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(404);
+      expect(res.json).toHaveBeenCalledWith({ error: 'Equipo no encontrado' });
+      expect(mockExecute).not.toHaveBeenCalled();
+    }
+  );
+
+  it.each(['Administrador', 'Instructor', 'Cuentadante'])(
+    'preserves broad verification visibility for %s',
+    async (rol) => {
+      const fakeHistorial = [{ id_verificacion: 8, estado_verificacion: 'Verificado' }];
+      mockHistorialVerificacionesDb({ historial: fakeHistorial });
+      const req = mockReq({ params: { codigo: '5' }, query: {}, user: { id: 1, rol } });
+      const res = mockRes();
+
+      await obtenerHistorialEquipo(req, res);
+
+      expect(res.status).not.toHaveBeenCalledWith(404);
+      expect(mockExecute.mock.calls.some(([sql]) => sql.includes('FROM Responsables_Equipo'))).toBe(false);
+      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ historial: fakeHistorial }));
+    }
+  );
 
   it('returns 500 on DB error', async () => {
     mockExecute.mockRejectedValueOnce(new Error('fail'));
