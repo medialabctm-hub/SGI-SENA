@@ -16,6 +16,7 @@ import { fileURLToPath } from 'node:url';
 
 const DEFAULT_BASE_URL = 'http://localhost:5173';
 const LOAN_ENDPOINT = '/api/equipos/autoservicio/iniciar-uso';
+const PUBLIC_VALIDATION_ENDPOINT = '/api/aprendices/verificar/00000000000000000000';
 
 const trimTrailingSlashes = value => value.replace(/\/+$/, '');
 
@@ -117,6 +118,14 @@ async function checkFrontend(fetchImpl, baseUrl, log) {
   log.log('Frontend check passed');
 }
 
+async function checkPublicValidation(fetchImpl, baseUrl, log) {
+  const result = await request(fetchImpl, baseUrl, PUBLIC_VALIDATION_ENDPOINT);
+  if (![400, 404].includes(result.status) || result.json?.existe === true) {
+    throw new Error(`Validación pública falló: ${responseSummary(result)}`);
+  }
+  log.log('Public validation check passed (read-only)');
+}
+
 async function checkApiProxy(fetchImpl, baseUrl, log) {
   const result = await request(fetchImpl, baseUrl, LOAN_ENDPOINT, {
     method: 'POST',
@@ -177,6 +186,7 @@ export async function runSmoke({
 
   await checkHealth(fetchImpl, baseUrl, log);
   await checkFrontend(fetchImpl, baseUrl, log);
+  await checkPublicValidation(fetchImpl, baseUrl, log);
   await checkApiProxy(fetchImpl, baseUrl, log);
 
   if (controlledLoan) {

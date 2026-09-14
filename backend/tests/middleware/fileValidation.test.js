@@ -52,6 +52,9 @@ function makeExcelFile(overrides = {}) {
   };
 }
 
+const OLE_BUFFER = Buffer.from([0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1]);
+const ZIP_BUFFER = Buffer.from([0x50, 0x4b, 0x03, 0x04]);
+
 function makeReqRes(fileOrFiles = null) {
   const req = fileOrFiles === null
     ? {}
@@ -154,6 +157,40 @@ describe('validateExcelFile()', () => {
     expect(validateExcelFile(makeExcelFile())).toEqual({ valid: true });
   });
 
+  it('debe aceptar un XLSX con firma ZIP', () => {
+    expect(validateExcelFile(makeExcelFile({ buffer: ZIP_BUFFER }))).toEqual({ valid: true });
+  });
+
+  it('debe aceptar un XLS con firma OLE', () => {
+    expect(validateExcelFile(makeExcelFile({
+      mimetype: 'application/vnd.ms-excel',
+      originalname: 'datos.xls',
+      buffer: OLE_BUFFER,
+    }))).toEqual({ valid: true });
+  });
+
+  it('debe rechazar un buffer vacío antes de leerlo como Excel', () => {
+    const result = validateExcelFile(makeExcelFile({ buffer: Buffer.alloc(0) }));
+    expect(result.valid).toBe(false);
+    expect(result.error).toMatch(/vacío/i);
+  });
+
+  it('debe rechazar contenido que no coincide con la extensión', () => {
+    const result = validateExcelFile(makeExcelFile({ buffer: OLE_BUFFER }));
+    expect(result.valid).toBe(false);
+    expect(result.error).toMatch(/contenido.*extensión/i);
+  });
+
+  it('debe rechazar un XLS con firma ZIP', () => {
+    const result = validateExcelFile(makeExcelFile({
+      mimetype: 'application/vnd.ms-excel',
+      originalname: 'datos.xls',
+      buffer: ZIP_BUFFER,
+    }));
+    expect(result.valid).toBe(false);
+    expect(result.error).toMatch(/contenido.*extensión/i);
+  });
+
   it('debe retornar error si no se proporciona archivo', () => {
     const result = validateExcelFile(null);
     expect(result.valid).toBe(false);
@@ -170,6 +207,15 @@ describe('validateExcelFile()', () => {
     const result = validateExcelFile(makeExcelFile({ mimetype: 'application/pdf' }));
     expect(result.valid).toBe(false);
     expect(result.error).toMatch(/tipo de archivo/i);
+  });
+
+  it('debe rechazar MIME XLSX con extensión XLS', () => {
+    const result = validateExcelFile(makeExcelFile({
+      mimetype: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      originalname: 'datos.xls',
+    }));
+    expect(result.valid).toBe(false);
+    expect(result.error).toMatch(/MIME.*extensión/i);
   });
 
   it('debe retornar error si la extensión no está permitida (.csv)', () => {
@@ -254,23 +300,23 @@ describe('validateMultipleImages()', () => {
 // validateExcel() – middleware
 // ──────────────────────────────────────────────
 describe('validateExcel()', () => {
-  it('debe llamar next() con un archivo Excel válido', () => {
-    const req = { file: makeExcelFile() };
+  it('debe llamar next() con un archivo Excel válido', async () => {
+    const req = { file: makeExcelFile({ buffer: ZIP_BUFFER }) };
     const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
     const next = jest.fn();
 
-    validateExcel(req, res, next);
+    await validateExcel(req, res, next);
 
     expect(next).toHaveBeenCalledWith();
     expect(res.status).not.toHaveBeenCalled();
   });
 
-  it('debe retornar 400 si no hay archivo', () => {
+  it('debe retornar 400 si no hay archivo', async () => {
     const req = {};
     const res = { status: jest.fn().mockReturnThis(), json: jest.fn().mockReturnThis() };
     const next = jest.fn();
 
-    validateExcel(req, res, next);
+    await validateExcel(req, res, next);
 
     expect(res.status).toHaveBeenCalledWith(400);
     expect(res.json).toHaveBeenCalledWith(
@@ -279,16 +325,34 @@ describe('validateExcel()', () => {
     expect(next).not.toHaveBeenCalled();
   });
 
-  it('debe retornar 400 si el archivo Excel no es válido', () => {
-    const req = { file: makeExcelFile({ mimetype: 'application/pdf', originalname: 'doc.pdf' }) };
+  it('debe retornar 400 si el archivo Excel no es válido', async () => {
+    const req = { file: makeExcelFile({
+      mimetype: 'application/pdf',
+      originalname: 'doc.pdf',
+      buffer: Buffer.from('not excel'),
+    }) };
     const res = { status: jest.fn().mockReturnThis(), json: jest.fn().mockReturnThis() };
     const next = jest.fn();
 
-    validateExcel(req, res, next);
+    await validateExcel(req, res, next);
 
     expect(res.status).toHaveBeenCalledWith(400);
     expect(res.json).toHaveBeenCalledWith(
       expect.objectContaining({ success: false, error: expect.any(String) })
     );
+  });
+
+  it('debe rechazar un archivo sin buffer ni ruta antes del parser', async () => {
+    const req = { file: makeExcelFile() };
+    const res = { status: jest.fn().mockReturnThis(), json: jest.fn().mockReturnThis() };
+    const next = jest.fn();
+
+    await validateExcel(req, res, next);
+
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
+      error: expect.stringMatching(/vacío|leer/i),
+    }));
+    expect(next).not.toHaveBeenCalled();
   });
 });
