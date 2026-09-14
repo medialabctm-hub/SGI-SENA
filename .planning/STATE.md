@@ -22,7 +22,7 @@ progress:
 
 ## Current Focus
 
-Phase 1 completada sobre el HEAD de la PR #29 mediante tres workers Orca en worktrees aislados. La metadata de Linear quedó normalizada y auditada; la PR #29 permanece abierta para decisión humana de merge.
+Phase 3 en planificación/ejecución sobre el HEAD actual de la PR #29. Se corrigen fallos reproducibles de código y se amplían los gates locales; las evidencias físicas de aulas y los gates de Railway/staging/UAT permanecen fuera del trabajo del coordinador.
 
 ## Decisions
 
@@ -48,3 +48,9 @@ No hay bloqueadores de código para integrar. Las brechas de infraestructura que
 - Base de los worktrees: `feature/autoservicio-atomico-migracion-y-railway-reproducible`.
 - No agregar `package-lock.json` ni alterar mapas GSD existentes fuera de esta fase.
 - PR #29 continúa abierta para la revisión y decisión humana de merge.
+
+## Accumulated Context
+
+### Roadmap Evolution
+
+- Phase 3 added: Code corrections and reproducible QA gates
