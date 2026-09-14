@@ -235,18 +235,6 @@ jest.mock('../../src/controller/webhookController.js', () => ({
   recibirWebhookExterno: jest.fn(),
 }), { virtual: true });
 
-// ---- multer stub ----
-jest.mock('multer', () => {
-  const m = jest.fn(() => ({
-    single: jest.fn(() => noop),
-    array: jest.fn(() => noop),
-    fields: jest.fn(() => noop),
-  }));
-  m.diskStorage = jest.fn(() => ({}));
-  m.memoryStorage = jest.fn(() => ({}));
-  return { default: m };
-}, { virtual: true });
-
 // ------------------------------------------------------------------
 // Helper
 // ------------------------------------------------------------------
