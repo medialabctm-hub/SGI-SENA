@@ -153,6 +153,66 @@ describe('EquipoService', () => {
         expect.anything()
       );
     });
+
+    it('MDL-189/H-01: Aprendiz filtra por responsableUsuarioId (VIEW_OWN)', async () => {
+      mockRepository.findAll.mockResolvedValue({
+        equipos: [{ codigo_equipo: 1, valor_ingreso: 999, costo: 999, id_cuentadante: 7, cuentadante_principal: 'Ana' }],
+        pagination: { page: 1, limit: 50, total: 1 },
+      });
+
+      await service.listarEquipos({}, { page: 1, limit: 50 }, {}, 42, 'Aprendiz');
+
+      expect(mockRepository.findAll).toHaveBeenCalledWith(
+        expect.objectContaining({ responsableUsuarioId: 42 }),
+        expect.anything(),
+        expect.anything()
+      );
+    });
+
+    it('MDL-189/H-01: Aprendiz no recibe valor_ingreso/costo ni PII de cuentadante', async () => {
+      mockRepository.findAll.mockResolvedValue({
+        equipos: [{
+          codigo_equipo: 1,
+          placa: 'ABC',
+          valor_ingreso: 1500000,
+          costo: 1500000,
+          id_cuentadante: 9,
+          cuentadante_principal: 'Secret Staff',
+          cuentadante_cedula: '123',
+          nombre_ambiente: 'Lab 1',
+        }],
+        pagination: { page: 1, limit: 10, total: 1 },
+      });
+
+      const result = await service.listarEquipos({}, { page: 1, limit: 5000 }, {}, 42, 'Aprendiz');
+
+      expect(result.equipos).toHaveLength(1);
+      expect(result.equipos[0]).not.toHaveProperty('valor_ingreso');
+      expect(result.equipos[0]).not.toHaveProperty('costo');
+      expect(result.equipos[0]).not.toHaveProperty('id_cuentadante');
+      expect(result.equipos[0]).not.toHaveProperty('cuentadante_principal');
+      expect(result.equipos[0]).not.toHaveProperty('cuentadante_cedula');
+      expect(result.equipos[0]).toHaveProperty('placa', 'ABC');
+    });
+
+    it('MDL-189/H-01: Administrador conserva campos financieros/PII', async () => {
+      mockRepository.findAll.mockResolvedValue({
+        equipos: [{ codigo_equipo: 1, valor_ingreso: 10, costo: 10, id_cuentadante: 2 }],
+        pagination: { page: 1, limit: 50, total: 1 },
+      });
+
+      const result = await service.listarEquipos({}, {}, {}, 1, 'Administrador');
+      expect(result.equipos[0]).toHaveProperty('valor_ingreso', 10);
+      expect(result.equipos[0]).toHaveProperty('id_cuentadante', 2);
+    });
+
+    it('MDL-189/H-01: Aprendiz sin userId obtiene lista vacía fail-closed', async () => {
+      const result = await service.listarEquipos({}, {}, {}, null, 'Aprendiz');
+      expect(result.equipos).toEqual([]);
+      expect(mockRepository.findAll).not.toHaveBeenCalled();
+    });
+
+
   });
 
   // ------------------------------------------------------------------

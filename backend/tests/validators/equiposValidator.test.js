@@ -11,6 +11,8 @@ import {
   registrarEquipoSchema,
   actualizarEquipoSchema,
   validate,
+  listarEquiposQuerySchema,
+  EQUIPOS_LIST_MAX_LIMIT,
 } from '../../src/validators/equiposValidator.js';
 
 function makeReqRes(body) {
@@ -759,5 +761,29 @@ describe('validate() de equipos - non-ZodError', () => {
 
     expect(next).toHaveBeenCalledWith(expect.any(Error));
     expect(res.status).not.toHaveBeenCalled();
+  });
+});
+
+
+describe('listarEquiposQuerySchema (MDL-189 / H-01)', () => {
+  it('acepta limit dentro del tope', () => {
+    const parsed = listarEquiposQuerySchema.parse({ page: '1', limit: '100' });
+    expect(parsed.limit).toBe(100);
+    expect(parsed.page).toBe(1);
+  });
+
+  it('rechaza limit > EQUIPOS_LIST_MAX_LIMIT (400 vía validateQuery)', () => {
+    expect(() => listarEquiposQuerySchema.parse({ limit: '5000' })).toThrow();
+    try {
+      listarEquiposQuerySchema.parse({ limit: 5000 });
+    } catch (err) {
+      expect(err.issues.some((i) => String(i.message).includes(String(EQUIPOS_LIST_MAX_LIMIT)))).toBe(true);
+    }
+  });
+
+  it('aplica default de limit cuando no se envía', () => {
+    const parsed = listarEquiposQuerySchema.parse({});
+    expect(parsed.limit).toBe(50);
+    expect(parsed.page).toBe(1);
   });
 });

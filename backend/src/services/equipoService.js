@@ -1,4 +1,5 @@
 import { NotFoundError, ConflictError, ValidationError } from '../utils/errors.js';
+import { toEquiposDtoList } from '../utils/equipoDto.js';
 
 /**
  * EquipoService - Servicio de lógica de negocio para equipos
@@ -96,9 +97,36 @@ export class EquipoService {
         };
       }
       filters.ambientesIds = ambientesIds;
+    } else if (userRole === 'Aprendiz') {
+      // MDL-189 / H-01: Aprendiz solo ve equipos con habilitación activa
+      // en Responsables_Equipo (mismo predicado VIEW_OWN que MDL-13 en detalle).
+      // No se inventa alcance por ambiente completo: el ambiente se valida al asignar.
+      if (!userId) {
+        return {
+          equipos: [],
+          pagination: {
+            page: pagination.page || 1,
+            limit: pagination.limit || 50,
+            total: 0,
+            totalPages: 0,
+            hasNext: false,
+            hasPrev: false
+          }
+        };
+      }
+      filters.responsableUsuarioId = userId;
+      // Evitar sondeo por valor económico
+      delete filters.valor_min;
+      delete filters.valor_max;
     }
 
-    return this.equipoRepository.findAll(filters, pagination, sorting);
+    const result = await this.equipoRepository.findAll(filters, pagination, sorting);
+
+    // MDL-189 / H-01: DTO por rol — strip valor/PII para Aprendiz (y roles sin privilegio financiero)
+    return {
+      ...result,
+      equipos: toEquiposDtoList(result.equipos, userRole),
+    };
   }
 
   /**
