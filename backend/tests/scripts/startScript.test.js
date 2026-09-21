@@ -27,3 +27,15 @@ describe('MDL-134: contrato de puertos de start.sh', () => {
     );
   });
 });
+
+describe('MDL-190: watchdog de reinicio del backend', () => {
+  it('relanza node server.js en bucle sin exportar ni sobrescribir PORT', async () => {
+    const script = await readFile(startScriptPath, 'utf8');
+
+    expect(script).toMatch(/while true/);
+    expect(script).toMatch(/node server\.js/);
+    expect(script).toMatch(/BACKEND_WATCHDOG_PID/);
+    expect(script).not.toMatch(/^\s*export\s+PORT\s*=/m);
+    expect(script).toContain(`NGINX_PORT=\${NGINX_PORT:-\${PORT:-80}}`);
+  });
+});

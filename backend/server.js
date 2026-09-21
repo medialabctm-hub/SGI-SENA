@@ -115,4 +115,41 @@ const startServer = (port) => {
   }
 };
 
+// ============================================
+// RESILIENCIA DE PROCESO (MDL-190 / H-02)
+// ============================================
+// Uncaught / unhandled dejan el event loop en estado indefinido. Registramos,
+// cerramos de forma ordenada cuando sea posible y salimos con código != 0 para
+// que Railway (restartPolicyType=ON_FAILURE) y el watchdog de start.sh
+// levanten un proceso limpio. No silenciar: eso deja el servicio medio-muerto.
+
+let shuttingDown = false;
+
+const exitAfterLog = (reason, err) => {
+  if (shuttingDown) return;
+  shuttingDown = true;
+  const payload = {
+    reason,
+    error: err?.message || String(err),
+    stack: err?.stack,
+  };
+  try {
+    logger.error('Error fatal de proceso; saliendo para reinicio limpio', payload);
+  } catch {
+    // logger puede fallar si el proceso ya está corrupto
+    console.error('Error fatal de proceso; saliendo para reinicio limpio', payload);
+  }
+  // Dar tiempo mínimo a que flush de logs termine; Railway/watchdog reinician.
+  setTimeout(() => process.exit(1), 250).unref?.();
+};
+
+process.on('unhandledRejection', (reason) => {
+  const err = reason instanceof Error ? reason : new Error(String(reason));
+  exitAfterLog('unhandledRejection', err);
+});
+
+process.on('uncaughtException', (err) => {
+  exitAfterLog('uncaughtException', err);
+});
+
 startServer(desiredPort);

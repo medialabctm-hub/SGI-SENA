@@ -42,3 +42,35 @@ export const createValidator = ({ preprocessBody, fallbackIssueMessage = 'Error 
 
 /** Middleware de validación estándar, sin preprocesamiento de body. */
 export const validate = createValidator();
+
+/**
+ * Middleware de validación de Zod para route params.
+ * Sustituye req.params con el objeto parseado (conserva params no listados en el schema
+ * si se usa .passthrough(); por defecto el schema debe declarar los params usados).
+ */
+export const createParamsValidator = ({ fallbackIssueMessage = 'Error de validación' } = {}) => (schema) => (req, res, next) => {
+  try {
+    const validated = schema.parse(req.params);
+    req.params = { ...req.params, ...validated };
+    next();
+  } catch (error) {
+    if (error instanceof z.ZodError && error.issues && Array.isArray(error.issues)) {
+      const details = error.issues.map((e) => ({
+        path: e.path && Array.isArray(e.path) ? e.path.join('.') : 'unknown',
+        message: e.message || fallbackIssueMessage,
+        code: e.code || 'invalid_type',
+      }));
+
+      return res.status(400).json({
+        success: false,
+        error: 'Error de validación',
+        details: details.length > 0 ? details : [{ path: 'unknown', message: 'Error de validación desconocido' }],
+      });
+    }
+    console.error('Params validation middleware error:', error);
+    next(error);
+  }
+};
+
+/** Validador estándar de parámetros de ruta. */
+export const validateParams = createParamsValidator();

@@ -14,11 +14,28 @@ import { PERMISSIONS } from '../config/permissions.js';
 import { writeLimiter, readLimiter } from '../middleware/rateLimiter.js';
 import { uploadEquipoImage, handleUploadError, validateUploadedImageContent } from '../middleware/uploadMiddleware.js';
 import { requireEquipmentEvidenceScope, resolveCodigoEquipoFromImage } from '../middleware/equipmentEvidenceScope.js';
+import { asyncHandler } from '../middleware/asyncHandler.js';
+import { validateParams } from '../middleware/validate.js';
+import {
+  evidenceFilenameParamSchema,
+  idImagenParamSchema,
+  codigoEquipoParamSchema,
+} from '../validators/imagenesEquipoValidator.js';
+import defaultDb from '../config/dbconfig.js';
 
 const router = express.Router();
 
+async function resolveCodigoEquipoFromFilename(req) {
+  const [[image]] = await defaultDb.execute(
+    'SELECT codigo_equipo FROM Imagenes_Equipo WHERE nombre_archivo = ? LIMIT 1',
+    [req.params.filename]
+  );
+  return image?.codigo_equipo;
+}
+
 // ============================================
 // RUTAS DE IMÁGENES DE EQUIPOS
+// Arquitectura: Route → Middleware → Validator → Controller → Service
 // ============================================
 
 // Subir una o múltiples imágenes para un equipo
@@ -28,11 +45,12 @@ router.post(
   authenticate,
   writeLimiter,
   requirePermission(PERMISSIONS.EQUIPOS.UPDATE),
+  validateParams(codigoEquipoParamSchema),
   requireEquipmentEvidenceScope(),
   uploadEquipoImage.array('imagenes', 10), // Máximo 10 imágenes
   handleUploadError,
-  validateUploadedImageContent,
-  subirImagenesEquipo
+  asyncHandler(validateUploadedImageContent),
+  asyncHandler(subirImagenesEquipo)
 );
 
 // The file itself is private: URLs returned by the API are protected and the
@@ -42,17 +60,11 @@ router.get(
   authenticate,
   readLimiter,
   requireAnyPermission([PERMISSIONS.EQUIPOS.VIEW, PERMISSIONS.EQUIPOS.VIEW_OWN]),
+  validateParams(evidenceFilenameParamSchema),
   requireEquipmentEvidenceScope({
-    resolveCodigoEquipo: async (req) => {
-      const { default: db } = await import('../config/dbconfig.js');
-      const [[image]] = await db.execute(
-        'SELECT codigo_equipo FROM Imagenes_Equipo WHERE nombre_archivo = ? LIMIT 1',
-        [req.params.filename]
-      );
-      return image?.codigo_equipo;
-    },
+    resolveCodigoEquipo: resolveCodigoEquipoFromFilename,
   }),
-  descargarImagenEquipo
+  asyncHandler(descargarImagenEquipo)
 );
 
 // Listar todas las imágenes de un equipo
@@ -65,8 +77,9 @@ router.get(
     PERMISSIONS.EQUIPOS.VIEW,
     PERMISSIONS.EQUIPOS.VIEW_OWN,
   ]),
+  validateParams(codigoEquipoParamSchema),
   requireEquipmentEvidenceScope(),
-  listarImagenesEquipo
+  asyncHandler(listarImagenesEquipo)
 );
 
 // Obtener una imagen específica
@@ -79,8 +92,9 @@ router.get(
     PERMISSIONS.EQUIPOS.VIEW,
     PERMISSIONS.EQUIPOS.VIEW_OWN,
   ]),
+  validateParams(idImagenParamSchema),
   requireEquipmentEvidenceScope({ resolveCodigoEquipo: resolveCodigoEquipoFromImage }),
-  obtenerImagenEquipo
+  asyncHandler(obtenerImagenEquipo)
 );
 
 // Actualizar información de una imagen
@@ -90,8 +104,9 @@ router.put(
   authenticate,
   writeLimiter,
   requirePermission(PERMISSIONS.EQUIPOS.UPDATE),
+  validateParams(idImagenParamSchema),
   requireEquipmentEvidenceScope({ resolveCodigoEquipo: resolveCodigoEquipoFromImage }),
-  actualizarImagenEquipo
+  asyncHandler(actualizarImagenEquipo)
 );
 
 // Marcar una imagen como principal
@@ -101,8 +116,9 @@ router.patch(
   authenticate,
   writeLimiter,
   requirePermission(PERMISSIONS.EQUIPOS.UPDATE),
+  validateParams(idImagenParamSchema),
   requireEquipmentEvidenceScope({ resolveCodigoEquipo: resolveCodigoEquipoFromImage }),
-  marcarImagenPrincipal
+  asyncHandler(marcarImagenPrincipal)
 );
 
 // Eliminar una imagen
@@ -112,9 +128,9 @@ router.delete(
   authenticate,
   writeLimiter,
   requirePermission(PERMISSIONS.EQUIPOS.UPDATE),
+  validateParams(idImagenParamSchema),
   requireEquipmentEvidenceScope({ resolveCodigoEquipo: resolveCodigoEquipoFromImage }),
-  eliminarImagenEquipo
+  asyncHandler(eliminarImagenEquipo)
 );
 
 export default router;
-

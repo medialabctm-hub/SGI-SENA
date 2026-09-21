@@ -57,22 +57,36 @@ sed -i -E "s|^[[:space:]]*listen[[:space:]]+[0-9]+;|    listen $NGINX_PORT;|" /e
 sed -i -E "s|^[[:space:]]*set[[:space:]]+[^[:space:]]*api_backend[[:space:]]+.*;|    set \$api_backend http://127.0.0.1:$BACKEND_PORT;|" /etc/nginx/conf.d/default.conf
 echo "ℹ Configurado nginx para usar backend local: http://127.0.0.1:$BACKEND_PORT"
 
-# Iniciar backend en segundo plano pero redirigir logs a stdout
-echo "🚀 Iniciando backend..."
+# Iniciar backend con watchdog de reinicio (MDL-190 / H-02).
+# Si Node muere por una excepción no capturada, nginx seguiría vivo vía `exec`
+# y Railway no reiniciaría el contenedor → 502 sostenido. Este bucle relanza
+# el backend sin tocar PORT (contrato MDL-134: PORT se deja intacto).
+echo "🚀 Iniciando backend (watchdog ON_FAILURE)..."
 cd /app/backend
-node server.js > /proc/1/fd/1 2>&1 &
-BACKEND_PID=$!
+
+(
+  BACKEND_RESTARTS=0
+  while true; do
+    node server.js > /proc/1/fd/1 2>&1
+    EXIT_CODE=$?
+    BACKEND_RESTARTS=$((BACKEND_RESTARTS + 1))
+    echo "⚠️  Backend terminó con código $EXIT_CODE (reinicio #$BACKEND_RESTARTS en 2s)"
+    sleep 2
+  done
+) &
+BACKEND_WATCHDOG_PID=$!
+BACKEND_PID=$BACKEND_WATCHDOG_PID
 
 # Esperar un momento para que el backend inicie (reducido de 5 a 2 segundos)
 sleep 2
 
-# Verificar que el backend esté corriendo
-if ! kill -0 $BACKEND_PID 2>/dev/null; then
+# Verificar que el watchdog (y por tanto el intento de arranque) siga vivo
+if ! kill -0 $BACKEND_WATCHDOG_PID 2>/dev/null; then
   echo "❌ Error: El backend no pudo iniciar"
   exit 1
 fi
 
-echo "✓ Backend iniciado (PID: $BACKEND_PID)"
+echo "✓ Backend watchdog iniciado (PID: $BACKEND_WATCHDOG_PID)"
 
 # Verificar que el backend responda antes de iniciar nginx
 echo "🔍 Verificando que el backend responda en 127.0.0.1:$BACKEND_PORT..."
@@ -92,7 +106,13 @@ done
 # Función para manejar señales y cerrar ambos procesos
 cleanup() {
   echo "🛑 Deteniendo servicios..."
-  kill $BACKEND_PID 2>/dev/null
+  # Matar el grupo del watchdog y cualquier node hijo
+  if [ -n "${BACKEND_WATCHDOG_PID:-}" ]; then
+    kill "$BACKEND_WATCHDOG_PID" 2>/dev/null
+    pkill -P "$BACKEND_WATCHDOG_PID" 2>/dev/null || true
+  fi
+  kill ${BACKEND_PID:-} 2>/dev/null || true
+  pkill -f "node server.js" 2>/dev/null || true
   nginx -s quit
   exit 0
 }

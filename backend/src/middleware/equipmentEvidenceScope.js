@@ -34,21 +34,25 @@ function deny(req, res, files = []) {
 
 export function requireEquipmentEvidenceScope({ resolveCodigoEquipo } = {}) {
   return async (req, res, next) => {
-    const userId = req.user?.id ?? req.user?.id_usuario;
-    const role = req.user?.rol;
-    const codigoEquipo = resolveCodigoEquipo ? await resolveCodigoEquipo(req) : req.params.codigoEquipo;
+    try {
+      const userId = req.user?.id ?? req.user?.id_usuario;
+      const role = req.user?.rol;
+      const codigoEquipo = resolveCodigoEquipo ? await resolveCodigoEquipo(req) : req.params.codigoEquipo;
 
-    if (!userId || !role) return deny(req, res, req.files || []);
-    if (role === 'Administrador') {
-      req.evidenceScope = { canAccess: true };
+      if (!userId || !role) return deny(req, res, req.files || []);
+      if (role === 'Administrador') {
+        req.evidenceScope = { canAccess: true };
+        return next();
+      }
+
+      const [rows] = await defaultDb.execute(scopeQuery, [codigoEquipo, userId, userId, userId]);
+      if (!rows?.length) return deny(req, res, req.files || []);
+
+      req.evidenceScope = { canAccess: true, codigoEquipo: rows[0].codigo_equipo };
       return next();
+    } catch (error) {
+      return next(error);
     }
-
-    const [rows] = await defaultDb.execute(scopeQuery, [codigoEquipo, userId, userId, userId]);
-    if (!rows?.length) return deny(req, res, req.files || []);
-
-    req.evidenceScope = { canAccess: true, codigoEquipo: rows[0].codigo_equipo };
-    return next();
   };
 }
 
