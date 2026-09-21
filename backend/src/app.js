@@ -15,6 +15,7 @@ import cookieParser from 'cookie-parser';
 import process from 'process';
 
 import { config } from './config/config.js';
+import { getTrustProxyHops } from './config/trustProxy.js';
 import { PERMISSIONS } from './config/permissions.js';
 import { errorHandler } from './utils/errors.js';
 import { buildAutoservicioHealth } from './utils/autoservicioHealth.js';
@@ -89,7 +90,9 @@ const corsOptions = {
 };
 
 const applySecurityMiddleware = (app) => {
-  app.set('trust proxy', 1);
+  // See getTrustProxyHops(): Railway edge + in-container nginx ⇒ 2 hops.
+  // Never `true` (leftmost XFF is spoofable). Override with TRUST_PROXY_HOPS.
+  app.set('trust proxy', getTrustProxyHops());
 
   app.use(helmet({
     contentSecurityPolicy: {

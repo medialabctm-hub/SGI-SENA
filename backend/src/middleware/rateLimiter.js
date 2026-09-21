@@ -1,4 +1,4 @@
-import rateLimit from 'express-rate-limit';
+import rateLimit, { ipKeyGenerator } from 'express-rate-limit';
 import crypto from 'node:crypto';
 
 /**
@@ -15,16 +15,26 @@ import crypto from 'node:crypto';
 /**
  * Helper para obtener identificador único (IP o userId)
  */
+/**
+ * Normaliza la IP del cliente para claves de rate-limit.
+ * Depende de Express `trust proxy` (ver config/trustProxy.js) para que
+ * `req.ip` sea la IP real detrás de Railway + nginx. `ipKeyGenerator`
+ * agrupa IPv6 por subred (/56) para que no se evada el límite rotando
+ * direcciones dentro del mismo prefijo.
+ */
+const getClientIp = (req) => {
+  const raw = req.ip || req.socket?.remoteAddress || req.connection?.remoteAddress;
+  if (!raw) return 'unknown';
+  return ipKeyGenerator(raw);
+};
+
 const getIdentifier = (req) => {
   // Si el usuario está autenticado, usar su ID para rate limiting más preciso
   if (req.user?.id) {
     return `user_${req.user.id}`;
   }
-  // Si no, usar IP
-  return req.ip || req.connection.remoteAddress;
+  return getClientIp(req);
 };
-
-const getClientIp = (req) => req.ip || req.socket?.remoteAddress || req.connection?.remoteAddress || 'unknown';
 
 const hashIdentifier = (value) => crypto
   .createHash('sha256')

@@ -10,6 +10,9 @@ const rateLimitMock = jest.fn((options) => {
 
 await jest.unstable_mockModule('express-rate-limit', () => ({
   default: rateLimitMock,
+  rateLimit: rateLimitMock,
+  // Passthrough: en unit tests alimentamos IPv4 literales en req.ip
+  ipKeyGenerator: (ip) => ip,
 }));
 
 const {

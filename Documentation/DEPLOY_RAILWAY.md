@@ -120,6 +120,18 @@ override explícito en una ejecución local controlada.
 | `PORT` | Railway lo inyecta; `80` solo como fallback local | Railway/Docker y healthcheck público | Es el puerto público y nunca se sobrescribe con el puerto interno. |
 | `NGINX_PORT` | `${PORT:-80}` | `start.sh`/nginx | Puerto público que escucha nginx; en Railway se deja sin definir para heredar `PORT`. |
 | `BACKEND_PORT` | `3000` | `start.sh`/Node | Puerto interno de Node en `127.0.0.1`; no se expone a Railway. |
+| `TRUST_PROXY_HOPS` | `2` en Railway (auto) / `1` local | Express (`getTrustProxyHops`) | Número de proxies a confiar para `req.ip` y rate-limits. Topología: Client → Railway edge → nginx (`:$PORT`) → Node (`127.0.0.1:$BACKEND_PORT`). No usar `true`. |
+
+
+### Trust proxy y rate-limit (MDL-199 / H-06)
+
+En producción el contenedor expone nginx en `PORT` y Node solo escucha en
+`127.0.0.1:$BACKEND_PORT`. Railway añade un hop de edge delante de nginx.
+Express debe usar `trust proxy = 2` (o `TRUST_PROXY_HOPS=2`) para que
+`req.ip` sea la IP del cliente y los limiters de login/autoservicio no
+colapsen en la IP del edge ni en `127.0.0.1`. nginx además reenvía
+`X-Real-IP`/`X-Forwarded-For` desde el `X-Real-IP` que Railway sobrescribe
+en el edge (`$sgi_client_ip`), sin concatenar la cadena spoofable del cliente.
 
 `start.sh` valida que los dos puertos internos sean numéricos, válidos y
 distintos, exporta únicamente `NGINX_PORT` y `BACKEND_PORT`, y deja `PORT`
