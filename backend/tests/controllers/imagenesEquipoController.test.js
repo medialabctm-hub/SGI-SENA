@@ -29,9 +29,15 @@ await jest.unstable_mockModule(uploadPath, () => ({
   getImagePath: mockGetImagePath,
   getImageFilePath: jest.fn(),
   deleteImageFile: mockDeleteImageFile,
+  isSafeEvidenceFilename: jest.fn(() => true),
 }));
 await jest.unstable_mockModule(fileValidationPath, () => ({
   validateImageContent: jest.fn().mockResolvedValue({ valid: true }),
+}));
+const imagenServicePath = path.resolve(__dirname, '../../src/services/imagenEquipoService.js');
+await jest.unstable_mockModule(imagenServicePath, () => ({
+  resolveEvidenceImagePath: jest.fn((filename) => `/tmp/${filename}`),
+  sendEvidenceImage: jest.fn((res) => res.status(200).end()),
 }));
 
 const {

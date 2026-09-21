@@ -180,17 +180,21 @@ export const deleteImageFile = (filename) => {
 };
 
 export const validateUploadedImageContent = async (req, res, next) => {
-  const files = req.files || (req.file ? [req.file] : []);
-  for (const file of files) {
-    const validation = await validateImageContent(file);
-    if (!validation.valid) {
-      files.forEach((uploadedFile) => {
-        if (uploadedFile?.filename) deleteImageFile(uploadedFile.filename);
-      });
-      return res.status(400).json({ error: validation.error });
+  try {
+    const files = req.files || (req.file ? [req.file] : []);
+    for (const file of files) {
+      const validation = await validateImageContent(file);
+      if (!validation.valid) {
+        files.forEach((uploadedFile) => {
+          if (uploadedFile?.filename) deleteImageFile(uploadedFile.filename);
+        });
+        return res.status(400).json({ error: validation.error });
+      }
     }
+    return next();
+  } catch (error) {
+    return next(error);
   }
-  return next();
 };
 
 // Configuración de Multer para endpoint público (verificación de ambiente / asignación aprendices)
