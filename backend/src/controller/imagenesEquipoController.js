@@ -1,8 +1,9 @@
 import defaultDb from '../config/dbconfig.js';
 import { logger } from '../utils/logger.js';
 import { NotFoundError, ValidationError } from '../utils/errors.js';
-import { getImagePath, getImageFilePath, deleteImageFile } from '../middleware/uploadMiddleware.js';
+import { getImagePath, deleteImageFile } from '../middleware/uploadMiddleware.js';
 import { validateImageContent } from '../middleware/fileValidation.js';
+import { resolveEvidenceImagePath, sendEvidenceImage } from '../services/imagenEquipoService.js';
 
 function hasEvidenceScope(req, res) {
   // Direct controller tests may omit auth, but every routed request has a user
@@ -150,7 +151,8 @@ export async function descargarImagenEquipo(req, res, next) {
   try {
     const { filename } = req.params;
     if (!hasEvidenceScope(req, res)) return undefined;
-    return res.sendFile(getImageFilePath(filename));
+    const absolutePath = resolveEvidenceImagePath(filename);
+    return sendEvidenceImage(res, absolutePath);
   } catch (error) {
     return next(error);
   }

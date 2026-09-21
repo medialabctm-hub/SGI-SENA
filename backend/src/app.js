@@ -21,6 +21,7 @@ import { errorHandler } from './utils/errors.js';
 import { buildAutoservicioHealth } from './utils/autoservicioHealth.js';
 import { getAutoservicioReadiness } from './controller/equiposController.js';
 import { serveEnvironmentImage, serveProfileImage } from './controller/privateUploadController.js';
+import { asyncHandler } from './middleware/asyncHandler.js';
 
 // DI y email se cargan al importar server.js; en tests solo necesitamos la app.
 import './di/setup.js';
@@ -121,12 +122,12 @@ const applySecurityMiddleware = (app) => {
 
   // Los uploads privados conservan sus URLs históricas, pero nunca se sirven
   // como static: metadata, sesión y permisos preceden a cualquier sendFile.
-  app.get('/uploads/perfiles/:filename', authenticate, serveProfileImage);
+  app.get('/uploads/perfiles/:filename', authenticate, asyncHandler(serveProfileImage));
   app.get(
     '/uploads/ambientes/:filename',
     authenticate,
     requirePermission(PERMISSIONS.AMBIENTES.VIEW),
-    serveEnvironmentImage
+    asyncHandler(serveEnvironmentImage)
   );
 
   if (process.env.NODE_ENV === 'development') {
