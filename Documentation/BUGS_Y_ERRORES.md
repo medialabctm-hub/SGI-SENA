@@ -520,3 +520,23 @@ mostrarse el motivo concreto y qué hacer, nunca un error de servidor.
   configuración del webhook externo (`webhookController.js`), el desajuste de
   parámetros de `consultarHistorialUso` y el fallo de importación de Excel; las
   tres ya devuelven un mensaje redactado para el usuario.
+
+## MDL-202 / H-03 (2026-09-21) — registro Aprendiz
+
+**Decisión de producto (SGI + SECURITY):** no hay registro anónimo de Aprendiz.
+
+- `POST /api/auth/register` con `rol: Aprendiz` exige **código de invitación válido** **o** cédula presente en el roster `Aprendices` (import Excel).
+- Camino roster = institucional: se crea `Usuarios` Aprendiz vinculado por documento (`Usuarios.cedula` ↔ `Aprendices.documento`).
+- Denegaciones (sin invite/roster, invite inválida, conflicto que distinguiría Usuarios vs Aprendices) responden **400** con el mismo cuerpo genérico:
+
+```json
+{
+  "success": false,
+  "error": "No se puede completar el registro",
+  "userMessage": "No se puede completar el registro"
+}
+```
+
+- Tras un 201, la cuenta Aprendiz **solo es operable** si permanece en el roster (login fail-closed con `Credenciales inválidas` si no hay fila en `Aprendices`).
+- Instructor / Administrador / Cuentadante: invitación obligatoria sin cambio.
+- Lógica en `authValidator.js` (Zod: invite solo para roles staff) + `authService.js` (gate async), no en rutas.

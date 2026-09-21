@@ -117,8 +117,15 @@ describe('registerSchema', () => {
     rol: 'Aprendiz',
   };
 
-  it('debe pasar con un Aprendiz con datos mínimos válidos', () => {
+  it('debe pasar Zod con Aprendiz sin código (el gate roster/invite vive en el servicio H-03)', () => {
+    // Zod no puede consultar Aprendices; authService.enforceAprendizRegistrationGate aplica el 4xx.
     expect(() => registerSchema.parse(baseData)).not.toThrow();
+  });
+
+  it('debe aceptar Aprendiz con código de invitación opcional en el schema', () => {
+    expect(() =>
+      registerSchema.parse({ ...baseData, codigo_invitacion: 'INV-A' })
+    ).not.toThrow();
   });
 
   it('debe normalizar el correo a minúsculas', () => {

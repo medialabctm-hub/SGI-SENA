@@ -20,7 +20,10 @@ export const registerSchema = z.object({
   }),
   codigo_invitacion: z.string().optional().nullable(),
 }).refine((data) => {
-  // Si el rol es Instructor, Administrador o Cuentadante, el código de invitación es requerido
+  // Instructor / Administrador / Cuentadante: invitación obligatoria (sin cambio).
+  // Aprendiz: NO se exige aquí. El servicio aplica el gate H-03/MDL-202
+  // (código de invitación O cédula presente en roster Aprendices); la
+  // comprobación de roster es asíncrona y no cabe en Zod.
   if ((data.rol === 'Instructor' || data.rol === 'Administrador' || data.rol === 'Cuentadante') && !data.codigo_invitacion) {
     return false;
   }

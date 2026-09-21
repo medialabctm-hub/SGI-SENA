@@ -13,6 +13,10 @@ import {
   NotFoundError,
   ConflictError,
 } from '../utils/errors.js';
+import {
+  REGISTER_APRENDIZ_DENIED_MESSAGE,
+  APRENDIZ_ROSTER_PATH_NOTE,
+} from '../utils/authRegisterGate.js';
 import { UserBuilder } from '../builders/UserBuilder.js';
 import {
   EmailValidationStrategy,
@@ -66,6 +70,87 @@ export class AuthService {
     }
   }
 
+
+  /**
+   * Busca una fila del roster institucional Aprendices por documento/cédula.
+   * Vinculación operativa: Usuarios.cedula ↔ Aprendices.documento (TRIM).
+   * @param {string} cedula
+   * @returns {Promise<object|null>}
+   */
+  async findAprendizInRoster(cedula) {
+    const documentoNormalizado = typeof cedula === 'string' ? cedula.trim() : String(cedula ?? '').trim();
+    if (!documentoNormalizado) {
+      return null;
+    }
+
+    const db = this.userRepository?.db;
+    if (!db?.execute) {
+      this.logger.warn('No hay acceso a BD para consultar roster Aprendices');
+      return null;
+    }
+
+    const resultado = await db.execute(
+      `SELECT id_aprendiz, nombre, documento, ficha
+       FROM Aprendices
+       WHERE TRIM(documento) = ?
+       LIMIT 1`,
+      [documentoNormalizado]
+    );
+    const filas = Array.isArray(resultado?.[0]) ? resultado[0] : [];
+    return filas[0] || null;
+  }
+
+  /**
+   * MDL-202 / H-03: Aprendiz solo puede registrarse con invitación válida
+   * o con cédula presente en roster Aprendices. Denegaciones usan un único
+   * mensaje genérico (anti-enumeración / H-05).
+   *
+   * Camino roster = institucional (Excel import). Tras 201, la cuenta solo
+   * es operable si permanece vinculada al roster (login fail-closed).
+   *
+   * @param {object} userData
+   * @throws {ValidationError}
+   */
+  async enforceAprendizRegistrationGate(userData) {
+    const { cedula, rol, codigo_invitacion } = userData;
+    if (rol !== 'Aprendiz') {
+      return { path: null, rosterRow: null };
+    }
+
+    const codigo = typeof codigo_invitacion === 'string' ? codigo_invitacion.trim() : '';
+
+    if (codigo) {
+      try {
+        const { ServiceFactory } = await import('../factories/ServiceFactory.js');
+        const invitationCodeService = ServiceFactory.create('invitationCodeService');
+        await invitationCodeService.validateCode(codigo, rol);
+        await invitationCodeService.useCode(codigo);
+      } catch (error) {
+        this.logger.warn('Registro Aprendiz denegado — invitación no válida', {
+          cedula,
+          reason: error?.message,
+        });
+        throw new ValidationError(REGISTER_APRENDIZ_DENIED_MESSAGE);
+      }
+      this.logger.info('Registro Aprendiz autorizado por código de invitación', { cedula });
+      return { path: 'invitation', rosterRow: null };
+    }
+
+    // Camino institucional: cédula en roster Aprendices (import Excel).
+    const rosterRow = await this.findAprendizInRoster(cedula);
+    if (!rosterRow) {
+      this.logger.warn('Registro Aprendiz denegado — sin invitación ni roster', { cedula });
+      throw new ValidationError(REGISTER_APRENDIZ_DENIED_MESSAGE);
+    }
+
+    this.logger.info(APRENDIZ_ROSTER_PATH_NOTE, {
+      cedula,
+      id_aprendiz: rosterRow.id_aprendiz,
+      ficha: rosterRow.ficha || null,
+    });
+    return { path: 'roster', rosterRow };
+  }
+
   /**
    * Registra un nuevo usuario
    * @param {Object} userData - Datos del usuario
@@ -77,31 +162,36 @@ export class AuthService {
     // Validar datos usando estrategias
     this.validateUserData({ correo, contrasena, cedula });
 
-    // Si el rol es Instructor, Administrador o Cuentadante, validar código de invitación
-    if (rol === 'Instructor' || rol === 'Administrador' || rol === 'Cuentadante') {
+    // Aprendiz: invitación válida O cédula en roster Aprendices (MDL-202 / H-03).
+    // Instructor / Administrador / Cuentadante: invitación requerida (sin cambio).
+    if (rol === 'Aprendiz') {
+      await this.enforceAprendizRegistrationGate(userData);
+    } else if (rol === 'Instructor' || rol === 'Administrador' || rol === 'Cuentadante') {
       if (!codigo_invitacion) {
         throw new ValidationError(`El código de invitación es requerido para registrarse como ${rol}`);
       }
 
-      // Obtener servicio de códigos de invitación
       const { ServiceFactory } = await import('../factories/ServiceFactory.js');
       const invitationCodeService = ServiceFactory.create('invitationCodeService');
-      
-      // Validar código
+
       await invitationCodeService.validateCode(codigo_invitacion, rol);
-      
-      // Usar código (incrementar contador)
       await invitationCodeService.useCode(codigo_invitacion);
     }
 
-    // Validar si el usuario ya existe (solo activos)
+    // Validar si el usuario ya existe (solo activos).
+    // Para Aprendiz usamos el mismo mensaje/status genérico que el gate
+    // (no distinguir Usuarios vs Aprendices — H-05).
     const usuarioExistente = await this.userRepository.findByCedulaOrEmail(cedula, correo);
     if (usuarioExistente) {
       this.logger.warn('Intento de registro con usuario existente', { 
         cedula, 
         correo, 
-        id_usuario_existente: usuarioExistente.id_usuario 
+        id_usuario_existente: usuarioExistente.id_usuario,
+        rol,
       });
+      if (rol === 'Aprendiz') {
+        throw new ValidationError(REGISTER_APRENDIZ_DENIED_MESSAGE);
+      }
       throw new ConflictError('El usuario ya existe');
     }
 
@@ -147,7 +237,11 @@ export class AuthService {
       });
     } catch (error) {
       // Si es un error de clave duplicada, convertirlo en ConflictError
+      // (Aprendiz: mensaje genérico para no enumerar — H-05 / MDL-202).
       if (error.message.includes('ya está registrado') || error.message.includes('duplicado')) {
+        if (rol === 'Aprendiz') {
+          throw new ValidationError(REGISTER_APRENDIZ_DENIED_MESSAGE);
+        }
         throw new ConflictError(error.message || 'El usuario ya existe');
       }
       // Re-lanzar otros errores
@@ -176,6 +270,19 @@ export class AuthService {
     if (!valid) {
       this.logger.warn('Intento de login fallido - Contraseña incorrecta', { cedula });
       throw new AuthenticationError('Credenciales inválidas');
+    }
+
+    // MDL-202 / H-03: cuenta Aprendiz solo operable si está vinculada al roster.
+    // Fail-closed: misma respuesta que credenciales inválidas (no enumerar roster).
+    if (usuario.nombre_rol === 'Aprendiz') {
+      const rosterRow = await this.findAprendizInRoster(usuario.cedula || cedula);
+      if (!rosterRow) {
+        this.logger.warn('Login Aprendiz denegado — sin vínculo a roster Aprendices', {
+          cedula,
+          id_usuario: usuario.id_usuario,
+        });
+        throw new AuthenticationError('Credenciales inválidas');
+      }
     }
 
     // Generar token JWT
@@ -222,6 +329,19 @@ export class AuthService {
     if (!valid) {
       this.logger.warn('Intento de login con placa fallido - Contraseña incorrecta', { cedula, placa });
       throw new AuthenticationError('Credenciales inválidas');
+    }
+
+    // MDL-202 / H-03: Aprendiz no operable sin vínculo a roster Aprendices.
+    if (usuario.nombre_rol === 'Aprendiz') {
+      const rosterRow = await this.findAprendizInRoster(usuario.cedula || cedula);
+      if (!rosterRow) {
+        this.logger.warn('Login-placa Aprendiz denegado — sin vínculo a roster Aprendices', {
+          cedula,
+          placa,
+          id_usuario: usuario.id_usuario,
+        });
+        throw new AuthenticationError('Credenciales inválidas');
+      }
     }
 
     // Validar que el usuario tenga un equipo asignado con la placa proporcionada

@@ -12,6 +12,7 @@ import {
   NotFoundError,
   ConflictError,
 } from '../../src/utils/errors.js';
+import { REGISTER_APRENDIZ_DENIED_MESSAGE } from '../../src/utils/authRegisterGate.js';
 
 // ─── Mocks de conexión de BD (para transacciones) ───────────────────────────
 const mockConnection = {
@@ -88,6 +89,12 @@ const validAprendizData = {
   rol: 'Aprendiz',
 };
 
+
+const rosterHit = (documento = '1234567890') => [[
+  { id_aprendiz: 10, nombre: 'Test User', documento, ficha: 'F-100' },
+]];
+const rosterMiss = () => [[]];
+
 describe('AuthService', () => {
   let authService;
 
@@ -117,6 +124,7 @@ describe('AuthService', () => {
     it('debe autenticar un usuario con credenciales válidas', async () => {
       mockUserRepository.findByCedula.mockResolvedValue(baseUser);
       mockPasswordService.compare.mockResolvedValue(true);
+      mockUserRepository.db.execute.mockResolvedValue(rosterHit());
 
       const result = await authService.loginUser('1234567890', 'password123');
 
@@ -150,9 +158,29 @@ describe('AuthService', () => {
       const userWithChange = { ...baseUser, requiere_cambio_contrasena: 1 };
       mockUserRepository.findByCedula.mockResolvedValue(userWithChange);
       mockPasswordService.compare.mockResolvedValue(true);
+      mockUserRepository.db.execute.mockResolvedValue(rosterHit());
 
       const result = await authService.loginUser('1234567890', 'pass');
       expect(result.requiereCambioContrasena).toBe(true);
+    });
+
+    it('debe denegar login de Aprendiz sin vínculo a roster (fail-closed H-03)', async () => {
+      mockUserRepository.findByCedula.mockResolvedValue(baseUser);
+      mockPasswordService.compare.mockResolvedValue(true);
+      mockUserRepository.db.execute.mockResolvedValue(rosterMiss());
+
+      await expect(authService.loginUser('1234567890', 'pass')).rejects.toThrow(AuthenticationError);
+      expect(mockJwtService.sign).not.toHaveBeenCalled();
+    });
+
+    it('debe autenticar Instructor sin consultar roster Aprendices', async () => {
+      const instructor = { ...baseUser, nombre_rol: 'Instructor' };
+      mockUserRepository.findByCedula.mockResolvedValue(instructor);
+      mockPasswordService.compare.mockResolvedValue(true);
+
+      const result = await authService.loginUser('1234567890', 'pass');
+      expect(result.token).toBe('mock-jwt-token');
+      expect(mockUserRepository.db.execute).not.toHaveBeenCalled();
     });
   });
 
@@ -199,7 +227,8 @@ describe('AuthService', () => {
 
   // ─── registerUser ───────────────────────────────────────────────────────────
   describe('registerUser', () => {
-    it('debe registrar un nuevo usuario Aprendiz exitosamente', async () => {
+    it('debe registrar un nuevo usuario Aprendiz exitosamente vía roster', async () => {
+      mockUserRepository.db.execute.mockResolvedValue(rosterHit());
       mockUserRepository.findByCedulaOrEmail.mockResolvedValue(null);
       mockUserRepository.findInactiveByCedulaOrEmail.mockResolvedValue(null);
       mockRoleRepository.findByName.mockResolvedValue({ id_rol: 3 });
@@ -208,15 +237,36 @@ describe('AuthService', () => {
       const result = await authService.registerUser(validAprendizData);
       expect(result.message).toContain('registrado');
       expect(mockPasswordService.hash).toHaveBeenCalled();
+      expect(mockUserRepository.db.execute).toHaveBeenCalledWith(
+        expect.stringContaining('FROM Aprendices'),
+        ['1234567890']
+      );
     });
 
-    it('debe lanzar ConflictError si el usuario activo ya existe', async () => {
+    it('debe rechazar Aprendiz sin invitación ni roster con mensaje genérico 400', async () => {
+      mockUserRepository.db.execute.mockResolvedValue(rosterMiss());
+
+      await expect(authService.registerUser(validAprendizData)).rejects.toMatchObject({
+        name: 'ValidationError',
+        message: REGISTER_APRENDIZ_DENIED_MESSAGE,
+        statusCode: 400,
+      });
+      expect(mockUserRepository.create).not.toHaveBeenCalled();
+    });
+
+    it('debe rechazar Aprendiz con usuario existente con el mismo mensaje genérico', async () => {
+      mockUserRepository.db.execute.mockResolvedValue(rosterHit());
       mockUserRepository.findByCedulaOrEmail.mockResolvedValue({ id_usuario: 99 });
 
-      await expect(authService.registerUser(validAprendizData)).rejects.toThrow(ConflictError);
+      await expect(authService.registerUser(validAprendizData)).rejects.toMatchObject({
+        name: 'ValidationError',
+        message: REGISTER_APRENDIZ_DENIED_MESSAGE,
+        statusCode: 400,
+      });
     });
 
-    it('debe eliminar usuario inactivo y registrar el nuevo', async () => {
+    it('debe eliminar usuario inactivo y registrar el nuevo (vía roster)', async () => {
+      mockUserRepository.db.execute.mockResolvedValue(rosterHit());
       mockUserRepository.findByCedulaOrEmail.mockResolvedValue(null);
       mockUserRepository.findInactiveByCedulaOrEmail.mockResolvedValue({ id_usuario: 5 });
       mockUserRepository.delete.mockResolvedValue({ affectedRows: 1 });
@@ -229,6 +279,7 @@ describe('AuthService', () => {
     });
 
     it('debe lanzar ValidationError si el rol no existe en BD', async () => {
+      mockUserRepository.db.execute.mockResolvedValue(rosterHit());
       mockUserRepository.findByCedulaOrEmail.mockResolvedValue(null);
       mockUserRepository.findInactiveByCedulaOrEmail.mockResolvedValue(null);
       mockRoleRepository.findByName.mockResolvedValue(null);
@@ -236,16 +287,21 @@ describe('AuthService', () => {
       await expect(authService.registerUser(validAprendizData)).rejects.toThrow(ValidationError);
     });
 
-    it('debe convertir error de clave duplicada en ConflictError', async () => {
+    it('debe convertir error de clave duplicada en mensaje genérico para Aprendiz', async () => {
+      mockUserRepository.db.execute.mockResolvedValue(rosterHit());
       mockUserRepository.findByCedulaOrEmail.mockResolvedValue(null);
       mockUserRepository.findInactiveByCedulaOrEmail.mockResolvedValue(null);
       mockRoleRepository.findByName.mockResolvedValue({ id_rol: 3 });
       mockUserRepository.create.mockRejectedValue(new Error('El usuario ya está registrado'));
 
-      await expect(authService.registerUser(validAprendizData)).rejects.toThrow(ConflictError);
+      await expect(authService.registerUser(validAprendizData)).rejects.toMatchObject({
+        name: 'ValidationError',
+        message: REGISTER_APRENDIZ_DENIED_MESSAGE,
+      });
     });
 
     it('debe re-lanzar errores genéricos de la BD', async () => {
+      mockUserRepository.db.execute.mockResolvedValue(rosterHit());
       mockUserRepository.findByCedulaOrEmail.mockResolvedValue(null);
       mockUserRepository.findInactiveByCedulaOrEmail.mockResolvedValue(null);
       mockRoleRepository.findByName.mockResolvedValue({ id_rol: 3 });
@@ -276,6 +332,7 @@ describe('AuthService', () => {
 
     it('debe usar tipo_documento_otro cuando tipo_documento es Otro', async () => {
       const otroData = { ...validAprendizData, tipo_documento: 'Otro', tipo_documento_otro: 'Pasaporte' };
+      mockUserRepository.db.execute.mockResolvedValue(rosterHit());
       mockUserRepository.findByCedulaOrEmail.mockResolvedValue(null);
       mockUserRepository.findInactiveByCedulaOrEmail.mockResolvedValue(null);
       mockRoleRepository.findByName.mockResolvedValue({ id_rol: 3 });
@@ -291,6 +348,7 @@ describe('AuthService', () => {
     it('debe autenticar usuario con placa correctamente asignada', async () => {
       mockUserRepository.findByCedula.mockResolvedValue(baseUser);
       mockPasswordService.compare.mockResolvedValue(true);
+      mockUserRepository.db.execute.mockResolvedValue(rosterHit());
       mockUserRepository.getAssignedEquipos.mockResolvedValue([
         { placa: 'ABC123', codigo_equipo: 'EQ1', tipo: 'Laptop', modelo: 'Dell' },
       ]);
@@ -330,6 +388,7 @@ describe('AuthService', () => {
       const userChange = { ...baseUser, requiere_cambio_contrasena: 1 };
       mockUserRepository.findByCedula.mockResolvedValue(userChange);
       mockPasswordService.compare.mockResolvedValue(true);
+      mockUserRepository.db.execute.mockResolvedValue(rosterHit());
       mockUserRepository.getAssignedEquipos.mockResolvedValue([
         { placa: 'ABC123', codigo_equipo: 'EQ1', tipo: 'Laptop', modelo: 'Dell' },
       ]);
