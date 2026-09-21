@@ -120,6 +120,20 @@ override explícito en una ejecución local controlada.
 | `PORT` | Railway lo inyecta; `80` solo como fallback local | Railway/Docker y healthcheck público | Es el puerto público y nunca se sobrescribe con el puerto interno. |
 | `NGINX_PORT` | `${PORT:-80}` | `start.sh`/nginx | Puerto público que escucha nginx; en Railway se deja sin definir para heredar `PORT`. |
 | `BACKEND_PORT` | `3000` | `start.sh`/Node | Puerto interno de Node en `127.0.0.1`; no se expone a Railway. |
+| `TRUST_PROXY_HOPS` | `1` (default Railway y local) | Express (`getTrustProxyHops`) | Proxies a confiar para `req.ip` / rate-limits. nginx fija una sola IP de cliente (`$sgi_client_ip`); Node solo ve ese hop. No usar `2` con el header actual ni `true`. |
+
+
+### Trust proxy y rate-limit (MDL-199 / H-06)
+
+En producción el contenedor expone nginx en `PORT` y Node solo escucha en
+`127.0.0.1:$BACKEND_PORT`. Railway añade un edge delante de nginx, pero
+nginx **no** reenvía esa cadena a Node: fija una sola IP de cliente con
+`$sgi_client_ip` (tomada del `X-Real-IP` que Railway sobrescribe en el
+edge, o `$remote_addr` en local). Por tanto Express debe usar
+`trust proxy = 1` (default de `getTrustProxyHops` / `TRUST_PROXY_HOPS=1`)
+para que `req.ip` sea esa IP y los limiters de login/autoservicio
+agrupen por cliente real. Subir a 2 hops con el header single-IP actual
+abriría bypass por XFF spoofeado a la izquierda; no usar `true`.
 
 `start.sh` valida que los dos puertos internos sean numéricos, válidos y
 distintos, exporta únicamente `NGINX_PORT` y `BACKEND_PORT`, y deja `PORT`
