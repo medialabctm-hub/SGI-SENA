@@ -14,14 +14,12 @@ describe('getTrustProxyHops', () => {
     expect(() => getTrustProxyHops({ TRUST_PROXY_HOPS: '6' })).toThrow(/TRUST_PROXY_HOPS/);
   });
 
-  it('en Railway sin override usa 2 hops (edge + nginx in-container)', () => {
-    expect(getTrustProxyHops({ RAILWAY_ENVIRONMENT: 'production' })).toBe(2);
-    expect(getTrustProxyHops({ RAILWAY_PROJECT_ID: 'proj_x' })).toBe(2);
-    expect(getTrustProxyHops({ RAILWAY_SERVICE_ID: 'svc_x' })).toBe(2);
-  });
-
-  it('fuera de Railway sin override usa 1 hop (nginx local o directo)', () => {
+  it('default es 1 hop (nginx ya entrega una sola IP de cliente)', () => {
     expect(getTrustProxyHops({})).toBe(1);
     expect(getTrustProxyHops({ NODE_ENV: 'test' })).toBe(1);
+    // Railway no cambia el default: Node solo ve nginx + XFF single-IP.
+    expect(getTrustProxyHops({ RAILWAY_ENVIRONMENT: 'production' })).toBe(1);
+    expect(getTrustProxyHops({ RAILWAY_PROJECT_ID: 'proj_x' })).toBe(1);
+    expect(getTrustProxyHops({ RAILWAY_SERVICE_ID: 'svc_x' })).toBe(1);
   });
 });

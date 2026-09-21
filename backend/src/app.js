@@ -90,7 +90,7 @@ const corsOptions = {
 };
 
 const applySecurityMiddleware = (app) => {
-  // See getTrustProxyHops(): Railway edge + in-container nginx ⇒ 2 hops.
+  // See getTrustProxyHops(): nginx delivers a single client IP ($sgi_client_ip) ⇒ 1 hop.
   // Never `true` (leftmost XFF is spoofable). Override with TRUST_PROXY_HOPS.
   app.set('trust proxy', getTrustProxyHops());
 

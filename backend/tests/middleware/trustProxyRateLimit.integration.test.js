@@ -1,15 +1,14 @@
 /**
  * MDL-199 / H-06 — trust proxy + rate-limit por IP real.
  *
- * Simula la cadena de producción que ve Node detrás de nginx in-container:
- *   X-Forwarded-For: <client>, <railway-edge>
- *   socket: 127.0.0.1 (supertest)
- * con trust proxy = 2 (Railway edge + nginx).
+ * Forma real que ve Node detrás de nginx in-container (post-$sgi_client_ip):
+ *   X-Forwarded-For / X-Real-IP: <client>   (una sola IP)
+ *   socket: 127.0.0.1 (supertest / nginx→Node)
+ * con trust proxy = 1.
  *
  * Comprueba que:
- * 1) authLimiter y autoservicioIpLimiter agrupan por la IP de cliente real
- * 2) un hop spoofeado a la izquierda de la cadena no abre un bucket nuevo
- *    (no bypass del 429)
+ * 1) authLimiter / registerLimiter / autoservicioIpLimiter agrupan por esa IP
+ * 2) un hop spoofeado a la izquierda de XFF no abre un bucket nuevo (hops=1)
  */
 
 import express from 'express';
@@ -23,10 +22,10 @@ import {
 } from '../../src/middleware/rateLimiter.js';
 import { getTrustProxyHops } from '../../src/config/trustProxy.js';
 
-/** Cabecera XFF de dos hops como la que construye nginx con $proxy_add_x_forwarded_for. */
-const prodXff = (clientIp, edgeIp = '10.0.0.2') => `${clientIp}, ${edgeIp}`;
+/** Cabecera single-IP como la que nginx fija con $sgi_client_ip. */
+const nginxClientIp = (clientIp) => clientIp;
 
-const makeApp = (hops = 2) => {
+const makeApp = (hops = 1) => {
   const app = express();
   app.set('trust proxy', hops);
   app.use(express.json());
@@ -55,43 +54,45 @@ const makeApp = (hops = 2) => {
   return app;
 };
 
-describe('trust proxy hops (topología Railway + nginx)', () => {
-  it('getTrustProxyHops en Railway es 2', () => {
-    expect(getTrustProxyHops({ RAILWAY_ENVIRONMENT: 'production' })).toBe(2);
+describe('trust proxy hops (nginx single-IP → Node)', () => {
+  it('getTrustProxyHops default (incl. Railway) es 1', () => {
+    expect(getTrustProxyHops({})).toBe(1);
+    expect(getTrustProxyHops({ RAILWAY_ENVIRONMENT: 'production' })).toBe(1);
   });
 
-  it('con trust=2, req.ip es el cliente y no el edge ni 127.0.0.1', async () => {
-    const app = makeApp(2);
-    const res = await request(app)
-      .get('/debug-ip')
-      .set('X-Forwarded-For', prodXff('203.0.113.50'));
-
-    expect(res.body.ip).toBe('203.0.113.50');
-    expect(res.body.ip).not.toBe('10.0.0.2');
-    expect(res.body.ip).not.toMatch(/127\.0\.0\.1/);
-  });
-
-  it('con trust=1 (bug H-06), req.ip colapsa en el hop del edge', async () => {
+  it('con trust=1 y XFF single-IP, req.ip es el cliente (no 127.0.0.1)', async () => {
     const app = makeApp(1);
     const res = await request(app)
       .get('/debug-ip')
-      .set('X-Forwarded-For', prodXff('203.0.113.50'));
+      .set('X-Forwarded-For', nginxClientIp('203.0.113.50'))
+      .set('X-Real-IP', '203.0.113.50');
 
-    expect(res.body.ip).toBe('10.0.0.2');
+    expect(res.body.ip).toBe('203.0.113.50');
+    expect(res.body.ip).not.toMatch(/127\.0\.0\.1/);
+  });
+
+  it('con trust=2 y XFF spoof,client, req.ip toma el spoof (por eso no usamos 2)', async () => {
+    const app = makeApp(2);
+    const res = await request(app)
+      .get('/debug-ip')
+      .set('X-Forwarded-For', '198.51.100.1, 203.0.113.50');
+
+    expect(res.body.ip).toBe('198.51.100.1');
   });
 });
 
-describe('authLimiter con trust proxy=2', () => {
+describe('authLimiter con trust proxy=1 (forma nginx real)', () => {
   it('10 intentos desde la misma IP cliente → 429 en el 11º', async () => {
-    const app = makeApp(2);
-    const xff = prodXff('203.0.113.77');
+    const app = makeApp(1);
+    const client = '203.0.113.77';
     const responses = [];
 
     for (let i = 0; i < 11; i += 1) {
       responses.push(
         await request(app)
           .post('/login')
-          .set('X-Forwarded-For', xff)
+          .set('X-Forwarded-For', nginxClientIp(client))
+          .set('X-Real-IP', client)
           .send({ email: 'a@b.c', password: 'x' }),
       );
     }
@@ -103,43 +104,41 @@ describe('authLimiter con trust proxy=2', () => {
     );
   });
 
-  it('spoof a la izquierda de la cadena no abre un bucket nuevo tras el 429', async () => {
-    const app = makeApp(2);
-    const edge = '10.0.0.2';
+  it('spoofed leftmost XFF no bypass cuando hops=1', async () => {
+    const app = makeApp(1);
     const client = '203.0.113.88';
 
     for (let i = 0; i < 10; i += 1) {
       const res = await request(app)
         .post('/login')
-        .set('X-Forwarded-For', prodXff(client, edge))
+        .set('X-Forwarded-For', nginxClientIp(client))
         .send({ email: 'a@b.c', password: 'x' });
       expect(res.statusCode).toBe(401);
     }
 
-    // Intentos adicionales con IPs spoofeadas prependidas; el hop confiable
-    // sigue resolviendo a `client`, así que deben seguir bloqueados.
+    // Extra hop a la izquierda: con trust=1 Express ignora el spoof y sigue
+    // resolviendo req.ip al hop más cercano al socket (= client).
     for (let i = 0; i < 3; i += 1) {
-      const spoofed = `198.51.100.${i + 1}, ${client}, ${edge}`;
       const res = await request(app)
         .post('/login')
-        .set('X-Forwarded-For', spoofed)
+        .set('X-Forwarded-For', `198.51.100.${i + 1}, ${client}`)
         .send({ email: 'a@b.c', password: 'x' });
       expect(res.statusCode).toBe(429);
     }
   });
 });
 
-describe('registerLimiter con trust proxy=2', () => {
+describe('registerLimiter con trust proxy=1', () => {
   it('5 registros desde la misma IP cliente → 429 en el 6º', async () => {
-    const app = makeApp(2);
-    const xff = prodXff('203.0.113.91');
+    const app = makeApp(1);
+    const client = '203.0.113.91';
     const responses = [];
 
     for (let i = 0; i < 6; i += 1) {
       responses.push(
         await request(app)
           .post('/register')
-          .set('X-Forwarded-For', xff)
+          .set('X-Forwarded-For', nginxClientIp(client))
           .send({ email: `u${i}@ex.com` }),
       );
     }
@@ -149,7 +148,7 @@ describe('registerLimiter con trust proxy=2', () => {
   });
 });
 
-describe('autoservicioIpLimiter con trust proxy=2', () => {
+describe('autoservicioIpLimiter con trust proxy=1', () => {
   let consoleErrorSpy;
 
   beforeAll(() => {
@@ -160,28 +159,28 @@ describe('autoservicioIpLimiter con trust proxy=2', () => {
     consoleErrorSpy.mockRestore();
   });
 
-  it('20 intentos desde la misma IP cliente → 429; spoof izquierdo no bypass', async () => {
-    const app = makeApp(2);
+  it('20 intentos misma IP → 429; spoof izquierdo no bypass', async () => {
+    const app = makeApp(1);
     const client = '203.0.113.120';
-    const edge = '10.0.0.2';
 
     for (let i = 0; i < 20; i += 1) {
       const res = await request(app)
         .post('/autoservicio')
-        .set('X-Forwarded-For', prodXff(client, edge))
+        .set('X-Forwarded-For', nginxClientIp(client))
+        .set('X-Real-IP', client)
         .send({ documento: `DOC-${i}`, placa: `EQ-${i}` });
       expect(res.statusCode).toBe(200);
     }
 
     const blocked = await request(app)
       .post('/autoservicio')
-      .set('X-Forwarded-For', prodXff(client, edge))
+      .set('X-Forwarded-For', nginxClientIp(client))
       .send({ documento: 'DOC-blocked', placa: 'EQ-blocked' });
     expect(blocked.statusCode).toBe(429);
 
     const spoofAttempt = await request(app)
       .post('/autoservicio')
-      .set('X-Forwarded-For', `198.51.100.200, ${client}, ${edge}`)
+      .set('X-Forwarded-For', `198.51.100.200, ${client}`)
       .send({ documento: 'DOC-spoof', placa: 'EQ-spoof' });
     expect(spoofAttempt.statusCode).toBe(429);
   });
