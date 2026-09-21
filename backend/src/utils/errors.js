@@ -2,6 +2,7 @@
  * Clases de error personalizadas para el manejo de errores en la aplicación
  */
 import { logger } from './logger.js';
+import { buildClientErrorBody } from './errorScrubber.js';
 
 export class AppError extends Error {
   constructor(message, statusCode = 500, isOperational = true) {
@@ -265,19 +266,23 @@ export const errorHandler = (err, req, res, _next) => {
 
   const statusCode = error.statusCode || 500;
 
-  // userMessage: texto apto para mostrar tal cual en la interfaz. Solo se envía
-  // cuando proviene de un error de dominio controlado; nunca para un 500 genérico,
-  // donde el mensaje podría contener detalles técnicos.
-  const userMessage = error instanceof AppError && error.isOperational
-    ? error.message
-    : undefined;
-
-  res.status(statusCode).json({
-    success: false,
-    error: error.message || 'Error en el servidor',
-    ...(userMessage && { userMessage }),
-    ...(error.details && { details: error.details }),
-    ...(process.env.NODE_ENV === 'development' && { stack: err.stack }),
+  // Respuesta al cliente vía scrubber compartido (MDL-204 / H-04; reutilizable en MDL-193).
+  // Detalle técnico completo ya quedó en el log de arriba.
+  const isOperational = error instanceof AppError && error.isOperational;
+  const { body } = buildClientErrorBody(error, {
+    statusCode,
+    defaultMessage: isOperational ? undefined : 'Error en el servidor',
+    includeSuccess: true,
+    includeUserMessage: isOperational,
+    includeStack: true,
   });
+
+  // Si el scrubber omitió userMessage en un operacional (mensaje interno sin
+  // clientMessage), igualámoslo al error genérico ya resuelto.
+  if (isOperational && body.userMessage == null) {
+    body.userMessage = body.error;
+  }
+
+  res.status(statusCode).json(body);
 };
 

@@ -78,9 +78,10 @@ describe('contratos de asignación y autoservicio', () => {
     await iniciarUsoAutoservicio({ body: { documento: 'D1', placa: 'P3' } }, response);
 
     expect(response.status).toHaveBeenCalledWith(503);
-    expect(response.json).toHaveBeenCalledWith(expect.objectContaining({
-      userMessage: expect.stringMatching(/Autoservicio no está listo.*migrate-autoservicio-cierre-clase\.js/i)
-    }));
+    const payload = response.json.mock.calls[0][0];
+    // MDL-204 / H-04: genérico al cliente; sin tablas/SP/scripts internos
+    expect(payload.userMessage).toMatch(/no está disponible temporalmente/i);
+    expect(JSON.stringify(payload)).not.toMatch(/Historial_Uso_Equipos|sp_finalizar_clase|migrate-autoservicio|AUTOSERVICIO_CIERRE/i);
     // Guard puramente en memoria: no abre conexión ni ejecuta ninguna consulta,
     // ni siquiera de metadatos, mientras el schema no fue asegurado en el boot.
     expect(mockGetConnection).not.toHaveBeenCalled();
@@ -117,9 +118,9 @@ describe('contratos de asignación y autoservicio', () => {
     await iniciarUsoAutoservicio({ body: { documento: 'D1', placa: 'P3' } }, response);
 
     expect(response.status).toHaveBeenCalledWith(503);
-    expect(response.json).toHaveBeenCalledWith(expect.objectContaining({
-      userMessage: expect.stringMatching(/AUTOSERVICIO_CIERRE_V2.*migrate-autoservicio-cierre-clase\.js/i)
-    }));
+    const payload = response.json.mock.calls[0][0];
+    expect(payload.userMessage).toMatch(/no está disponible temporalmente/i);
+    expect(JSON.stringify(payload)).not.toMatch(/Historial_Uso_Equipos|sp_finalizar_clase|migrate-autoservicio|AUTOSERVICIO_CIERRE|Clases/i);
     // El request path no reintenta la migración ni consulta metadatos: lee el
     // estado ya cacheado por el ensure de boot.
     expect(mockGetConnection).not.toHaveBeenCalled();

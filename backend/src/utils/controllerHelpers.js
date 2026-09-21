@@ -1,5 +1,6 @@
 import { logger } from './logger.js';
 import { AppError, translateDbError } from './errors.js';
+import { buildClientErrorBody } from './errorScrubber.js';
 
 /**
  * Respuesta de error uniforme para los catch de los controladores.
@@ -22,12 +23,17 @@ export const handleControllerError = (err, res, context, defaultMessage) => {
 
   const error = err instanceof AppError ? err : translateDbError(err);
 
-  // Error de dominio conocido: su mensaje está escrito para el usuario
+  // Error de dominio conocido: scrubber elige clientMessage / mensaje seguro / genérico
   if (error instanceof AppError && error.isOperational) {
-    return res.status(error.statusCode).json({
-      error: error.message,
-      userMessage: error.message,
-      ...(error.details && { details: error.details }),
+    const { statusCode, body } = buildClientErrorBody(error, {
+      defaultMessage,
+      includeSuccess: false,
+      includeUserMessage: true,
+    });
+    return res.status(statusCode).json({
+      error: body.error,
+      userMessage: body.userMessage,
+      ...(body.details !== undefined && { details: body.details }),
     });
   }
 

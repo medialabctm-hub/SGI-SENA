@@ -4377,14 +4377,21 @@ async function verificarReadinessAutoservicio(db) {
 
 function assertAutoservicioReady(readiness) {
   if (readiness.ready) return readiness;
-  // AppError con 503: handleControllerError debe propagar este status y este mensaje
-  // accionable tal cual (en vez de degradarlos a un 500 genérico), para que el
-  // endpoint público le diga al usuario que el autoservicio no está listo y por qué.
-  throw new AppError(
+  // MDL-204 / H-04: detalle de schema (tablas/SP/scripts) solo en logs y en
+  // Error.message (para operadores / ensureAutoservicioSchema en boot).
+  // La respuesta HTTP usa clientMessage genérico vía errorScrubber.
+  const detail =
     `Autoservicio no está listo: faltan ${readiness.missing.join(', ')}. ` +
-    'Ejecute node scripts/migrate-autoservicio-cierre-clase.js con credenciales MySQL de administrador.',
-    503
-  );
+    'Ejecute node scripts/migrate-autoservicio-cierre-clase.js con credenciales MySQL de administrador.';
+  logger.error('Autoservicio schema no listo (detalle interno)', {
+    missing: readiness.missing,
+    migrationVersion: readiness.migrationVersion,
+    detail,
+  });
+  const err = new AppError(detail, 503);
+  err.clientMessage =
+    'El autoservicio no está disponible temporalmente. Inténtalo de nuevo más tarde.';
+  throw err;
 }
 
 /**
