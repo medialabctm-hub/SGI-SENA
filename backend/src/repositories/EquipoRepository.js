@@ -47,8 +47,8 @@ export class EquipoRepository extends BaseRepository {
    */
   async findAll(filters = {}, pagination = {}, sorting = {}) {
     const page = Math.max(1, parseInt(pagination.page) || 1);
-    // Máximo 5000 por página para permitir carga completa en app móvil (o paginación incremental)
-    const limit = Math.min(5000, Math.max(1, parseInt(pagination.limit) || 50));
+    // MDL-189 / H-01: tope server-side de paginación (máx. 100)
+    const limit = Math.min(100, Math.max(1, parseInt(pagination.limit) || 50));
     const offset = (page - 1) * limit;
     
     const sortField = sorting.field || 'codigo_equipo';
@@ -104,6 +104,18 @@ export class EquipoRepository extends BaseRepository {
         conditions.push(`e.id_ambiente IN (${filters.ambientesIds.map(() => '?').join(',')})`);
         params.push(...filters.ambientesIds);
       }
+    }
+
+    // MDL-189 / H-01: alcance Aprendiz / VIEW_OWN — solo equipos con vínculo activo
+    if (filters.responsableUsuarioId) {
+      conditions.push(`EXISTS (
+        SELECT 1
+        FROM Responsables_Equipo re_scope
+        WHERE re_scope.codigo_equipo = e.codigo_equipo
+          AND re_scope.id_usuario = ?
+          AND re_scope.estado_responsabilidad = 'Activo'
+      )`);
+      params.push(filters.responsableUsuarioId);
     }
 
     // Filtro por búsqueda de texto (placa, modelo, consecutivo, descripción, tipo, categoría)
@@ -241,7 +253,7 @@ export class EquipoRepository extends BaseRepository {
     
     // Sanitizar valores para prevenir SQL injection (ya son números enteros validados)
     // Asegurar que sean enteros positivos
-    const safeLimit = Math.max(1, Math.min(5000, Math.floor(validLimit)));
+    const safeLimit = Math.max(1, Math.min(100, Math.floor(validLimit)));
     const safeOffset = Math.max(0, Math.floor(validOffset));
     
     query += ` LIMIT ${safeLimit} OFFSET ${safeOffset}`;

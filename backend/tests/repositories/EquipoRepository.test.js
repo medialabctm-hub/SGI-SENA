@@ -337,6 +337,33 @@ describe('EquipoRepository', () => {
     });
   });
 
+
+    it('MDL-189/H-01: limita limit a máximo 100 aunque pidan 5000', async () => {
+      db.execute
+        .mockResolvedValueOnce([[{ total: 0 }]])
+        .mockResolvedValueOnce([[]]);
+
+      const result = await repo.findAll({}, { page: 1, limit: 5000 });
+
+      expect(result.pagination.limit).toBeLessThanOrEqual(100);
+      const dataQuery = db.execute.mock.calls[1][0];
+      expect(dataQuery).toMatch(/LIMIT\s+100\b/i);
+    });
+
+    it('MDL-189/H-01: aplica EXISTS de Responsables_Equipo para responsableUsuarioId', async () => {
+      db.execute
+        .mockResolvedValueOnce([[{ total: 0 }]])
+        .mockResolvedValueOnce([[]]);
+
+      await repo.findAll({ responsableUsuarioId: 42 }, { page: 1, limit: 10 });
+
+      const dataQuery = db.execute.mock.calls[1][0];
+      const params = db.execute.mock.calls[1][1];
+      expect(dataQuery).toMatch(/Responsables_Equipo/i);
+      expect(dataQuery).toMatch(/estado_responsabilidad\s*=\s*'Activo'/i);
+      expect(params).toContain(42);
+    });
+
   // ──────────────────────────────────────────────
   // create()
   // ──────────────────────────────────────────────

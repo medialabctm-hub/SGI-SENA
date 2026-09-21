@@ -413,5 +413,36 @@ export const autoservicioIniciarUsoSchema = z.object({
   placa: z.string({ error: 'La placa es obligatoria' }).trim().min(1, 'La placa es obligatoria').max(100),
 });
 
-export { validate } from '../middleware/validate.js';
+
+/**
+ * MDL-189 / H-01: query de listado de equipos.
+ * Cap server-side de `limit` (máx. 100). Valores mayores → 400.
+ */
+export const EQUIPOS_LIST_MAX_LIMIT = 100;
+
+export const listarEquiposQuerySchema = z.object({
+  search: z.string().trim().max(200).optional(),
+  estado_fisico: z.union([z.string(), z.array(z.string())]).optional(),
+  estado_operativo: z.union([z.string(), z.array(z.string())]).optional(),
+  categoria: z.string().trim().max(100).optional(),
+  tipo: z.string().trim().max(100).optional(),
+  fecha_desde: z.string().optional(),
+  fecha_hasta: z.string().optional(),
+  valor_min: z.coerce.number().nonnegative().optional(),
+  valor_max: z.coerce.number().nonnegative().optional(),
+  ambiente: z.union([z.string(), z.array(z.string())]).optional(),
+  vista_inventario: z.string().trim().max(50).optional(),
+  page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce
+    .number({ error: 'limit debe ser un número' })
+    .int('limit debe ser un entero')
+    .min(1, 'limit mínimo es 1')
+    .max(EQUIPOS_LIST_MAX_LIMIT, `limit máximo es ${EQUIPOS_LIST_MAX_LIMIT}`)
+    .default(50),
+  sort: z.string().trim().max(50).optional(),
+  order: z.string().trim().max(10).optional(),
+}).passthrough();
+
+export { validate, validateQuery } from '../middleware/validate.js';
+
 

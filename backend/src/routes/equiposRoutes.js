@@ -5,7 +5,7 @@ import { authenticate, optionalAuthenticate } from '../middleware/authMiddleware
 import { requirePermission, requireAnyPermission, requireAnyPermissionIfAuthenticated } from '../middleware/authorization.js';
 import { PERMISSIONS } from '../config/permissions.js';
 import { writeLimiter, readLimiter, strictLimiter, webhookLimiter, searchLimiter, autoservicioIpLimiter, autoservicioIdentifierLimiter } from '../middleware/rateLimiter.js';
-import { validate, registrarEquipoSchema, actualizarEquipoSchema, asignarEquipoSchema, verificarInventarioSchema, solicitudAutorizacionMovimientoSchema, crearCategoriaSchema, actualizarCategoriaSchema, registrarUsoEquipoSchema, actualizarUsoEquipoSchema, registrarUsoEquipoExternoSchema, actualizarAsignacionEquipoSchema, autoservicioIniciarUsoSchema } from '../validators/equiposValidator.js';
+import { validate, registrarEquipoSchema, actualizarEquipoSchema, asignarEquipoSchema, verificarInventarioSchema, solicitudAutorizacionMovimientoSchema, crearCategoriaSchema, actualizarCategoriaSchema, registrarUsoEquipoSchema, actualizarUsoEquipoSchema, registrarUsoEquipoExternoSchema, actualizarAsignacionEquipoSchema, autoservicioIniciarUsoSchema, listarEquiposQuerySchema, validateQuery } from '../validators/equiposValidator.js';
 import { uploadEquipoImagePublico, handleUploadError, validateUploadedImageContent } from '../middleware/uploadMiddleware.js';
 import { parseFormData } from '../middleware/parseFormData.js';
 import { corsPublic } from '../middleware/corsPublicMiddleware.js';
@@ -105,7 +105,7 @@ router.delete('/categorias/:id_categoria',
 
 // Listar equipos con filtros avanzados
 // Admin e Instructor: ven todos los equipos
-// Aprendiz: solo ve sus equipos asignados (controlador filtra)
+// Aprendiz: solo ve equipos con Responsables_Equipo activo (servicio filtra; MDL-189/H-01)
 router.get('/', 
   authenticate,
   searchLimiter, // Rate limiting específico para búsquedas
@@ -113,6 +113,7 @@ router.get('/',
     PERMISSIONS.EQUIPOS.VIEW,
     PERMISSIONS.EQUIPOS.VIEW_OWN
   ]),
+  validateQuery(listarEquiposQuerySchema), // MDL-189 / H-01: cap limit + paginación segura
   listarEquipos
 );
 

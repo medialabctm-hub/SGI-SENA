@@ -9,6 +9,7 @@ import {
 } from '../utils/sqlQueries.js';
 import { getImagePath, deleteImageFile } from '../middleware/uploadMiddleware.js';
 import { handleControllerError } from '../utils/controllerHelpers.js';
+import { toEquipoDto } from '../utils/equipoDto.js';
 import { AppError, translateDbError } from '../utils/errors.js';
 import { beginEquipmentClaim, lockEquipmentRow } from '../utils/equipmentClaim.js';
 import path from 'path';
@@ -82,10 +83,10 @@ export async function listarEquipos(req, res) {
       delete filters.ambiente;
     }
 
-    // Paginación
+    // Paginación (Zod ya acotó limit ≤ 100 cuando validateQuery está en la ruta)
     const pagination = {
-      page: parseInt(req.query.page) || 1,
-      limit: parseInt(req.query.limit) || 50
+      page: Number(req.query.page) || 1,
+      limit: Number(req.query.limit) || 50
     };
 
     // Ordenamiento
@@ -452,14 +453,15 @@ export async function obtenerEquipoPorCodigo(req, res) {
     };
 
     // Si había múltiples registros, devolver array con responsables en cada uno
+    // MDL-189 / H-01: DTO por rol — strip valor/PII de cuentadante para Aprendiz
     if (rowsInventario && rowsInventario.length > 1) {
-      return res.json(rowsInventario.map(eq => ({
+      return res.json(rowsInventario.map(eq => toEquipoDto({
         ...eq,
         responsables: responsablesConDias || []
-      })));
+      }, userRole)));
     }
 
-    return res.json(equipoConResponsables);
+    return res.json(toEquipoDto(equipoConResponsables, userRole));
   } catch (err) {
     return handleControllerError(err, res, 'obtenerEquipoPorCodigo', 'Error al consultar equipo');
   }

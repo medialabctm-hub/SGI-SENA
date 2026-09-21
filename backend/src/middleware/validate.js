@@ -42,3 +42,35 @@ export const createValidator = ({ preprocessBody, fallbackIssueMessage = 'Error 
 
 /** Middleware de validación estándar, sin preprocesamiento de body. */
 export const validate = createValidator();
+
+/**
+ * Middleware de validación de Zod para query params (GET).
+ * Sustituye req.query con el objeto parseado/coercido.
+ */
+export const createQueryValidator = ({ fallbackIssueMessage = 'Error de validación' } = {}) => (schema) => (req, res, next) => {
+  try {
+    const validated = schema.parse(req.query);
+    req.query = validated;
+    next();
+  } catch (error) {
+    if (error instanceof z.ZodError && error.issues && Array.isArray(error.issues)) {
+      const details = error.issues.map((e) => ({
+        path: e.path && Array.isArray(e.path) ? e.path.join('.') : 'unknown',
+        message: e.message || fallbackIssueMessage,
+        code: e.code || 'invalid_type',
+      }));
+
+      return res.status(400).json({
+        success: false,
+        error: 'Error de validación',
+        details: details.length > 0 ? details : [{ path: 'unknown', message: 'Error de validación desconocido' }],
+      });
+    }
+    console.error('Query validation middleware error:', error);
+    next(error);
+  }
+};
+
+/** Validador estándar de query string. */
+export const validateQuery = createQueryValidator();
+
