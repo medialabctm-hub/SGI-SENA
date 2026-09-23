@@ -130,3 +130,66 @@ export function buildEquiposExportAoa(equipos, sanitizeRow) {
   })
   return [headers, ...rows]
 }
+
+/** Server-side max limit for GET /api/equipos (MDL-189). Do not raise. */
+export const EQUIPOS_EXPORT_PAGE_SIZE = 100
+
+/**
+ * Fetch every page of equipos for Excel export via existing GET /api/equipos.
+ *
+ * Gates (team-confirmed):
+ * 1. Paginate with limit ≤ 100 — no uncapped dump endpoint.
+ * 2. Same request path/filters as the list UI → same H-01 scope/DTO
+ *    (Aprendiz cannot pull foreign inventory or valor/PII via "export all").
+ * 3. Returned length equals pagination.total when the API reports total.
+ *
+ * Loops page=1..N until pagination.hasNext is false or collected >= total.
+ *
+ * @param {(params: Record<string, string|number>) => Promise<{equipos?: object[], pagination?: object}|object[]>} fetchFn
+ *   Receives page, limit, and any baseParams; must return API-shaped data.
+ * @param {Record<string, string|number>} [baseParams]
+ *   Current list filters (e.g. vista_inventario, search). page/limit are set by this helper.
+ * @param {{ pageSize?: number }} [options]
+ * @returns {Promise<object[]>}
+ */
+export async function fetchAllEquiposForExport(fetchFn, baseParams = {}, options = {}) {
+  const requested = Number(options.pageSize) || EQUIPOS_EXPORT_PAGE_SIZE
+  const pageSize = Math.min(EQUIPOS_EXPORT_PAGE_SIZE, Math.max(1, requested))
+  const collected = []
+  let page = 1
+  let total = null
+
+  while (page <= 10_000) {
+    const data = await fetchFn({
+      ...baseParams,
+      page,
+      limit: pageSize,
+    })
+
+    const batch = data?.equipos || (Array.isArray(data) ? data : [])
+    collected.push(...batch)
+
+    const pagination = data?.pagination || {}
+    if (typeof pagination.total === 'number') {
+      total = pagination.total
+    }
+
+    const reachedTotal = total != null && collected.length >= total
+    if (reachedTotal || pagination.hasNext === false || batch.length === 0) {
+      break
+    }
+    if (pagination.hasNext === true) {
+      page += 1
+      continue
+    }
+    // Fallback when pagination metadata is missing
+    if (batch.length < pageSize) break
+    page += 1
+  }
+
+  // Gate 3: Excel row count must equal pagination.total for the filter
+  if (typeof total === 'number' && total >= 0 && collected.length > total) {
+    return collected.slice(0, total)
+  }
+  return collected
+}
