@@ -477,15 +477,21 @@ describe('importarUsuarios', () => {
     }));
   });
 
-  it('skips rows with duplicate cedula', async () => {
-    fakeWorkbook([{ nombre_usuario: 'Juan', cedula: '12345', rol: 'Aprendiz' }]);
-    mockExecute.mockResolvedValueOnce([[{ id_usuario: 5 }]]); // cedula ya existe
+  it('updates existing user when cedula already registered (upsert)', async () => {
+    fakeWorkbook([{ nombre_usuario: 'Juan Actualizado', cedula: '12345', rol: 'Instructor', estado: 'Activo' }]);
+    mockExecute
+      .mockResolvedValueOnce([[{ id_usuario: 5 }]]) // cedula existe
+      .mockResolvedValueOnce([[{ id_rol: 2 }]])     // rol Instructor
+      .mockResolvedValueOnce([{ affectedRows: 1 }]); // UPDATE
     const req = mockReq({ file: { buffer: Buffer.from('data') } });
     const res = mockRes();
     await importarUsuarios(req, res);
     expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
-      resultados: expect.objectContaining({ fallidos: 1 })
+      resultados: expect.objectContaining({ exitosos: 1, actualizados: 1, fallidos: 0 })
     }));
+    const updateCall = mockExecute.mock.calls.find((c) => String(c[0]).includes('UPDATE Usuarios'));
+    expect(updateCall).toBeTruthy();
+    expect(updateCall[1]).toEqual(expect.arrayContaining(['Juan Actualizado', 5]));
   });
 
   it('skips rows with duplicate correo', async () => {
@@ -547,8 +553,6 @@ describe('importarUsuarios', () => {
     await importarUsuarios(req, res);
     expect(res.status).toHaveBeenCalledWith(500);
   });
-});
-
 
   it('MDL-211: accepts human-header aliases (Documento → cedula)', async () => {
     fakeWorkbook([{
@@ -597,6 +601,31 @@ describe('importarUsuarios', () => {
     expect(mockExecute).not.toHaveBeenCalled();
   });
 
+  it('MDL-211: update of existing user cannot escalate rol to Administrador', async () => {
+    fakeWorkbook([{ nombre_usuario: 'Existente', cedula: '333', rol: 'Administrador' }]);
+    const req = mockReq({ file: { buffer: Buffer.from('data') } });
+    const res = mockRes();
+    await importarUsuarios(req, res);
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
+      resultados: expect.objectContaining({ fallidos: 1, exitosos: 0, actualizados: 0 })
+    }));
+    const payload = res.json.mock.calls[0][0];
+    expect(payload.resultados.errores[0].error).toMatch(/crearse ni asignarse|importación/i);
+    // Gate runs before any DB lookup — no UPDATE/INSERT
+    expect(mockExecute).not.toHaveBeenCalled();
+  });
+
+  it('MDL-211: update of existing user cannot escalate rol to Cuentadante', async () => {
+    fakeWorkbook([{ nombre_usuario: 'Existente', cedula: '444', rol: 'Cuentadante' }]);
+    const req = mockReq({ file: { buffer: Buffer.from('data') } });
+    const res = mockRes();
+    await importarUsuarios(req, res);
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
+      resultados: expect.objectContaining({ fallidos: 1, exitosos: 0 })
+    }));
+    expect(mockExecute).not.toHaveBeenCalled();
+  });
+
   it('MDL-211: sanitizes formula injection in nombre_usuario before insert', async () => {
     fakeWorkbook([{ nombre_usuario: '=CMD()', cedula: '54321', rol: 'Aprendiz', contrasena: 'Pass123!' }]);
     mockExecute
@@ -614,6 +643,7 @@ describe('importarUsuarios', () => {
     expect(insertCall).toBeTruthy();
     expect(insertCall[1][0]).toBe("'=CMD()");
   });
+});
 
 // ── importarAprendices ─────────────────────────────────────────────────────
 

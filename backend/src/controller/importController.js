@@ -1017,6 +1017,7 @@ export async function importarUsuarios(req, res) {
     const resultados = {
       total: data.length,
       exitosos: 0,
+      actualizados: 0,
       fallidos: 0,
       errores: [],
       correosEnviados: 0,
@@ -1069,20 +1070,14 @@ export async function importarUsuarios(req, res) {
           'SELECT id_usuario FROM Usuarios WHERE cedula = ? LIMIT 1',
           [cedula]
         );
-        if (cedulaExistente) {
-          resultados.errores.push({
-            fila: numeroFila,
-            cedula,
-            error: 'La cédula ya está registrada'
-          });
-          resultados.fallidos++;
-          continue;
-        }
+        const existingUserId = cedulaExistente?.id_usuario || null;
 
         if (correo) {
           const [[correoExistente]] = await defaultDb.execute(
-            'SELECT id_usuario FROM Usuarios WHERE correo = ? LIMIT 1',
-            [correo]
+            existingUserId
+              ? 'SELECT id_usuario FROM Usuarios WHERE correo = ? AND id_usuario <> ? LIMIT 1'
+              : 'SELECT id_usuario FROM Usuarios WHERE correo = ? LIMIT 1',
+            existingUserId ? [correo, existingUserId] : [correo]
           );
           if (correoExistente) {
             resultados.errores.push({
@@ -1112,9 +1107,63 @@ export async function importarUsuarios(req, res) {
         const estadosValidos = ['Activo', 'Inactivo'];
         const estadoValido = estadosValidos.includes(estado) ? estado : 'Activo';
 
+        const tipoDocValido = TIPOS_DOCUMENTO.includes(tipoDocumento) ? tipoDocumento : 'CC';
+        const tipoDocOtroValido = tipoDocValido === 'Otro' ? (tipoDocumentoOtro || null) : null;
+
+        // Upsert por cédula: update no puede elevar rol (gate assertUsuarioImportRoleAllowed arriba).
+        if (existingUserId) {
+          const updateParams = [
+            nombreUsuario,
+            tipoDocValido,
+            tipoDocOtroValido,
+            telefono || null,
+            correo || null,
+            rolRow.id_rol,
+            estadoValido,
+            existingUserId,
+          ];
+
+          // LEGACY: plaintext password en Excel solo si viene (no regenerar en update).
+          if (contrasena && String(contrasena).trim()) {
+            const contrasenaHash = await bcrypt.hash(String(contrasena).trim(), 10);
+            await defaultDb.execute(
+              `UPDATE Usuarios SET
+                nombre_usuario = ?, tipo_documento = ?, tipo_documento_otro = ?,
+                telefono = ?, correo = ?, id_rol = ?, estado = ?,
+                contrasena = ?, requiere_cambio_contrasena = 0
+               WHERE id_usuario = ?`,
+              [
+                nombreUsuario,
+                tipoDocValido,
+                tipoDocOtroValido,
+                telefono || null,
+                correo || null,
+                rolRow.id_rol,
+                estadoValido,
+                contrasenaHash,
+                existingUserId,
+              ]
+            );
+          } else {
+            await defaultDb.execute(
+              `UPDATE Usuarios SET
+                nombre_usuario = ?, tipo_documento = ?, tipo_documento_otro = ?,
+                telefono = ?, correo = ?, id_rol = ?, estado = ?
+               WHERE id_usuario = ?`,
+              updateParams
+            );
+          }
+
+          resultados.actualizados++;
+          resultados.exitosos++;
+          continue;
+        }
+
         let contrasenaHash = null;
         let contrasenaPlana = null;
 
+        // LEGACY: columna contraseña/password en claro en Excel (solo create/onboarding).
+        // Preferible a medio plazo: solo generación server-side + correo; no rediseñar aquí (MDL-211 residual).
         if (contrasena && String(contrasena).trim()) {
           contrasenaPlana = String(contrasena).trim();
           contrasenaHash = await bcrypt.hash(contrasenaPlana, 10);
@@ -1124,9 +1173,6 @@ export async function importarUsuarios(req, res) {
         }
 
         const requiereCambio = !contrasena || !String(contrasena).trim();
-
-        const tipoDocValido = TIPOS_DOCUMENTO.includes(tipoDocumento) ? tipoDocumento : 'CC';
-        const tipoDocOtroValido = tipoDocValido === 'Otro' ? (tipoDocumentoOtro || null) : null;
 
         const query = `INSERT INTO Usuarios
           (nombre_usuario, cedula, tipo_documento, tipo_documento_otro, telefono, correo, contrasena, id_rol, estado, requiere_cambio_contrasena, creado_por)
@@ -1186,7 +1232,7 @@ export async function importarUsuarios(req, res) {
       }
     }
 
-    let mensaje = `Importación completada: ${resultados.exitosos} exitosos, ${resultados.fallidos} fallidos`;
+    let mensaje = `Importación completada: ${resultados.exitosos} exitosos (${resultados.actualizados} actualizados), ${resultados.fallidos} fallidos`;
     if (resultados.correosEnviados > 0) {
       mensaje += `. ${resultados.correosEnviados} correo(s) con contraseñas enviado(s)`;
     }

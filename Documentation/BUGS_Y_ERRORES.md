@@ -540,3 +540,14 @@ mostrarse el motivo concreto y qué hacer, nunca un error de servidor.
 - Tras un 201, la cuenta Aprendiz **solo es operable** si permanece en el roster (login fail-closed con `Credenciales inválidas` si no hay fila en `Aprendices`).
 - Instructor / Administrador / Cuentadante: invitación obligatoria sin cambio.
 - Lógica en `authValidator.js` (Zod: invite solo para roles staff) + `authService.js` (gate async), no en rutas.
+
+## MDL-211 (2026-09-22) — import/export Usuarios + Aprendices
+
+**Decisión de producto (SGI + SECURITY):** round-trip reimportable con gates de privilegio.
+
+- Export “para reimportar” = columnas de plantilla; aliases humanos documentados en import.
+- Import de Usuarios es **upsert por cédula**: create y **update** aplican el mismo gate — no se puede crear ni elevar `rol` a `Administrador` / `Cuentadante` vía Excel (requieren invitación/UI).
+- Instructor y Aprendiz siguen siendo importables (decisión de producto).
+- **LEGACY — contraseña en claro en Excel:** la columna opcional `contrasena` / `Contraseña` / `password` en import se acepta solo para onboarding (se hashea con bcrypt; hashes `$2…` se ignoran). No se exporta. Preferible a medio plazo: solo generación server-side + correo; **no** rediseñar el flujo de passwords en este PR.
+- XLSX: límites estructurales + sanitización de fórmulas (`=`,`+`,`-`,`@`).
+

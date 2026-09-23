@@ -57,9 +57,12 @@ describe('usuariosImportExport (MDL-211)', () => {
     });
   });
 
-  it('blocks Administrador and Cuentadante elevation', () => {
-    expect(assertUsuarioImportRoleAllowed('Administrador').ok).toBe(false);
-    expect(assertUsuarioImportRoleAllowed('Cuentadante').ok).toBe(false);
+  it('blocks Administrador and Cuentadante elevation on create and update', () => {
+    for (const rol of ['Administrador', 'Cuentadante']) {
+      const r = assertUsuarioImportRoleAllowed(rol);
+      expect(r.ok).toBe(false);
+      expect(r.error).toMatch(/crearse ni asignarse|importación/i);
+    }
     expect(assertUsuarioImportRoleAllowed('Aprendiz').ok).toBe(true);
     expect(assertUsuarioImportRoleAllowed('Instructor').ok).toBe(true);
   });

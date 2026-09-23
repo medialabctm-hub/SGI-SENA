@@ -71,7 +71,7 @@ export const USUARIOS_KNOWN_HEADERS = Object.freeze([
   'Cédula',
 ]);
 
-/** Roles que NO pueden crearse vía import sin el flujo de invitación/UI. */
+/** Roles que NO pueden crearse ni asignarse vía import (create o update) sin invitación/UI. */
 export const USUARIOS_ROLES_BLOQUEADOS_IMPORT = Object.freeze([
   'Administrador',
   'Cuentadante',
@@ -136,8 +136,9 @@ export function mapUsuarioImportRow(row) {
     estado: String(pickField(row, 'estado') || 'Activo').trim() || 'Activo',
   };
 
-  // Contraseña opcional solo si viene en claro en columnas no-hash (compat import legacy).
-  // Nunca se exporta; se acepta solo para onboarding, no hashes bcrypt.
+  // LEGACY (MDL-211 residual): plaintext password opcional en Excel (contrasena/Contraseña/password).
+  // Compat onboarding antiguo; no rediseñar aquí. Preferible a medio plazo: solo generación server-side.
+  // Nunca se exporta; se rechazan hashes bcrypt / tokens opacos.
   const rawPass =
     row?.contrasena ?? row?.['Contraseña'] ?? row?.password ?? row?.PASSWORD ?? null;
   if (rawPass && String(rawPass).trim()) {
@@ -152,7 +153,8 @@ export function mapUsuarioImportRow(row) {
 }
 
 /**
- * Gate de privilegio: Admin/Cuentadante no se crean por reimportación.
+ * Gate de privilegio: Admin/Cuentadante no se crean NI se asignan en update por importación.
+ * Aplica al mismo camino create y update (upsert por cédula).
  * @returns {{ ok: true } | { ok: false, error: string }}
  */
 export function assertUsuarioImportRoleAllowed(rol) {
@@ -161,7 +163,7 @@ export function assertUsuarioImportRoleAllowed(rol) {
     return {
       ok: false,
       error:
-        `El rol "${nombre}" no puede crearse por importación. Use el registro con código de invitación o la gestión de usuarios autorizada.`,
+        `El rol "${nombre}" no puede crearse ni asignarse por importación (create/update). Use el registro con código de invitación o la gestión de usuarios autorizada.`,
     };
   }
   return { ok: true };

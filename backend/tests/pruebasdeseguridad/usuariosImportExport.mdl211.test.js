@@ -10,11 +10,11 @@ import {
 import { sanitizeExcelValue, assertWorkbookLimits } from '../../src/utils/excelSecurity.js';
 
 describe('MDL-211 seguridad Usuarios import/export', () => {
-  it('niega creación de Administrador y Cuentadante por import', () => {
+  it('niega creación y asignación (update) de Administrador y Cuentadante por import', () => {
     for (const rol of ['Administrador', 'Cuentadante', 'administrador', 'CUENTADANTE']) {
       const r = assertUsuarioImportRoleAllowed(rol);
       expect(r.ok).toBe(false);
-      expect(r.error).toMatch(/invitación|importación/i);
+      expect(r.error).toMatch(/crearse ni asignarse|invitación|importación/i);
     }
   });
 
