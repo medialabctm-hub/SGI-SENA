@@ -87,15 +87,19 @@ function mockRes() {
 }
 
 // Helper: create a fake xlsx workbook mock
+// header:1 returns full AOA (needed by sheetToSanitizedObjects / MDL-211)
 function fakeWorkbook(data = [], headers = [...new Set(data.flatMap((row) => Object.keys(row)))]) {
-  const worksheet = { fakeSheet: true };
+  const worksheet = { fakeSheet: true, '!ref': 'A1:Z100' };
   mockRead.mockReturnValueOnce({
     SheetNames: ['Sheet1'],
     Sheets: { Sheet1: worksheet }
   });
-  mockSheetToJson.mockImplementation((_, options) => (
-    options?.header === 1 ? [headers] : data
-  ));
+  mockSheetToJson.mockImplementation((_, options) => {
+    if (options?.header === 1) {
+      return [headers, ...data.map((row) => headers.map((h) => (row[h] ?? '')))];
+    }
+    return data;
+  });
 }
 
 // ── importarEquipos ────────────────────────────────────────────────────────
@@ -544,6 +548,72 @@ describe('importarUsuarios', () => {
     expect(res.status).toHaveBeenCalledWith(500);
   });
 });
+
+
+  it('MDL-211: accepts human-header aliases (Documento → cedula)', async () => {
+    fakeWorkbook([{
+      'Nombre Completo': 'Ana Alias',
+      Documento: '998877',
+      'Tipo Documento': 'CC',
+      'Correo Electrónico': 'ana@test.com',
+      Teléfono: '3001112233',
+      Rol: 'Aprendiz',
+      Estado: 'Activo'
+    }]);
+    mockExecute
+      .mockResolvedValueOnce([[undefined]])             // cedula libre
+      .mockResolvedValueOnce([[undefined]])             // correo libre
+      .mockResolvedValueOnce([[{ id_rol: 3 }]])         // rol
+      .mockResolvedValueOnce([{ insertId: 21 }]);       // insert
+    const req = mockReq({ file: { buffer: Buffer.from('data') } });
+    const res = mockRes();
+    await importarUsuarios(req, res);
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
+      resultados: expect.objectContaining({ exitosos: 1, fallidos: 0 })
+    }));
+  });
+
+  it('MDL-211: denies privilege elevation to Administrador', async () => {
+    fakeWorkbook([{ nombre_usuario: 'Hacker', cedula: '111', rol: 'Administrador' }]);
+    const req = mockReq({ file: { buffer: Buffer.from('data') } });
+    const res = mockRes();
+    await importarUsuarios(req, res);
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
+      resultados: expect.objectContaining({ fallidos: 1, exitosos: 0 })
+    }));
+    const payload = res.json.mock.calls[0][0];
+    expect(payload.resultados.errores[0].error).toMatch(/invitación|importación/i);
+    expect(mockExecute).not.toHaveBeenCalled();
+  });
+
+  it('MDL-211: denies privilege elevation to Cuentadante', async () => {
+    fakeWorkbook([{ nombre_usuario: 'Cuenta', cedula: '222', rol: 'Cuentadante' }]);
+    const req = mockReq({ file: { buffer: Buffer.from('data') } });
+    const res = mockRes();
+    await importarUsuarios(req, res);
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
+      resultados: expect.objectContaining({ fallidos: 1, exitosos: 0 })
+    }));
+    expect(mockExecute).not.toHaveBeenCalled();
+  });
+
+  it('MDL-211: sanitizes formula injection in nombre_usuario before insert', async () => {
+    fakeWorkbook([{ nombre_usuario: '=CMD()', cedula: '54321', rol: 'Aprendiz', contrasena: 'Pass123!' }]);
+    mockExecute
+      .mockResolvedValueOnce([[undefined]])
+      .mockResolvedValueOnce([[{ id_rol: 3 }]])
+      .mockResolvedValueOnce([{ insertId: 22 }]);
+    const req = mockReq({ file: { buffer: Buffer.from('data') } });
+    const res = mockRes();
+    await importarUsuarios(req, res);
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
+      resultados: expect.objectContaining({ exitosos: 1 })
+    }));
+    // INSERT args: nombre should be sanitized with leading quote
+    const insertCall = mockExecute.mock.calls.find((c) => String(c[0]).includes('INSERT INTO Usuarios'));
+    expect(insertCall).toBeTruthy();
+    expect(insertCall[1][0]).toBe("'=CMD()");
+  });
 
 // ── importarAprendices ─────────────────────────────────────────────────────
 

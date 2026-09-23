@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { FiFile, FiDownload, FiAlertCircle } from 'react-icons/fi';
 import * as XLSX from 'xlsx';
 import { parseApiResponse, buildErrorMessage } from '../utils/api';
+import { APRENDICES_PLANTILLA_COLUMNS } from '../utils/aprendicesImportExport';
 import '../styles/pages/importaciones.css';
 
 export default function ImportarAprendices({ onImportComplete }) {
@@ -72,18 +73,7 @@ export default function ImportarAprendices({ onImportComplete }) {
   };
 
   const descargarPlantilla = () => {
-    const headers = [
-      'Ficha',
-      'Nombre',
-      'Documento',
-      'Tipo Documento',
-      'Tipo Documento Otro',
-      'Jornada',
-      'Tipo Aprendiz',
-      'Días',
-      'Hora Inicio',
-      'Hora Fin',
-    ];
+    const headers = [...APRENDICES_PLANTILLA_COLUMNS];
     const data = [
       headers,
       [

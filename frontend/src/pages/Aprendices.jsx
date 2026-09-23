@@ -18,6 +18,12 @@ import {
   buildErrorMessage,
   getAuthHeaders,
 } from '../utils/api';
+import { sanitizeExcelRow } from '../utils/excelSecurity';
+import {
+  buildAprendicesExportAoa,
+  APRENDICES_PLANTILLA_COLUMNS,
+} from '../utils/aprendicesImportExport';
+
 import { useSocket } from '../contexts/SocketContext';
 import '../styles/pages/equipos.css';
 import '../styles/pages/usuarios.css';
@@ -322,36 +328,17 @@ export default function Aprendices() {
       setToast({ message: 'No hay aprendices para exportar', type: 'info' });
       return;
     }
-    const headers = [
-      'Nombre',
-      'Tipo de aprendiz',
-      'Tipo Documento',
-      'Documento',
-      'Ficha',
-      'Jornada',
-      'Días',
-      'Hora Inicio',
-      'Hora Fin',
-      'Registrado',
-    ];
-    const rows = aprendices.map(item => [
-      item.nombre || '-',
-      getTipoAprendiz(item),
-      (item.tipo_documento || 'CC') +
-        (item.tipo_documento === 'Otro' && item.tipo_documento_otro
-          ? ` (${item.tipo_documento_otro})`
-          : ''),
-      item.documento || '-',
-      item.ficha || '-',
-      item.jornada || '-',
-      item.dias_semana || '-',
-      item.hora_inicio || '-',
-      item.hora_fin || '-',
-      formatDate(item.fecha_creacion),
-    ]);
+    // Export reimportable: mismas columnas/orden que la plantilla (sin "Registrado").
+    const datosArray = buildAprendicesExportAoa(
+      aprendices.map(item => ({
+        ...item,
+        tipo_aprendiz: getTipoAprendiz(item),
+      })),
+      sanitizeExcelRow
+    );
     const wb = XLSX.utils.book_new();
-    const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
-    ws['!cols'] = headers.map(() => ({ wch: 20 }));
+    const ws = XLSX.utils.aoa_to_sheet(datosArray);
+    ws['!cols'] = APRENDICES_PLANTILLA_COLUMNS.map(() => ({ wch: 20 }));
     XLSX.utils.book_append_sheet(wb, ws, 'Aprendices');
     XLSX.writeFile(
       wb,

@@ -7,6 +7,19 @@ import { logger } from '../utils/logger.js';
 import { handleControllerError } from '../utils/controllerHelpers.js';
 import { TIPOS_DOCUMENTO } from '../config/documentTypes.js';
 import { normalizarYValidarAprendiz } from '../utils/aprendices.js';
+import {
+  assertWorkbookLimits,
+  sheetToSanitizedObjects,
+} from '../utils/excelSecurity.js';
+import {
+  USUARIOS_KNOWN_HEADERS,
+  mapUsuarioImportRow,
+  assertUsuarioImportRoleAllowed,
+} from '../utils/usuariosImportExport.js';
+import {
+  APRENDICES_KNOWN_HEADERS,
+  mapAprendizImportRow,
+} from '../utils/aprendicesImportExport.js';
 
 /**
  * Store en memoria para jobs de importación de equipos (progreso real).
@@ -978,6 +991,7 @@ export async function procesarDuplicadosMasivo(req, res) {
 
 /**
  * Importar usuarios desde archivo Excel
+ * Contrato: columnas plantilla (nombre_usuario, cedula, …) + aliases humanos (MDL-211).
  */
 export async function importarUsuarios(req, res) {
   try {
@@ -986,9 +1000,15 @@ export async function importarUsuarios(req, res) {
     }
 
     const workbook = XLSX.read(req.file.buffer, { type: 'buffer' });
+    assertWorkbookLimits(workbook);
+
     const sheetName = workbook.SheetNames[0];
     const worksheet = workbook.Sheets[sheetName];
-    const data = XLSX.utils.sheet_to_json(worksheet);
+    const { rows: data, headerRowIndex } = sheetToSanitizedObjects(
+      worksheet,
+      XLSX,
+      USUARIOS_KNOWN_HEADERS
+    );
 
     if (!data || data.length === 0) {
       return res.status(400).json({ error: 'El archivo Excel está vacío' });
@@ -1004,26 +1024,26 @@ export async function importarUsuarios(req, res) {
     };
 
     const userId = req.user?.id || null;
-    const usuariosParaEnviarCorreo = []; // Almacenar usuarios con contraseñas generadas
+    const usuariosParaEnviarCorreo = [];
 
-    // Procesar cada fila
     for (let i = 0; i < data.length; i++) {
       const row = data[i];
-      const numeroFila = i + 2;
+      const numeroFila = headerRowIndex + i + 2; // 1-indexed Excel row of data
 
       try {
-        // Mapear columnas del Excel
-        const nombreUsuario = String(row.nombre_usuario || row.Nombre || row.NOMBRE_USUARIO || '').trim();
-        const cedula = String(row.cedula || row['Cédula'] || row.CEDULA || '').trim();
-        const tipoDocumento = String(row.tipo_documento || row['Tipo Documento'] || row.TIPO_DOCUMENTO || 'CC').trim();
-        const tipoDocumentoOtro = row.tipo_documento_otro || row['Tipo Documento Otro'] || row.TIPO_DOCUMENTO_OTRO || null;
-        const telefono = row.telefono || row['Teléfono'] || row.TELEFONO || null;
-        const correo = row.correo || row.Correo || row.CORREO || row.email || row.Email || null;
-        const rol = String(row.rol || row.Rol || row.ROL || 'Aprendiz').trim();
-        const contrasena = row.contrasena || row['Contraseña'] || row.CONTRASENA || row.password || null;
-        const estado = String(row.estado || row.Estado || row.ESTADO || 'Activo').trim();
+        const mapped = mapUsuarioImportRow(row);
+        const {
+          nombre_usuario: nombreUsuario,
+          cedula,
+          tipo_documento: tipoDocumento,
+          tipo_documento_otro: tipoDocumentoOtro,
+          telefono,
+          correo,
+          rol,
+          estado,
+          contrasena,
+        } = mapped;
 
-        // Validaciones básicas
         if (!nombreUsuario || !cedula) {
           resultados.errores.push({
             fila: numeroFila,
@@ -1034,7 +1054,17 @@ export async function importarUsuarios(req, res) {
           continue;
         }
 
-        // Validar cédula única
+        const roleGate = assertUsuarioImportRoleAllowed(rol);
+        if (!roleGate.ok) {
+          resultados.errores.push({
+            fila: numeroFila,
+            cedula,
+            error: roleGate.error
+          });
+          resultados.fallidos++;
+          continue;
+        }
+
         const [[cedulaExistente]] = await defaultDb.execute(
           'SELECT id_usuario FROM Usuarios WHERE cedula = ? LIMIT 1',
           [cedula]
@@ -1042,14 +1072,13 @@ export async function importarUsuarios(req, res) {
         if (cedulaExistente) {
           resultados.errores.push({
             fila: numeroFila,
-            cedula: cedula,
+            cedula,
             error: 'La cédula ya está registrada'
           });
           resultados.fallidos++;
           continue;
         }
 
-        // Validar correo único (si se proporciona)
         if (correo) {
           const [[correoExistente]] = await defaultDb.execute(
             'SELECT id_usuario FROM Usuarios WHERE correo = ? LIMIT 1',
@@ -1058,7 +1087,7 @@ export async function importarUsuarios(req, res) {
           if (correoExistente) {
             resultados.errores.push({
               fila: numeroFila,
-              cedula: cedula,
+              cedula,
               error: 'El correo ya está registrado'
             });
             resultados.fallidos++;
@@ -1066,7 +1095,6 @@ export async function importarUsuarios(req, res) {
           }
         }
 
-        // Resolver rol
         const [[rolRow]] = await defaultDb.execute(
           'SELECT id_rol FROM Roles WHERE nombre_rol = ? LIMIT 1',
           [rol]
@@ -1074,39 +1102,32 @@ export async function importarUsuarios(req, res) {
         if (!rolRow?.id_rol) {
           resultados.errores.push({
             fila: numeroFila,
-            cedula: cedula,
-            error: `Rol "${rol}" no encontrado. Debe ser: Administrador, Instructor o Aprendiz`
+            cedula,
+            error: `Rol "${rol}" no encontrado. Roles importables: Instructor, Aprendiz (Admin/Cuentadante requieren invitación)`
           });
           resultados.fallidos++;
           continue;
         }
 
-        // Validar estado
         const estadosValidos = ['Activo', 'Inactivo'];
         const estadoValido = estadosValidos.includes(estado) ? estado : 'Activo';
 
-        // Generar contraseña si no se proporciona
         let contrasenaHash = null;
-        let contrasenaPlana = null; // Guardar contraseña en texto plano para enviar por correo
-        
-        if (contrasena && contrasena.trim()) {
-          // Si se proporciona contraseña, usarla
-          contrasenaPlana = contrasena.trim();
+        let contrasenaPlana = null;
+
+        if (contrasena && String(contrasena).trim()) {
+          contrasenaPlana = String(contrasena).trim();
           contrasenaHash = await bcrypt.hash(contrasenaPlana, 10);
         } else {
-          // Generar contraseña única y segura
           contrasenaPlana = emailService.generatePassword(12);
           contrasenaHash = await bcrypt.hash(contrasenaPlana, 10);
         }
 
-        // Determinar si requiere cambio de contraseña (si fue generada automáticamente)
-        const requiereCambio = !contrasena || !contrasena.trim();
+        const requiereCambio = !contrasena || !String(contrasena).trim();
 
-        // Validar tipo de documento
         const tipoDocValido = TIPOS_DOCUMENTO.includes(tipoDocumento) ? tipoDocumento : 'CC';
         const tipoDocOtroValido = tipoDocValido === 'Otro' ? (tipoDocumentoOtro || null) : null;
 
-        // Insertar usuario
         const query = `INSERT INTO Usuarios
           (nombre_usuario, cedula, tipo_documento, tipo_documento_otro, telefono, correo, contrasena, id_rol, estado, requiere_cambio_contrasena, creado_por)
           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
@@ -1125,10 +1146,9 @@ export async function importarUsuarios(req, res) {
           userId
         ]);
 
-        // Si no se proporcionó contraseña y hay correo, agregar a la lista para enviar
-        if (!contrasena && correo && correo.trim()) {
+        if ((!contrasena || !String(contrasena).trim()) && correo && String(correo).trim()) {
           usuariosParaEnviarCorreo.push({
-            correo: correo.trim(),
+            correo: String(correo).trim(),
             nombreUsuario,
             cedula,
             password: contrasenaPlana
@@ -1139,23 +1159,21 @@ export async function importarUsuarios(req, res) {
       } catch (error) {
         resultados.errores.push({
           fila: numeroFila,
-          cedula: row['cedula'] || 'N/A',
+          cedula: row?.cedula || row?.Documento || 'N/A',
           error: error.message || 'Error desconocido'
         });
         resultados.fallidos++;
       }
     }
 
-    // Enviar correos con contraseñas generadas
     if (usuariosParaEnviarCorreo.length > 0) {
       logger.info(`Iniciando envío de ${usuariosParaEnviarCorreo.length} correo(s) con contraseñas`);
       const correosResultado = await emailService.enviarContrasenasMasivo(usuariosParaEnviarCorreo);
       resultados.correosEnviados = correosResultado.exitosos;
       resultados.correosFallidos = correosResultado.fallidos;
-      
+
       logger.info(`Resultado de envío de correos: ${correosResultado.exitosos} exitosos, ${correosResultado.fallidos} fallidos`);
-      
-      // Agregar errores de correos a los errores generales (solo como información)
+
       if (correosResultado.errores.length > 0) {
         logger.warn(`Errores al enviar correos:`, correosResultado.errores);
         correosResultado.errores.forEach(error => {
@@ -1241,15 +1259,23 @@ export async function importarAprendices(req, res) {
     }
 
     const workbook = XLSX.read(req.file.buffer, { type: 'buffer' });
+    assertWorkbookLimits(workbook);
+
     const sheetName = workbook.SheetNames[0];
     const worksheet = workbook.Sheets[sheetName];
-    const data = XLSX.utils.sheet_to_json(worksheet);
+    const { rows: data, headerRowIndex, headers: encabezadosParsed } = sheetToSanitizedObjects(
+      worksheet,
+      XLSX,
+      APRENDICES_KNOWN_HEADERS
+    );
 
     if (!data || data.length === 0) {
       return res.status(400).json({ error: 'El archivo Excel está vacío' });
     }
 
-    const encabezados = obtenerEncabezadosAprendices(worksheet, data);
+    const encabezados = encabezadosParsed.length
+      ? encabezadosParsed
+      : obtenerEncabezadosAprendices(worksheet, data);
     const encabezadoTipoAprendiz = ENCABEZADOS_TIPO_APRENDIZ.find((encabezado) => (
       encabezados.includes(encabezado)
     ));
@@ -1271,23 +1297,24 @@ export async function importarAprendices(req, res) {
 
     for (let i = 0; i < data.length; i++) {
       const row = data[i];
-      const numeroFila = i + 2;
+      const numeroFila = headerRowIndex + i + 2;
 
       try {
-        const ficha = String(row.Ficha || row.ficha || row.FICHA || '').trim() || null;
-        const nombre = String(row.Nombre || row.nombre || row.NOMBRE || '').trim();
-        const documento = String(row.Documento || row.documento || row.CEDULA || row['Documento Identidad'] || '').trim();
-        let tipoDocumento = String(row['Tipo Documento'] || row.tipo_documento || row.TIPO_DOCUMENTO || row['Tipo de Documento'] || 'CC').trim();
-        const tipoDocumentoOtro = String(row['Tipo Documento Otro'] || row.tipo_documento_otro || row.TIPO_DOCUMENTO_OTRO || '').trim() || null;
+        const mapped = mapAprendizImportRow(row);
+        const ficha = mapped.Ficha;
+        const nombre = mapped.Nombre;
+        const documento = mapped.Documento;
+        let tipoDocumento = mapped['Tipo Documento'] || 'CC';
+        const tipoDocumentoOtro = mapped['Tipo Documento Otro'];
         const tipoAprendiz = incluyeTipoAprendiz
-          ? String(row[encabezadoTipoAprendiz] ?? '').trim()
+          ? String(mapped['Tipo Aprendiz'] ?? '').trim()
           : null;
-        const diasSemana = String(row['Días'] || row.Dias || row.dias_semana || row.DIAS_SEMANA || '').trim();
-        const horaInicioCruda = row['Hora Inicio'] ?? row.hora_inicio ?? row.HORA_INICIO ?? '';
-        const horaFinCruda = row['Hora Fin'] ?? row.hora_fin ?? row.HORA_FIN ?? '';
+        const diasSemana = String(mapped.Días || '').trim();
+        const horaInicioCruda = mapped['Hora Inicio'] ?? '';
+        const horaFinCruda = mapped['Hora Fin'] ?? '';
         const horaInicio = normalizarHoraImportada(horaInicioCruda);
         const horaFin = normalizarHoraImportada(horaFinCruda);
-        const jornada = String(row.Jornada || row.jornada || '').trim();
+        const jornada = String(mapped.Jornada || '').trim();
 
         if (!nombre || !documento) {
           resultados.errores.push({ fila: numeroFila, documento: documento || 'N/A', error: 'Nombre y documento son obligatorios' });
@@ -1429,7 +1456,7 @@ export async function importarAprendices(req, res) {
 
         resultados.exitosos += 1;
       } catch (error) {
-        resultados.errores.push({ fila: numeroFila, documento: row.Documento || 'N/A', error: error.message || 'Error desconocido' });
+        resultados.errores.push({ fila: numeroFila, documento: row.Documento || row.documento || 'N/A', error: error.message || 'Error desconocido' });
         resultados.fallidos += 1;
       }
     }

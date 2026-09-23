@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { FiFile, FiDownload, FiAlertCircle } from 'react-icons/fi'
 import * as XLSX from 'xlsx'
 import { parseApiResponse, buildErrorMessage } from '../utils/api'
+import { USUARIOS_PLANTILLA_COLUMNS } from '../utils/usuariosImportExport'
 import '../styles/pages/importaciones.css'
 
 export default function ImportarUsuarios({ onImportComplete }) {
@@ -63,22 +64,8 @@ export default function ImportarUsuarios({ onImportComplete }) {
   }
 
   const descargarPlantilla = () => {
-    const plantilla = {
-      'nombre_usuario': [],
-      'cedula': [],
-      'tipo_documento': [],
-      'tipo_documento_otro': [],
-      'telefono': [],
-      'correo': [],
-      'rol': [],
-      'estado': []
-    }
-
-    // Crear workbook y worksheet
     const wb = XLSX.utils.book_new()
-    
-    // Convertir objeto a array de arrays para Excel
-    const headers = Object.keys(plantilla)
+    const headers = [...USUARIOS_PLANTILLA_COLUMNS]
     const data = [headers] // Primera fila: encabezados
     
     // Crear worksheet
