@@ -63,15 +63,22 @@ export class EquipoRepository extends BaseRepository {
     const safeSortField = allowedSortFields.includes(sortField) ? sortField : 'codigo_equipo';
 
     let query = `
-      SELECT e.codigo_equipo, e.placa AS codigo_inventario, e.tipo, e.modelo, e.consecutivo, e.descripcion,
+      SELECT e.codigo_equipo, e.placa, e.placa AS codigo_inventario, e.tipo, e.modelo, e.consecutivo, e.descripcion,
              e.fecha_adquisicion, e.valor_ingreso, e.valor_ingreso AS costo, e.estado_fisico,
-             e.specs_completas, e.id_cuentadante, e.cuentadante_principal,
+             e.specs_completas, e.atributos, e.r_centro, e.id_cuentadante, e.cuentadante_principal,
              a.id_ambiente, a.nombre_ambiente, a.codigo_ambiente,
              COALESCE(ee.estado_operativo, 'Disponible') AS estado_operativo,
              ee.detalles AS detalles_estado,
              ee.fecha_actualizacion AS fecha_actualizacion_estado,
              c.nombre_categoria,
-             CASE WHEN COALESCE(e.verificado_ambiente, 0) = 1 THEN 'Verificado' ELSE 'No verificado' END AS status_verificacion
+             CASE WHEN COALESCE(e.verificado_ambiente, 0) = 1 THEN 'Verificado' ELSE 'No verificado' END AS status_verificacion,
+             (
+               SELECT ie.ruta_imagen
+               FROM Imagenes_Equipo ie
+               WHERE ie.codigo_equipo = e.codigo_equipo
+               ORDER BY ie.es_principal DESC, ie.fecha_subida DESC
+               LIMIT 1
+             ) AS url_imagen
       FROM Elementos e
       LEFT JOIN Ambientes a ON a.id_ambiente = e.id_ambiente
       LEFT JOIN Estado_Equipo ee ON e.codigo_equipo = ee.codigo_equipo

@@ -20,6 +20,7 @@ import {
   APRENDICES_KNOWN_HEADERS,
   mapAprendizImportRow,
 } from '../utils/aprendicesImportExport.js';
+import { EQUIPOS_KNOWN_HEADERS, mapEquipoImportRow } from '../utils/equiposImportExport.js';
 
 /**
  * Store en memoria para jobs de importación de equipos (progreso real).
@@ -98,12 +99,12 @@ async function inicializarTablaDuplicados() {
  * Ejecuta el bucle de procesamiento de filas en segundo plano y actualiza el progreso del job.
  * Al finalizar actualiza el store con el resultado.
  */
-async function runImportEquiposLoop(jobId, data, resultados, idImportacion, userId, cuentadanteFinal, nombreCuentadantePrincipal) {
+async function runImportEquiposLoop(jobId, data, resultados, idImportacion, userId, cuentadanteFinal, nombreCuentadantePrincipal, headerRowIndex = 0) {
   const total = data.length;
   try {
     for (let i = 0; i < data.length; i++) {
       const row = data[i];
-      const numeroFila = i + 2;
+      const numeroFila = headerRowIndex + i + 2;
 
       try {
         const placa = String(row['placa'] || '').trim();
@@ -291,8 +292,10 @@ async function runImportEquiposLoop(jobId, data, resultados, idImportacion, user
  * - r_centro: Código del centro
  * - atributos: Especificaciones técnicas del equipo
  * - ambiente: Código o ID del ambiente (si no se especifica, se usa "Neutral" por defecto)
+ * - url_imagen / foto: opcional; se acepta pero no descarga archivos (referencia autorizada)
  * 
- * NOTA: El campo estado_fisico se maneja en el aplicativo, no en el Excel
+ * NOTA: El campo estado_fisico se maneja en el aplicativo, no en el Excel.
+ * MDL-210: aliases de export humano legacy y salto de fila de título.
  */
 export async function importarEquipos(req, res) {
   try {
@@ -325,6 +328,16 @@ export async function importarEquipos(req, res) {
       });
     }
 
+    try {
+      assertWorkbookLimits(workbook);
+    } catch (limitErr) {
+      return res.status(400).json({
+        success: false,
+        error: limitErr.message || 'Archivo Excel fuera de límites',
+        detalle: limitErr.message || 'El archivo supera los límites estructurales permitidos'
+      });
+    }
+
     if (!workbook.SheetNames || workbook.SheetNames.length === 0) {
       return res.status(400).json({ 
         success: false,
@@ -344,7 +357,12 @@ export async function importarEquipos(req, res) {
       });
     }
 
-    const dataRaw = XLSX.utils.sheet_to_json(worksheet);
+    // MDL-210: plantilla + aliases; salta fila de título si no trae encabezados conocidos
+    const { rows: dataRaw, headerRowIndex } = sheetToSanitizedObjects(
+      worksheet,
+      XLSX,
+      EQUIPOS_KNOWN_HEADERS
+    );
 
     if (!dataRaw || dataRaw.length === 0) {
       return res.status(400).json({ 
@@ -353,100 +371,10 @@ export async function importarEquipos(req, res) {
         detalle: 'No se encontraron datos en la hoja de cálculo. Asegúrese de que el archivo contenga filas de datos además del encabezado.' 
       });
     }
-    
-    // Verificar que al menos hay una clave en alguna fila (puede ser que la primera fila esté vacía)
-    // Esto valida que el archivo tiene estructura de columnas
-    const tieneAlgunaColumna = dataRaw.some(fila => 
-      fila && Object.keys(fila).length > 0
-    );
-    
-    if (!tieneAlgunaColumna) {
-      return res.status(400).json({ 
-        success: false,
-        error: 'Formato de datos inválido',
-        detalle: 'No se pudieron identificar columnas en el archivo Excel. Verifique que el archivo tenga encabezados en la primera fila con nombres de columnas válidos.' 
-      });
-    }
 
-    // Normalizar nombres de columnas para que coincidan con los nombres de BD
-    // Esto permite que el Excel tenga "Placa", "R Centro", "Fecha Adquisición", etc.
-    const normalizeColumnName = (name) => {
-      if (!name) return '';
-      // Convertir a minúsculas
-      let normalized = String(name).toLowerCase().trim();
-      // Eliminar tildes y caracteres especiales
-      normalized = normalized
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '') // Eliminar diacríticos
-        .replace(/[^a-z0-9_]/g, '_') // Reemplazar caracteres especiales con guión bajo
-        .replace(/_+/g, '_') // Reemplazar múltiples guiones bajos con uno solo
-        .replace(/^_|_$/g, ''); // Eliminar guiones bajos al inicio y final
-      return normalized;
-    };
+    const data = dataRaw.map((row) => mapEquipoImportRow(row));
 
-    // Mapeo de nombres comunes del Excel (normalizados) a nombres de BD
-    const columnMapping = {
-      'r_centro': 'r_centro',
-      'rcentro': 'r_centro',
-      'centro': 'r_centro',
-      'codigo_centro': 'r_centro',
-      'fecha_adquisicion': 'fecha_adquisicion',
-      'fechaadquisicion': 'fecha_adquisicion',
-      'valor_ingreso': 'valor_ingreso',
-      'valoringreso': 'valor_ingreso',
-      'valor': 'valor_ingreso',
-      'costo': 'valor_ingreso',
-      'descripcion': 'descripcion',
-      // NO mapear descripcion_actual a descripcion, es un campo diferente
-      'descripcion_actual': 'descripcion_actual',
-      'placa': 'placa',
-      'codigo_inventario': 'placa',
-      'tipo': 'tipo',
-      'categoria': 'categoria',
-      'modelo': 'modelo',
-      'consecutivo': 'consecutivo',
-      'atributos': 'atributos',
-      'especificaciones': 'atributos',
-      'specs': 'atributos',
-      'specs_completas': 'atributos',
-      'ambiente': 'ambiente',
-      'codigo_ambiente': 'ambiente',
-      'codigoambiente': 'ambiente'
-    };
-
-    const data = dataRaw.map(row => {
-      const normalizedRow = {};
-      // Procesar columnas, priorizando "descripcion" sobre "descripcion_actual"
-      const processedKeys = new Set();
-      
-      // Primera pasada: procesar "descripcion" primero
-      for (const key of Object.keys(row)) {
-        if (Object.prototype.hasOwnProperty.call(row, key)) {
-          const normalizedKey = normalizeColumnName(key);
-          if (normalizedKey === 'descripcion') {
-            const finalKey = columnMapping[normalizedKey] || normalizedKey;
-            normalizedRow[finalKey] = row[key];
-            processedKeys.add(key);
-          }
-        }
-      }
-
-      // Segunda pasada: procesar el resto de columnas
-      for (const key of Object.keys(row)) {
-        if (Object.prototype.hasOwnProperty.call(row, key) && !processedKeys.has(key)) {
-          const normalizedKey = normalizeColumnName(key);
-          const finalKey = columnMapping[normalizedKey] || normalizedKey;
-          // Solo asignar si la clave final no existe (evitar sobrescribir "descripcion")
-          if (!normalizedRow[finalKey]) {
-            normalizedRow[finalKey] = row[key];
-          }
-        }
-      }
-      
-      return normalizedRow;
-    });
-
-    const resultados = {
+        const resultados = {
       total: data.length,
       exitosos: 0,
       fallidos: 0,
@@ -532,7 +460,7 @@ export async function importarEquipos(req, res) {
     const jobId = `import_${Date.now()}_${userId}_${Math.random().toString(36).slice(2, 10)}`;
     importJobsStore.set(jobId, { total: data.length, processed: 0, done: false });
 
-    runImportEquiposLoop(jobId, data, resultados, idImportacion, userId, cuentadanteFinal, nombreCuentadantePrincipal).catch((err) => {
+    runImportEquiposLoop(jobId, data, resultados, idImportacion, userId, cuentadanteFinal, nombreCuentadantePrincipal, headerRowIndex).catch((err) => {
       logger.error('Error en importación en background', { jobId, error: err.message });
       setImportJobError(jobId, err.message || 'Error al procesar la importación');
     });

@@ -1,6 +1,6 @@
 /**
  * Seguridad / límites estructurales para importación y exportación XLSX.
- * MDL-211: sanitizar inyección de fórmulas y acotar hojas/filas/celdas.
+ * MDL-211/MDL-210: sanitizar inyección de fórmulas y acotar hojas/filas/celdas.
  */
 
 export const EXCEL_STRUCTURAL_LIMITS = Object.freeze({
