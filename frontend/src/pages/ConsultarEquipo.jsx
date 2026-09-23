@@ -9,7 +9,7 @@ import { FiDownload, FiSearch, FiList, FiClock, FiEye, FiSettings, FiCheckSquare
 import { useNavigate } from 'react-router-dom'
 import * as XLSX from 'xlsx'
 import { sanitizeExcelRow } from '../utils/excelSecurity'
-import { buildEquiposExportAoa, EQUIPOS_PLANTILLA_COLUMNS } from '../utils/equiposImportExport'
+import { buildEquiposExportAoa, EQUIPOS_PLANTILLA_COLUMNS, fetchAllEquiposForExport } from '../utils/equiposImportExport'
 import '../styles/pages/equipos.css'
 import '../styles/consultarEquipo.css'
 import '../styles/consultarEquipoBadges.css'
@@ -32,6 +32,8 @@ export default function ConsultarEquipo() {
   // Vista inventario para Cuentadante con ambientes: ambientes | inventario_total | todos
   const [vistaInventario, setVistaInventario] = useState('todos')
   const [mostrarSelectorVistaInventario, setMostrarSelectorVistaInventario] = useState(false)
+  // Search term actually applied to the current list (cleared on "Mostrar todos")
+  const [appliedSearch, setAppliedSearch] = useState('')
   
   const ESTADOS_FISICOS = ['Nuevo', 'Bueno', 'Regular', 'Malo', 'Dañado']
   const ESTADOS_OPERATIVOS = ['Disponible', 'En Uso', 'En Mantenimiento', 'Dañado', 'Dado de Baja']
@@ -174,7 +176,10 @@ export default function ConsultarEquipo() {
         })
         const data = await parseApiResponse(res, 'No se pudo listar los equipos')
         const equiposList = data?.equipos || (Array.isArray(data) ? data : [])
-        if (isMounted) setEquipos(equiposList)
+        if (isMounted) {
+          setEquipos(equiposList)
+          setAppliedSearch('')
+        }
       } catch {
         if (isMounted) setEquipos([])
       } finally {
@@ -201,6 +206,7 @@ export default function ConsultarEquipo() {
       const data = await parseApiResponse(res, 'No se pudo consultar el equipo')
       const equiposList = data?.equipos || (Array.isArray(data) ? data : [])
       setEquipos(equiposList)
+      setAppliedSearch(codigo.trim())
     } catch (err) {
       setEquipos([])
       setToast({ message: buildErrorMessage(err, 'No se pudo consultar el equipo'), type: 'error' })
@@ -219,6 +225,7 @@ export default function ConsultarEquipo() {
       const data = await parseApiResponse(res, 'No se pudo listar los equipos')
       const equiposList = data?.equipos || (Array.isArray(data) ? data : [])
       setEquipos(equiposList)
+      setAppliedSearch('')
     } catch (err) {
       setEquipos([])
       setToast({ message: buildErrorMessage(err, 'No se pudo listar los equipos'), type: 'error' })
@@ -449,34 +456,36 @@ export default function ConsultarEquipo() {
   }
 
 
+  // Excel export: paginate GET /api/equipos (limit≤100). Same auth/filters as list → H-01 scope/DTO.
   async function handleDescargarPDF() {
     setToast(null)
-    
-    // Si no hay equipos cargados, obtener todos primero
-    let equiposParaExportar = equipos
-    if (equipos.length === 0) {
-      setLoading(true)
-      try {
-        const res = await fetch(urlListadoEquipos(), {
-          credentials: 'include'
-        })
-        const data = await parseApiResponse(res, 'No se pudo obtener los equipos para la exportación')
-        equiposParaExportar = data?.equipos || (Array.isArray(data) ? data : [])
-      } catch (err) {
-        setToast({ message: buildErrorMessage(err, 'No se pudo obtener los equipos para la exportación'), type: 'error' })
-        setLoading(false)
-        return
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    if (equiposParaExportar.length === 0) {
-      setToast({ message: 'No hay equipos para descargar', type: 'error' })
-      return
-    }
+    setLoading(true)
 
     try {
+      const baseParams = {}
+      if (mostrarSelectorVistaInventario && vistaInventario) {
+        baseParams.vista_inventario = vistaInventario
+      }
+      if (appliedSearch) {
+        baseParams.search = appliedSearch
+      }
+
+      const equiposParaExportar = await fetchAllEquiposForExport(async (params) => {
+        const qs = new URLSearchParams()
+        Object.entries(params).forEach(([key, value]) => {
+          if (value !== undefined && value !== null && String(value).trim() !== '') {
+            qs.set(key, String(value))
+          }
+        })
+        const res = await fetch(`/api/equipos?${qs.toString()}`, { credentials: 'include' })
+        return parseApiResponse(res, 'No se pudo obtener los equipos para la exportación')
+      }, baseParams)
+
+      if (equiposParaExportar.length === 0) {
+        setToast({ message: 'No hay equipos para descargar', type: 'error' })
+        return
+      }
+
       // MDL-210: export "para reimportar" — columnas plantilla, sin fila de título
       const datosArray = buildEquiposExportAoa(equiposParaExportar, sanitizeExcelRow)
 
@@ -497,10 +506,18 @@ export default function ConsultarEquipo() {
       const nombreArchivo = `equipos_sena_${new Date().toISOString().split('T')[0]}.xlsx`
       XLSX.writeFile(wb, nombreArchivo)
 
-      setToast({ message: `Archivo Excel descargado exitosamente: ${nombreArchivo}`, type: 'success' })
+      setToast({
+        message: `Archivo Excel descargado exitosamente: ${nombreArchivo} (${equiposParaExportar.length} equipos)`,
+        type: 'success',
+      })
     } catch (err) {
       console.error('Error al generar Excel:', err)
-      setToast({ message: 'Error al generar el archivo Excel. Por favor, intenta nuevamente.', type: 'error' })
+      setToast({
+        message: buildErrorMessage(err, 'Error al generar el archivo Excel. Por favor, intenta nuevamente.'),
+        type: 'error',
+      })
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -615,7 +632,7 @@ export default function ConsultarEquipo() {
                   disabled={loading}
                 >
                   <FiDownload size={16} />
-                  Descargar Excel
+                  {loading ? 'Exportando...' : 'Descargar Excel'}
                 </button>
               </div>
             </div>
