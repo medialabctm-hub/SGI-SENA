@@ -179,11 +179,11 @@ export async function registrarEquipo(req, res) {
     }
     
     if (err.code === 'ER_BAD_NULL_ERROR') {
-      return res.status(400).json({ error: 'Error de validación: campo obligatorio faltante', detalle: err.message });
+      return res.status(400).json({ error: 'Error de validación: campo obligatorio faltante' });
     }
     
     if (err.code === 'ER_NO_REFERENCED_ROW_2') {
-      return res.status(400).json({ error: 'Error de referencia: el ambiente o categoría no existe', detalle: err.message });
+      return res.status(400).json({ error: 'Error de referencia: el ambiente o categoría no existe' });
     }
     
     return handleControllerError(err, res, 'registrarEquipo', 'Error al registrar equipo');
@@ -2955,8 +2955,7 @@ export async function consultarHistorialUso(req, res) {
     // Si la tabla no existe, retornar un mensaje más claro
     if (err.code === 'ER_NO_SUCH_TABLE' || err.message.includes("doesn't exist") || err.message.includes("Unknown table")) {
       return res.status(404).json({
-        error: 'Tabla de historial no encontrada',
-        detalle: 'La tabla Historial_Uso_Equipos no existe. Ejecuta el script SQL: BD/historial_uso_equipos.sql',
+        error: 'Historial de uso no disponible',
         historial: [],
         total: 0
       });

@@ -19,6 +19,7 @@ import { getTrustProxyHops } from './config/trustProxy.js';
 import { PERMISSIONS } from './config/permissions.js';
 import { errorHandler } from './utils/errors.js';
 import { buildAutoservicioHealth } from './utils/autoservicioHealth.js';
+import { logger } from './utils/logger.js';
 import { getAutoservicioReadiness } from './controller/equiposController.js';
 import { serveEnvironmentImage, serveProfileImage } from './controller/privateUploadController.js';
 import { asyncHandler } from './middleware/asyncHandler.js';
@@ -139,7 +140,14 @@ const applySecurityMiddleware = (app) => {
 
 const applyRoutes = (app, readinessProvider) => {
   app.get('/health', (req, res) => {
-    const health = buildAutoservicioHealth(readinessProvider());
+    const readiness = readinessProvider();
+    if (!readiness?.ready && Array.isArray(readiness?.missing) && readiness.missing.length) {
+      logger.warn('GET /health: autoservicio not ready (detalle interno)', {
+        missing: readiness.missing,
+        migrationVersion: readiness.migrationVersion,
+      });
+    }
+    const health = buildAutoservicioHealth(readiness);
     res.status(health.statusCode).json({
       ...health.body,
       env: process.env.NODE_ENV || 'development',

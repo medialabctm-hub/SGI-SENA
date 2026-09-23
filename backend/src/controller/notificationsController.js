@@ -146,7 +146,7 @@ export async function createNotification(req, res) {
     })
 
     if (creation.skipped) {
-      return res.status(400).json({ error: 'Tabla Notificaciones no creada aún' })
+      return res.status(400).json({ error: 'Servicio de notificaciones no disponible' })
     }
 
     if (!creation.inserted) {
@@ -156,7 +156,7 @@ export async function createNotification(req, res) {
     return res.status(201).json({ ok: true, id: creation.insertId })
   } catch (err) {
     if (err && err.code === 'ER_NO_SUCH_TABLE') {
-      return res.status(400).json({ error: 'Tabla Notificaciones no creada aún' })
+      return res.status(400).json({ error: 'Servicio de notificaciones no disponible' })
     }
     return handleControllerError(err, res, 'createNotification', 'Error al crear la notificación');
   }

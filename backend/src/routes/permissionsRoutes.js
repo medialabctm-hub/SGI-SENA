@@ -12,8 +12,25 @@ import { authenticate } from '../middleware/authMiddleware.js'
 import { requirePermission } from '../middleware/authorization.js'
 import { PERMISSIONS, getRolePermissions } from '../config/permissions.js'
 import * as rolesController from '../controller/rolesController.js'
+import { logger } from '../utils/logger.js'
+import { buildClientErrorBody } from '../utils/errorScrubber.js'
 
 const router = express.Router()
+
+function sendScrubbedRouteError(res, error, clientLabel) {
+  logger.error(clientLabel, { error: error?.message, stack: error?.stack })
+  const wrapped = error instanceof Error ? error : new Error(String(error ?? clientLabel))
+  wrapped.clientMessage = clientLabel
+  wrapped.statusCode = 500
+  const { statusCode, body } = buildClientErrorBody(wrapped, {
+    statusCode: 500,
+    defaultMessage: clientLabel,
+    includeSuccess: false,
+    includeUserMessage: false,
+  })
+  return res.status(statusCode).json({ error: body.error })
+}
+
 
 // Todas las rutas requieren ser Administrador
 router.use(authenticate)
@@ -44,10 +61,7 @@ router.get('/', (req, res) => {
       permissions: allPermissions,
     })
   } catch (error) {
-    return res.status(500).json({
-      error: 'Error al obtener permisos',
-      details: error.message,
-    })
+    return sendScrubbedRouteError(res, error, 'Error al obtener permisos')
   }
 })
 
@@ -85,10 +99,7 @@ router.get('/me', (req, res) => {
       permisos: permissions,
     })
   } catch (error) {
-    return res.status(500).json({
-      error: 'Error al obtener permisos del usuario',
-      details: error.message,
-    })
+    return sendScrubbedRouteError(res, error, 'Error al obtener permisos del usuario')
   }
 })
 
@@ -118,10 +129,7 @@ router.post('/check', (req, res) => {
       tiene: hasPermission,
     })
   } catch (error) {
-    return res.status(500).json({
-      error: 'Error al verificar permiso',
-      details: error.message,
-    })
+    return sendScrubbedRouteError(res, error, 'Error al verificar permiso')
   }
 })
 

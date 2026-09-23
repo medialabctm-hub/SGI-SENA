@@ -9,6 +9,31 @@
 
 import { isAdmin, hasPermissionFromDB } from '../config/permissions.js'
 import defaultDb from '../config/dbconfig.js'
+import { logger } from '../utils/logger.js'
+import { buildClientErrorBody } from '../utils/errorScrubber.js'
+
+/**
+ * Respuesta 500 scrubbed para catch de autorización (MDL-193 / H-05).
+ * Nunca reenvía error.message crudo como details.
+ */
+function sendScrubbedAuthError(res, error, clientLabel) {
+  logger.error(clientLabel, {
+    error: error?.message,
+    code: error?.code,
+    stack: error?.stack,
+  })
+  const wrapped = error instanceof Error ? error : new Error(String(error ?? clientLabel))
+  wrapped.clientMessage = clientLabel
+  wrapped.statusCode = 500
+  const { statusCode, body } = buildClientErrorBody(wrapped, {
+    statusCode: 500,
+    defaultMessage: clientLabel,
+    includeSuccess: false,
+    includeUserMessage: false,
+  })
+  return res.status(statusCode).json({ error: body.error })
+}
+
 
 /**
  * Middleware para requerir uno o varios roles específicos
@@ -52,10 +77,7 @@ export function requireRole(allowedRoles) {
       // Rol válido, continuar
       next()
     } catch (error) {
-      return res.status(500).json({
-        error: 'Error al validar autorización',
-        details: error.message,
-      })
+      return sendScrubbedAuthError(res, error, 'Error al validar autorización')
     }
   }
 }
@@ -101,10 +123,7 @@ export function requirePermission(permission) {
       // Permiso válido, continuar
       next()
     } catch (error) {
-      return res.status(500).json({
-        error: 'Error al validar permisos',
-        details: error.message,
-      })
+      return sendScrubbedAuthError(res, error, 'Error al validar permisos')
     }
   }
 }
@@ -157,10 +176,7 @@ export function requireAnyPermission(permissions) {
 
       next()
     } catch (error) {
-      return res.status(500).json({
-        error: 'Error al validar permisos',
-        details: error.message,
-      })
+      return sendScrubbedAuthError(res, error, 'Error al validar permisos')
     }
   }
 }
@@ -192,10 +208,7 @@ export function requireAnyPermissionIfAuthenticated(permissions) {
       }
       next()
     } catch (error) {
-      return res.status(500).json({
-        error: 'Error al validar permisos',
-        details: error.message,
-      })
+      return sendScrubbedAuthError(res, error, 'Error al validar permisos')
     }
   }
 }
@@ -252,10 +265,7 @@ export function requireOwnership(getResourceOwnerId) {
 
       next()
     } catch (error) {
-      return res.status(500).json({
-        error: 'Error al validar propiedad del recurso',
-        details: error.message,
-      })
+      return sendScrubbedAuthError(res, error, 'Error al validar propiedad del recurso')
     }
   }
 }
@@ -284,10 +294,7 @@ export function requireAdminForRoleChange(req, res, next) {
 
     return next()
   } catch (error) {
-    return res.status(500).json({
-      error: 'Error al validar autorización',
-      details: error.message,
-    })
+    return sendScrubbedAuthError(res, error, 'Error al validar autorización')
   }
 }
 
@@ -332,10 +339,7 @@ export function requireAssignedEquipos(getUserEquipos) {
 
       next()
     } catch (error) {
-      return res.status(500).json({
-        error: 'Error al verificar equipos asignados',
-        details: error.message,
-      })
+      return sendScrubbedAuthError(res, error, 'Error al verificar equipos asignados')
     }
   }
 }

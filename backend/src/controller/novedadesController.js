@@ -63,8 +63,7 @@ export async function crearNovedad(req, res) {
       // Si el error es por tipo_novedad, dar un mensaje más claro
       if (insertErr.message && insertErr.message.includes('tipo_novedad')) {
         return res.status(400).json({
-          error: 'Tipo de novedad no válido para la base de datos',
-          details: 'Ejecuta el script BD/actualizar_tipo_novedad.sql para actualizar los tipos permitidos',
+          error: 'Tipo de novedad no válido',
           tipo_intentado: tipoNovedadNormalizado
         })
       }

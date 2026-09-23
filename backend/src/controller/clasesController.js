@@ -4,6 +4,7 @@ import schedulerService from '../services/schedulerService.js';
 import { obtenerFechasPorRangoYDias } from './horariosController.js';
 import { getColombiaDateTimeString, toColombiaDateTimeString } from '../utils/timezone.js';
 import { handleControllerError } from '../utils/controllerHelpers.js';
+import { resolveClientErrorMessage } from '../utils/errorScrubber.js';
 
 /** Indica si la fecha y hora de inicio de clase ya pasaron (en zona Colombia). */
 function esFechaHoraPasada(fechaYYYYMMDD, horaInicioHHMMSS) {
@@ -297,7 +298,10 @@ export async function crearClase(req, res) {
         logger.error('Error al crear clase para fecha', { fecha: fechaNormalizada, error: err.message });
         erroresFechas.push({
           fecha: fechaNormalizada,
-          error: err.message
+          error: resolveClientErrorMessage(err, {
+            statusCode: 500,
+            defaultMessage: 'No se pudo crear la clase para esta fecha',
+          })
         });
       }
     }
@@ -1559,7 +1563,23 @@ export async function sincronizarResponsabilidadesHorarios(req, res) {
       clases_iniciadas: resultado.clasesIniciadas || 0,
       clases_finalizadas: resultado.clasesFinalizadas || 0,
       notificaciones: resultado.notificaciones || 0,
-      errores: resultado?.errores?.length ? resultado.errores : undefined
+      errores: resultado?.errores?.length
+        ? resultado.errores.map((item) => ({
+            ...item,
+            error: item.error
+              ? resolveClientErrorMessage({ message: item.error }, {
+                  statusCode: 500,
+                  defaultMessage: 'Error en automatización de clases',
+                })
+              : item.error,
+            detalle: item.detalle
+              ? resolveClientErrorMessage({ message: item.detalle }, {
+                  statusCode: 500,
+                  defaultMessage: 'Error en automatización de clases',
+                })
+              : item.detalle,
+          }))
+        : undefined
     });
   } catch (err) {
     logger.error('Error al monitorear clases', { error: err.message, stack: err.stack });

@@ -23,7 +23,8 @@ describe('GET /health', () => {
     expect(res.body).toHaveProperty('status', 'ok');
     expect(res.body).toHaveProperty('env');
     expect(res.body).toHaveProperty('timestamp');
-    expect(res.body).toMatchObject({ autoservicio: { ready: true, missing: [] } });
+    expect(res.body).toMatchObject({ autoservicio: { ready: true, migrationVersion: 'AUTOSERVICIO_CIERRE_V2' } });
+    expect(res.body.autoservicio).not.toHaveProperty('missing');
     expect(typeof res.body.timestamp).toBe('string');
   });
 
@@ -43,9 +44,11 @@ describe('GET /health', () => {
       status: 'not_ready',
       autoservicio: {
         ready: false,
-        missing: ['marcador de migración'],
+        migrationVersion: 'AUTOSERVICIO_CIERRE_V2',
       },
     });
+    expect(res.body.autoservicio).not.toHaveProperty('missing');
+    expect(JSON.stringify(res.body)).not.toMatch(/Historial_Uso_Equipos|marcador de migración|sp_/i);
   });
 
   it('la app exportada para tests conserva el gate real de readiness', async () => {
