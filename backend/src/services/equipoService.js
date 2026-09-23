@@ -1,5 +1,6 @@
 import { NotFoundError, ConflictError, ValidationError } from '../utils/errors.js';
 import { toEquiposDtoList } from '../utils/equipoDto.js';
+import { toSecureEquipoImageUrl } from '../utils/equiposImportExport.js';
 
 /**
  * EquipoService - Servicio de lógica de negocio para equipos
@@ -122,10 +123,22 @@ export class EquipoService {
 
     const result = await this.equipoRepository.findAll(filters, pagination, sorting);
 
+    // MDL-210: normalizar url_imagen a ruta API autorizada (nunca /uploads público)
+    const equiposConFotoSegura = (result.equipos || []).map((eq) => {
+      const out = {
+        ...eq,
+        url_imagen: toSecureEquipoImageUrl(eq.url_imagen || eq.ruta_imagen || ''),
+      };
+      if (eq.placa || eq.codigo_inventario) {
+        out.placa = eq.placa || eq.codigo_inventario;
+      }
+      return out;
+    });
+
     // MDL-189 / H-01: DTO por rol — strip valor/PII para Aprendiz (y roles sin privilegio financiero)
     return {
       ...result,
-      equipos: toEquiposDtoList(result.equipos, userRole),
+      equipos: toEquiposDtoList(equiposConFotoSegura, userRole),
     };
   }
 

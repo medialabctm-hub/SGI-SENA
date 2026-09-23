@@ -8,6 +8,8 @@ import { parseApiResponse, buildErrorMessage } from '../utils/api'
 import { FiDownload, FiSearch, FiList, FiClock, FiEye, FiSettings, FiCheckSquare, FiSquare } from 'react-icons/fi'
 import { useNavigate } from 'react-router-dom'
 import * as XLSX from 'xlsx'
+import { sanitizeExcelRow } from '../utils/excelSecurity'
+import { buildEquiposExportAoa, EQUIPOS_PLANTILLA_COLUMNS } from '../utils/equiposImportExport'
 import '../styles/pages/equipos.css'
 import '../styles/consultarEquipo.css'
 import '../styles/consultarEquipoBadges.css'
@@ -475,95 +477,26 @@ export default function ConsultarEquipo() {
     }
 
     try {
-      // Preparar datos para Excel con especificaciones separadas
-      const datosExcel = equiposParaExportar.map(eq => {
-        return {
-          'Código Inventario': eq.codigo_inventario || '-',
-          'Tipo': eq.tipo || '-',
-          'Modelo': eq.modelo || '-',
-          'Consecutivo': eq.consecutivo || '-',
-          'Estado Físico': eq.estado_fisico || '-',
-          'Estado operativo': eq.estado_operativo || 'Disponible',
-          'Fecha Adquisición': eq.fecha_adquisicion ? formatDate(eq.fecha_adquisicion) : '-',
-          'Valor Ingreso': (eq.valor_ingreso ?? eq.costo) ? formatCurrency(eq.valor_ingreso ?? eq.costo) : '-',
-          'Ambiente': eq.nombre_ambiente || '-',
-          'Descripción': eq.descripcion || '-',
-          'Atributos': eq.specs_completas || '-'
-        }
-      })
+      // MDL-210: export "para reimportar" — columnas plantilla, sin fila de título
+      const datosArray = buildEquiposExportAoa(equiposParaExportar, sanitizeExcelRow)
 
-      // Crear workbook
       const wb = XLSX.utils.book_new()
-      
-      // Preparar fila de título con información
-      const fechaExportacion = new Date().toLocaleDateString('es-ES', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-      })
-      
-      const numColumnas = Object.keys(datosExcel[0] || {}).length
-      const filaTitulo = Array(numColumnas).fill('')
-      filaTitulo[0] = `INVENTARIO DE EQUIPOS - SENA - Exportado el ${fechaExportacion} - Total de equipos: ${equiposParaExportar.length}`
-      
-      // Crear array de arrays: título + encabezados + datos
-      const headers = Object.keys(datosExcel[0] || {})
-      const datosArray = [
-        filaTitulo, // Fila 0: Título
-        headers,    // Fila 1: Encabezados
-        ...datosExcel.map(row => headers.map(key => row[key] || '-')) // Filas 2+: Datos
-      ]
-      
-      // Crear worksheet desde array de arrays
       const ws = XLSX.utils.aoa_to_sheet(datosArray)
-      
-      // Combinar celdas de la fila de título (desde A1 hasta la última columna)
-      if (!ws['!merges']) ws['!merges'] = []
-      ws['!merges'].push({
-        s: { r: 0, c: 0 },
-        e: { r: 0, c: numColumnas - 1 }
-      })
-      
-      // Ajustar altura de la fila de título
-      if (!ws['!rows']) ws['!rows'] = []
-      ws['!rows'][0] = { hpt: 25 }
-      ws['!rows'][1] = { hpt: 20 } // Altura para encabezados
-      
-      // Ajustar ancho de columnas de forma más adecuada
-      const colWidths = [
-        { wch: 20 }, // Código Inventario
-        { wch: 18 }, // Tipo
-        { wch: 25 }, // Modelo
-        { wch: 18 }, // Consecutivo
-        { wch: 15 }, // Estado Físico
-        { wch: 20 }, // Fecha Adquisición
-        { wch: 18 }, // Valor Ingreso
-        { wch: 25 }, // Ambiente
-        { wch: 35 }, // Descripción
-        { wch: 50 }  // Atributos
-      ]
-      ws['!cols'] = colWidths
-      
-      // Configurar vista: congelar fila de encabezados (fila 2, índice 1) y primera columna
+
+      ws['!cols'] = EQUIPOS_PLANTILLA_COLUMNS.map((col) => ({
+        wch: col === 'atributos' || col === 'descripcion' || col === 'url_imagen' ? 40 : 18,
+      }))
       ws['!freeze'] = { xSplit: 0, ySplit: 1, topLeftCell: 'A2', activePane: 'bottomLeft', state: 'frozen' }
-      
-      // Agregar filtros automáticos (autofilter) en la fila de encabezados (fila 2, índice 1)
       if (ws['!ref']) {
         const range = XLSX.utils.decode_range(ws['!ref'])
-        // El autofilter debe aplicarse desde la fila de encabezados (índice 1)
-        range.s.r = 1 // El autofilter mantiene el final del rango calculado por decode_range
+        range.s.r = 0
         ws['!autofilter'] = { ref: XLSX.utils.encode_range(range) }
       }
-      
-      // Agregar worksheet al workbook
-      XLSX.utils.book_append_sheet(wb, ws, 'Equipos')
-      
-      // Generar archivo Excel
+
+      XLSX.utils.book_append_sheet(wb, ws, 'Elementos')
       const nombreArchivo = `equipos_sena_${new Date().toISOString().split('T')[0]}.xlsx`
       XLSX.writeFile(wb, nombreArchivo)
-      
+
       setToast({ message: `Archivo Excel descargado exitosamente: ${nombreArchivo}`, type: 'success' })
     } catch (err) {
       console.error('Error al generar Excel:', err)

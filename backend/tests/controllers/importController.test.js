@@ -87,7 +87,7 @@ function mockRes() {
 }
 
 // Helper: create a fake xlsx workbook mock
-// header:1 returns full AOA (needed by sheetToSanitizedObjects / MDL-211)
+// header:1 returns full AOA (needed by sheetToSanitizedObjects / MDL-211/MDL-210)
 function fakeWorkbook(data = [], headers = [...new Set(data.flatMap((row) => Object.keys(row)))]) {
   const worksheet = { fakeSheet: true, '!ref': 'A1:Z100' };
   mockRead.mockReturnValueOnce({

@@ -3,6 +3,8 @@ import { createPortal } from 'react-dom'
 import { FiUpload, FiFile, FiDownload, FiUser, FiAlertCircle, FiSearch, FiCheckCircle } from 'react-icons/fi'
 import * as XLSX from 'xlsx'
 import { parseApiResponse, buildErrorMessage, handleError } from '../utils/api'
+import { sanitizeExcelRow } from '../utils/excelSecurity'
+import { EQUIPOS_PLANTILLA_COLUMNS } from '../utils/equiposImportExport'
 import RevisarDuplicados from './RevisarDuplicados'
 import { useDuplicados } from '../contexts/DuplicadosContext'
 import InfoModal from './InfoModal'
@@ -290,52 +292,30 @@ export default function ImportarEquipos({ onImportComplete, onEstadoDuplicadosCh
   }
 
   const descargarPlantilla = () => {
-    // Crear plantilla Excel con nombres exactos (iguales a BD)
-    // Los nombres de las columnas deben ser EXACTAMENTE iguales a los campos de la BD
-    const headers = [
-      'placa',           // OBLIGATORIO
-      'tipo',            // OBLIGATORIO (campo libre, no es categoría)
-      'categoria',       // OBLIGATORIO (nombre o ID de categoría)
-      'modelo',          // OBLIGATORIO
-      'consecutivo',     // OBLIGATORIO
-      'descripcion',     // Opcional
-      'fecha_adquisicion', // Opcional (formato: YYYY-MM-DD)
-      'valor_ingreso',   // Opcional
-      'r_centro',        // Opcional
-      'atributos',       // Opcional
-      'ambiente'         // Opcional (si no se especifica, se usa "Neutral" por defecto)
-    ]
+    // MDL-210: columnas plantilla canónicas (+ url_imagen opcional para round-trip)
+    const headers = [...EQUIPOS_PLANTILLA_COLUMNS]
 
-    // Datos de ejemplo
-    const ejemplo = [
-      '92041025706',     // placa
-      '4',               // tipo (campo libre)
-      'ACCES POINT',     // categoria (nombre de categoría)
-      'TL-WA801N',       // modelo
-      '232938',          // consecutivo
-      'ACCES POINT',     // descripcion
-      '2021-12-22',      // fecha_adquisicion
-      '126050',          // valor_ingreso
-      '920510',          // r_centro
-      'MARCA:TP-LINK',   // atributos
-      'Sin Asignar'          // ambiente (o dejar vacío para usar Neutral por defecto)
-    ]
+    const ejemploMap = {
+      placa: '92041025706',
+      tipo: '4',
+      categoria: 'ACCES POINT',
+      modelo: 'TL-WA801N',
+      consecutivo: '232938',
+      descripcion: 'ACCES POINT',
+      fecha_adquisicion: '2021-12-22',
+      valor_ingreso: '126050',
+      r_centro: '920510',
+      atributos: 'MARCA:TP-LINK',
+      ambiente: 'Sin Asignar',
+      url_imagen: '', // opcional; ruta relativa autorizada /api/equipos/imagenes/archivo/...
+    }
+    const ejemplo = headers.map((h) => ejemploMap[h] ?? '')
 
-    // Crear workbook y worksheet
     const wb = XLSX.utils.book_new()
-    const data = [headers, ejemplo] // Primera fila: encabezados, segunda fila: ejemplo
-    
-    // Crear worksheet
+    const data = [headers, sanitizeExcelRow(ejemplo)]
     const ws = XLSX.utils.aoa_to_sheet(data)
-    
-    // Establecer ancho de columnas
-    const colWidths = headers.map(() => ({ wch: 20 }))
-    ws['!cols'] = colWidths
-    
-    // Agregar worksheet al workbook
+    ws['!cols'] = headers.map(() => ({ wch: 20 }))
     XLSX.utils.book_append_sheet(wb, ws, 'Elementos')
-    
-    // Generar archivo Excel
     XLSX.writeFile(wb, 'plantilla_elementos.xlsx')
   }
 

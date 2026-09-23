@@ -1,6 +1,6 @@
 /**
  * Sanitización de inyección de fórmulas Excel/CSV (FE export).
- * Espejo de backend/src/utils/excelSecurity.js — MDL-211.
+ * Espejo de backend/src/utils/excelSecurity.js — MDL-211/MDL-210.
  */
 
 const FORMULA_PREFIX_RE = /^[=+\-@]/;

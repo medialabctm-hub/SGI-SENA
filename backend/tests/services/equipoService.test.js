@@ -64,11 +64,30 @@ describe('EquipoService', () => {
   // ------------------------------------------------------------------
   describe('listarEquipos()', () => {
     it('debe retornar equipos para rol Administrador sin restricciones', async () => {
-      const expected = { equipos: [{ codigo_equipo: 1 }], pagination: {} };
-      mockRepository.findAll.mockResolvedValue(expected);
+      mockRepository.findAll.mockResolvedValue({ equipos: [{ codigo_equipo: 1 }], pagination: {} });
 
       const result = await service.listarEquipos({}, {}, {}, 1, 'Administrador');
-      expect(result).toEqual(expected);
+      // MDL-210: listado enriquece url_imagen (segura, vacía si no hay evidencia)
+      expect(result).toEqual({
+        equipos: [{ codigo_equipo: 1, url_imagen: '' }],
+        pagination: {},
+      });
+    });
+
+    it('MDL-210: reescribe url_imagen legada /uploads a ruta API autorizada', async () => {
+      mockRepository.findAll.mockResolvedValue({
+        equipos: [{
+          codigo_equipo: 9,
+          codigo_inventario: 'P9',
+          url_imagen: '/uploads/equipos/foto.jpg',
+        }],
+        pagination: {},
+      });
+
+      const result = await service.listarEquipos({}, {}, {}, 1, 'Administrador');
+      expect(result.equipos[0].placa).toBe('P9');
+      expect(result.equipos[0].url_imagen).toBe('/api/equipos/imagenes/archivo/foto.jpg');
+      expect(result.equipos[0].url_imagen).not.toMatch(/\/uploads\//);
     });
 
     it('debe retornar lista vacía si Instructor no tiene ambientes', async () => {
