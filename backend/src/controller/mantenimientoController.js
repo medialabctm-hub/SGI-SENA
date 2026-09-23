@@ -413,7 +413,7 @@ export async function actualizarFechaProximo(req, res) {
       if (err.code === 'ER_BAD_FIELD_ERROR') {
         logger.warn('Columna fecha_proximo_mantenimiento no existe en Elementos. Ejecuta la migración SQL.')
         return res.status(400).json({ 
-          error: 'La columna fecha_proximo_mantenimiento no existe. Ejecuta la migración SQL primero.' 
+          error: 'No se pudo actualizar la fecha del próximo mantenimiento. Contacta al administrador.' 
         })
       }
       throw err

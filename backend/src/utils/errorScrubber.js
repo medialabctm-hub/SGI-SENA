@@ -49,6 +49,13 @@ export const INTERNAL_LEAK_PATTERNS = Object.freeze([
   /\b[\w./-]+\.(?:js|ts|mjs|cjs|sql):\d+/i,
   /\bnode_modules\b/i,
   /\bat\s+\S+\s+\([^)]+:\d+:\d+\)/,
+  /\bBD\/[\w./-]+\.sql\b/i,
+  /\bTabla\s+[A-Za-z_][A-Za-z0-9_]*/i,
+  /\bColumna\s+[A-Za-z_][A-Za-z0-9_]*/i,
+  /fecha_proximo_mantenimiento/i,
+  /pedidos_externos/i,
+  /actualizar_tipo_novedad\.sql/i,
+  /historial_uso_equipos\.sql/i,
 ]);
 
 /**

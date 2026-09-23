@@ -54,7 +54,7 @@ describe('uploadProfileMiddleware.handleProfileUploadError', () => {
 
     expect(res.status).toHaveBeenCalledWith(400);
     expect(res.json).toHaveBeenCalledWith({
-      error: expect.stringContaining('Error al subir archivo:'),
+      error: 'Error al subir el archivo',
     });
   });
 

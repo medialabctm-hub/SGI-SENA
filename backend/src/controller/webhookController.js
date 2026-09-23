@@ -216,10 +216,12 @@ export const recibirWebhookExterno = async (req, res, next) => {
       
       // Verificar si es un error de tabla no existente
       if (dbError.code === 'ER_NO_SUCH_TABLE') {
-        throw new DatabaseError(
+        const missingTableErr = new DatabaseError(
           'La tabla pedidos_externos no existe. Ejecuta el script SQL de creación.',
           dbError
         );
+        missingTableErr.clientMessage = 'No se pudieron guardar los datos. Inténtalo de nuevo más tarde.';
+        throw missingTableErr;
       }
       
       throw new DatabaseError('Error al guardar los datos', dbError);

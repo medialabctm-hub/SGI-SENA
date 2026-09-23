@@ -3,6 +3,7 @@ import multer from 'multer';
 import xlsx from 'xlsx';
 import { logger } from '../utils/logger.js';
 import { handleControllerError } from '../utils/controllerHelpers.js';
+import { resolveClientErrorMessage } from '../utils/errorScrubber.js';
 
 /**
  * Mapeo de días de la semana en español a números (0=Domingo, 1=Lunes, etc.)
@@ -422,7 +423,10 @@ export async function importarHorariosExcel(req, res) {
           } catch (err) {
             erroresFechas.push({
               fecha: fechaNormalizada,
-              error: err.message
+              error: resolveClientErrorMessage(err, {
+                statusCode: 500,
+                defaultMessage: 'No se pudo crear la clase para esta fecha',
+              })
             });
           }
         }
@@ -441,7 +445,10 @@ export async function importarHorariosExcel(req, res) {
       } catch (err) {
         resultados.errores.push({
           fila: i + 1,
-          error: err.message,
+          error: resolveClientErrorMessage(err, {
+            statusCode: 500,
+            defaultMessage: 'No se pudo importar la fila',
+          }),
           datos: row
         });
       }

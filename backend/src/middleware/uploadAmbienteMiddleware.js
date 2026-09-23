@@ -4,6 +4,7 @@ import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 import fs from 'fs';
 import { logger } from '../utils/logger.js';
+import { resolveClientErrorMessage } from '../utils/errorScrubber.js';
 import { validateImageFile } from './fileValidation.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -56,18 +57,22 @@ export const uploadAmbienteImage = multer({
 
 // Middleware para manejar errores de Multer
 export const handleUploadError = (err, req, res, next) => {
-  if (err instanceof multer.MulterError) {
+    if (err instanceof multer.MulterError) {
     if (err.code === 'LIMIT_FILE_SIZE') {
       return res.status(400).json({ error: 'El archivo es demasiado grande. Tamaño máximo: 5MB' });
     }
     if (err.code === 'LIMIT_FILE_COUNT') {
       return res.status(400).json({ error: 'Demasiados archivos. Máximo permitido: 10' });
     }
-    return res.status(400).json({ error: `Error al subir archivo: ${err.message}` });
+    return res.status(400).json({ error: 'Error al subir el archivo' });
   }
   
   if (err) {
-    return res.status(400).json({ error: err.message });
+    const message = resolveClientErrorMessage(err, {
+      statusCode: 400,
+      defaultMessage: 'Error al subir el archivo',
+    });
+    return res.status(400).json({ error: message });
   }
   
   next();

@@ -2,6 +2,7 @@ import defaultDb from '../config/dbconfig.js';
 import { logger } from '../utils/logger.js';
 import { createForUsers } from './notificationService.js';
 import { getColombiaDateTimeString } from '../utils/timezone.js';
+import { resolveClientErrorMessage } from '../utils/errorScrubber.js';
 
 function normalizarHora(hora) {
   const horaStr = String(hora);
@@ -272,7 +273,13 @@ class SchedulerService {
           resultado.notificaciones += 1;
         } catch (err) {
           logger.error(`Error al enviar notificación para clase ${clase.id_clase}`, { error: err.message });
-          resultado.errores.push({ id_clase: clase.id_clase, error: err.message });
+          resultado.errores.push({
+            id_clase: clase.id_clase,
+            error: resolveClientErrorMessage(err, {
+              statusCode: 500,
+              defaultMessage: 'Error al enviar notificación de clase',
+            }),
+          });
         }
       }
 
@@ -332,15 +339,18 @@ class SchedulerService {
             instructor: clase.instructor_nombre
           });
         } catch (err) {
-          logger.error(`❌ Error al iniciar automáticamente la clase ${clase.id_clase}`, { 
-            id_clase: clase.id_clase, 
+          logger.error(`❌ Error al iniciar automáticamente la clase ${clase.id_clase}`, {
+            id_clase: clase.id_clase,
             error: err.message,
-            stack: err.stack 
+            stack: err.stack
           });
           resultado.errores.push({ 
             tipo: 'inicio_automatico', 
             id_clase: clase.id_clase, 
-            error: err.message 
+            error: resolveClientErrorMessage(err, {
+              statusCode: 500,
+              defaultMessage: 'Error al iniciar clase automáticamente',
+            }),
           });
         }
       }
@@ -423,15 +433,15 @@ class SchedulerService {
             instructor: clase.instructor_nombre
           });
         } catch (err) {
-          logger.error(`❌ Error al finalizar automáticamente la clase ${clase.id_clase}`, { 
-            id_clase: clase.id_clase, 
+          logger.error(`❌ Error al finalizar automáticamente la clase ${clase.id_clase}`, {
+            id_clase: clase.id_clase,
             error: err.message,
-            stack: err.stack 
+            stack: err.stack
           });
           resultado.errores.push({ 
             tipo: 'finalizacion_automatica', 
             id_clase: clase.id_clase, 
-            error: err.message 
+            error: resolveClientErrorMessage(err, { statusCode: 500, defaultMessage: 'Error en automatización de clases' }) 
           });
         }
       }
@@ -463,7 +473,7 @@ class SchedulerService {
       return resultado;
     } catch (error) {
       logger.error('Error en monitoreo de clases:', error);
-      resultado.errores.push({ tipo: 'error_general', detalle: error.message });
+      resultado.errores.push({ tipo: 'error_general', detalle: resolveClientErrorMessage(error, { statusCode: 500, defaultMessage: 'Error en automatización de clases' }) });
       return resultado;
     } finally {
       this.isExecuting = false;

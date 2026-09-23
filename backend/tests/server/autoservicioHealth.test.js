@@ -1,8 +1,8 @@
 import { describe, expect, it } from '@jest/globals';
 import { buildAutoservicioHealth } from '../../src/utils/autoservicioHealth.js';
 
-describe('healthcheck del servidor para autoservicio', () => {
-  it('devuelve 503/not_ready con requisitos faltantes', () => {
+describe('healthcheck público del servidor para autoservicio (MDL-193 / H-08)', () => {
+  it('devuelve 503/not_ready sin exponer missing[]', () => {
     expect(buildAutoservicioHealth({
       ready: false,
       migrationVersion: 'AUTOSERVICIO_CIERRE_V2',
@@ -15,13 +15,12 @@ describe('healthcheck del servidor para autoservicio', () => {
         autoservicio: {
           ready: false,
           migrationVersion: 'AUTOSERVICIO_CIERRE_V2',
-          missing: ['índice Historial_Uso_Equipos.uq_autoservicio_idempotency_key único sobre idempotency_key']
         }
       }
     });
   });
 
-  it('devuelve 200/ok cuando la migración está lista', () => {
+  it('devuelve 200/ok cuando la migración está lista (sin missing)', () => {
     expect(buildAutoservicioHealth({
       ready: true,
       migrationVersion: 'AUTOSERVICIO_CIERRE_V2',
@@ -34,7 +33,6 @@ describe('healthcheck del servidor para autoservicio', () => {
         autoservicio: {
           ready: true,
           migrationVersion: 'AUTOSERVICIO_CIERRE_V2',
-          missing: []
         }
       }
     });
