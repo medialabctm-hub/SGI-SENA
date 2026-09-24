@@ -57,6 +57,11 @@ export default function SolicitarEquipo() {
       });
       const data = await parseApiResponse(res, 'No se pudo verificar el documento');
       if (!requestGuardRef.current.isCurrent(request.id)) return;
+      // MDL-201: el backend responde siempre 200 con { existe }; no usar el status como oráculo.
+      if (!data?.existe) {
+        setErrores({ documento: 'No se encontró un aprendiz con ese documento' });
+        return;
+      }
       const aprendizData = data?.data?.aprendiz || data?.aprendiz || data;
       setAprendiz(aprendizData);
       setPaso(PASO_PLACA);
