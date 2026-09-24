@@ -867,29 +867,36 @@ describe('AuthService', () => {
     });
   });
 
-  // ─── solicitarRecuperacionContrasena ────────────────────────────────────────
+  // ─── solicitarRecuperacionContrasena (MDL-231) ──────────────────────────────
   describe('solicitarRecuperacionContrasena', () => {
-    it('debe retornar mensaje genérico cuando el usuario no existe por cédula', async () => {
-      mockUserRepository.findOne
-        .mockResolvedValueOnce(null)  // usuarioPorCedula
-        .mockResolvedValueOnce(null); // usuario (correo+cédula activo)
+    it('debe retornar mensaje genérico cuando el usuario no existe', async () => {
+      mockUserRepository.findOne.mockResolvedValueOnce(null);
 
       const result = await authService.solicitarRecuperacionContrasena('000', 'nope@test.com');
       expect(result.message).toContain('Si el usuario');
+      expect(mockLogger.info).toHaveBeenCalledWith(
+        'Solicitud de recuperación de contraseña procesada',
+        expect.objectContaining({ outcome: 'noop' }),
+      );
+      const logged = JSON.stringify(mockLogger.info.mock.calls);
+      expect(logged).not.toMatch(/nope@test\.com/i);
+      expect(logged).not.toMatch(/correoEnBD|correoIngresado|usuarioExistePorCedula/);
+      expect(logged).not.toContain('000');
     });
 
-    it('debe retornar mensaje genérico cuando existe por cédula pero el correo no coincide', async () => {
-      mockUserRepository.findOne
-        .mockResolvedValueOnce({
-          id_usuario: 1,
-          nombre_usuario: 'Test',
-          correo: 'real@test.com',
-          estado: 'Activo',
-        })
-        .mockResolvedValueOnce(null); // correo no coincide → usuario null
+    it('debe retornar el mismo mensaje cuando cédula/correo no coinciden', async () => {
+      mockUserRepository.findOne.mockResolvedValueOnce(null);
 
       const result = await authService.solicitarRecuperacionContrasena('123', 'wrong@test.com');
-      expect(result.message).toContain('Si el usuario');
+      expect(result.message).toBe(
+        'Si el usuario existe, se enviará un correo con las instrucciones',
+      );
+      const logged = JSON.stringify([
+        ...mockLogger.info.mock.calls,
+        ...mockLogger.warn.mock.calls,
+      ]);
+      expect(logged).not.toMatch(/wrong@test\.com|real@test\.com/i);
+      expect(logged).not.toMatch(/correoEnBD|correoIngresado/);
     });
   });
 

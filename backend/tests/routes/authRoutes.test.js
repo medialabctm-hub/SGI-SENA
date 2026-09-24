@@ -51,12 +51,14 @@ jest.mock('../../src/validators/authValidator.js', () => ({
   loginSchema: {},
   loginPlacaSchema: {},
   updateUserSchema: {},
+  solicitarRecuperacionSchema: {},
 }), { virtual: true });
 
 jest.mock('../../src/middleware/rateLimiter.js', () => ({
   authLimiter: jest.fn((req, res, next) => next()),
   registerLimiter: jest.fn((req, res, next) => next()),
   passwordResetLimiter: jest.fn((req, res, next) => next()),
+  passwordResetIdentifierLimiter: jest.fn((req, res, next) => next()),
   identityReauthIpLimiter: jest.fn((req, res, next) => next()),
   identityReauthUserLimiter: jest.fn((req, res, next) => next()),
 }), { virtual: true });
@@ -96,6 +98,17 @@ describe('authRoutes', () => {
     expect(loginPlacaRoute.route.stack).toHaveLength(3);
     expect(authRoutesSource).toMatch(
       /router\.post\('\/login-placa',\s*authLimiter,\s*validate\(loginPlacaSchema\),\s*loginUserWithPlaca\)/,
+    );
+  });
+
+
+  it('debe validar recuperar-contrasena después del rate limiter (MDL-231)', async () => {
+    const mod = await import('../../src/routes/authRoutes.js');
+    const router = mod.default;
+    const route = router.stack.find(layer => layer.route?.path === '/recuperar-contrasena');
+    expect(route.route.stack).toHaveLength(4);
+    expect(authRoutesSource).toMatch(
+      /router\.post\('\/recuperar-contrasena',\s*passwordResetLimiter,\s*validate\(solicitarRecuperacionSchema\),\s*passwordResetIdentifierLimiter,\s*solicitarRecuperacionContrasena\)/,
     );
   });
 

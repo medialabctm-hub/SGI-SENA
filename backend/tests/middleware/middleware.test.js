@@ -93,6 +93,11 @@ describe('rateLimiter - exportaciones', () => {
     expect(typeof mod.passwordResetLimiter).toBe('function');
   });
 
+  it('debe exportar passwordResetIdentifierLimiter como función middleware', async () => {
+    const mod = await import('../../src/middleware/rateLimiter.js');
+    expect(typeof mod.passwordResetIdentifierLimiter).toBe('function');
+  });
+
   it('debe exportar writeLimiter como función middleware', async () => {
     const mod = await import('../../src/middleware/rateLimiter.js');
     expect(typeof mod.writeLimiter).toBe('function');
