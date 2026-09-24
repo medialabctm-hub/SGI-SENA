@@ -105,7 +105,8 @@ describe('MDL-231 POST /api/auth/recuperar-contrasena', () => {
     authServiceRef.current.scheduleAsync = (fn) => {
       const result = fn();
       if (result && typeof result.then === 'function') {
-        pendingMail.push(result.catch(() => undefined));
+        // La cadena de producción ya trae .catch → cumple siempre.
+        pendingMail.push(result);
       }
     };
     app = buildApp();
@@ -219,6 +220,135 @@ describe('MDL-231 POST /api/auth/recuperar-contrasena', () => {
 
     release({ success: true });
     await Promise.all(pendingMail.splice(0));
+  });
+
+
+  it('mailer reject → 200 genérico, sin unhandledRejection, log email_error', async () => {
+    const unhandled = jest.fn();
+    process.on('unhandledRejection', unhandled);
+
+    // Como setImmediate de producción: el retorno de la callback se descarta.
+    authServiceRef.current.scheduleAsync = (fn) => {
+      setImmediate(() => {
+        fn();
+      });
+    };
+
+    const leaky = new Error('SMTP fail for leaky@example.com token=abc123');
+    leaky.code = 'ETIMEDOUT';
+    mockEnviarCorreo.mockRejectedValueOnce(leaky);
+    mockFindOne.mockResolvedValueOnce({
+      id_usuario: 11,
+      nombre_usuario: 'X',
+      correo: 'leaky@example.com',
+    });
+
+    try {
+      const res = await request(app)
+        .post('/api/auth/recuperar-contrasena')
+        .send({ cedula: '1234567890', correo: 'leaky@example.com' });
+
+      expect(res.status).toBe(200);
+      expect(res.body.message).toBe(GENERIC_MSG);
+
+      await new Promise((r) => setImmediate(r));
+      await new Promise((r) => setImmediate(r));
+
+      expect(unhandled).not.toHaveBeenCalled();
+      expect(mockLogger.warn).toHaveBeenCalledWith(
+        'Error al enviar correo de recuperación',
+        expect.objectContaining({
+          userId: 11,
+          outcome: 'email_error',
+          error: 'ETIMEDOUT',
+        }),
+      );
+      const blob = JSON.stringify([
+        ...mockLogger.info.mock.calls,
+        ...mockLogger.warn.mock.calls,
+        ...mockLogger.error.mock.calls,
+      ]);
+      expect(blob).not.toMatch(/leaky@example\.com/i);
+      expect(blob).not.toMatch(/abc123|token=/i);
+      expect(blob).not.toMatch(/SMTP fail/);
+    } finally {
+      process.off('unhandledRejection', unhandled);
+    }
+  });
+
+  it('mailer success:false → outcome email_failed', async () => {
+    mockEnviarCorreo.mockResolvedValueOnce({ success: false });
+    mockFindOne.mockResolvedValueOnce({
+      id_usuario: 12,
+      nombre_usuario: 'Y',
+      correo: 'failflag@example.com',
+    });
+
+    const res = await request(app)
+      .post('/api/auth/recuperar-contrasena')
+      .send({ cedula: '1234567890', correo: 'failflag@example.com' });
+
+    expect(res.status).toBe(200);
+    expect(res.body.message).toBe(GENERIC_MSG);
+    await Promise.all(pendingMail.splice(0));
+
+    expect(mockLogger.warn).toHaveBeenCalledWith(
+      'Error al enviar correo de recuperación',
+      expect.objectContaining({ userId: 12, outcome: 'email_failed' }),
+    );
+    const blob = JSON.stringify(mockLogger.warn.mock.calls);
+    expect(blob).not.toMatch(/failflag@example\.com/i);
+  });
+
+  it('logger.warn lanza en catch → outer .catch evita unhandledRejection', async () => {
+    const unhandled = jest.fn();
+    process.on('unhandledRejection', unhandled);
+
+    authServiceRef.current.scheduleAsync = (fn) => {
+      setImmediate(() => {
+        fn();
+      });
+    };
+
+    mockEnviarCorreo.mockRejectedValueOnce(new Error('boom for boom@example.com'));
+    mockLogger.warn.mockImplementation(() => {
+      throw new Error('logger-warn-failed');
+    });
+    mockFindOne.mockResolvedValueOnce({
+      id_usuario: 13,
+      nombre_usuario: 'Z',
+      correo: 'boom@example.com',
+    });
+
+    try {
+      const res = await request(app)
+        .post('/api/auth/recuperar-contrasena')
+        .send({ cedula: '1234567890', correo: 'boom@example.com' });
+
+      expect(res.status).toBe(200);
+      expect(res.body.message).toBe(GENERIC_MSG);
+
+      await new Promise((r) => setImmediate(r));
+      await new Promise((r) => setImmediate(r));
+
+      expect(unhandled).not.toHaveBeenCalled();
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        'Fallo inesperado en envío de correo de recuperación',
+        expect.objectContaining({
+          userId: 13,
+          outcome: 'email_unhandled',
+          error: 'Error',
+        }),
+      );
+      const blob = JSON.stringify([
+        ...mockLogger.warn.mock.calls,
+        ...mockLogger.error.mock.calls,
+      ]);
+      expect(blob).not.toMatch(/boom@example\.com/i);
+      expect(blob).not.toMatch(/logger-warn-failed/);
+    } finally {
+      process.off('unhandledRejection', unhandled);
+    }
   });
 
   it('rate limiter passwordResetLimiter sigue aplicado (3/hora)', async () => {

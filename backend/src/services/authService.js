@@ -739,8 +739,22 @@ export class AuthService {
    */
   enqueuePasswordRecoveryEmail(payload) {
     const schedule = typeof this.scheduleAsync === 'function' ? this.scheduleAsync : setImmediate;
-    // Pasamos la promesa al scheduler inyectable (tests la drenan); setImmediate ignora el retorno.
-    schedule(() => this.sendPasswordRecoveryEmail(payload));
+    // Defensa en profundidad: aunque sendPasswordRecoveryEmail ya tiene try/catch,
+    // un throw en el logger del catch no debe producir unhandledRejection.
+    // setImmediate ignora el retorno; el .catch queda enganchado a la cadena.
+    schedule(() => Promise.resolve()
+      .then(() => this.sendPasswordRecoveryEmail(payload))
+      .catch((err) => {
+        try {
+          this.logger.error('Fallo inesperado en envío de correo de recuperación', {
+            userId: payload.userId,
+            outcome: 'email_unhandled',
+            error: err?.code || err?.name,
+          });
+        } catch {
+          // Último recurso: nunca propagar (ni mensaje ni PII).
+        }
+      }));
   }
 
   async sendPasswordRecoveryEmail({ userId, correo, nombreUsuario, urlRecuperacion }) {
@@ -771,10 +785,12 @@ export class AuthService {
         userId,
         outcome: 'email_queued',
       });
-    } catch {
+    } catch (err) {
       this.logger.warn('Error al enviar correo de recuperación', {
         userId,
         outcome: 'email_error',
+        // Solo name/code — el message podría incluir correo o token.
+        error: err?.code || err?.name,
       });
     }
   }
