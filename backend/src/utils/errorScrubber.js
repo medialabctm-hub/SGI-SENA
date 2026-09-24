@@ -58,6 +58,65 @@ export const INTERNAL_LEAK_PATTERNS = Object.freeze([
   /historial_uso_equipos\.sql/i,
 ]);
 
+/** Claves que nunca deben aparecer en respuestas, detalles de error o meta de logs. */
+export const SENSITIVE_FIELD_KEYS = Object.freeze([
+  'contrasena',
+  'contrasena_actual',
+  'nuevaContrasena',
+  'nueva_contrasena',
+  'password',
+  'passwordHash',
+  'password_hash',
+  'token',
+  'refresh_token',
+  'refreshToken',
+  'sgi_session',
+  'authorization',
+]);
+
+const SENSITIVE_KEY_RE = /^(contrasena(_actual)?|nueva_?contrasena|password(_hash)?|token|refresh_?token|sgi_session|authorization)$/i;
+
+/**
+ * Redacta campos sensibles de un objeto (recursivo, profundidad limitada).
+ * Sustituye el valor por "[REDACTED]". No muta el original.
+ *
+ * @param {unknown} value
+ * @param {number} [depth]
+ * @returns {unknown}
+ */
+export function redactSensitiveFields(value, depth = 0) {
+  if (value == null || depth > 6) return value;
+  if (Array.isArray(value)) {
+    return value.map((item) => redactSensitiveFields(item, depth + 1));
+  }
+  if (typeof value !== 'object') return value;
+
+  const out = {};
+  for (const [key, child] of Object.entries(value)) {
+    if (SENSITIVE_KEY_RE.test(key) || SENSITIVE_FIELD_KEYS.includes(key)) {
+      out[key] = '[REDACTED]';
+    } else {
+      out[key] = redactSensitiveFields(child, depth + 1);
+    }
+  }
+  return out;
+}
+
+/**
+ * True si el texto contiene un valor que parece secreto en claro
+ * (p. ej. sentinel de contraseña en tests o hash bcrypt filtrado).
+ * @param {unknown} text
+ * @param {string[]} [sentinels]
+ */
+export function containsSensitivePlaintext(text, sentinels = []) {
+  if (text == null) return false;
+  const value = typeof text === 'string' ? text : JSON.stringify(text);
+  if (!value) return false;
+  if (/\$2[aby]\$[0-9]{2}\$/i.test(value)) return true;
+  return sentinels.some((s) => s && value.includes(s));
+}
+
+
 /**
  * @param {unknown} text
  * @returns {boolean}
@@ -129,7 +188,7 @@ export function buildClientErrorBody(error, options = {}) {
     error?.details != null
     && !containsInternalErrorDetail(error.details)
   ) {
-    body.details = error.details;
+    body.details = redactSensitiveFields(error.details);
   }
 
   // Stack solo en development y solo si se pide explícitamente (errorHandler).
@@ -149,7 +208,10 @@ export function buildClientErrorBody(error, options = {}) {
 export default {
   GENERIC_CLIENT_MESSAGES,
   INTERNAL_LEAK_PATTERNS,
+  SENSITIVE_FIELD_KEYS,
   containsInternalErrorDetail,
+  containsSensitivePlaintext,
+  redactSensitiveFields,
   resolveClientErrorMessage,
   buildClientErrorBody,
 };
