@@ -1418,7 +1418,9 @@ describe('obtenerEquiposAmbientesInstructor', () => {
   });
 
   it('returns empty when no active ambientes', async () => {
-    mockExecute.mockResolvedValueOnce([[]]); // no ambientes
+    mockExecute
+      .mockResolvedValueOnce([[]]) // resp
+      .mockResolvedValueOnce([[]]); // cta
     const req = mockReq({ user: { id: 5, rol: 'Instructor' } });
     const res = mockRes();
     await obtenerEquiposAmbientesInstructor(req, res);
@@ -1427,7 +1429,9 @@ describe('obtenerEquiposAmbientesInstructor', () => {
 
   it('returns ambientes and equipos when found', async () => {
     mockExecute
-      .mockResolvedValueOnce([[{ id_ambiente: 1, nombre_ambiente: 'Lab', id_responsabilidad_ambiente: 1 }]])
+      .mockResolvedValueOnce([[{ id_ambiente: 1 }]]) // resp
+      .mockResolvedValueOnce([[]]) // cta
+      .mockResolvedValueOnce([[{ id_ambiente: 1, nombre_ambiente: 'Lab', codigo_ambiente: '101' }]])
       .mockResolvedValueOnce([[{ codigo_equipo: 5, placa: 'PL-001', tipo: 'Laptop' }]]);
     const req = mockReq({ user: { id: 5, rol: 'Instructor' } });
     const res = mockRes();
@@ -1441,6 +1445,228 @@ describe('obtenerEquiposAmbientesInstructor', () => {
     const res = mockRes();
     await obtenerEquiposAmbientesInstructor(req, res);
     expect(res.status).toHaveBeenCalledWith(500);
+  });
+
+
+  // ── MDL-234 ──────────────────────────────────────────────────────────────
+  it('MDL-234: usuario sin responsabilidad ni equipos → vacío (2 queries)', async () => {
+    mockExecute
+      .mockResolvedValueOnce([[]]) // resp
+      .mockResolvedValueOnce([[]]); // cta
+    const req = mockReq({ user: { id: 99, rol: 'Instructor' } });
+    const res = mockRes();
+    await obtenerEquiposAmbientesInstructor(req, res);
+    expect(res.json).toHaveBeenCalledWith({ ambientes: [], equipos: [] });
+    expect(mockExecute).toHaveBeenCalledTimes(2);
+    expect(mockExecute.mock.calls[0][1]).toEqual([99]);
+    expect(mockExecute.mock.calls[1][1]).toEqual([99]);
+  });
+
+  it('MDL-234: SQL cta usa NULL-safe estado_fisico', async () => {
+    mockExecute.mockResolvedValueOnce([[]]).mockResolvedValueOnce([[]]);
+    const req = mockReq({ user: { id: 2, rol: 'Cuentadante' } });
+    const res = mockRes();
+    await obtenerEquiposAmbientesInstructor(req, res);
+    const [, ctaSql] = [mockExecute.mock.calls[0][0], mockExecute.mock.calls[1][0]];
+    expect(ctaSql).toMatch(/e\.estado_fisico IS NULL OR e\.estado_fisico <> 'Baja'/);
+    expect(ctaSql).not.toMatch(/e\.estado_fisico != 'Baja'/);
+  });
+
+  it('MDL-234 VI-01: varias responsabilidades → una fila con alcance responsable', async () => {
+    mockExecute
+      .mockResolvedValueOnce([[{ id_ambiente: 7 }, { id_ambiente: 7 }]]) // resp (dup ids ok)
+      .mockResolvedValueOnce([[]]) // cta
+      .mockResolvedValueOnce([[{
+        id_ambiente: 7,
+        nombre_ambiente: 'Aula 107',
+        codigo_ambiente: '107',
+        jornada: 'Diurna',
+      }]])
+      .mockResolvedValueOnce([[{ codigo_equipo: 1, id_ambiente: 7, placa: 'P-1' }]]);
+    const req = mockReq({ user: { id: 2, rol: 'Cuentadante' } });
+    const res = mockRes();
+    await obtenerEquiposAmbientesInstructor(req, res);
+    const body = res.json.mock.calls[0][0];
+    expect(body.ambientes).toHaveLength(1);
+    expect(body.ambientes[0]).toEqual(expect.objectContaining({
+      id_ambiente: 7,
+      alcance: 'responsable',
+    }));
+  });
+
+  it('MDL-234: aula solo id_cuentadante → alcance propios y SQL filtra por id_cuentadante', async () => {
+    mockExecute
+      .mockResolvedValueOnce([[]]) // resp
+      .mockResolvedValueOnce([[{ id_ambiente: 25 }]]) // cta
+      .mockResolvedValueOnce([[{
+        id_ambiente: 25,
+        nombre_ambiente: 'Aula 303',
+        codigo_ambiente: '303',
+        jornada: null,
+      }]])
+      .mockResolvedValueOnce([[{
+        codigo_equipo: 77,
+        id_ambiente: 25,
+        placa: 'P-77',
+        estado_fisico: null,
+        id_cuentadante: 2,
+      }]]);
+    const req = mockReq({ user: { id: 2, rol: 'Cuentadante' } });
+    const res = mockRes();
+    await obtenerEquiposAmbientesInstructor(req, res);
+
+    const [equiposSql, equiposParams] = mockExecute.mock.calls[3];
+    expect(equiposSql).toMatch(/e\.id_ambiente IN \(\?\) AND e\.id_cuentadante = \?/);
+    expect(equiposSql).not.toMatch(/e\.id_ambiente IN \(\?\)\s*$/m);
+    // userId×3 verificación + id 25 + userId cuentadante
+    expect(equiposParams).toEqual([2, 2, 2, 25, 2]);
+
+    const body = res.json.mock.calls[0][0];
+    expect(body.ambientes[0].alcance).toBe('propios');
+    expect(body.equipos).toHaveLength(1);
+    expect(body.equipos[0].codigo_equipo).toBe(77);
+  });
+
+  it('MDL-234 NEG: aula compartida solo-propios → SQL exige id_cuentadante (no trae ajenos)', async () => {
+    // El mock de DB solo devolvería filas que cumplan el SQL; verificamos la cláusula.
+    mockExecute
+      .mockResolvedValueOnce([[]]) // resp vacía
+      .mockResolvedValueOnce([[{ id_ambiente: 1 }]]) // cta
+      .mockResolvedValueOnce([[{
+        id_ambiente: 1,
+        nombre_ambiente: 'Aula 101',
+        codigo_ambiente: '101',
+        jornada: null,
+      }]])
+      // Simula que la BD solo devolvió el propio (el ajeno no matchea AND id_cuentadante=?)
+      .mockResolvedValueOnce([[{
+        codigo_equipo: 10,
+        id_ambiente: 1,
+        id_cuentadante: 2,
+        placa: 'OWN',
+      }]]);
+    const req = mockReq({ user: { id: 2, rol: 'Cuentadante' } });
+    const res = mockRes();
+    await obtenerEquiposAmbientesInstructor(req, res);
+
+    const [equiposSql, equiposParams] = mockExecute.mock.calls[3];
+    expect(equiposSql).toMatch(/\(e\.id_ambiente IN \(\?\) AND e\.id_cuentadante = \?\)/);
+    expect(equiposParams).toEqual([2, 2, 2, 1, 2]);
+    const body = res.json.mock.calls[0][0];
+    expect(body.equipos.every((e) => e.id_cuentadante === 2)).toBe(true);
+    expect(body.equipos.map((e) => e.codigo_equipo)).not.toContain(99); // ajeno no retornado
+  });
+
+  it('MDL-234: aula con responsabilidad → SQL trae todos (sin filtro id_cuentadante en esa rama)', async () => {
+    mockExecute
+      .mockResolvedValueOnce([[{ id_ambiente: 7 }]])
+      .mockResolvedValueOnce([[]])
+      .mockResolvedValueOnce([[{
+        id_ambiente: 7,
+        nombre_ambiente: 'Aula 107',
+        codigo_ambiente: '107',
+        jornada: 'Diurna',
+      }]])
+      .mockResolvedValueOnce([
+        [
+          { codigo_equipo: 1, id_ambiente: 7, id_cuentadante: 2 },
+          { codigo_equipo: 2, id_ambiente: 7, id_cuentadante: 9 }, // otro cuentadante
+        ],
+      ]);
+    const req = mockReq({ user: { id: 2, rol: 'Cuentadante' } });
+    const res = mockRes();
+    await obtenerEquiposAmbientesInstructor(req, res);
+
+    const [equiposSql, equiposParams] = mockExecute.mock.calls[3];
+    expect(equiposSql).toMatch(/WHERE \(e\.id_ambiente IN \(\?\)\)/);
+    expect(equiposSql).not.toMatch(/id_cuentadante = \?\)/);
+    expect(equiposParams).toEqual([2, 2, 2, 7]);
+    const body = res.json.mock.calls[0][0];
+    expect(body.ambientes[0].alcance).toBe('responsable');
+    expect(body.equipos.map((e) => e.codigo_equipo).sort()).toEqual([1, 2]);
+  });
+
+  it('MDL-234: aula en ambos sets → alcance responsable y ve todos', async () => {
+    mockExecute
+      .mockResolvedValueOnce([[{ id_ambiente: 7 }]])
+      .mockResolvedValueOnce([[{ id_ambiente: 7 }]]) // también cta
+      .mockResolvedValueOnce([[{
+        id_ambiente: 7,
+        nombre_ambiente: 'Aula 107',
+        codigo_ambiente: '107',
+        jornada: 'Diurna',
+      }]])
+      .mockResolvedValueOnce([
+        [
+          { codigo_equipo: 1, id_ambiente: 7, id_cuentadante: 2 },
+          { codigo_equipo: 3, id_ambiente: 7, id_cuentadante: 8 },
+        ],
+      ]);
+    const req = mockReq({ user: { id: 2, rol: 'Cuentadante' } });
+    const res = mockRes();
+    await obtenerEquiposAmbientesInstructor(req, res);
+
+    const [equiposSql, equiposParams] = mockExecute.mock.calls[3];
+    // Solo rama responsabilidad (cta-only vacío porque 7 está en resp)
+    expect(equiposSql).toMatch(/WHERE \(e\.id_ambiente IN \(\?\)\)/);
+    expect(equiposParams).toEqual([2, 2, 2, 7]);
+    expect(res.json.mock.calls[0][0].ambientes[0].alcance).toBe('responsable');
+    expect(res.json.mock.calls[0][0].equipos).toHaveLength(2);
+  });
+
+  it('MDL-234: Instructor solo con responsabilidad → sin rama cta-only', async () => {
+    mockExecute
+      .mockResolvedValueOnce([[{ id_ambiente: 3 }]])
+      .mockResolvedValueOnce([[]])
+      .mockResolvedValueOnce([[{
+        id_ambiente: 3,
+        nombre_ambiente: 'Lab',
+        codigo_ambiente: '103',
+        jornada: null,
+      }]])
+      .mockResolvedValueOnce([[{ codigo_equipo: 5, id_ambiente: 3 }]]);
+    const req = mockReq({ user: { id: 5, rol: 'Instructor' } });
+    const res = mockRes();
+    await obtenerEquiposAmbientesInstructor(req, res);
+
+    expect(mockExecute.mock.calls[0][1]).toEqual([5]);
+    expect(mockExecute.mock.calls[1][1]).toEqual([5]);
+    const [equiposSql, equiposParams] = mockExecute.mock.calls[3];
+    expect(equiposSql).toMatch(/WHERE \(e\.id_ambiente IN \(\?\)\)/);
+    expect(equiposParams).toEqual([5, 5, 5, 3]);
+    expect(res.json.mock.calls[0][0].ambientes[0].alcance).toBe('responsable');
+  });
+
+  it('MDL-234: Baja excluida / NULL estado incluido en SQL de equipos', async () => {
+    mockExecute
+      .mockResolvedValueOnce([[{ id_ambiente: 1 }]])
+      .mockResolvedValueOnce([[]])
+      .mockResolvedValueOnce([[{ id_ambiente: 1, nombre_ambiente: 'A', codigo_ambiente: '1', jornada: null }]])
+      .mockResolvedValueOnce([[]]);
+    const req = mockReq({ user: { id: 2, rol: 'Cuentadante' } });
+    const res = mockRes();
+    await obtenerEquiposAmbientesInstructor(req, res);
+    const [equiposSql] = mockExecute.mock.calls[3];
+    expect(equiposSql).toMatch(/e\.estado_fisico IS NULL OR e\.estado_fisico <> 'Baja'/);
+  });
+
+  it('MDL-234: params de equipos nunca incluyen userId ajeno', async () => {
+    mockExecute
+      .mockResolvedValueOnce([[{ id_ambiente: 1 }]])
+      .mockResolvedValueOnce([[{ id_ambiente: 25 }]])
+      .mockResolvedValueOnce([
+        [
+          { id_ambiente: 1, nombre_ambiente: 'A', codigo_ambiente: '101', jornada: null },
+          { id_ambiente: 25, nombre_ambiente: 'B', codigo_ambiente: '303', jornada: null },
+        ],
+      ])
+      .mockResolvedValueOnce([[]]);
+    const req = mockReq({ user: { id: 2, rol: 'Cuentadante' } });
+    const res = mockRes();
+    await obtenerEquiposAmbientesInstructor(req, res);
+    const flat = mockExecute.mock.calls.flatMap((c) => c[1] || []);
+    expect(flat.every((p) => p === 2 || p === 1 || p === 25)).toBe(true);
+    expect(flat).not.toContain(9);
   });
 });
 
@@ -1471,12 +1697,15 @@ describe('registrarVerificacionInventario', () => {
 
   it('returns 403 when no active responsabilidad', async () => {
     mockExecute
-      .mockResolvedValueOnce([[{ codigo_equipo: 1, id_ambiente: 2, nombre_ambiente: 'Lab' }]])
-      .mockResolvedValueOnce([[undefined]]);
+      .mockResolvedValueOnce([[{ codigo_equipo: 1, id_ambiente: 2, id_cuentadante: 99, nombre_ambiente: 'Lab' }]])
+      .mockResolvedValueOnce([[undefined]]); // sin resp
     const req = mockReq({ user: { id: 5, rol: 'Instructor' }, body: { codigo_equipo: 1, estado_verificacion: 'Verificado' } });
     const res = mockRes();
     await registrarVerificacionInventario(req, res);
     expect(res.status).toHaveBeenCalledWith(403);
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
+      error: expect.stringMatching(/permiso/i),
+    }));
   });
 
   it('returns 400 when estado_verificacion is invalid', async () => {
@@ -1498,6 +1727,99 @@ describe('registrarVerificacionInventario', () => {
     const res = mockRes();
     await registrarVerificacionInventario(req, res);
     expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ ok: true, id_verificacion: 50 }));
+  });
+
+  it('MDL-234 POST: propio en aula cta-only → 200 (sin responsabilidad)', async () => {
+    mockExecute
+      .mockResolvedValueOnce([[{
+        codigo_equipo: 77,
+        id_ambiente: 25,
+        id_cuentadante: 2,
+        nombre_ambiente: 'Aula 303',
+      }]])
+      .mockResolvedValueOnce([[undefined]]) // sin resp
+      .mockResolvedValueOnce([{ insertId: 88 }]);
+    const req = mockReq({
+      user: { id: 2, rol: 'Cuentadante' },
+      body: { codigo_equipo: 77, estado_verificacion: 'Verificado' },
+    });
+    const res = mockRes();
+    await registrarVerificacionInventario(req, res);
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
+      ok: true,
+      id_verificacion: 88,
+      contexto: expect.objectContaining({ alcance: 'propios' }),
+    }));
+    const insertParams = mockExecute.mock.calls[2][1];
+    expect(insertParams[2]).toBeNull(); // id_clase
+    expect(insertParams[3]).toBeNull(); // id_responsabilidad_ambiente
+  });
+
+  it('MDL-234 POST NEG: equipo de otro cuentadante en aula cta-only → 403 genérico', async () => {
+    mockExecute
+      .mockResolvedValueOnce([[{
+        codigo_equipo: 99,
+        id_ambiente: 25,
+        id_cuentadante: 9,
+        nombre_ambiente: 'Aula 303',
+      }]])
+      .mockResolvedValueOnce([[undefined]]);
+    const req = mockReq({
+      user: { id: 2, rol: 'Cuentadante' },
+      body: { codigo_equipo: 99, estado_verificacion: 'Verificado' },
+    });
+    const res = mockRes();
+    await registrarVerificacionInventario(req, res);
+    expect(res.status).toHaveBeenCalledWith(403);
+    const body = res.json.mock.calls[0][0];
+    expect(body.error).toMatch(/permiso/i);
+    expect(JSON.stringify(body)).not.toMatch(/id_cuentadante|9|dueño|owner/i);
+  });
+
+  it('MDL-234 POST: equipo en aula con responsabilidad → 200 (ajeno permitido)', async () => {
+    mockExecute
+      .mockResolvedValueOnce([[{
+        codigo_equipo: 3,
+        id_ambiente: 7,
+        id_cuentadante: 9,
+        nombre_ambiente: 'Aula 107',
+      }]])
+      .mockResolvedValueOnce([[{
+        id_responsabilidad_ambiente: 10,
+        id_clase: null,
+        jornada: 'Diurna',
+        nombre_clase: null,
+        codigo_ficha: null,
+      }]])
+      .mockResolvedValueOnce([{ insertId: 70 }]);
+    const req = mockReq({
+      user: { id: 2, rol: 'Cuentadante' },
+      body: { codigo_equipo: 3, estado_verificacion: 'Verificado' },
+    });
+    const res = mockRes();
+    await registrarVerificacionInventario(req, res);
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
+      ok: true,
+      contexto: expect.objectContaining({ alcance: 'responsable' }),
+    }));
+  });
+
+  it('MDL-234 POST: Instructor sin resp ni ownership → 403 (sin cambio de rol)', async () => {
+    mockExecute
+      .mockResolvedValueOnce([[{
+        codigo_equipo: 1,
+        id_ambiente: 2,
+        id_cuentadante: null,
+        nombre_ambiente: 'Lab',
+      }]])
+      .mockResolvedValueOnce([[undefined]]);
+    const req = mockReq({
+      user: { id: 5, rol: 'Instructor' },
+      body: { codigo_equipo: 1, estado_verificacion: 'Verificado' },
+    });
+    const res = mockRes();
+    await registrarVerificacionInventario(req, res);
+    expect(res.status).toHaveBeenCalledWith(403);
   });
 
   it('returns 500 on DB error', async () => {
