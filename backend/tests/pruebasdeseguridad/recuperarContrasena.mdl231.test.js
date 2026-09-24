@@ -1,10 +1,11 @@
 /**
  * MDL-231 — POST /api/auth/recuperar-contrasena
- * Sin 500 por bind undefined; 400 genérico; 200 idéntico exista o no; sin PII en logs.
+ * Sin 500 por bind undefined; 400 genérico; 200 idéntico exista o no; sin PII en logs;
+ * respuesta no espera al mailer (envío async).
  */
 import express from 'express';
 import request from 'supertest';
-import { describe, it, expect, beforeEach, jest } from '@jest/globals';
+import { describe, it, expect, beforeEach, afterEach, jest } from '@jest/globals';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -18,6 +19,8 @@ const mockLogger = {
   error: jest.fn(),
   debug: jest.fn(),
 };
+const mockEnviarCorreo = jest.fn().mockResolvedValue({ success: true });
+const mockReinitialize = jest.fn();
 
 jest.unstable_mockModule(
   path.resolve(__dirname, '../../src/factories/ServiceFactory.js'),
@@ -38,8 +41,8 @@ jest.unstable_mockModule(
   () => ({
     default: {
       apiInstance: {},
-      reinitialize: jest.fn(),
-      enviarCorreoRecuperacion: jest.fn().mockResolvedValue({ success: true }),
+      reinitialize: mockReinitialize,
+      enviarCorreoRecuperacion: mockEnviarCorreo,
     },
   }),
 );
@@ -56,6 +59,8 @@ const { solicitarRecuperacionContrasena } = await import(
 );
 
 const authServiceRef = { current: null };
+/** Promesas de envío en background; se drenan en afterEach para no dejar handles. */
+const pendingMail = [];
 
 function buildApp({ withLimiter = false } = {}) {
   const app = express();
@@ -81,6 +86,9 @@ describe('MDL-231 POST /api/auth/recuperar-contrasena', () => {
     mockFindOne.mockReset();
     mockExecute.mockReset();
     mockExecute.mockResolvedValue([{ affectedRows: 1 }]);
+    mockEnviarCorreo.mockReset();
+    mockEnviarCorreo.mockResolvedValue({ success: true });
+    pendingMail.length = 0;
 
     const userRepository = {
       findOne: mockFindOne,
@@ -93,7 +101,18 @@ describe('MDL-231 POST /api/auth/recuperar-contrasena', () => {
       {},
       mockLogger,
     );
+    // Scheduler inyectable: arranca el envío sin await y registra la promesa.
+    authServiceRef.current.scheduleAsync = (fn) => {
+      const result = fn();
+      if (result && typeof result.then === 'function') {
+        pendingMail.push(result.catch(() => undefined));
+      }
+    };
     app = buildApp();
+  });
+
+  afterEach(async () => {
+    await Promise.all(pendingMail.splice(0));
   });
 
   it('RC-01: body vacío → 400, nunca 500', async () => {
@@ -161,6 +180,8 @@ describe('MDL-231 POST /api/auth/recuperar-contrasena', () => {
       .post('/api/auth/recuperar-contrasena')
       .send({ cedula: '1234567890', correo: 'secret@example.com' });
 
+    await Promise.all(pendingMail.splice(0));
+
     const blob = JSON.stringify([
       ...mockLogger.info.mock.calls,
       ...mockLogger.warn.mock.calls,
@@ -169,6 +190,35 @@ describe('MDL-231 POST /api/auth/recuperar-contrasena', () => {
     expect(blob).not.toMatch(/secret@example\.com/i);
     expect(blob).not.toContain('1234567890');
     expect(blob).not.toMatch(/correoEnBD|correoIngresado|usuarioExistePorCedula|cedula/);
+  });
+
+  it('async email: 200 no espera a un mailer lento', async () => {
+    let release;
+    const slowGate = new Promise((resolve) => {
+      release = resolve;
+    });
+    mockEnviarCorreo.mockImplementation(() => slowGate);
+
+    mockFindOne.mockResolvedValueOnce({
+      id_usuario: 99,
+      nombre_usuario: 'Slow',
+      correo: 'slow@example.com',
+    });
+
+    const started = Date.now();
+    const res = await request(app)
+      .post('/api/auth/recuperar-contrasena')
+      .send({ cedula: '1234567890', correo: 'slow@example.com' });
+    const elapsedMs = Date.now() - started;
+
+    expect(res.status).toBe(200);
+    expect(res.body.message).toBe(GENERIC_MSG);
+    expect(elapsedMs).toBeLessThan(150);
+    expect(mockExecute).toHaveBeenCalled();
+    expect(mockEnviarCorreo).toHaveBeenCalled();
+
+    release({ success: true });
+    await Promise.all(pendingMail.splice(0));
   });
 
   it('rate limiter passwordResetLimiter sigue aplicado (3/hora)', async () => {

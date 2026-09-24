@@ -719,37 +719,64 @@ export class AuthService {
       [usuario.id_usuario, tokenHash, fechaExpiracion]
     );
 
-    // Enviar correo con el token
-    const emailService = (await import('./emailService.js')).default;
-    
-    // Asegurar que el servicio esté inicializado antes de enviar
-    const apiKey = process.env.BREVO_API_KEY;
-    if (!emailService.apiInstance && apiKey) {
-      this.logger.info('Reinicializando servicio de email API');
-      emailService.reinitialize();
-    }
-    
     const urlRecuperacion = `${process.env.FRONTEND_URL || 'https://sgi-sena.up.railway.app/'}/restablecer-contrasena?token=${rawToken}`;
-    
-    const resultadoCorreo = await emailService.enviarCorreoRecuperacion(
-      usuario.correo,
-      usuario.nombre_usuario,
-      urlRecuperacion
-    );
 
-    if (!resultadoCorreo.success) {
-      this.logger.warn('Error al enviar correo de recuperación', {
-        userId: usuario.id_usuario,
-        outcome: 'email_failed',
-      });
-    } else {
-      this.logger.info('Solicitud de recuperación de contraseña procesada', {
-        userId: usuario.id_usuario,
-        outcome: 'email_queued',
-      });
-    }
+    // MDL-231: no await del mailer en el path HTTP — misma latencia exista o no.
+    // Errores se capturan en background; logs solo userId/outcome (sin correo/token).
+    this.enqueuePasswordRecoveryEmail({
+      userId: usuario.id_usuario,
+      correo: usuario.correo,
+      nombreUsuario: usuario.nombre_usuario,
+      urlRecuperacion,
+    });
 
     return GENERIC_MESSAGE;
+  }
+
+  /**
+   * Programa el envío de correo fuera del request path (setImmediate por defecto).
+   * `this.scheduleAsync` es inyectable en tests para evitar handles abiertos.
+   */
+  enqueuePasswordRecoveryEmail(payload) {
+    const schedule = typeof this.scheduleAsync === 'function' ? this.scheduleAsync : setImmediate;
+    // Pasamos la promesa al scheduler inyectable (tests la drenan); setImmediate ignora el retorno.
+    schedule(() => this.sendPasswordRecoveryEmail(payload));
+  }
+
+  async sendPasswordRecoveryEmail({ userId, correo, nombreUsuario, urlRecuperacion }) {
+    try {
+      const emailService = (await import('./emailService.js')).default;
+
+      const apiKey = process.env.BREVO_API_KEY;
+      if (!emailService.apiInstance && apiKey) {
+        this.logger.info('Reinicializando servicio de email API');
+        emailService.reinitialize();
+      }
+
+      const resultadoCorreo = await emailService.enviarCorreoRecuperacion(
+        correo,
+        nombreUsuario,
+        urlRecuperacion,
+      );
+
+      if (!resultadoCorreo?.success) {
+        this.logger.warn('Error al enviar correo de recuperación', {
+          userId,
+          outcome: 'email_failed',
+        });
+        return;
+      }
+
+      this.logger.info('Solicitud de recuperación de contraseña procesada', {
+        userId,
+        outcome: 'email_queued',
+      });
+    } catch {
+      this.logger.warn('Error al enviar correo de recuperación', {
+        userId,
+        outcome: 'email_error',
+      });
+    }
   }
 
   async validarTokenRecuperacion(token) {
