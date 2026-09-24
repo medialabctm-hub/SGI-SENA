@@ -116,6 +116,37 @@ export const passwordResetLimiter = rateLimit({
 });
 
 /**
+ * MDL-231 — límite por identificador (cédula|correo) en recuperación.
+ * 3/hora. Clave hasheada; montar DESPUÉS de validate(solicitarRecuperacionSchema)
+ * para usar el body ya normalizado. Misma respuesta 429 que passwordResetLimiter
+ * (IP), exista o no el usuario. Nunca loguear cédula/correo en claro.
+ */
+const getPasswordResetIdentifier = (req) => {
+  const cedulaRaw = req.body?.cedula;
+  const correoRaw = req.body?.correo;
+  // Cédula: solo dígitos. Correo: trim + lowercase (trim de email OK; passwords never trimmed).
+  const normalizedCedula = cedulaRaw == null ? '' : String(cedulaRaw).replace(/\D/g, '');
+  const normalizedCorreo = correoRaw == null ? '' : String(correoRaw).trim().toLowerCase();
+  if (!normalizedCedula || !normalizedCorreo) {
+    return 'missing';
+  }
+  return `${normalizedCedula}|${normalizedCorreo}`;
+};
+
+export const passwordResetIdentifierLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hora
+  max: 3,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    success: false,
+    error: 'Demasiados intentos de recuperación. Intenta nuevamente más tarde.',
+  },
+  keyGenerator: (req) =>
+    `password_reset_identifier_${hashIdentifier(getPasswordResetIdentifier(req))}`,
+});
+
+/**
  * Rate limiter para endpoints de escritura (POST, PUT, DELETE)
  * 100 peticiones por minuto por usuario/IP
  * Mejorado: Diferencia entre usuarios autenticados y anónimos

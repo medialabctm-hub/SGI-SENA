@@ -58,6 +58,7 @@ jest.mock('../../src/middleware/rateLimiter.js', () => ({
   authLimiter: jest.fn((req, res, next) => next()),
   registerLimiter: jest.fn((req, res, next) => next()),
   passwordResetLimiter: jest.fn((req, res, next) => next()),
+  passwordResetIdentifierLimiter: jest.fn((req, res, next) => next()),
   identityReauthIpLimiter: jest.fn((req, res, next) => next()),
   identityReauthUserLimiter: jest.fn((req, res, next) => next()),
 }), { virtual: true });
@@ -105,9 +106,9 @@ describe('authRoutes', () => {
     const mod = await import('../../src/routes/authRoutes.js');
     const router = mod.default;
     const route = router.stack.find(layer => layer.route?.path === '/recuperar-contrasena');
-    expect(route.route.stack).toHaveLength(3);
+    expect(route.route.stack).toHaveLength(4);
     expect(authRoutesSource).toMatch(
-      /router\.post\('\/recuperar-contrasena',\s*passwordResetLimiter,\s*validate\(solicitarRecuperacionSchema\),\s*solicitarRecuperacionContrasena\)/,
+      /router\.post\('\/recuperar-contrasena',\s*passwordResetLimiter,\s*validate\(solicitarRecuperacionSchema\),\s*passwordResetIdentifierLimiter,\s*solicitarRecuperacionContrasena\)/,
     );
   });
 

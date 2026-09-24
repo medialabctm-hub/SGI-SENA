@@ -53,7 +53,7 @@ const {
   validate,
 } = await import('../../src/validators/authValidator.js');
 const { errorHandler } = await import('../../src/utils/errors.js');
-const { passwordResetLimiter } = await import('../../src/middleware/rateLimiter.js');
+const { passwordResetLimiter, passwordResetIdentifierLimiter } = await import('../../src/middleware/rateLimiter.js');
 const { solicitarRecuperacionContrasena } = await import(
   '../../src/controller/authController.js'
 );
@@ -62,13 +62,14 @@ const authServiceRef = { current: null };
 /** Promesas de envío en background; se drenan en afterEach para no dejar handles. */
 const pendingMail = [];
 
-function buildApp({ withLimiter = false } = {}) {
+function buildApp({ withIpLimiter = false, withIdentifierLimiter = false } = {}) {
   const app = express();
   app.set('trust proxy', 1);
   app.use(express.json());
   const stack = [
-    ...(withLimiter ? [passwordResetLimiter] : []),
+    ...(withIpLimiter ? [passwordResetLimiter] : []),
     validate(solicitarRecuperacionSchema),
+    ...(withIdentifierLimiter ? [passwordResetIdentifierLimiter] : []),
     solicitarRecuperacionContrasena,
   ];
   app.post('/api/auth/recuperar-contrasena', ...stack);
@@ -352,7 +353,7 @@ describe('MDL-231 POST /api/auth/recuperar-contrasena', () => {
   });
 
   it('rate limiter passwordResetLimiter sigue aplicado (3/hora)', async () => {
-    const limitedApp = buildApp({ withLimiter: true });
+    const limitedApp = buildApp({ withIpLimiter: true });
     mockFindOne.mockResolvedValue(null);
 
     const previous = process.env.NODE_ENV;
@@ -372,4 +373,99 @@ describe('MDL-231 POST /api/auth/recuperar-contrasena', () => {
       process.env.NODE_ENV = previous;
     }
   });
+
+  it('passwordResetIdentifierLimiter: 4ª misma identidad → 429 aunque cambie la IP', async () => {
+    const limitedApp = buildApp({ withIdentifierLimiter: true });
+    mockFindOne.mockResolvedValue(null);
+    const previous = process.env.NODE_ENV;
+    process.env.NODE_ENV = 'production';
+    try {
+      const statuses = [];
+      const bodies = [];
+      for (let i = 0; i < 4; i += 1) {
+        // eslint-disable-next-line no-await-in-loop
+        const res = await request(limitedApp)
+          .post('/api/auth/recuperar-contrasena')
+          .set('X-Forwarded-For', `203.0.113.${i + 1}`)
+          .send({ cedula: '1234567890', correo: 'same-id@example.com' });
+        statuses.push(res.status);
+        bodies.push(res.body);
+      }
+      expect(statuses.slice(0, 3).every((s) => s === 200)).toBe(true);
+      expect(statuses[3]).toBe(429);
+      expect(bodies[3].success).toBe(false);
+      expect(String(bodies[3].error || '')).not.toMatch(/1234567890|same-id@example/i);
+      expect(mockFindOne.mock.calls.length).toBe(3);
+    } finally {
+      process.env.NODE_ENV = previous;
+    }
+  });
+
+  it('passwordResetIdentifierLimiter: otra identidad desde la misma IP no queda bloqueada', async () => {
+    const limitedApp = buildApp({ withIdentifierLimiter: true });
+    mockFindOne.mockResolvedValue(null);
+    const previous = process.env.NODE_ENV;
+    process.env.NODE_ENV = 'production';
+    try {
+      for (let i = 0; i < 3; i += 1) {
+        // eslint-disable-next-line no-await-in-loop
+        const res = await request(limitedApp)
+          .post('/api/auth/recuperar-contrasena')
+          .set('X-Forwarded-For', '198.51.100.10')
+          .send({ cedula: '1111111111', correo: 'a@example.com' });
+        expect(res.status).toBe(200);
+      }
+      const blocked = await request(limitedApp)
+        .post('/api/auth/recuperar-contrasena')
+        .set('X-Forwarded-For', '198.51.100.10')
+        .send({ cedula: '1111111111', correo: 'a@example.com' });
+      expect(blocked.status).toBe(429);
+
+      const other = await request(limitedApp)
+        .post('/api/auth/recuperar-contrasena')
+        .set('X-Forwarded-For', '198.51.100.10')
+        .send({ cedula: '2222222222', correo: 'b@example.com' });
+      expect(other.status).toBe(200);
+    } finally {
+      process.env.NODE_ENV = previous;
+    }
+  });
+
+  it('passwordResetIdentifierLimiter: 429 idéntico exista o no el usuario', async () => {
+    const previous = process.env.NODE_ENV;
+    process.env.NODE_ENV = 'production';
+    try {
+      async function exhaust(findValue, cedula, correo) {
+        const limitedApp = buildApp({ withIdentifierLimiter: true });
+        mockFindOne.mockResolvedValue(findValue);
+        let last;
+        for (let i = 0; i < 4; i += 1) {
+          // eslint-disable-next-line no-await-in-loop
+          last = await request(limitedApp)
+            .post('/api/auth/recuperar-contrasena')
+            .set('X-Forwarded-For', `192.0.2.${i + 40}`)
+            .send({ cedula, correo });
+        }
+        expect(last.status).toBe(429);
+        return last.body;
+      }
+
+      const bodyMissing = await exhaust(null, '3333333333', 'missing@example.com');
+      const bodyExisting = await exhaust(
+        {
+          id_usuario: 9,
+          cedula: '4444444444',
+          correo: 'exists@example.com',
+          nombre_usuario: 'Existe',
+        },
+        '4444444444',
+        'exists@example.com',
+      );
+      expect(bodyExisting).toEqual(bodyMissing);
+      expect(JSON.stringify(bodyExisting)).not.toMatch(/3333333333|4444444444|exists@example|missing@example|Existe/i);
+    } finally {
+      process.env.NODE_ENV = previous;
+    }
+  });
+
 });
