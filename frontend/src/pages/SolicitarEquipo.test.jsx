@@ -31,7 +31,7 @@ describe('SolicitarEquipo', () => {
 
   it('vincula el error inline de la placa con su etiqueta y atributos ARIA', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({
-      data: { aprendiz: { nombre: 'Ana' } },
+      existe: true,
     }), { status: 200, headers: { 'Content-Type': 'application/json' } })));
     renderRequestForm();
 
@@ -59,7 +59,7 @@ describe('SolicitarEquipo', () => {
   it('muestra la hora de inicio del préstamo en la confirmación (regresión: solicitud sin horas)', async () => {
     const fetchMock = vi.fn()
       .mockResolvedValueOnce(new Response(JSON.stringify({
-        data: { aprendiz: { nombre: 'Ana' } },
+        existe: true,
       }), { status: 200, headers: { 'Content-Type': 'application/json' } }))
       .mockResolvedValueOnce(new Response(JSON.stringify({
         success: true,
