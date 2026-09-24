@@ -3,6 +3,7 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import mysql from 'mysql2/promise';
 
 const DEFAULT_READY_TIMEOUT_MS = 120000;
 const DEFAULT_READY_INTERVAL_MS = 1000;
@@ -64,6 +65,58 @@ function sleep(milliseconds) {
   return new Promise((resolve) => {
     setTimeout(resolve, milliseconds);
   });
+}
+
+
+/**
+ * Intenta habilitar log_bin_trust_function_creators (MDL-138 / MDL-233).
+ * Necesario para migraciones con triggers/functions bajo binlog.
+ * Si el usuario no tiene SUPER/SYSTEM_VARIABLES_ADMIN, avisa y continúa.
+ */
+export async function ensureLogBinTrustFunctionCreators({
+  host,
+  port,
+  user,
+  password,
+  createConnection = mysql.createConnection,
+  log = console,
+} = {}) {
+  let connection;
+  try {
+    connection = await createConnection({
+      host,
+      port: Number(port) || 3306,
+      user,
+      password: password ?? '',
+      connectTimeout: 5000,
+    });
+    await connection.query('SET GLOBAL log_bin_trust_function_creators = 1');
+    if (typeof log.log === 'function') {
+      log.log('MySQL: log_bin_trust_function_creators=1 aplicado');
+    } else {
+      console.log('MySQL: log_bin_trust_function_creators=1 aplicado');
+    }
+  } catch (error) {
+    const detail = error && error.message ? error.message : String(error);
+    const message =
+      `No se pudo SET GLOBAL log_bin_trust_function_creators=1 (${detail}). ` +
+      'Continuando; si el servidor no lo permite de otro modo, migraciones con ' +
+      'triggers/functions pueden fallar. En Docker/CI pase ' +
+      '--log-bin-trust-function-creators=1 al mysqld.';
+    if (typeof log.warn === 'function') {
+      log.warn(message);
+    } else {
+      console.warn(message);
+    }
+  } finally {
+    if (connection) {
+      try {
+        await connection.end();
+      } catch {
+        // best-effort close
+      }
+    }
+  }
 }
 
 async function createDockerEnvironmentFile(password, database) {
@@ -168,6 +221,12 @@ export async function runAgainstProvidedMysql(environment = process.env) {
   if (missing.length > 0) {
     throw new Error(`Faltan variables para MySQL externo: ${missing.join(', ')}`);
   }
+  await ensureLogBinTrustFunctionCreators({
+    host: environment.MYSQL_TEST_HOST,
+    port: environment.MYSQL_TEST_PORT || 3306,
+    user: environment.MYSQL_TEST_USER,
+    password: environment.MYSQL_TEST_PASSWORD,
+  });
   return runJest({ ...environment, RUN_MYSQL_INTEGRATION: '1' });
 }
 
@@ -224,6 +283,8 @@ export async function runEphemeralMysql({
         '--publish',
         `127.0.0.1:${port}:3306`,
         image,
+        // MDL-138 / MDL-233: permite crear triggers/functions con binlog activo
+        '--log-bin-trust-function-creators=1',
       ],
       { redactions: [password], stdio: 'pipe' },
     );
@@ -242,6 +303,12 @@ export async function runEphemeralMysql({
         password: pingPassword,
         containerName,
       }),
+    });
+    await ensureLogBinTrustFunctionCreators({
+      host: '127.0.0.1',
+      port,
+      user: 'root',
+      password,
     });
     return await runJestCommand(jestEnvironment);
   } finally {
