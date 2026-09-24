@@ -25,6 +25,8 @@ import {
   CedulaValidationStrategy,
   ValidationContext,
 } from '../strategies/ValidationStrategy.js';
+import { normalizeCedula, normalizeCorreo } from '../utils/normalizeIdentity.js';
+import { toPublicUser, toPublicUserList } from '../utils/usuarioPublico.js';
 
 /**
  * Hash en reposo del token de recuperación (H-09).
@@ -330,14 +332,14 @@ export class AuthService {
     return {
       token,
       requiereCambioContrasena: usuario.requiere_cambio_contrasena === 1 || usuario.requiere_cambio_contrasena === true,
-      user: {
+      user: toPublicUser({
         id_usuario: usuario.id_usuario,
         nombre_usuario: usuario.nombre_usuario,
         correo: usuario.correo,
         telefono: usuario.telefono,
         cedula: usuario.cedula,
         nombre_rol: usuario.nombre_rol,
-      },
+      }),
     };
   }
 
@@ -406,14 +408,14 @@ export class AuthService {
     return {
       token,
       requiereCambioContrasena: usuario.requiere_cambio_contrasena === 1 || usuario.requiere_cambio_contrasena === true,
-      user: {
+      user: toPublicUser({
         id_usuario: usuario.id_usuario,
         nombre_usuario: usuario.nombre_usuario,
         correo: usuario.correo,
         telefono: usuario.telefono,
         cedula: usuario.cedula,
         nombre_rol: usuario.nombre_rol,
-      },
+      }),
       equipo: {
         codigo_equipo: equipoConPlaca.codigo_equipo,
         placa: equipoConPlaca.placa,
@@ -435,7 +437,7 @@ export class AuthService {
       throw new NotFoundError('Usuario');
     }
 
-    return {
+    return toPublicUser({
       id_usuario: user.id_usuario,
       nombre_usuario: user.nombre_usuario,
       correo: user.correo,
@@ -444,7 +446,7 @@ export class AuthService {
       nombre_rol: user.nombre_rol,
       foto_perfil: user.foto_perfil,
       requiere_cambio_contrasena: user.requiere_cambio_contrasena === 1 || user.requiere_cambio_contrasena === true,
-    };
+    });
   }
 
   /**
@@ -452,7 +454,8 @@ export class AuthService {
    * @returns {Promise<Array>} Lista de usuarios
    */
   async listUsers(rol = null) {
-    return this.userRepository.findAll(rol);
+    // Defensa en profundidad MDL-230 (findAll ya omite contrasena).
+    return toPublicUserList(await this.userRepository.findAll(rol));
   }
 
   /**
@@ -470,14 +473,14 @@ export class AuthService {
     const equipos = await this.userRepository.getAssignedEquipos(userId);
 
     return {
-      user: {
+      user: toPublicUser({
         id_usuario: user.id_usuario,
         nombre_usuario: user.nombre_usuario,
         cedula: user.cedula,
         correo: user.correo,
         telefono: user.telefono,
         nombre_rol: user.nombre_rol,
-      },
+      }),
       equipos,
     };
   }
@@ -492,7 +495,8 @@ export class AuthService {
     const user = await this.userRepository.findByCedula(documentoNormalizado);
 
     if (user) {
-      return user;
+      // MDL-230: findByCedula incluye contrasena para login; nunca devolverla al cliente.
+      return toPublicUser(user);
     }
 
     const db = this.userRepository.db;
@@ -525,13 +529,105 @@ export class AuthService {
   }
 
   /**
-   * Actualiza un usuario
-   * @param {number} userId - ID del usuario
+   * Actualiza un usuario (perfil propio o Admin sobre otro).
+   *
+   * MDL-192 / H-07 fase 1 — gates de identidad en PUT /api/auth/user/:id:
+   * - Nadie (incluido Admin) puede cambiar su propia cédula.
+   * - Cambio de correo propio exige contraseña actual (mensaje genérico si falla).
+   * - Admin que cambia cédula y/o correo de OTRO usuario: motivo obligatorio + log
+   *   server-side (actor, target, field, motivo; nunca valor nuevo/viejo de correo/cédula).
+   *   Un solo motivo cubre ambos campos si cambian juntos.
+   * - Si cedula/correo normalizados no cambian, no se aplica ningún gate (Perfil
+   *   siempre reenvía ambos campos).
+   *
+   * @param {number} userId - ID del usuario a actualizar
    * @param {Object} userData - Datos a actualizar
+   * @param {{ id?: number, rol?: string }} [actor] - Quién ejecuta la petición
    * @returns {Promise<Object>} Resultado de la actualización
    */
-  async updateUser(userId, userData) {
-    const { nombre, cedula, correo, telefono, rol } = userData;
+  async updateUser(userId, userData, actor = {}) {
+    const IDENTITY_REJECT_MESSAGE = 'No se pudo completar la operación.';
+
+    // Extraer y borrar de inmediato para que nunca llegue a UserRepository.update,
+    // respuestas ni meta de logs (MDL-192 / H-07).
+    const contrasena_actual = userData?.contrasena_actual;
+    if (userData && Object.prototype.hasOwnProperty.call(userData, 'contrasena_actual')) {
+      delete userData.contrasena_actual;
+    }
+
+    const { nombre, cedula, correo, telefono, rol, motivo } = userData || {};
+
+    const existing = await this.userRepository.findById(userId);
+    if (!existing) {
+      throw new NotFoundError('Usuario');
+    }
+
+    const actorId = actor?.id;
+    const isSelf = actorId != null && Number(actorId) === Number(userId);
+
+    const storedCedula = normalizeCedula(existing.cedula);
+    const storedCorreo = normalizeCorreo(existing.correo);
+    const incomingCedula = cedula !== undefined && cedula !== null ? normalizeCedula(cedula) : null;
+    const incomingCorreo = correo !== undefined && correo !== null ? normalizeCorreo(correo) : null;
+
+    const cedulaChanging = incomingCedula !== null
+      && incomingCedula !== ''
+      && incomingCedula !== storedCedula;
+    const correoChanging = incomingCorreo !== null
+      && incomingCorreo !== ''
+      && incomingCorreo !== storedCorreo;
+
+    // Guard explícito: requireOwnership deja pasar al Admin sobre sí mismo;
+    // requireAdminForRoleChange solo mira `rol`. Nadie cambia su propia cédula.
+    if (cedulaChanging && isSelf) {
+      throw new ValidationError(IDENTITY_REJECT_MESSAGE);
+    }
+
+    // Admin sobre otro usuario: motivo obligatorio al cambiar cédula y/o correo.
+    if ((cedulaChanging || correoChanging) && !isSelf) {
+      const motivoNormalizado = motivo == null ? '' : String(motivo).trim();
+      if (!motivoNormalizado || motivoNormalizado.length > 500) {
+        throw new ValidationError(IDENTITY_REJECT_MESSAGE);
+      }
+      const logBase = {
+        targetUserId: Number(userId),
+        adminId: actorId != null ? Number(actorId) : null,
+        motivo: motivoNormalizado,
+      };
+      if (cedulaChanging) {
+        this.logger.info('Cambio de identidad (cédula) por administrador', {
+          ...logBase,
+          field: 'cedula',
+        });
+      }
+      if (correoChanging) {
+        this.logger.info('Cambio de identidad (correo) por administrador', {
+          ...logBase,
+          field: 'correo',
+        });
+      }
+    }
+
+    if (correoChanging && isSelf) {
+      const passwordProvided = contrasena_actual != null && String(contrasena_actual).length > 0;
+      if (!passwordProvided) {
+        throw new ValidationError(IDENTITY_REJECT_MESSAGE);
+      }
+      const credenciales = await this.userRepository.findOne(
+        'SELECT contrasena FROM Usuarios WHERE id_usuario = ? AND estado = "Activo"',
+        [userId]
+      );
+      if (!credenciales?.contrasena) {
+        throw new ValidationError(IDENTITY_REJECT_MESSAGE);
+      }
+      const passwordOk = await this.passwordService.compare(
+        String(contrasena_actual),
+        credenciales.contrasena
+      );
+      if (!passwordOk) {
+        throw new ValidationError(IDENTITY_REJECT_MESSAGE);
+      }
+    }
 
     // Buscar id_rol si se proporciona
     let idRol = null;
@@ -543,23 +639,29 @@ export class AuthService {
       idRol = rolRow.id_rol;
     }
 
-    // Preparar datos de actualización
+    // Preparar datos de actualización (nunca incluye contrasena_actual)
     const updateData = {};
     if (nombre) updateData.nombre = nombre;
-    if (cedula) updateData.cedula = cedula;
-    if (correo) {
-      // Validar email si se proporciona
-      const emailResult = this.emailValidator.validate(correo);
+    if (cedulaChanging) {
+      updateData.cedula = incomingCedula;
+    }
+    if (correoChanging) {
+      const emailResult = this.emailValidator.validate(incomingCorreo);
       if (!emailResult.valid) {
         throw new ValidationError(emailResult.error);
       }
-      updateData.correo = correo;
+      updateData.correo = incomingCorreo;
     }
     if (telefono) updateData.telefono = telefono;
     if (idRol) updateData.idRol = idRol;
 
     if (Object.keys(updateData).length === 0) {
       throw new ValidationError('No hay campos para actualizar');
+    }
+
+    if (Object.prototype.hasOwnProperty.call(updateData, 'contrasena_actual')
+      || Object.prototype.hasOwnProperty.call(updateData, 'contrasena')) {
+      throw new ValidationError(IDENTITY_REJECT_MESSAGE);
     }
 
     const result = await this.userRepository.update(userId, updateData);
@@ -572,12 +674,6 @@ export class AuthService {
     return { message: 'Usuario actualizado correctamente' };
   }
 
-  /**
-   * Actualiza la foto de perfil del usuario
-   * @param {number} userId - ID del usuario
-   * @param {string} fotoPerfilPath - Ruta de la foto de perfil
-   * @returns {Promise<Object>} Resultado de la actualización
-   */
   async updateUserProfilePhoto(userId, fotoPerfilPath) {
     // Obtener usuario actual para eliminar foto anterior si existe
     const user = await this.userRepository.findById(userId);
@@ -604,7 +700,7 @@ export class AuthService {
     this.logger.info('Foto de perfil actualizada', { userId });
     return { 
       message: 'Foto de perfil actualizada correctamente',
-      user: updatedUser,
+      user: toPublicUser(updatedUser),
       foto_perfil: fotoPerfilPath
     };
   }
@@ -806,7 +902,8 @@ export class AuthService {
   async validarTokenRecuperacion(token) {
     // Se busca por el hash del token; en la BD nunca está el token en claro (H-09).
     const tokenData = await this.userRepository.findOne(
-      `SELECT t.*, u.nombre_usuario, u.correo
+      `SELECT t.id_token, t.id_usuario, t.token, t.fecha_creacion, t.fecha_expiracion, t.usado, t.fecha_uso,
+              u.nombre_usuario, u.correo
        FROM Tokens_Recuperacion_Contrasena t
        INNER JOIN Usuarios u ON u.id_usuario = t.id_usuario
        WHERE t.token = ? AND t.usado = 0 AND t.fecha_expiracion > NOW()`,
@@ -832,6 +929,7 @@ export class AuthService {
    */
   async restablecerContrasena(token, nuevaContrasena) {
     // Validar política ANTES de consumir el token (no quemar token por password débil).
+    // Claim atómico por hash más abajo (H-09 / MDL-232); no SELECT previo que compita con la carrera.
     const passwordResult = this.passwordValidator.validate(nuevaContrasena);
     if (!passwordResult.valid) {
       throw new ValidationError(passwordResult.error);

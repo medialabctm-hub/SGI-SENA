@@ -176,10 +176,14 @@ export const updateUser = async (req, res, next) => {
   try {
     const { id } = req.params;
     const authService = ServiceFactory.create('authService');
-    const result = await authService.updateUser(id, req.body);
+    const actor = req.user
+      ? { id: req.user.id, rol: req.user.rol }
+      : {};
+    // AuthService borra contrasena_actual del body; no loguear body aquí.
+    const result = await authService.updateUser(id, req.body, actor);
     return res.json(result);
   } catch (error) {
-    logger.error('Error en updateUser', { error: error.message });
+    logger.error('Error en updateUser', { error: error.message, userId: req.params?.id });
     return next(error);
   }
 };

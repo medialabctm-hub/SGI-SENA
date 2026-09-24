@@ -70,8 +70,13 @@ export class UserRepository extends BaseRepository {
    * @returns {Promise<Object|null>} Usuario encontrado o null
    */
   async findByCedula(cedula) {
+    // MDL-230: columnas explícitas (incl. contrasena para login/compare).
+    // Quien responda HTTP DEBE pasar el row por toPublicUser().
     return this.findOne(
-      `SELECT u.*, r.nombre_rol, u.requiere_cambio_contrasena
+      `SELECT u.id_usuario, u.nombre_usuario, u.cedula, u.tipo_documento, u.tipo_documento_otro,
+              u.telefono, u.correo, u.contrasena, u.id_rol, u.estado,
+              u.requiere_cambio_contrasena, u.foto_perfil, u.fecha_registro, u.ultimo_acceso, u.creado_por,
+              r.nombre_rol
        FROM Usuarios u
        LEFT JOIN Roles r ON r.id_rol = u.id_rol
        WHERE u.cedula = ? AND u.estado = "Activo"`,

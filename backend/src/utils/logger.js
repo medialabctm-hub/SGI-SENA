@@ -2,6 +2,8 @@
  * Sistema de logging para la aplicación
  */
 
+import { redactSensitiveFields } from './errorScrubber.js';
+
 const LOG_LEVELS = {
   ERROR: 0,
   WARN: 1,
@@ -66,7 +68,8 @@ class Logger {
   formatMessage(level, message, meta = {}) {
     const timestamp = new Date().toISOString();
     const levelName = LOG_LEVEL_NAMES[level];
-    const safeMeta = redactSensitive(meta);
+    // develop: redactSensitiveFields (errorScrubber); #48: redactSensitive (tokens/passwords)
+    const safeMeta = redactSensitive(redactSensitiveFields(meta));
     const metaStr = Object.keys(safeMeta).length > 0 ? JSON.stringify(safeMeta) : '';
 
     return `[${timestamp}] [${levelName}] ${message} ${metaStr}`;
