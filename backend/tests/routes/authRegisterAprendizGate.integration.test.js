@@ -64,7 +64,7 @@ const payload = {
   tipo_documento: 'CC',
   correo: 'carlos.h03@sena.edu.co',
   telefono: '3009988776',
-  contrasena: 'secreto1',
+  contrasena: 'Secreto1*',
   rol: 'Aprendiz',
 };
 

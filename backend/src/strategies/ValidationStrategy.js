@@ -40,9 +40,15 @@ export class EmailValidationStrategy extends ValidationStrategy {
  * PasswordValidationStrategy - Estrategia para validar contraseñas
  */
 export class PasswordValidationStrategy extends ValidationStrategy {
-  constructor(minLength = 6) {
+  /**
+   * Política de contraseñas (H-10): longitud mínima + complejidad.
+   * @param {number} minLength Longitud mínima (por defecto 8).
+   * @param {number} maxLength Longitud máxima (por defecto 128).
+   */
+  constructor(minLength = 8, maxLength = 128) {
     super();
     this.minLength = minLength;
+    this.maxLength = maxLength;
   }
 
   validate(value) {
@@ -55,6 +61,29 @@ export class PasswordValidationStrategy extends ValidationStrategy {
         valid: false,
         error: `La contraseña debe tener al menos ${this.minLength} caracteres`,
       };
+    }
+
+    if (value.length > this.maxLength) {
+      return {
+        valid: false,
+        error: `La contraseña no debe superar los ${this.maxLength} caracteres`,
+      };
+    }
+
+    if (!/[a-z]/.test(value)) {
+      return { valid: false, error: 'La contraseña debe incluir al menos una letra minúscula' };
+    }
+
+    if (!/[A-Z]/.test(value)) {
+      return { valid: false, error: 'La contraseña debe incluir al menos una letra mayúscula' };
+    }
+
+    if (!/[0-9]/.test(value)) {
+      return { valid: false, error: 'La contraseña debe incluir al menos un número' };
+    }
+
+    if (!/[^A-Za-z0-9]/.test(value)) {
+      return { valid: false, error: 'La contraseña debe incluir al menos un carácter especial' };
     }
 
     return { valid: true, error: null };

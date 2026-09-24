@@ -113,7 +113,7 @@ describe('registerSchema', () => {
     cedula: '1234567890',
     correo: 'juan@sena.edu.co',
     telefono: '3001234567',
-    contrasena: 'secreto123',
+    contrasena: 'Secreto123*',
     rol: 'Aprendiz',
   };
 
@@ -162,10 +162,23 @@ describe('registerSchema', () => {
     ).toThrow();
   });
 
-  it('debe fallar si la contraseña tiene menos de 6 caracteres', () => {
+  it('debe fallar si la contraseña tiene menos de 8 caracteres (H-10)', () => {
     expect(() =>
-      registerSchema.parse({ ...baseData, contrasena: 'abc1' })
+      registerSchema.parse({ ...baseData, contrasena: 'Abc1*d' })
     ).toThrow();
+  });
+
+  it('debe fallar si la contraseña no cumple la complejidad (H-10)', () => {
+    // Sin mayúscula, sin número o sin carácter especial → rechazada.
+    expect(() => registerSchema.parse({ ...baseData, contrasena: 'solominusculas' })).toThrow();
+    expect(() => registerSchema.parse({ ...baseData, contrasena: 'SinNumero*Aqui' })).toThrow();
+    expect(() => registerSchema.parse({ ...baseData, contrasena: 'SinEspecial123' })).toThrow();
+  });
+
+  it('debe aceptar una contraseña que cumple la política (H-10)', () => {
+    expect(() =>
+      registerSchema.parse({ ...baseData, contrasena: 'Segura123*' })
+    ).not.toThrow();
   });
 
   it('debe fallar si el rol es inválido', () => {
@@ -294,7 +307,7 @@ describe('Middleware validate()', () => {
         cedula: '9876543210',
         correo: 'carlos@sena.edu.co',
         telefono: '3109876543',
-        contrasena: 'pass123',
+        contrasena: 'Pass123*Ab',
         rol: 'Aprendiz',
       });
 
