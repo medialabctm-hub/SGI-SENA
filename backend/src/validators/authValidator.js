@@ -5,6 +5,21 @@ import { TIPOS_DOCUMENTO } from '../config/documentTypes.js';
  * Validadores para las rutas de autenticación
  */
 
+/**
+ * Política de contraseñas (H-10): mín. 8, máx. 128 y complejidad
+ * (minúscula, mayúscula, número y carácter especial). Alineada con
+ * PasswordValidationStrategy (fuente de verdad en el servicio) para que la
+ * validación de la ruta falle rápido con el mismo criterio.
+ */
+export const passwordPolicySchema = z
+  .string()
+  .min(8, 'La contraseña debe tener al menos 8 caracteres')
+  .max(128, 'La contraseña no debe superar los 128 caracteres')
+  .regex(/[a-z]/, 'La contraseña debe incluir al menos una letra minúscula')
+  .regex(/[A-Z]/, 'La contraseña debe incluir al menos una letra mayúscula')
+  .regex(/[0-9]/, 'La contraseña debe incluir al menos un número')
+  .regex(/[^A-Za-z0-9]/, 'La contraseña debe incluir al menos un carácter especial');
+
 export const registerSchema = z.object({
   nombre: z.string().min(2, 'El nombre debe tener al menos 2 caracteres').max(100),
   cedula: z.string().min(5, 'La cédula debe tener al menos 5 caracteres').max(20),
@@ -14,7 +29,7 @@ export const registerSchema = z.object({
   tipo_documento_otro: z.string().max(50).optional().nullable(),
   correo: z.string().email('Correo electrónico inválido').toLowerCase(),
   telefono: z.string().min(7, 'El teléfono debe tener al menos 7 caracteres').max(20),
-  contrasena: z.string().min(6, 'La contraseña debe tener al menos 6 caracteres'),
+  contrasena: passwordPolicySchema,
   rol: z.enum(['Administrador', 'Instructor', 'Aprendiz', 'Cuentadante'], {
     errorMap: () => ({ message: 'Rol inválido' }),
   }),

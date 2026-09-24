@@ -49,7 +49,7 @@ const baseAprendiz = {
   tipo_documento: 'CC',
   correo: 'ana@sena.edu.co',
   telefono: '3001112233',
-  contrasena: 'pass1234',
+  contrasena: 'Pass1234*',
   rol: 'Aprendiz',
 };
 
