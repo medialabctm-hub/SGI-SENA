@@ -1,3 +1,5 @@
+import { getPasswordError } from './passwordPolicy';
+
 export const validarCaracteresEspeciales = (valor, campo) => {
   const caracteresProhibidos = /[<>"'/\\(){}[\]=;:%&]/;
   if (caracteresProhibidos.test(valor)) {
@@ -76,35 +78,9 @@ export const validarTelefono = telefono => {
 };
 
 export const validarContraseña = contraseña => {
-  if (contraseña.length < 8) {
-    return 'La contraseña debe tener al menos 8 caracteres';
-  }
-
-  if (contraseña !== contraseña.trim()) {
-    return 'La contraseña no puede tener espacios al inicio ni al final';
-  }
-
-  if (/\s/.test(contraseña)) {
-    return 'La contraseña no puede contener espacios en blanco';
-  }
-
-  if (!/(?=.*[a-z])/.test(contraseña)) {
-    return 'La contraseña debe contener al menos una letra minúscula';
-  }
-
-  if (!/(?=.*[A-Z])/.test(contraseña)) {
-    return 'La contraseña debe contener al menos una letra mayúscula';
-  }
-
-  if (!/(?=.*\d)/.test(contraseña)) {
-    return 'La contraseña debe contener al menos un número';
-  }
-
-  if (!/(?=.*[!@#$%^&*(),.?":{}|<>])/.test(contraseña)) {
-    return 'La contraseña debe contener al menos un símbolo especial';
-  }
-
-  return null;
+  // MDL-232 / H-10: misma política que backend. Espacios (incl. leading/trailing)
+  // son válidos como carácter especial; NUNCA hacer trim de la contraseña.
+  return getPasswordError(contraseña);
 };
 
 export const validarCampoRequerido = (valor, campo) => {
@@ -151,13 +127,17 @@ export const validarRegistro = datos => {
   const espaciosErrorNombre = validarEspaciosEnBlanco(datos.nombre_usuario, 'nombre');
   if (espaciosErrorNombre) errores.nombre_usuario = espaciosErrorNombre;
 
-  ['correo_usuario', 'telefono_usuario', 'contraseña_usuario'].forEach(campo => {
+  // Correo y teléfono: sin caracteres peligrosos. La contraseña NO pasa por
+  // validarCaracteresEspeciales: el backend acepta (){}<>" vía /[^A-Za-z0-9]/ (MDL-232).
+  ['correo_usuario', 'telefono_usuario'].forEach(campo => {
     const nombreCampo = campo.replace('_usuario', '');
     const caracteresError = validarCaracteresEspeciales(datos[campo], nombreCampo);
     if (caracteresError) errores[campo] = caracteresError;
     const espaciosError = validarEspaciosEnBlanco(datos[campo], nombreCampo);
     if (espaciosError) errores[campo] = espaciosError;
   });
+  // Contraseña: solo política compartida (espacios permitidos; sin trim).
+
 
   return errores;
 };
