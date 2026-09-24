@@ -1697,12 +1697,15 @@ describe('registrarVerificacionInventario', () => {
 
   it('returns 403 when no active responsabilidad', async () => {
     mockExecute
-      .mockResolvedValueOnce([[{ codigo_equipo: 1, id_ambiente: 2, nombre_ambiente: 'Lab' }]])
-      .mockResolvedValueOnce([[undefined]]);
+      .mockResolvedValueOnce([[{ codigo_equipo: 1, id_ambiente: 2, id_cuentadante: 99, nombre_ambiente: 'Lab' }]])
+      .mockResolvedValueOnce([[undefined]]); // sin resp
     const req = mockReq({ user: { id: 5, rol: 'Instructor' }, body: { codigo_equipo: 1, estado_verificacion: 'Verificado' } });
     const res = mockRes();
     await registrarVerificacionInventario(req, res);
     expect(res.status).toHaveBeenCalledWith(403);
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
+      error: expect.stringMatching(/permiso/i),
+    }));
   });
 
   it('returns 400 when estado_verificacion is invalid', async () => {
@@ -1724,6 +1727,99 @@ describe('registrarVerificacionInventario', () => {
     const res = mockRes();
     await registrarVerificacionInventario(req, res);
     expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ ok: true, id_verificacion: 50 }));
+  });
+
+  it('MDL-234 POST: propio en aula cta-only → 200 (sin responsabilidad)', async () => {
+    mockExecute
+      .mockResolvedValueOnce([[{
+        codigo_equipo: 77,
+        id_ambiente: 25,
+        id_cuentadante: 2,
+        nombre_ambiente: 'Aula 303',
+      }]])
+      .mockResolvedValueOnce([[undefined]]) // sin resp
+      .mockResolvedValueOnce([{ insertId: 88 }]);
+    const req = mockReq({
+      user: { id: 2, rol: 'Cuentadante' },
+      body: { codigo_equipo: 77, estado_verificacion: 'Verificado' },
+    });
+    const res = mockRes();
+    await registrarVerificacionInventario(req, res);
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
+      ok: true,
+      id_verificacion: 88,
+      contexto: expect.objectContaining({ alcance: 'propios' }),
+    }));
+    const insertParams = mockExecute.mock.calls[2][1];
+    expect(insertParams[2]).toBeNull(); // id_clase
+    expect(insertParams[3]).toBeNull(); // id_responsabilidad_ambiente
+  });
+
+  it('MDL-234 POST NEG: equipo de otro cuentadante en aula cta-only → 403 genérico', async () => {
+    mockExecute
+      .mockResolvedValueOnce([[{
+        codigo_equipo: 99,
+        id_ambiente: 25,
+        id_cuentadante: 9,
+        nombre_ambiente: 'Aula 303',
+      }]])
+      .mockResolvedValueOnce([[undefined]]);
+    const req = mockReq({
+      user: { id: 2, rol: 'Cuentadante' },
+      body: { codigo_equipo: 99, estado_verificacion: 'Verificado' },
+    });
+    const res = mockRes();
+    await registrarVerificacionInventario(req, res);
+    expect(res.status).toHaveBeenCalledWith(403);
+    const body = res.json.mock.calls[0][0];
+    expect(body.error).toMatch(/permiso/i);
+    expect(JSON.stringify(body)).not.toMatch(/id_cuentadante|9|dueño|owner/i);
+  });
+
+  it('MDL-234 POST: equipo en aula con responsabilidad → 200 (ajeno permitido)', async () => {
+    mockExecute
+      .mockResolvedValueOnce([[{
+        codigo_equipo: 3,
+        id_ambiente: 7,
+        id_cuentadante: 9,
+        nombre_ambiente: 'Aula 107',
+      }]])
+      .mockResolvedValueOnce([[{
+        id_responsabilidad_ambiente: 10,
+        id_clase: null,
+        jornada: 'Diurna',
+        nombre_clase: null,
+        codigo_ficha: null,
+      }]])
+      .mockResolvedValueOnce([{ insertId: 70 }]);
+    const req = mockReq({
+      user: { id: 2, rol: 'Cuentadante' },
+      body: { codigo_equipo: 3, estado_verificacion: 'Verificado' },
+    });
+    const res = mockRes();
+    await registrarVerificacionInventario(req, res);
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
+      ok: true,
+      contexto: expect.objectContaining({ alcance: 'responsable' }),
+    }));
+  });
+
+  it('MDL-234 POST: Instructor sin resp ni ownership → 403 (sin cambio de rol)', async () => {
+    mockExecute
+      .mockResolvedValueOnce([[{
+        codigo_equipo: 1,
+        id_ambiente: 2,
+        id_cuentadante: null,
+        nombre_ambiente: 'Lab',
+      }]])
+      .mockResolvedValueOnce([[undefined]]);
+    const req = mockReq({
+      user: { id: 5, rol: 'Instructor' },
+      body: { codigo_equipo: 1, estado_verificacion: 'Verificado' },
+    });
+    const res = mockRes();
+    await registrarVerificacionInventario(req, res);
+    expect(res.status).toHaveBeenCalledWith(403);
   });
 
   it('returns 500 on DB error', async () => {

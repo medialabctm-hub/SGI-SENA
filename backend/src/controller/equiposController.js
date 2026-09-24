@@ -10,6 +10,12 @@ import {
 import { getImagePath, deleteImageFile } from '../middleware/uploadMiddleware.js';
 import { handleControllerError } from '../utils/controllerHelpers.js';
 import { toEquipoDto } from '../utils/equipoDto.js';
+import {
+  loadVerificacionAmbienteIds,
+  buildVerificacionEquiposScopeClause,
+  resolveVerificacionEquipoAccess,
+  VERIFICACION_DENY_MESSAGE,
+} from '../utils/verificacionInventarioScope.js';
 import { AppError, translateDbError } from '../utils/errors.js';
 import { beginEquipmentClaim, lockEquipmentRow } from '../utils/equipmentClaim.js';
 import path from 'path';
@@ -1398,41 +1404,13 @@ export async function obtenerEquiposAmbientesInstructor(req, res) {
       })
     }
 
-    // MDL-234: UNA fila por id_ambiente + alcance de equipos.
-    // - Aula con responsabilidad activa → ve TODOS los equipos del aula.
-    // - Aula solo por Elementos.id_cuentadante → ve SOLO equipos propios.
-    // - Aula en ambos → alcance 'responsable' (todos).
-    const [respRows] = await defaultDb.execute(
-      `SELECT DISTINCT ra.id_ambiente AS id_ambiente
-       FROM Responsabilidades_Ambiente ra
-       LEFT JOIN Clases c ON ra.id_clase = c.id_clase
-       WHERE ra.id_usuario = ?
-         AND ra.estado_responsabilidad = 'Activa'
-         AND (
-           ra.id_clase IS NULL
-           OR (ra.id_clase IS NOT NULL AND c.estado_clase = 'En Curso')
-         )`,
-      [userId]
-    );
-
-    const [ctaRows] = await defaultDb.execute(
-      `SELECT DISTINCT e.id_ambiente AS id_ambiente
-       FROM Elementos e
-       WHERE e.id_cuentadante = ?
-         AND e.id_ambiente IS NOT NULL
-         AND (e.estado_fisico IS NULL OR e.estado_fisico <> 'Baja')`,
-      [userId]
-    );
-
-    const responsabilidadAmbienteIds = [...new Set(
-      (respRows || []).map((r) => Number(r.id_ambiente)).filter((id) => Number.isInteger(id) && id > 0)
-    )];
-    const cuentadanteAmbienteIds = [...new Set(
-      (ctaRows || []).map((r) => Number(r.id_ambiente)).filter((id) => Number.isInteger(id) && id > 0)
-    )];
-    const respSet = new Set(responsabilidadAmbienteIds);
-    const cuentadanteOnlyAmbienteIds = cuentadanteAmbienteIds.filter((id) => !respSet.has(id));
-    const allAmbienteIds = [...new Set([...responsabilidadAmbienteIds, ...cuentadanteAmbienteIds])];
+    // MDL-234: sets + alcance vía helper compartido (misma regla que POST).
+    const {
+      responsabilidadAmbienteIds,
+      cuentadanteOnlyAmbienteIds,
+      allAmbienteIds,
+      respSet,
+    } = await loadVerificacionAmbienteIds(defaultDb, userId);
 
     logger.debug('Verificación Inventario', {
       userId,
@@ -1469,31 +1447,20 @@ export async function obtenerEquiposAmbientesInstructor(req, res) {
 
     const ambientes = (ambienteRows || []).map((a) => ({
       ...a,
-      // Opcional para FE; no rompe consumidores que ignoren campos extra.
       alcance: respSet.has(Number(a.id_ambiente)) ? 'responsable' : 'propios',
     }));
 
-    // Equipos: resp aulas → todos; cta-only → solo id_cuentadante = user.
-    // Evitar IN () vacío: construir OR de ramas presentes.
-    const equipoScopeParts = [];
-    const equipoParams = [userId, userId, userId]; // subqueries de última verificación
+    const scope = buildVerificacionEquiposScopeClause({
+      responsabilidadAmbienteIds,
+      cuentadanteOnlyAmbienteIds,
+      userId,
+    });
 
-    if (responsabilidadAmbienteIds.length > 0) {
-      equipoScopeParts.push(
-        `e.id_ambiente IN (${responsabilidadAmbienteIds.map(() => '?').join(',')})`
-      );
-      equipoParams.push(...responsabilidadAmbienteIds);
-    }
-    if (cuentadanteOnlyAmbienteIds.length > 0) {
-      equipoScopeParts.push(
-        `(e.id_ambiente IN (${cuentadanteOnlyAmbienteIds.map(() => '?').join(',')}) AND e.id_cuentadante = ?)`
-      );
-      equipoParams.push(...cuentadanteOnlyAmbienteIds, userId);
-    }
-
-    if (equipoScopeParts.length === 0) {
+    if (!scope) {
       return res.json({ ambientes, equipos: [] });
     }
+
+    const equipoParams = [userId, userId, userId, ...scope.params];
 
     const [equipos] = await defaultDb.execute(
       `SELECT 
@@ -1525,7 +1492,7 @@ export async function obtenerEquiposAmbientesInstructor(req, res) {
          LIMIT 1) AS observaciones_verificacion
       FROM Elementos e
       INNER JOIN Ambientes a ON e.id_ambiente = a.id_ambiente
-      WHERE (${equipoScopeParts.join(' OR ')})
+      WHERE ${scope.sql}
         AND (e.estado_fisico IS NULL OR e.estado_fisico <> 'Baja')
       ORDER BY a.nombre_ambiente, e.placa`,
       equipoParams
@@ -1568,9 +1535,9 @@ export async function registrarVerificacionInventario(req, res) {
       })
     }
 
-    // Validar que el equipo existe y obtener su ambiente
+    // Request shape: un solo equipo (verificarInventarioSchema); no es batch.
     const [[equipo]] = await defaultDb.execute(
-      `SELECT e.codigo_equipo, e.id_ambiente, a.nombre_ambiente
+      `SELECT e.codigo_equipo, e.id_ambiente, e.id_cuentadante, a.nombre_ambiente
        FROM Elementos e
        INNER JOIN Ambientes a ON e.id_ambiente = a.id_ambiente
        WHERE e.codigo_equipo = ?`,
@@ -1581,53 +1548,18 @@ export async function registrarVerificacionInventario(req, res) {
       return res.status(404).json({ error: 'Equipo no encontrado' })
     }
 
-    // Validar que el instructor tiene responsabilidad activa en ese ambiente
-    // IMPORTANTE: Permitimos verificar si el instructor tiene una asignación activa,
-    // sin restricción de horario exacto. Esto permite que el instructor verifique
-    // equipos en cualquier momento durante el período de su asignación.
-    // Obtener información completa de la responsabilidad para el historial
-    const [[responsabilidad]] = await defaultDb.execute(
-      `SELECT 
-        ra.id_responsabilidad_ambiente,
-        ra.id_clase,
-        ra.jornada,
-        ra.dias_semana,
-        ra.hora_inicio,
-        ra.hora_fin,
-        c.fecha_clase,
-        c.hora_inicio AS clase_hora_inicio,
-        c.hora_fin AS clase_hora_fin,
-        c.nombre_clase,
-        c.codigo_ficha
-       FROM Responsabilidades_Ambiente ra
-       LEFT JOIN Clases c ON ra.id_clase = c.id_clase
-       WHERE ra.id_ambiente = ?
-         AND ra.id_usuario = ?
-         AND ra.estado_responsabilidad = 'Activa'
-         -- SISTEMA 100% MANUAL: Eliminadas comparaciones con NOW() y CURDATE()
-         -- El estado_responsabilidad = 'Activa' es suficiente
-         -- AND ra.fecha_inicio <= NOW()
-         -- AND (ra.fecha_fin IS NULL OR ra.fecha_fin >= NOW())
-         AND (
-           -- Asignaciones permanentes (con días/horarios o jornada)
-           (ra.id_clase IS NULL)
-           OR
-           -- Asignaciones temporales (clases) - SOLO si la clase está EN_CURSO
-           -- NO permitir clases Programadas porque aún no han iniciado (no tiene acceso al inventario)
-           -- NO permitir clases Finalizadas porque ya terminaron (ya no tiene acceso)
-           (ra.id_clase IS NOT NULL 
-            AND c.estado_clase = 'En Curso')
-         )
-       ORDER BY ra.fecha_inicio DESC
-       LIMIT 1`,
-      [equipo.id_ambiente, userId]
-    )
+    // MDL-234: misma regla que el listado (helper compartido).
+    const access = await resolveVerificacionEquipoAccess(defaultDb, {
+      userId,
+      idAmbiente: equipo.id_ambiente,
+      idCuentadante: equipo.id_cuentadante,
+    });
 
-    if (!responsabilidad) {
-      return res.status(403).json({ 
-        error: 'No tienes responsabilidad activa en el ambiente de este equipo' 
-      })
+    if (!access.allowed) {
+      return res.status(403).json({ error: VERIFICACION_DENY_MESSAGE });
     }
+
+    const responsabilidad = access.responsabilidad;
 
     // Validar estado_verificacion
     const estadosValidos = ['Verificado', 'Con Novedad', 'No Verificado']
@@ -1637,8 +1569,8 @@ export async function registrarVerificacionInventario(req, res) {
       })
     }
 
-    // Siempre crear un nuevo registro en el historial (no actualizar)
-    // Esto permite rastrear todas las verificaciones a lo largo del tiempo
+    // Siempre crear un nuevo registro en el historial (no actualizar).
+    // Si alcance=propios (sin resp.), id_responsabilidad_ambiente/jornada/clase van null.
     const [result] = await defaultDb.execute(
       `INSERT INTO Verificaciones_Inventario 
        (codigo_equipo, id_ambiente, id_clase, id_responsabilidad_ambiente, jornada, id_usuario, estado_verificacion, observaciones, fecha_verificacion)
@@ -1646,9 +1578,9 @@ export async function registrarVerificacionInventario(req, res) {
       [
         codigo_equipo,
         equipo.id_ambiente,
-        responsabilidad.id_clase || null,
-        responsabilidad.id_responsabilidad_ambiente,
-        responsabilidad.jornada || null,
+        responsabilidad?.id_clase || null,
+        responsabilidad?.id_responsabilidad_ambiente || null,
+        responsabilidad?.jornada || null,
         userId,
         estado_verificacion,
         observaciones || null
@@ -1665,12 +1597,13 @@ export async function registrarVerificacionInventario(req, res) {
       },
       contexto: {
         ambiente: equipo.nombre_ambiente,
-        clase: responsabilidad.nombre_clase || null,
-        horario: responsabilidad.id_clase 
+        alcance: access.alcance,
+        clase: responsabilidad?.nombre_clase || null,
+        horario: responsabilidad?.id_clase 
           ? `${responsabilidad.fecha_clase} ${responsabilidad.hora_inicio} - ${responsabilidad.hora_fin}`
           : null,
-        jornada: responsabilidad.jornada || null,
-        ficha: responsabilidad.codigo_ficha || null
+        jornada: responsabilidad?.jornada || null,
+        ficha: responsabilidad?.codigo_ficha || null
       }
     })
   } catch (err) {
