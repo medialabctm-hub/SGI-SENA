@@ -101,3 +101,15 @@ describe('usuariosImportExport (MDL-211)', () => {
     expect(reimported.nombre_usuario).toBe('Lucia');
   });
 });
+
+  it('MDL-192: mapUsuarioImportRow normaliza correo (trim + lowercase)', () => {
+    const mapped = mapUsuarioImportRow({
+      nombre_usuario: 'Ana',
+      cedula: ' 99 ',
+      correo: ' Correo@X.com ',
+      rol: 'Aprendiz',
+    });
+    expect(mapped.correo).toBe('correo@x.com');
+    expect(mapped.cedula).toBe('99');
+  });
+
