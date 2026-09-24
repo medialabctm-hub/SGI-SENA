@@ -513,8 +513,9 @@ export class AuthService {
    * MDL-192 / H-07 fase 1 — gates de identidad en PUT /api/auth/user/:id:
    * - Nadie (incluido Admin) puede cambiar su propia cédula.
    * - Cambio de correo propio exige contraseña actual (mensaje genérico si falla).
-   * - Admin que cambia la cédula de OTRO usuario: motivo obligatorio + log server-side
-   *   (sin valor nuevo; Auditoria formal = MDL-228).
+   * - Admin que cambia cédula y/o correo de OTRO usuario: motivo obligatorio + log
+   *   server-side (actor, target, field, motivo; nunca valor nuevo/viejo de correo/cédula).
+   *   Un solo motivo cubre ambos campos si cambian juntos.
    * - Si cedula/correo normalizados no cambian, no se aplica ningún gate (Perfil
    *   siempre reenvía ambos campos).
    *
@@ -561,16 +562,29 @@ export class AuthService {
       throw new ValidationError(IDENTITY_REJECT_MESSAGE);
     }
 
-    if (cedulaChanging && !isSelf) {
+    // Admin sobre otro usuario: motivo obligatorio al cambiar cédula y/o correo.
+    if ((cedulaChanging || correoChanging) && !isSelf) {
       const motivoNormalizado = motivo == null ? '' : String(motivo).trim();
-      if (!motivoNormalizado) {
+      if (!motivoNormalizado || motivoNormalizado.length > 500) {
         throw new ValidationError(IDENTITY_REJECT_MESSAGE);
       }
-      this.logger.info('Cambio de identidad (cédula) por administrador', {
+      const logBase = {
         targetUserId: Number(userId),
         adminId: actorId != null ? Number(actorId) : null,
-        field: 'cedula',
-      });
+        motivo: motivoNormalizado,
+      };
+      if (cedulaChanging) {
+        this.logger.info('Cambio de identidad (cédula) por administrador', {
+          ...logBase,
+          field: 'cedula',
+        });
+      }
+      if (correoChanging) {
+        this.logger.info('Cambio de identidad (correo) por administrador', {
+          ...logBase,
+          field: 'correo',
+        });
+      }
     }
 
     if (correoChanging && isSelf) {

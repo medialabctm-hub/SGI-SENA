@@ -78,7 +78,7 @@ export const updateUserSchema = z.object({
   correo: z.string().email().toLowerCase().optional(),
   telefono: z.string().min(7).max(20).optional(),
   rol: z.enum(['Administrador', 'Instructor', 'Aprendiz', 'Cuentadante']).optional(),
-  // MDL-192 fase 1: re-auth al cambiar correo propio; motivo al Admin cambiar cédula ajena
+  // MDL-192 fase 1: re-auth al cambiar correo propio; motivo al Admin cambiar cédula/correo ajenos
   contrasena_actual: z.string().min(1).max(200).optional(),
   motivo: z.string().max(500).optional().nullable(),
 }).refine((data) => {
