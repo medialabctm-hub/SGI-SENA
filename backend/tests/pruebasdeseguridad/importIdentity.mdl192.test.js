@@ -4,7 +4,7 @@
  */
 import express from 'express';
 import request from 'supertest';
-import { describe, it, expect, jest, beforeEach, beforeAll, afterAll } from '@jest/globals';
+import { describe, it, expect, jest, beforeEach, afterEach, beforeAll, afterAll } from '@jest/globals';
 import { fileURLToPath } from 'url';
 import { resolve, dirname } from 'path';
 import { normalizeCorreo, normalizeCedula, normalizeIdentity } from '../../src/utils/normalizeIdentity.js';
@@ -140,6 +140,8 @@ describe('importarUsuarios identidad (QA-192B)', () => {
     const body = res.json.mock.calls[0][0];
     expect(body.resultados.omitidas).toBe(1);
     expect(body.resultados.errores[0].error).toMatch(/omitida: cambio de identidad requiere verificación/i);
+    expect(body.resultados.errores[0].cedula).toBe('***C1');
+    expect(body.resultados.errores[0]).not.toHaveProperty('correo');
     expect(mockExecute.mock.calls.some((c) => String(c[0]).includes('UPDATE'))).toBe(false);
     expect(JSON.stringify(body)).not.toContain('new@x.com');
     assertNoSecrets(body);
@@ -407,5 +409,87 @@ describe('QA-192B-09 ruta POST /api/import/usuarios (authz)', () => {
 
     expect(res.status).toBe(200);
     expect(dbWrite).toHaveBeenCalledTimes(1);
+  });
+});
+
+
+describe('MDL-192 SECURITY: cédula enmascarada + tope de filas', () => {
+  const prevEnv = process.env.IMPORT_MAX_ROWS;
+
+  afterEach(() => {
+    if (prevEnv === undefined) delete process.env.IMPORT_MAX_ROWS;
+    else process.env.IMPORT_MAX_ROWS = prevEnv;
+  });
+
+  beforeEach(() => {
+    mockExecute.mockReset();
+    mockLogger.info.mockReset();
+    mockLogger.error.mockReset();
+    mockBcryptHash.mockResolvedValue('$2b$10$hashedvaluexxxxxxxxxxxx');
+    mockGeneratePassword.mockReturnValue('GenPass1!Abcd');
+    xlsxRows.current = [];
+    delete process.env.IMPORT_MAX_ROWS;
+  });
+
+  it('omitidas reportan cédula como ***XXXX y nunca correo en claro', async () => {
+    xlsxRows.current = [{
+      nombre_usuario: 'X',
+      cedula: '1234567890',
+      correo: 'secret-new@evil.com',
+      rol: 'Aprendiz',
+    }];
+    mockExecute.mockResolvedValueOnce([[{ id_usuario: 10, correo: 'old@x.com' }]]);
+
+    const res = mockRes();
+    await importarUsuarios(mockReq(), res);
+    const err = res.json.mock.calls[0][0].resultados.errores[0];
+    expect(err.cedula).toBe('***7890');
+    expect(err).not.toHaveProperty('correo');
+    expect(JSON.stringify(res.json.mock.calls[0][0])).not.toContain('secret-new@evil.com');
+    expect(JSON.stringify(res.json.mock.calls[0][0])).not.toContain('1234567890');
+  });
+
+  it('límite inclusive: N filas con IMPORT_MAX_ROWS=N no rechaza por tope', async () => {
+    process.env.IMPORT_MAX_ROWS = '2';
+    xlsxRows.current = [
+      { nombre_usuario: 'A', cedula: '111', correo: 'a@x.com', rol: 'Aprendiz', contrasena: 'ValidPass1*' },
+      { nombre_usuario: 'B', cedula: '222', correo: 'b@x.com', rol: 'Aprendiz', contrasena: 'ValidPass1*' },
+    ];
+    mockExecute.mockImplementation(async (sql) => {
+      if (/Roles|id_rol/i.test(String(sql))) return [[{ id_rol: 3 }]];
+      if (/INSERT/i.test(String(sql))) return [{ insertId: 1, affectedRows: 1 }];
+      return [[]];
+    });
+    const res = mockRes();
+    await importarUsuarios(mockReq(), res);
+    expect(res.status.mock.calls.some((c) => c[0] === 400 && /máximo de 2 filas/i.test(JSON.stringify(res.json.mock.calls)))).toBe(false);
+    expect(mockExecute).toHaveBeenCalled();
+  });
+
+  it('5001 filas: 400 y cero llamadas al repositorio', async () => {
+    process.env.IMPORT_MAX_ROWS = '5000';
+    const rows = [];
+    rows.length = 5001; // length sin materializar 5001 objetos
+    xlsxRows.current = rows;
+
+    const res = mockRes();
+    await importarUsuarios(mockReq(), res);
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json.mock.calls[0][0].error).toMatch(/máximo de 5000 filas/i);
+    expect(mockExecute).not.toHaveBeenCalled();
+  });
+
+  it('IMPORT_MAX_ROWS override: 3 filas → 400 y cero DB', async () => {
+    process.env.IMPORT_MAX_ROWS = '2';
+    xlsxRows.current = [
+      { nombre_usuario: 'A', cedula: '1', rol: 'Aprendiz', contrasena: 'ValidPass1*' },
+      { nombre_usuario: 'B', cedula: '2', rol: 'Aprendiz', contrasena: 'ValidPass1*' },
+      { nombre_usuario: 'C', cedula: '3', rol: 'Aprendiz', contrasena: 'ValidPass1*' },
+    ];
+    const res = mockRes();
+    await importarUsuarios(mockReq(), res);
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json.mock.calls[0][0].error).toMatch(/máximo de 2 filas/i);
+    expect(mockExecute).not.toHaveBeenCalled();
   });
 });

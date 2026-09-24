@@ -18,6 +18,11 @@ import {
 } from '../utils/usuariosImportExport.js';
 import { normalizeCorreo } from '../utils/normalizeIdentity.js';
 import {
+  maskCedula,
+  maskCorreo,
+  getImportMaxRows,
+} from '../utils/maskPii.js';
+import {
   PasswordValidationStrategy,
   ValidationContext,
 } from '../strategies/ValidationStrategy.js';
@@ -28,31 +33,25 @@ const IDENTITY_OMIT_MESSAGE = 'omitida: cambio de identidad requiere verificaci�
 const GENERIC_CORREO_COLLISION = 'No se pudo completar la fila.';
 const GENERIC_WEAK_PASSWORD = 'No se pudo completar la fila.';
 
-/** Enmascara correo para el reporte al cliente (MDL-192 B). */
-function maskCorreoForReport(correo) {
-  if (!correo) return undefined;
-  const parts = String(correo).split('@');
-  if (parts.length < 2) return '***';
-  const [user, domain] = parts;
-  const u = user.length <= 1 ? '*' : `${user[0]}***`;
-  return `${u}@${domain}`;
-}
+/** Alias compartido — reporte de omitidas/errores (MDL-192). */
+const maskCorreoForReport = maskCorreo;
 
 function pushOmitida(resultados, { fila, cedula, idUsuario, field, message }) {
   resultados.omitidas += 1;
   resultados.fallidos += 1;
   resultados.errores.push({
     fila,
-    cedula: cedula || 'N/A',
+    cedula: maskCedula(cedula),
     omitida: true,
     field,
     error: message,
-    // nunca el valor nuevo completo
+    // nunca cédula/correo en claro ni el valor nuevo
   });
   logger.info('Import usuarios: fila omitida por identidad', {
     id_usuario: idUsuario ?? null,
     field,
     fila,
+    cedula: maskCedula(cedula),
   });
 }
 import {
@@ -981,6 +980,14 @@ export async function importarUsuarios(req, res) {
       return res.status(400).json({ error: 'El archivo Excel está vacío' });
     }
 
+    // MDL-192 SECURITY: tope de filas ANTES de cualquier escritura en BD.
+    const maxRows = getImportMaxRows();
+    if (data.length > maxRows) {
+      return res.status(400).json({
+        error: `El archivo supera el máximo de ${maxRows} filas de datos permitidas`,
+      });
+    }
+
     const resultados = {
       total: data.length,
       exitosos: 0,
@@ -1016,7 +1023,7 @@ export async function importarUsuarios(req, res) {
         if (!nombreUsuario || !cedula) {
           resultados.errores.push({
             fila: numeroFila,
-            cedula: cedula || 'N/A',
+            cedula: maskCedula(cedula),
             error: 'Nombre y cédula son obligatorios'
           });
           resultados.fallidos++;
@@ -1216,7 +1223,7 @@ export async function importarUsuarios(req, res) {
         });
         resultados.errores.push({
           fila: numeroFila,
-          cedula: row?.cedula || row?.Documento || 'N/A',
+          cedula: maskCedula(row?.cedula || row?.Documento),
           error: 'No se pudo completar la fila.',
         });
         resultados.fallidos++;
@@ -1236,7 +1243,7 @@ export async function importarUsuarios(req, res) {
         correosResultado.errores.forEach(error => {
           resultados.errores.push({
             fila: 'N/A',
-            cedula: error.nombre || 'N/A',
+            cedula: maskCedula(error.nombre),
             error: `Usuario creado pero no se pudo enviar correo: ${error.razon}`
           });
         });
