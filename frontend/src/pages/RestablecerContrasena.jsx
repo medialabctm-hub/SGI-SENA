@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { FiLock, FiEye, FiEyeOff, FiCheckCircle } from 'react-icons/fi';
 import Toast from '../components/Toast';
 import { buildErrorMessage, parseApiResponse } from '../utils/api';
+import { getPasswordError, PASSWORD_POLICY_HELP } from '../utils/passwordPolicy';
 import '../styles/auth.css';
 
 /**
@@ -85,8 +86,11 @@ export default function RestablecerContrasena() {
     const nuevosErrores = {};
     if (!nuevaContrasena) {
       nuevosErrores.nuevaContrasena = 'La nueva contraseña es obligatoria';
-    } else if (nuevaContrasena.length < 6) {
-      nuevosErrores.nuevaContrasena = 'La contraseña debe tener al menos 6 caracteres';
+    } else {
+      const passwordError = getPasswordError(nuevaContrasena);
+      if (passwordError) {
+        nuevosErrores.nuevaContrasena = passwordError;
+      }
     }
     if (!confirmarContrasena) {
       nuevosErrores.confirmarContrasena = 'Debes confirmar la nueva contraseña';
@@ -266,6 +270,9 @@ export default function RestablecerContrasena() {
               value={nuevaContrasena}
               onChange={(e) => setNuevaContrasena(e.target.value)}
             />
+            <small className="security-help" style={{ display: 'block', marginTop: '0.5rem' }}>
+              {PASSWORD_POLICY_HELP}
+            </small>
             <span
               className="eye"
               onClick={() => setMostrarNueva(!mostrarNueva)}
