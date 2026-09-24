@@ -1398,14 +1398,56 @@ export async function obtenerEquiposAmbientesInstructor(req, res) {
       })
     }
 
-    // MDL-234: UNA fila por id_ambiente.
-    // Unión de (a) responsabilidades activas del usuario y (b) aulas donde
-    // Elementos.id_cuentadante = user. Antes el SELECT DISTINCT incluía
-    // id_responsabilidad_ambiente / jornada / días / horas → N filas por aula
-    // (p. ej. 102 días en el aula 107) y omitía aulas solo por id_cuentadante.
-    // Campos alineados a lo que consume VerificarInventario.jsx (id_ambiente,
-    // nombre_ambiente, codigo_ambiente; jornada opcional agregada).
-    const [ambientes] = await defaultDb.execute(
+    // MDL-234: UNA fila por id_ambiente + alcance de equipos.
+    // - Aula con responsabilidad activa → ve TODOS los equipos del aula.
+    // - Aula solo por Elementos.id_cuentadante → ve SOLO equipos propios.
+    // - Aula en ambos → alcance 'responsable' (todos).
+    const [respRows] = await defaultDb.execute(
+      `SELECT DISTINCT ra.id_ambiente AS id_ambiente
+       FROM Responsabilidades_Ambiente ra
+       LEFT JOIN Clases c ON ra.id_clase = c.id_clase
+       WHERE ra.id_usuario = ?
+         AND ra.estado_responsabilidad = 'Activa'
+         AND (
+           ra.id_clase IS NULL
+           OR (ra.id_clase IS NOT NULL AND c.estado_clase = 'En Curso')
+         )`,
+      [userId]
+    );
+
+    const [ctaRows] = await defaultDb.execute(
+      `SELECT DISTINCT e.id_ambiente AS id_ambiente
+       FROM Elementos e
+       WHERE e.id_cuentadante = ?
+         AND e.id_ambiente IS NOT NULL
+         AND (e.estado_fisico IS NULL OR e.estado_fisico <> 'Baja')`,
+      [userId]
+    );
+
+    const responsabilidadAmbienteIds = [...new Set(
+      (respRows || []).map((r) => Number(r.id_ambiente)).filter((id) => Number.isInteger(id) && id > 0)
+    )];
+    const cuentadanteAmbienteIds = [...new Set(
+      (ctaRows || []).map((r) => Number(r.id_ambiente)).filter((id) => Number.isInteger(id) && id > 0)
+    )];
+    const respSet = new Set(responsabilidadAmbienteIds);
+    const cuentadanteOnlyAmbienteIds = cuentadanteAmbienteIds.filter((id) => !respSet.has(id));
+    const allAmbienteIds = [...new Set([...responsabilidadAmbienteIds, ...cuentadanteAmbienteIds])];
+
+    logger.debug('Verificación Inventario', {
+      userId,
+      responsabilidad: responsabilidadAmbienteIds.length,
+      cuentadanteOnly: cuentadanteOnlyAmbienteIds.length,
+    });
+
+    if (allAmbienteIds.length === 0) {
+      return res.json({
+        ambientes: [],
+        equipos: []
+      })
+    }
+
+    const [ambienteRows] = await defaultDb.execute(
       `SELECT
         a.id_ambiente,
         a.nombre_ambiente,
@@ -1419,43 +1461,40 @@ export async function obtenerEquiposAmbientesInstructor(req, res) {
           ORDER BY ra2.id_responsabilidad_ambiente
           LIMIT 1
         ) AS jornada
-      FROM Ambientes a
-      WHERE a.id_ambiente IN (
-        SELECT ra.id_ambiente
-        FROM Responsabilidades_Ambiente ra
-        LEFT JOIN Clases c ON ra.id_clase = c.id_clase
-        WHERE ra.id_usuario = ?
-          AND ra.estado_responsabilidad = 'Activa'
-          AND (
-            ra.id_clase IS NULL
-            OR (ra.id_clase IS NOT NULL AND c.estado_clase = 'En Curso')
-          )
-        UNION
-        SELECT e.id_ambiente
-        FROM Elementos e
-        WHERE e.id_cuentadante = ?
-          AND e.id_ambiente IS NOT NULL
-          AND (e.estado_fisico IS NULL OR e.estado_fisico <> 'Baja')
-      )
-      ORDER BY a.nombre_ambiente, a.codigo_ambiente`,
-      [userId, userId, userId]
+       FROM Ambientes a
+       WHERE a.id_ambiente IN (${allAmbienteIds.map(() => '?').join(',')})
+       ORDER BY a.nombre_ambiente, a.codigo_ambiente`,
+      [userId, ...allAmbienteIds]
     );
 
-    logger.debug('Verificación Inventario', {
-      userId,
-      ambientesEncontrados: ambientes.length,
-    });
+    const ambientes = (ambienteRows || []).map((a) => ({
+      ...a,
+      // Opcional para FE; no rompe consumidores que ignoren campos extra.
+      alcance: respSet.has(Number(a.id_ambiente)) ? 'responsable' : 'propios',
+    }));
 
-    if (ambientes.length === 0) {
-      return res.json({
-        ambientes: [],
-        equipos: []
-      })
+    // Equipos: resp aulas → todos; cta-only → solo id_cuentadante = user.
+    // Evitar IN () vacío: construir OR de ramas presentes.
+    const equipoScopeParts = [];
+    const equipoParams = [userId, userId, userId]; // subqueries de última verificación
+
+    if (responsabilidadAmbienteIds.length > 0) {
+      equipoScopeParts.push(
+        `e.id_ambiente IN (${responsabilidadAmbienteIds.map(() => '?').join(',')})`
+      );
+      equipoParams.push(...responsabilidadAmbienteIds);
+    }
+    if (cuentadanteOnlyAmbienteIds.length > 0) {
+      equipoScopeParts.push(
+        `(e.id_ambiente IN (${cuentadanteOnlyAmbienteIds.map(() => '?').join(',')}) AND e.id_cuentadante = ?)`
+      );
+      equipoParams.push(...cuentadanteOnlyAmbienteIds, userId);
     }
 
-    const ambienteIds = ambientes.map(a => a.id_ambiente)
+    if (equipoScopeParts.length === 0) {
+      return res.json({ ambientes, equipos: [] });
+    }
 
-    // Obtener todos los equipos de esos ambientes con su última verificación
     const [equipos] = await defaultDb.execute(
       `SELECT 
         e.codigo_equipo,
@@ -1486,10 +1525,10 @@ export async function obtenerEquiposAmbientesInstructor(req, res) {
          LIMIT 1) AS observaciones_verificacion
       FROM Elementos e
       INNER JOIN Ambientes a ON e.id_ambiente = a.id_ambiente
-      WHERE e.id_ambiente IN (${ambienteIds.map(() => '?').join(',')})
+      WHERE (${equipoScopeParts.join(' OR ')})
         AND (e.estado_fisico IS NULL OR e.estado_fisico <> 'Baja')
       ORDER BY a.nombre_ambiente, e.placa`,
-      [userId, userId, userId, ...ambienteIds]
+      equipoParams
     )
 
     return res.json({
