@@ -62,7 +62,7 @@ export default function Security() {
   // Validar en tiempo real
   useEffect(() => {
     // Validar fortaleza de contraseña solo si hay texto
-    if (newPass && newPass.trim().length > 0) {
+    if (newPass && newPass.length > 0) {
       const strength = validatePasswordStrength(newPass)
       setPasswordStrength(strength)
     } else {
@@ -72,7 +72,7 @@ export default function Security() {
     const newErrors = {}
     
     // Validar nueva contraseña
-    if (newPass && newPass.trim().length > 0) {
+    if (newPass && newPass.length > 0) {
       const passwordError = getPasswordError(newPass)
       if (passwordError) {
         newErrors.newPass = passwordError
@@ -251,7 +251,7 @@ export default function Security() {
                 {errors.newPass}
               </small>
             )}
-            {newPass && newPass.trim().length > 0 && !errors.newPass && (
+            {newPass && newPass.length > 0 && !errors.newPass && (
               <div style={{ marginTop: '0.75rem' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
                   <span style={{ fontSize: '0.9rem', fontWeight: 600, color: passwordStrength.color || 'var(--neutral-600)' }}>

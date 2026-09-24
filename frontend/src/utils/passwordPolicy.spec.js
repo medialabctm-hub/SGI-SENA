@@ -38,3 +38,21 @@ describe('validarContraseña (registro) alineada a la política', () => {
     expect(validarContraseña('Abcdefg1')).not.toBeNull();
   });
 });
+
+describe('validarContraseña — espacios como especial (sin trim)', () => {
+  it('acepta espacio, ñ, leading y trailing space', () => {
+    expect(validarContraseña('Abcdef1 ')).toBeNull();
+    expect(validarContraseña('Abcdef1ñ')).toBeNull();
+    expect(validarContraseña(' Abcd12!')).toBeNull();
+    expect(validarContraseña('Abcd12! ')).toBeNull();
+  });
+
+  it('no recorta: leading space sigue siendo parte del valor validado', () => {
+    const withLead = ' Abcd12!';
+    expect(validatePassword(withLead).valid).toBe(true);
+    // Si alguien hiciera trim, el valor cambiaría (8 → 7) y fallaría el mínimo.
+    expect(withLead.length).toBe(8);
+    expect(withLead.trim().length).toBe(7);
+    expect(validatePassword(withLead.trim()).valid).toBe(false);
+  });
+});

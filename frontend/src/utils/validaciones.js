@@ -78,16 +78,8 @@ export const validarTelefono = telefono => {
 };
 
 export const validarContraseña = contraseña => {
-  // Espacios: regla adicional de registro (la política H-10 no los exige).
-  if (contraseña !== contraseña.trim()) {
-    return 'La contraseña no puede tener espacios al inicio ni al final';
-  }
-
-  if (/\s/.test(contraseña)) {
-    return 'La contraseña no puede contener espacios en blanco';
-  }
-
-  // Misma política que backend PasswordValidationStrategy (8–128 + complejidad).
+  // MDL-232 / H-10: misma política que backend. Espacios (incl. leading/trailing)
+  // son válidos como carácter especial; NUNCA hacer trim de la contraseña.
   return getPasswordError(contraseña);
 };
 
@@ -144,7 +136,7 @@ export const validarRegistro = datos => {
     const espaciosError = validarEspaciosEnBlanco(datos[campo], nombreCampo);
     if (espaciosError) errores[campo] = espaciosError;
   });
-  // Espacios en blanco en contraseña ya cubiertos por validarContraseña.
+  // Contraseña: solo política compartida (espacios permitidos; sin trim).
 
 
   return errores;
