@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { useLocation } from 'react-router-dom'
 import Header from '../components/Header'
 import Sidebar from '../components/Sidebar'
@@ -35,13 +35,17 @@ export default function AutorizacionesMovimiento() {
   const [toast, setToast] = useState(null)
 
   // Sección solicitar
-  const [equiposVerificados, setEquiposVerificados] = useState([])
   const [ambientes, setAmbientes] = useState([])
   // Destinatario derivado del equipo (no lo elige el solicitante)
   const [autorizador, setAutorizador] = useState(null)
   const [cargandoAutorizador, setCargandoAutorizador] = useState(false)
   const [busquedaPlaca, setBusquedaPlaca] = useState('')
   const [mostrarResultadosPlaca, setMostrarResultadosPlaca] = useState(false)
+  // Resultados de la búsqueda de equipo por placa/código, traídos del backend
+  // bajo demanda (no un dump completo del inventario, ver efecto de búsqueda abajo).
+  const [resultadosBusquedaEquipo, setResultadosBusquedaEquipo] = useState([])
+  const [buscandoEquipo, setBuscandoEquipo] = useState(false)
+  const [equipoSeleccionado, setEquipoSeleccionado] = useState(null)
   const [errores, setErrores] = useState({})
   const [form, setForm] = useState({
     codigo_equipo: '',
@@ -85,17 +89,51 @@ export default function AutorizacionesMovimiento() {
     }
   }, [location.hash, user])
 
-  // Cargar datos para formulario de solicitud
+  // Cargar ambientes activos para el formulario de solicitud
   useEffect(() => {
     if (!user || !puedeSolicitar) return
-    Promise.all([
-      fetch('/api/equipos?limit=5000', { credentials: 'include' }).then(r => r.json()).then(d => d.equipos || d || []).catch(() => []),
-      fetch('/api/ambientes/activos', { credentials: 'include' }).then(r => parseApiResponse(r, 'Ambientes')).then(d => (Array.isArray(d) ? d : [])).catch(() => [])
-    ]).then(([equipos, ambs]) => {
-      setEquiposVerificados((equipos || []).filter(e => e.status_verificacion === 'Verificado'))
-      setAmbientes(ambs || [])
-    }).catch(() => setToast({ message: 'Error al cargar datos', type: 'error' }))
+    fetch('/api/ambientes/activos', { credentials: 'include' })
+      .then(r => parseApiResponse(r, 'Ambientes'))
+      .then(d => setAmbientes(Array.isArray(d) ? d : []))
+      .catch(() => setToast({ message: 'Error al cargar ambientes', type: 'error' }))
   }, [user, puedeSolicitar])
+
+  // Busca el equipo por placa/código contra el backend (con debounce), en vez de
+  // traer todo el inventario al entrar a la página: el listado ya cachea `limit`
+  // a 100 server-side (MDL-189/H-01), así que pedir miles de filas de una sola
+  // vez devolvía 400 y, aun sin ese tope, sería tráfico innecesario.
+  useEffect(() => {
+    const termino = busquedaPlaca.trim()
+    if (!puedeSolicitar || termino.length < 1) {
+      setResultadosBusquedaEquipo([])
+      setBuscandoEquipo(false)
+      return
+    }
+    let cancelado = false
+    setBuscandoEquipo(true)
+    const timeoutId = setTimeout(() => {
+      const qs = new URLSearchParams({ search: termino, limit: '20' })
+      fetch(`/api/equipos?${qs.toString()}`, { credentials: 'include' })
+        .then(r => parseApiResponse(r, 'No se pudo buscar equipos'))
+        .then(data => {
+          if (cancelado) return
+          const equipos = data?.equipos || (Array.isArray(data) ? data : [])
+          setResultadosBusquedaEquipo(equipos.filter(eq => eq.status_verificacion === 'Verificado'))
+        })
+        .catch(err => {
+          if (cancelado) return
+          setResultadosBusquedaEquipo([])
+          setToast({ message: buildErrorMessage(err, 'No se pudo buscar equipos'), type: 'error' })
+        })
+        .finally(() => {
+          if (!cancelado) setBuscandoEquipo(false)
+        })
+    }, 300)
+    return () => {
+      cancelado = true
+      clearTimeout(timeoutId)
+    }
+  }, [busquedaPlaca, puedeSolicitar])
 
   // El destinatario de la autorización lo determina el backend a partir del equipo:
   // es el cuentadante que lo tiene asignado, no un usuario elegido a mano.
@@ -127,33 +165,21 @@ export default function AutorizacionesMovimiento() {
     return () => { cancelado = true }
   }, [form.codigo_equipo])
 
-  const equiposPorPlaca = useMemo(() => {
-    const t = (busquedaPlaca || '').trim().toLowerCase()
-    if (!t) return []
-    return equiposVerificados.filter(eq => {
-      const placa = (eq.placa || eq.codigo_inventario || '').toString().toLowerCase()
-      const codigoInv = (eq.codigo_inventario || '').toString().toLowerCase()
-      const consecutivo = (eq.consecutivo || '').toString().toLowerCase()
-      return placa.includes(t) || codigoInv.includes(t) || consecutivo.includes(t)
-    })
-  }, [equiposVerificados, busquedaPlaca])
-
-  const equipoSeleccionado = useMemo(() => {
-    if (!form.codigo_equipo) return null
-    return equiposVerificados.find(e => String(e.codigo_equipo) === String(form.codigo_equipo)) || null
-  }, [form.codigo_equipo, equiposVerificados])
-
   function seleccionarEquipo(eq) {
     setForm(prev => ({ ...prev, codigo_equipo: String(eq.codigo_equipo) }))
+    setEquipoSeleccionado(eq)
     setBusquedaPlaca('')
     setMostrarResultadosPlaca(false)
+    setResultadosBusquedaEquipo([])
     setErrores(prev => ({ ...prev, codigo_equipo: '' }))
   }
 
   function limpiarEquipo() {
     setForm(prev => ({ ...prev, codigo_equipo: '' }))
+    setEquipoSeleccionado(null)
     setBusquedaPlaca('')
     setMostrarResultadosPlaca(false)
+    setResultadosBusquedaEquipo([])
   }
 
   async function handleSubmitSolicitud(e) {
@@ -185,7 +211,9 @@ export default function AutorizacionesMovimiento() {
       setToast({ message: data?.message || 'Solicitud creada. El responsable del equipo deberá aprobarla o rechazarla.', type: 'success' })
       setForm({ codigo_equipo: '', id_ambiente_destino: '', motivo: '' })
       setAutorizador(null)
+      setEquipoSeleccionado(null)
       setBusquedaPlaca('')
+      setResultadosBusquedaEquipo([])
       setErrores({})
     } catch (err) {
       setToast({ message: buildErrorMessage(err, 'No se pudo crear la solicitud'), type: 'error' })
@@ -360,10 +388,12 @@ export default function AutorizacionesMovimiento() {
                           />
                           {mostrarResultadosPlaca && busquedaPlaca.trim().length >= 1 && (
                             <ul className="solicitud-resultados-placa">
-                              {equiposPorPlaca.length === 0 ? (
+                              {buscandoEquipo ? (
+                                <li className="solicitud-resultado-vacio">Buscando equipos...</li>
+                              ) : resultadosBusquedaEquipo.length === 0 ? (
                                 <li className="solicitud-resultado-vacio">No hay equipos verificados con esa placa o código.</li>
                               ) : (
-                                equiposPorPlaca.slice(0, 10).map(eq => (
+                                resultadosBusquedaEquipo.slice(0, 10).map(eq => (
                                   <li key={eq.codigo_equipo}>
                                     <button type="button" className="solicitud-resultado-btn" onClick={() => seleccionarEquipo(eq)}>
                                       <FiSearch size={14} /> {eq.placa || eq.codigo_inventario || eq.codigo_equipo} — {eq.tipo} {eq.modelo || ''} ({eq.nombre_ambiente || ''})
