@@ -16,6 +16,8 @@
  */
 
 /** Columnas exactas de la plantilla (orden de export "para reimportar"). */
+import { normalizeCedula, normalizeCorreo } from './normalizeIdentity.js';
+
 export const USUARIOS_PLANTILLA_COLUMNS = Object.freeze([
   'nombre_usuario',
   'cedula',
@@ -115,7 +117,7 @@ function pickField(row, canonical) {
 export function mapUsuarioImportRow(row) {
   const mapped = {
     nombre_usuario: String(pickField(row, 'nombre_usuario') || '').trim(),
-    cedula: String(pickField(row, 'cedula') || '').trim(),
+    cedula: normalizeCedula(pickField(row, 'cedula') || ''),
     tipo_documento: String(pickField(row, 'tipo_documento') || 'CC').trim() || 'CC',
     tipo_documento_otro: (() => {
       const v = pickField(row, 'tipo_documento_otro');
@@ -127,9 +129,10 @@ export function mapUsuarioImportRow(row) {
       const s = String(v ?? '').trim();
       return s && s !== '-' ? s : null;
     })(),
+    // MDL-192 B: trim + lowercase antes de comparar/insertar (shared util)
     correo: (() => {
       const v = pickField(row, 'correo');
-      const s = String(v ?? '').trim();
+      const s = normalizeCorreo(v);
       return s && s !== '-' ? s : null;
     })(),
     rol: String(pickField(row, 'rol') || 'Aprendiz').trim() || 'Aprendiz',

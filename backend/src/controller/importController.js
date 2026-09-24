@@ -16,6 +16,45 @@ import {
   mapUsuarioImportRow,
   assertUsuarioImportRoleAllowed,
 } from '../utils/usuariosImportExport.js';
+import { normalizeCorreo } from '../utils/normalizeIdentity.js';
+import {
+  PasswordValidationStrategy,
+  ValidationContext,
+} from '../strategies/ValidationStrategy.js';
+
+const importPasswordValidator = new ValidationContext(new PasswordValidationStrategy(8));
+
+const IDENTITY_OMIT_MESSAGE = 'omitida: cambio de identidad requiere verificación';
+const GENERIC_CORREO_COLLISION = 'No se pudo completar la fila.';
+const GENERIC_WEAK_PASSWORD = 'No se pudo completar la fila.';
+
+/** Enmascara correo para el reporte al cliente (MDL-192 B). */
+function maskCorreoForReport(correo) {
+  if (!correo) return undefined;
+  const parts = String(correo).split('@');
+  if (parts.length < 2) return '***';
+  const [user, domain] = parts;
+  const u = user.length <= 1 ? '*' : `${user[0]}***`;
+  return `${u}@${domain}`;
+}
+
+function pushOmitida(resultados, { fila, cedula, idUsuario, field, message }) {
+  resultados.omitidas += 1;
+  resultados.fallidos += 1;
+  resultados.errores.push({
+    fila,
+    cedula: cedula || 'N/A',
+    omitida: true,
+    field,
+    error: message,
+    // nunca el valor nuevo completo
+  });
+  logger.info('Import usuarios: fila omitida por identidad', {
+    id_usuario: idUsuario ?? null,
+    field,
+    fila,
+  });
+}
 import {
   APRENDICES_KNOWN_HEADERS,
   mapAprendizImportRow,
@@ -947,6 +986,7 @@ export async function importarUsuarios(req, res) {
       exitosos: 0,
       actualizados: 0,
       fallidos: 0,
+      omitidas: 0,
       errores: [],
       correosEnviados: 0,
       correosFallidos: 0
@@ -995,25 +1035,43 @@ export async function importarUsuarios(req, res) {
         }
 
         const [[cedulaExistente]] = await defaultDb.execute(
-          'SELECT id_usuario FROM Usuarios WHERE cedula = ? LIMIT 1',
+          'SELECT id_usuario, correo FROM Usuarios WHERE cedula = ? LIMIT 1',
           [cedula]
         );
         const existingUserId = cedulaExistente?.id_usuario || null;
+        const storedCorreo = normalizeCorreo(cedulaExistente?.correo);
+
+        // MDL-192 B: existente + correo distinto (normalizado) → omitir, no UPDATE de identidad
+        if (existingUserId && correo) {
+          const incomingCorreo = normalizeCorreo(correo);
+          if (incomingCorreo && incomingCorreo !== storedCorreo) {
+            pushOmitida(resultados, {
+              fila: numeroFila,
+              cedula,
+              idUsuario: existingUserId,
+              field: 'correo',
+              message: IDENTITY_OMIT_MESSAGE,
+            });
+            continue;
+          }
+        }
 
         if (correo) {
           const [[correoExistente]] = await defaultDb.execute(
             existingUserId
-              ? 'SELECT id_usuario FROM Usuarios WHERE correo = ? AND id_usuario <> ? LIMIT 1'
-              : 'SELECT id_usuario FROM Usuarios WHERE correo = ? LIMIT 1',
+              ? 'SELECT id_usuario FROM Usuarios WHERE LOWER(TRIM(correo)) = ? AND id_usuario <> ? LIMIT 1'
+              : 'SELECT id_usuario FROM Usuarios WHERE LOWER(TRIM(correo)) = ? LIMIT 1',
             existingUserId ? [correo, existingUserId] : [correo]
           );
           if (correoExistente) {
-            resultados.errores.push({
+            // Mensaje genérico: no revela dueño (QA-192B-04)
+            pushOmitida(resultados, {
               fila: numeroFila,
               cedula,
-              error: 'El correo ya está registrado'
+              idUsuario: existingUserId,
+              field: 'correo',
+              message: GENERIC_CORREO_COLLISION,
             });
-            resultados.fallidos++;
             continue;
           }
         }
@@ -1038,34 +1096,46 @@ export async function importarUsuarios(req, res) {
         const tipoDocValido = TIPOS_DOCUMENTO.includes(tipoDocumento) ? tipoDocumento : 'CC';
         const tipoDocOtroValido = tipoDocValido === 'Otro' ? (tipoDocumentoOtro || null) : null;
 
-        // Upsert por cédula: update no puede elevar rol (gate assertUsuarioImportRoleAllowed arriba).
-        if (existingUserId) {
-          const updateParams = [
-            nombreUsuario,
-            tipoDocValido,
-            tipoDocOtroValido,
-            telefono || null,
-            correo || null,
-            rolRow.id_rol,
-            estadoValido,
-            existingUserId,
-          ];
+        const excelPassword = contrasena && String(contrasena).trim()
+          ? String(contrasena).trim()
+          : null;
 
-          // LEGACY: plaintext password en Excel solo si viene (no regenerar en update).
-          if (contrasena && String(contrasena).trim()) {
-            const contrasenaHash = await bcrypt.hash(String(contrasena).trim(), 10);
+        // Política H-10 / PR #42: si Excel trae contraseña, debe cumplirla
+        if (excelPassword) {
+          const pwdCheck = importPasswordValidator.validate(excelPassword);
+          if (!pwdCheck.valid) {
+            resultados.errores.push({
+              fila: numeroFila,
+              cedula,
+              error: GENERIC_WEAK_PASSWORD,
+            });
+            resultados.fallidos++;
+            logger.info('Import usuarios: fila omitida por contraseña débil', {
+              id_usuario: existingUserId,
+              field: 'contrasena',
+              fila: numeroFila,
+            });
+            continue;
+          }
+        }
+
+        // Upsert por cédula: NUNCA escribe correo ni cédula (MDL-192 B).
+        // Update no puede elevar rol (gate assertUsuarioImportRoleAllowed arriba).
+        if (existingUserId) {
+          if (excelPassword) {
+            const contrasenaHash = await bcrypt.hash(excelPassword, 10);
+            // Quien armó el Excel conoce la clave → forzar cambio en próximo login
             await defaultDb.execute(
               `UPDATE Usuarios SET
                 nombre_usuario = ?, tipo_documento = ?, tipo_documento_otro = ?,
-                telefono = ?, correo = ?, id_rol = ?, estado = ?,
-                contrasena = ?, requiere_cambio_contrasena = 0
+                telefono = ?, id_rol = ?, estado = ?,
+                contrasena = ?, requiere_cambio_contrasena = 1
                WHERE id_usuario = ?`,
               [
                 nombreUsuario,
                 tipoDocValido,
                 tipoDocOtroValido,
                 telefono || null,
-                correo || null,
                 rolRow.id_rol,
                 estadoValido,
                 contrasenaHash,
@@ -1076,9 +1146,17 @@ export async function importarUsuarios(req, res) {
             await defaultDb.execute(
               `UPDATE Usuarios SET
                 nombre_usuario = ?, tipo_documento = ?, tipo_documento_otro = ?,
-                telefono = ?, correo = ?, id_rol = ?, estado = ?
+                telefono = ?, id_rol = ?, estado = ?
                WHERE id_usuario = ?`,
-              updateParams
+              [
+                nombreUsuario,
+                tipoDocValido,
+                tipoDocOtroValido,
+                telefono || null,
+                rolRow.id_rol,
+                estadoValido,
+                existingUserId,
+              ]
             );
           }
 
@@ -1091,16 +1169,17 @@ export async function importarUsuarios(req, res) {
         let contrasenaPlana = null;
 
         // LEGACY: columna contraseña/password en claro en Excel (solo create/onboarding).
-        // Preferible a medio plazo: solo generación server-side + correo; no rediseñar aquí (MDL-211 residual).
-        if (contrasena && String(contrasena).trim()) {
-          contrasenaPlana = String(contrasena).trim();
+        // Excel → requiere_cambio_contrasena = 1 (quien armó el archivo la conoce).
+        // Generada por sistema → también 1 (comportamiento previo conservado).
+        if (excelPassword) {
+          contrasenaPlana = excelPassword;
           contrasenaHash = await bcrypt.hash(contrasenaPlana, 10);
         } else {
           contrasenaPlana = emailService.generatePassword(12);
           contrasenaHash = await bcrypt.hash(contrasenaPlana, 10);
         }
 
-        const requiereCambio = !contrasena || !String(contrasena).trim();
+        const requiereCambio = 1;
 
         const query = `INSERT INTO Usuarios
           (nombre_usuario, cedula, tipo_documento, tipo_documento_otro, telefono, correo, contrasena, id_rol, estado, requiere_cambio_contrasena, creado_por)
@@ -1116,11 +1195,11 @@ export async function importarUsuarios(req, res) {
           contrasenaHash,
           rolRow.id_rol,
           estadoValido,
-          requiereCambio ? 1 : 0,
+          requiereCambio,
           userId
         ]);
 
-        if ((!contrasena || !String(contrasena).trim()) && correo && String(correo).trim()) {
+        if (!excelPassword && correo && String(correo).trim()) {
           usuariosParaEnviarCorreo.push({
             correo: String(correo).trim(),
             nombreUsuario,
@@ -1131,10 +1210,14 @@ export async function importarUsuarios(req, res) {
 
         resultados.exitosos++;
       } catch (error) {
+        logger.error('Import usuarios: error de fila', {
+          fila: numeroFila,
+          error: error.message,
+        });
         resultados.errores.push({
           fila: numeroFila,
           cedula: row?.cedula || row?.Documento || 'N/A',
-          error: error.message || 'Error desconocido'
+          error: 'No se pudo completar la fila.',
         });
         resultados.fallidos++;
       }
@@ -1161,6 +1244,9 @@ export async function importarUsuarios(req, res) {
     }
 
     let mensaje = `Importación completada: ${resultados.exitosos} exitosos (${resultados.actualizados} actualizados), ${resultados.fallidos} fallidos`;
+    if (resultados.omitidas > 0) {
+      mensaje += ` (${resultados.omitidas} omitida(s) por identidad/política)`;
+    }
     if (resultados.correosEnviados > 0) {
       mensaje += `. ${resultados.correosEnviados} correo(s) con contraseñas enviado(s)`;
     }
