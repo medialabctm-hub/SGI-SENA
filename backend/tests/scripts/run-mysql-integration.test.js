@@ -4,6 +4,7 @@ const {
   mysqlAdminPing,
   runEphemeralMysql,
   waitForMysqlReady,
+  ensureLogBinTrustFunctionCreators,
 } = await import('../../scripts/run-mysql-integration.js');
 
 const testEnvironment = {
@@ -123,5 +124,42 @@ describe('runner de integración MySQL', () => {
 
     expect(runDockerCommand).toHaveBeenCalledTimes(2);
     expect(runDockerCommand.mock.calls[1][0][0]).toBe('rm');
+  });
+
+  it('aplica SET GLOBAL log_bin_trust_function_creators cuando hay permiso', async () => {
+    const query = jest.fn().mockResolvedValue([[]]);
+    const end = jest.fn().mockResolvedValue(undefined);
+    const createConnection = jest.fn().mockResolvedValue({ query, end });
+    const log = { log: jest.fn(), warn: jest.fn() };
+
+    await ensureLogBinTrustFunctionCreators({
+      host: '127.0.0.1',
+      port: 3306,
+      user: 'root',
+      password: 'x',
+      createConnection,
+      log,
+    });
+
+    expect(query).toHaveBeenCalledWith('SET GLOBAL log_bin_trust_function_creators = 1');
+    expect(end).toHaveBeenCalled();
+    expect(log.log).toHaveBeenCalled();
+    expect(log.warn).not.toHaveBeenCalled();
+  });
+
+  it('avisa y continúa si SET GLOBAL no está permitido', async () => {
+    const createConnection = jest.fn().mockRejectedValue(new Error('Access denied'));
+    const log = { log: jest.fn(), warn: jest.fn() };
+
+    await expect(ensureLogBinTrustFunctionCreators({
+      host: '127.0.0.1',
+      port: 3306,
+      user: 'app',
+      password: 'x',
+      createConnection,
+      log,
+    })).resolves.toBeUndefined();
+
+    expect(log.warn).toHaveBeenCalledWith(expect.stringMatching(/Continuando/));
   });
 });
