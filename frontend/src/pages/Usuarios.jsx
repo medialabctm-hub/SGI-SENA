@@ -164,6 +164,7 @@ export default function Usuarios() {
         telefono: user.telefono || '',
         rol: user.nombre_rol || 'Aprendiz',
         contrasena: '',
+        motivo: '',
       });
       setShowForm(true);
     } catch (err) {
@@ -198,6 +199,8 @@ export default function Usuarios() {
           correo: form.correo,
           telefono: form.telefono,
           rol: form.rol,
+          // MDL-192: obligatorio en backend si cédula o correo del target cambian
+          ...(form.motivo?.trim() ? { motivo: form.motivo.trim() } : {}),
         }),
       });
       const data = await parseApiResponse(res, 'No se pudo actualizar el usuario');
@@ -477,6 +480,23 @@ export default function Usuarios() {
                       }
                     />
                   </div>
+                  {editingUser && (
+                    form.cedula.trim() !== String(editingUser.cedula || '').trim()
+                    || form.correo.trim().toLowerCase() !== String(editingUser.correo || '').trim().toLowerCase()
+                  ) && (
+                    <div className="form-row">
+                      <label>Motivo del cambio de identidad</label>
+                      <input
+                        value={form.motivo}
+                        onChange={(e) =>
+                          setForm((prev) => ({ ...prev, motivo: e.target.value }))
+                        }
+                        placeholder="Obligatorio al cambiar cédula o correo"
+                        maxLength={500}
+                        required
+                      />
+                    </div>
+                  )}
                   <div className="form-row">
                     <label>Teléfono</label>
                     <input
