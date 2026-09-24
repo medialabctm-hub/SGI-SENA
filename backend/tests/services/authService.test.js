@@ -457,10 +457,12 @@ describe('AuthService', () => {
 
   // ─── getUserByCedula ────────────────────────────────────────────────────────
   describe('getUserByCedula', () => {
-    it('debe retornar usuario por cédula', async () => {
+        it('debe retornar usuario por cédula sin contrasena (MDL-230)', async () => {
       mockUserRepository.findByCedula.mockResolvedValue(baseUser);
       const result = await authService.getUserByCedula('1234567890');
       expect(result.id_usuario).toBe(1);
+      expect(result).not.toHaveProperty('contrasena');
+      expect(JSON.stringify(result)).not.toMatch(/\$2[aby]\$/);
     });
 
     it('debe lanzar NotFoundError si no existe usuario con esa cédula', async () => {
