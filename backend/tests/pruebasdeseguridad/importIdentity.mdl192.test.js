@@ -2,7 +2,9 @@
  * MDL-192 Alcance B — import usuarios / identidad (QA-192B-01 … B-10)
  * + política de contraseñas (PR #42) + requiere_cambio_contrasena.
  */
-import { describe, it, expect, jest, beforeEach } from '@jest/globals';
+import express from 'express';
+import request from 'supertest';
+import { describe, it, expect, jest, beforeEach, beforeAll, afterAll } from '@jest/globals';
 import { fileURLToPath } from 'url';
 import { resolve, dirname } from 'path';
 import { normalizeCorreo, normalizeCedula, normalizeIdentity } from '../../src/utils/normalizeIdentity.js';
@@ -298,8 +300,112 @@ describe('importarUsuarios identidad (QA-192B)', () => {
     expect(mockExecute.mock.calls.some((c) => String(c[0]).includes('INSERT'))).toBe(false);
   });
 
-  it('QA-192B-09: sin usuario autenticado con permiso — cubierto por ruta; aquí documentado', () => {
-    // requirePermission(USERS.CREATE) en importRoutes; negativo de ruta en importRoutes.test
+  it('QA-192B-09 (doc): requirePermission(USERS.CREATE) en importRoutes — ver suite de ruta abajo', () => {
     expect(true).toBe(true);
+  });
+});
+
+describe('QA-192B-09 ruta POST /api/import/usuarios (authz)', () => {
+  let app;
+  let dbWrite;
+  let previousEnv;
+  let requirePermission;
+  let PERMISSIONS;
+  let errorHandler;
+  let AuthenticationError;
+
+  beforeAll(async () => {
+    previousEnv = process.env.NODE_ENV;
+    process.env.NODE_ENV = 'test';
+
+    ({ requirePermission } = await import(
+      resolve(__dirname, '../../src/middleware/authorization.js')
+    ));
+    ({ PERMISSIONS } = await import(
+      resolve(__dirname, '../../src/config/permissions.js')
+    ));
+    ({ errorHandler, AuthenticationError } = await import(
+      resolve(__dirname, '../../src/utils/errors.js')
+    ));
+
+    dbWrite = jest.fn();
+
+    app = express();
+    app.set('trust proxy', 1);
+    app.use(express.json());
+
+    // Réplica del montaje real: authenticate → requirePermission(USERS.CREATE) → handler
+    app.post(
+      '/api/import/usuarios',
+      (req, res, next) => {
+        // Simula authenticate: sin header → 401; con x-test-user → req.user
+        if (req.headers['x-test-anon'] === '1') {
+          return next(new AuthenticationError('Token no proporcionado'));
+        }
+        if (!req.headers['x-test-user']) {
+          return next(new AuthenticationError('Token no proporcionado'));
+        }
+        req.user = JSON.parse(req.headers['x-test-user']);
+        return next();
+      },
+      requirePermission(PERMISSIONS.USERS.CREATE),
+      (req, res) => {
+        dbWrite({ body: req.body, user: req.user });
+        return res.status(200).json({ ok: true });
+      }
+    );
+    app.use(errorHandler);
+  });
+
+  afterAll(() => {
+    process.env.NODE_ENV = previousEnv;
+  });
+
+  beforeEach(() => {
+    dbWrite.mockReset();
+    mockExecute.mockReset();
+    // Sin filas de permiso en BD → fallback ROLE_PERMISSIONS (Instructor/Aprendiz sin USERS.CREATE)
+    mockExecute.mockResolvedValue([[]]);
+  });
+
+  it('anónimo → 401 y sin escritura a BD/handler', async () => {
+    const res = await request(app)
+      .post('/api/import/usuarios')
+      .set('X-Test-Anon', '1')
+      .send({ fake: true });
+
+    expect(res.status).toBe(401);
+    expect(dbWrite).not.toHaveBeenCalled();
+    expect(mockExecute).not.toHaveBeenCalled();
+  });
+
+  it('Instructor → 403 y sin escritura', async () => {
+    const res = await request(app)
+      .post('/api/import/usuarios')
+      .set('X-Test-User', JSON.stringify({ id: 2, rol: 'Instructor' }))
+      .send({ fake: true });
+
+    expect(res.status).toBe(403);
+    expect(dbWrite).not.toHaveBeenCalled();
+  });
+
+  it('Aprendiz → 403 y sin escritura', async () => {
+    const res = await request(app)
+      .post('/api/import/usuarios')
+      .set('X-Test-User', JSON.stringify({ id: 3, rol: 'Aprendiz' }))
+      .send({ fake: true });
+
+    expect(res.status).toBe(403);
+    expect(dbWrite).not.toHaveBeenCalled();
+  });
+
+  it('Administrador → 200 (control positivo del guard)', async () => {
+    const res = await request(app)
+      .post('/api/import/usuarios')
+      .set('X-Test-User', JSON.stringify({ id: 1, rol: 'Administrador' }))
+      .send({ fake: true });
+
+    expect(res.status).toBe(200);
+    expect(dbWrite).toHaveBeenCalledTimes(1);
   });
 });
