@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import Toast from '../../components/Toast'
 import { parseApiResponse, buildErrorMessage } from '../../utils/api'
+import { getPasswordError, PASSWORD_POLICY_HELP, PASSWORD_MIN_LENGTH, PASSWORD_SPECIAL_REGEX } from '../../utils/passwordPolicy'
 import '../../styles/pages/config.css'
 
 export default function Security() {
@@ -22,12 +23,12 @@ export default function Security() {
     const feedback = []
     
     // Longitud mínima (requisito básico)
-    if (password.length < 6) {
+    if (password.length < PASSWORD_MIN_LENGTH) {
       return {
         level: 0,
         label: 'Muy Débil',
         color: 'var(--error-500)',
-        feedback: 'Mínimo 6 caracteres'
+        feedback: PASSWORD_POLICY_HELP
       }
     }
     
@@ -42,7 +43,7 @@ export default function Security() {
     if (/[a-z]/.test(password)) strength++
     if (/[A-Z]/.test(password)) strength++
     if (/[0-9]/.test(password)) strength++
-    if (/[!@#$%^&*(),.?":{}|<>]/.test(password)) strength++
+    if (PASSWORD_SPECIAL_REGEX.test(password)) strength++
     
     // Limitar el nivel máximo a 5
     strength = Math.min(strength, 5)
@@ -61,7 +62,7 @@ export default function Security() {
   // Validar en tiempo real
   useEffect(() => {
     // Validar fortaleza de contraseña solo si hay texto
-    if (newPass && newPass.trim().length > 0) {
+    if (newPass && newPass.length > 0) {
       const strength = validatePasswordStrength(newPass)
       setPasswordStrength(strength)
     } else {
@@ -71,8 +72,11 @@ export default function Security() {
     const newErrors = {}
     
     // Validar nueva contraseña
-    if (newPass && newPass.trim().length > 0 && newPass.length < 6) {
-      newErrors.newPass = 'La contraseña debe tener al menos 6 caracteres'
+    if (newPass && newPass.length > 0) {
+      const passwordError = getPasswordError(newPass)
+      if (passwordError) {
+        newErrors.newPass = passwordError
+      }
     }
     
     if (newPass && current && newPass === current) {
@@ -116,10 +120,13 @@ export default function Security() {
     
     if (!newPass) {
       newErrors.newPass = 'La nueva contraseña es obligatoria'
-    } else if (newPass.length < 6) {
-      newErrors.newPass = 'La contraseña debe tener al menos 6 caracteres'
-    } else if (newPass === current) {
-      newErrors.newPass = 'La nueva contraseña debe ser diferente a la actual'
+    } else {
+      const passwordError = getPasswordError(newPass)
+      if (passwordError) {
+        newErrors.newPass = passwordError
+      } else if (newPass === current) {
+        newErrors.newPass = 'La nueva contraseña debe ser diferente a la actual'
+      }
     }
     
     if (!confirm) {
@@ -236,7 +243,7 @@ export default function Security() {
                 }
               }}
               disabled={loading}
-              minLength={6}
+              minLength={PASSWORD_MIN_LENGTH}
               required
             />
             {errors.newPass && (
@@ -244,7 +251,7 @@ export default function Security() {
                 {errors.newPass}
               </small>
             )}
-            {newPass && newPass.trim().length > 0 && !errors.newPass && (
+            {newPass && newPass.length > 0 && !errors.newPass && (
               <div style={{ marginTop: '0.75rem' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
                   <span style={{ fontSize: '0.9rem', fontWeight: 600, color: passwordStrength.color || 'var(--neutral-600)' }}>
@@ -277,14 +284,14 @@ export default function Security() {
                 )}
                 {!passwordStrength.feedback && passwordStrength.level > 0 && (
                   <small className="security-help" style={{ marginTop: '0.5rem', display: 'block' }}>
-                    Mínimo 6 caracteres. Incluye mayúsculas, números y símbolos para mayor seguridad.
+                    {PASSWORD_POLICY_HELP}
                   </small>
                 )}
               </div>
             )}
             {!newPass && (
               <small className="security-help">
-                Mínimo 6 caracteres. Recomendado: mayúsculas, números y símbolos.
+                {PASSWORD_POLICY_HELP}
               </small>
             )}
           </div>

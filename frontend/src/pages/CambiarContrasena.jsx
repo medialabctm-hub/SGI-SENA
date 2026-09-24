@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { FiLock, FiEye, FiEyeOff } from 'react-icons/fi';
 import Toast from '../components/Toast';
 import { buildErrorMessage, parseApiResponse } from '../utils/api';
+import { getPasswordError, PASSWORD_POLICY_HELP } from '../utils/passwordPolicy';
 import '../styles/auth.css';
 
 export default function CambiarContrasena() {
@@ -36,8 +37,11 @@ export default function CambiarContrasena() {
     }
     if (!nuevaContrasena) {
       nuevosErrores.nuevaContrasena = 'La nueva contraseña es obligatoria';
-    } else if (nuevaContrasena.length < 6) {
-      nuevosErrores.nuevaContrasena = 'La contraseña debe tener al menos 6 caracteres';
+    } else {
+      const passwordError = getPasswordError(nuevaContrasena);
+      if (passwordError) {
+        nuevosErrores.nuevaContrasena = passwordError;
+      }
     }
     if (!confirmarContrasena) {
       nuevosErrores.confirmarContrasena = 'Debes confirmar la nueva contraseña';
