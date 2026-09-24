@@ -27,7 +27,7 @@ import {
   loginPlacaSchema,
   updateUserSchema,
 } from '../validators/authValidator.js';
-import { authLimiter, registerLimiter, passwordResetLimiter } from '../middleware/rateLimiter.js';
+import { authLimiter, registerLimiter, passwordResetLimiter, identityReauthIpLimiter, identityReauthUserLimiter } from '../middleware/rateLimiter.js';
 import { uploadProfileImage, handleProfileUploadError } from '../middleware/uploadProfileMiddleware.js';
 
 const router = express.Router();
@@ -98,10 +98,12 @@ router.get('/user/:id',
 // Actualizar usuario
 // Admin: puede actualizar cualquier usuario
 // Usuario: solo puede actualizar su propio perfil
-router.put('/user/:id', 
+router.put('/user/:id',
   authenticate,
   requireAdminForRoleChange,
   requireOwnership((req) => req.params.id),
+  identityReauthIpLimiter,
+  identityReauthUserLimiter,
   validate(updateUserSchema),
   updateUser
 );

@@ -24,6 +24,8 @@ const {
   strictLimiter,
   searchLimiter,
   publicLookupLimiter,
+  identityReauthIpLimiter,
+  identityReauthUserLimiter,
   invitationIpLimiter,
   invitationCodeLimiter,
   webhookLimiter,
@@ -33,7 +35,7 @@ const {
 
 describe('rateLimiter config', () => {
   it('debe registrar todos los limiters esperados', () => {
-    expect(rateLimitMock).toHaveBeenCalledTimes(13);
+    expect(rateLimitMock).toHaveBeenCalledTimes(15);
     expect(authLimiter.__options.windowMs).toBe(15 * 60 * 1000);
     expect(registerLimiter.__options.windowMs).toBe(60 * 60 * 1000);
     expect(passwordResetLimiter.__options.windowMs).toBe(60 * 60 * 1000);
@@ -55,6 +57,19 @@ describe('rateLimiter config', () => {
     publicLookupLimiter.__options.handler({}, res);
     expect(res.status).toHaveBeenCalledWith(429);
     expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ success: false, retryAfter: 15 }));
+  });
+
+  it('identityReauthIpLimiter y identityReauthUserLimiter alinean umbral de login (MDL-192)', () => {
+    expect(identityReauthIpLimiter.__options.windowMs).toBe(15 * 60 * 1000);
+    expect(identityReauthIpLimiter.__options.max).toBe(10);
+    expect(identityReauthUserLimiter.__options.windowMs).toBe(15 * 60 * 1000);
+    expect(identityReauthUserLimiter.__options.max).toBe(10);
+    expect(identityReauthIpLimiter.__options.skipSuccessfulRequests).toBe(true);
+    expect(identityReauthUserLimiter.__options.skipSuccessfulRequests).toBe(true);
+
+    const req = { user: { id: 7 }, ip: '10.9.9.9', connection: { remoteAddress: '10.0.0.9' } };
+    expect(identityReauthIpLimiter.__options.keyGenerator(req)).toBe('identity_reauth_ip_10.9.9.9');
+    expect(identityReauthUserLimiter.__options.keyGenerator(req)).toBe('identity_reauth_user_7');
   });
 
   it('invitationIpLimiter limita por IP y invitationCodeLimiter por identificador anonimizado', () => {

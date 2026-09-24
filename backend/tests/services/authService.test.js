@@ -492,44 +492,176 @@ describe('AuthService', () => {
 
   // ─── updateUser ─────────────────────────────────────────────────────────────
   describe('updateUser', () => {
-    it('debe actualizar usuario exitosamente con nombre y rol', async () => {
+    const selfActor = { id: 1, rol: 'Aprendiz' };
+    const adminActor = { id: 99, rol: 'Administrador' };
+
+    beforeEach(() => {
+      mockUserRepository.findById.mockResolvedValue({ ...baseUser });
+    });
+
+    it('debe actualizar nombre/teléfono cuando cedula/correo no cambian (QA-192A-01)', async () => {
       mockRoleRepository.findByName.mockResolvedValue({ id_rol: 3 });
       mockUserRepository.update.mockResolvedValue({ affectedRows: 1 });
 
-      const result = await authService.updateUser(1, { nombre: 'Nuevo Nombre', rol: 'Aprendiz' });
+      const result = await authService.updateUser(1, {
+        nombre: 'Nuevo Nombre',
+        telefono: '3009876543',
+        cedula: ' 1234567890 ',
+        correo: ' Test@Example.com ',
+        rol: 'Aprendiz',
+      }, selfActor);
+
       expect(result.message).toContain('actualizado');
+      const [, updateArg] = mockUserRepository.update.mock.calls[0];
+      expect(updateArg).not.toHaveProperty('cedula');
+      expect(updateArg).not.toHaveProperty('correo');
+      expect(updateArg).not.toHaveProperty('contrasena_actual');
+      expect(mockPasswordService.compare).not.toHaveBeenCalled();
     });
 
-    it('debe actualizar solo el correo válido sin cambiar rol', async () => {
+    it('rechaza cambio de cédula propia (QA-192A-02)', async () => {
+      await expect(
+        authService.updateUser(1, { cedula: '9999999999', correo: baseUser.correo }, selfActor)
+      ).rejects.toThrow(ValidationError);
+      expect(mockUserRepository.update).not.toHaveBeenCalled();
+    });
+
+    it('trata cédula con espacios como no-cambio (QA-192A-03)', async () => {
+      mockUserRepository.update.mockResolvedValue({ affectedRows: 1 });
+      const result = await authService.updateUser(1, {
+        nombre: 'Test User',
+        cedula: ' 1234567890 ',
+      }, selfActor);
+      expect(result.message).toContain('actualizado');
+      expect(mockUserRepository.update.mock.calls[0][1]).not.toHaveProperty('cedula');
+    });
+
+    it('exige contrasena_actual correcta para cambio de correo propio (QA-192A-04)', async () => {
+      mockUserRepository.findOne.mockResolvedValue({ contrasena: 'hashedPassword' });
+      mockPasswordService.compare.mockResolvedValue(true);
       mockUserRepository.update.mockResolvedValue({ affectedRows: 1 });
 
-      const result = await authService.updateUser(1, { correo: 'nuevo@test.com' });
+      const payload = {
+        correo: 'nuevo@test.com',
+        contrasena_actual: 'Pass123*Seg',
+      };
+      const result = await authService.updateUser(1, payload, selfActor);
       expect(result.message).toContain('actualizado');
+      expect(payload).not.toHaveProperty('contrasena_actual');
+      const [, updateArg] = mockUserRepository.update.mock.calls[0];
+      expect(updateArg.correo).toBe('nuevo@test.com');
+      expect(updateArg).not.toHaveProperty('contrasena_actual');
+    });
+
+    it('rechaza con mensaje genérico si contrasena_actual es incorrecta (QA-192A-05)', async () => {
+      mockUserRepository.findOne.mockResolvedValue({ contrasena: 'hashedPassword' });
+      mockPasswordService.compare.mockResolvedValue(false);
+
+      await expect(
+        authService.updateUser(1, {
+          correo: 'nuevo@test.com',
+          contrasena_actual: 'WrongPass1*',
+        }, selfActor)
+      ).rejects.toThrow(/No se pudo completar la operación/);
+      expect(mockUserRepository.update).not.toHaveBeenCalled();
+    });
+
+    it('correo solo casing/espacios no exige contraseña (QA-192A-06)', async () => {
+      mockUserRepository.update.mockResolvedValue({ affectedRows: 1 });
+      const result = await authService.updateUser(1, {
+        nombre: 'Test User',
+        correo: ' Test@Example.COM ',
+      }, selfActor);
+      expect(result.message).toContain('actualizado');
+      expect(mockPasswordService.compare).not.toHaveBeenCalled();
+      expect(mockUserRepository.update.mock.calls[0][1]).not.toHaveProperty('correo');
+    });
+
+    it('Admin no puede cambiar su propia cédula aunque ownership lo deje pasar (QA-192A-08/11)', async () => {
+      mockUserRepository.findById.mockResolvedValue({
+        ...baseUser,
+        id_usuario: 99,
+        cedula: '1111111111',
+        nombre_rol: 'Administrador',
+      });
+      await expect(
+        authService.updateUser(99, { cedula: '2222222222' }, { id: 99, rol: 'Administrador' })
+      ).rejects.toThrow(ValidationError);
+      expect(mockUserRepository.update).not.toHaveBeenCalled();
+    });
+
+    it('Admin cambia cédula ajena con motivo (QA-192A-09)', async () => {
+      mockUserRepository.update.mockResolvedValue({ affectedRows: 1 });
+      const result = await authService.updateUser(1, {
+        cedula: '9876543210',
+        motivo: 'Corrección de documento',
+      }, adminActor);
+      expect(result.message).toContain('actualizado');
+      expect(mockLogger.info).toHaveBeenCalledWith(
+        'Cambio de identidad (cédula) por administrador',
+        expect.objectContaining({ targetUserId: 1, adminId: 99, field: 'cedula' })
+      );
+      const logMeta = mockLogger.info.mock.calls.find(
+        ([msg]) => msg.includes('Cambio de identidad')
+      )[1];
+      expect(JSON.stringify(logMeta)).not.toContain('9876543210');
+    });
+
+    it('Admin sin motivo al cambiar cédula ajena → rechazo (QA-192A-10)', async () => {
+      await expect(
+        authService.updateUser(1, { cedula: '9876543210' }, adminActor)
+      ).rejects.toThrow(ValidationError);
+      expect(mockUserRepository.update).not.toHaveBeenCalled();
+    });
+
+    it('borra contrasena_actual del payload y no lo pasa al repositorio (sentinel)', async () => {
+      const SENTINEL = 'SENTINEL_Pwd_MDL192_X9!';
+      mockUserRepository.findOne.mockResolvedValue({ contrasena: 'hashedPassword' });
+      mockPasswordService.compare.mockResolvedValue(true);
+      mockUserRepository.update.mockResolvedValue({ affectedRows: 1 });
+
+      const payload = { correo: 'otro@test.com', contrasena_actual: SENTINEL };
+      await authService.updateUser(1, payload, selfActor);
+
+      expect(payload).not.toHaveProperty('contrasena_actual');
+      const [, updateArg] = mockUserRepository.update.mock.calls[0];
+      expect(JSON.stringify(updateArg)).not.toContain(SENTINEL);
+      expect(updateArg).not.toHaveProperty('contrasena_actual');
     });
 
     it('debe lanzar ValidationError cuando no hay campos para actualizar', async () => {
-      await expect(authService.updateUser(1, {})).rejects.toThrow(ValidationError);
+      await expect(authService.updateUser(1, {}, selfActor)).rejects.toThrow(ValidationError);
     });
 
     it('debe lanzar ValidationError con correo inválido', async () => {
-      await expect(authService.updateUser(1, { correo: 'not-valid' })).rejects.toThrow(ValidationError);
+      mockUserRepository.findOne.mockResolvedValue({ contrasena: 'hashed' });
+      mockPasswordService.compare.mockResolvedValue(true);
+      await expect(
+        authService.updateUser(1, { correo: 'not-valid', contrasena_actual: 'Pass123*Seg' }, selfActor)
+      ).rejects.toThrow(ValidationError);
     });
 
     it('debe lanzar ValidationError si el rol no existe', async () => {
       mockRoleRepository.findByName.mockResolvedValue(null);
       await expect(
-        authService.updateUser(1, { nombre: 'Test', rol: 'RolInexistente' })
+        authService.updateUser(1, { nombre: 'Test', rol: 'RolInexistente' }, selfActor)
       ).rejects.toThrow(ValidationError);
     });
 
     it('debe lanzar NotFoundError si el usuario no existe', async () => {
-      mockUserRepository.update.mockResolvedValue({ affectedRows: 0 });
-      await expect(authService.updateUser(1, { nombre: 'Test' })).rejects.toThrow(NotFoundError);
+      mockUserRepository.findById.mockResolvedValue(null);
+      await expect(
+        authService.updateUser(1, { nombre: 'Test' }, selfActor)
+      ).rejects.toThrow(NotFoundError);
     });
 
-    it('debe actualizar teléfono y cédula', async () => {
+    it('Admin puede actualizar teléfono/nombre de otro sin tocar identidad', async () => {
       mockUserRepository.update.mockResolvedValue({ affectedRows: 1 });
-      const result = await authService.updateUser(1, { telefono: '3009876543', cedula: '9876543210' });
+      const result = await authService.updateUser(1, {
+        telefono: '3009876543',
+        cedula: baseUser.cedula,
+        correo: baseUser.correo,
+      }, adminActor);
       expect(result.message).toContain('actualizado');
     });
   });
