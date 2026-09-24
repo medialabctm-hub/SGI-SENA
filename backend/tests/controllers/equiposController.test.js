@@ -1427,7 +1427,7 @@ describe('obtenerEquiposAmbientesInstructor', () => {
 
   it('returns ambientes and equipos when found', async () => {
     mockExecute
-      .mockResolvedValueOnce([[{ id_ambiente: 1, nombre_ambiente: 'Lab', id_responsabilidad_ambiente: 1 }]])
+      .mockResolvedValueOnce([[{ id_ambiente: 1, nombre_ambiente: 'Lab', codigo_ambiente: '101' }]])
       .mockResolvedValueOnce([[{ codigo_equipo: 5, placa: 'PL-001', tipo: 'Laptop' }]]);
     const req = mockReq({ user: { id: 5, rol: 'Instructor' } });
     const res = mockRes();
@@ -1441,6 +1441,92 @@ describe('obtenerEquiposAmbientesInstructor', () => {
     const res = mockRes();
     await obtenerEquiposAmbientesInstructor(req, res);
     expect(res.status).toHaveBeenCalledWith(500);
+  });
+
+  // ── MDL-234 ──────────────────────────────────────────────────────────────
+  it('MDL-234: SQL agrupa por id_ambiente y une Elementos.id_cuentadante (params userId×3)', async () => {
+    mockExecute.mockResolvedValueOnce([[]]);
+    const req = mockReq({ user: { id: 2, rol: 'Cuentadante' } });
+    const res = mockRes();
+    await obtenerEquiposAmbientesInstructor(req, res);
+
+    expect(mockExecute).toHaveBeenCalledTimes(1);
+    const [sql, params] = mockExecute.mock.calls[0];
+    expect(sql).toMatch(/WHERE a\.id_ambiente IN/i);
+    expect(sql).toMatch(/UNION/i);
+    expect(sql).toMatch(/e\.id_cuentadante = \?/i);
+    expect(sql).toMatch(/Responsabilidades_Ambiente/i);
+    expect(sql).not.toMatch(/SELECT DISTINCT\s+\s*ra\.id_responsabilidad_ambiente/i);
+    expect(params).toEqual([2, 2, 2]);
+  });
+
+  it('MDL-234 VI-01: varias responsabilidades en un aula → una sola fila en respuesta', async () => {
+    // El SQL ya colapsa; el mock simula el resultado agrupado (1 fila para id_ambiente=7).
+    mockExecute
+      .mockResolvedValueOnce([[{
+        id_ambiente: 7,
+        nombre_ambiente: 'Aula 107',
+        codigo_ambiente: '107',
+        jornada: 'Diurna',
+      }]])
+      .mockResolvedValueOnce([[{ codigo_equipo: 1, id_ambiente: 7, placa: 'P-1' }]]);
+    const req = mockReq({ user: { id: 2, rol: 'Cuentadante' } });
+    const res = mockRes();
+    await obtenerEquiposAmbientesInstructor(req, res);
+    const body = res.json.mock.calls[0][0];
+    expect(body.ambientes).toHaveLength(1);
+    expect(body.ambientes[0].id_ambiente).toBe(7);
+  });
+
+  it('MDL-234 VI-03: aula solo vía id_cuentadante aparece (sin responsabilidad)', async () => {
+    mockExecute
+      .mockResolvedValueOnce([[{
+        id_ambiente: 1,
+        nombre_ambiente: 'Aula 101',
+        codigo_ambiente: '101',
+        jornada: null,
+      }]])
+      .mockResolvedValueOnce([[{ codigo_equipo: 9, id_ambiente: 1, placa: 'P-9' }]]);
+    const req = mockReq({ user: { id: 2, rol: 'Cuentadante' } });
+    const res = mockRes();
+    await obtenerEquiposAmbientesInstructor(req, res);
+    const body = res.json.mock.calls[0][0];
+    expect(body.ambientes.map((a) => a.id_ambiente)).toEqual([1]);
+    expect(body.equipos).toHaveLength(1);
+  });
+
+  it('MDL-234: aula en ambos orígenes → una sola fila', async () => {
+    mockExecute
+      .mockResolvedValueOnce([[{
+        id_ambiente: 7,
+        nombre_ambiente: 'Aula 107',
+        codigo_ambiente: '107',
+        jornada: 'Diurna',
+      }]])
+      .mockResolvedValueOnce([[]]);
+    const req = mockReq({ user: { id: 2, rol: 'Cuentadante' } });
+    const res = mockRes();
+    await obtenerEquiposAmbientesInstructor(req, res);
+    expect(res.json.mock.calls[0][0].ambientes).toHaveLength(1);
+  });
+
+  it('MDL-234: usuario sin responsabilidad ni equipos → vacío', async () => {
+    mockExecute.mockResolvedValueOnce([[]]);
+    const req = mockReq({ user: { id: 99, rol: 'Instructor' } });
+    const res = mockRes();
+    await obtenerEquiposAmbientesInstructor(req, res);
+    expect(res.json).toHaveBeenCalledWith({ ambientes: [], equipos: [] });
+    expect(mockExecute.mock.calls[0][1]).toEqual([99, 99, 99]);
+  });
+
+  it('MDL-234: no filtra por id_usuario ajeno (params solo del caller)', async () => {
+    mockExecute.mockResolvedValueOnce([[]]);
+    const req = mockReq({ user: { id: 2, rol: 'Cuentadante' } });
+    const res = mockRes();
+    await obtenerEquiposAmbientesInstructor(req, res);
+    const params = mockExecute.mock.calls[0][1];
+    expect(params.every((p) => p === 2)).toBe(true);
+    expect(params).not.toContain(1);
   });
 });
 

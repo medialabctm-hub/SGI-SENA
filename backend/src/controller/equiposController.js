@@ -1398,68 +1398,53 @@ export async function obtenerEquiposAmbientesInstructor(req, res) {
       })
     }
 
-    // Obtener ambientes donde el instructor tiene responsabilidad activa
-    // IMPORTANTE: Para la verificación de inventario, mostramos TODOS los ambientes asignados activos
-    // sin restricción de horario actual. El horario solo se valida al momento de registrar una verificación.
-    // Esto permite al instructor ver y verificar el inventario en cualquier momento.
-    
+    // MDL-234: UNA fila por id_ambiente.
+    // Unión de (a) responsabilidades activas del usuario y (b) aulas donde
+    // Elementos.id_cuentadante = user. Antes el SELECT DISTINCT incluía
+    // id_responsabilidad_ambiente / jornada / días / horas → N filas por aula
+    // (p. ej. 102 días en el aula 107) y omitía aulas solo por id_cuentadante.
+    // Campos alineados a lo que consume VerificarInventario.jsx (id_ambiente,
+    // nombre_ambiente, codigo_ambiente; jornada opcional agregada).
     const [ambientes] = await defaultDb.execute(
-      `SELECT DISTINCT
-        ra.id_responsabilidad_ambiente,
-        ra.id_ambiente,
+      `SELECT
+        a.id_ambiente,
         a.nombre_ambiente,
         a.codigo_ambiente,
-        ra.tipo_responsabilidad,
-        ra.fecha_inicio,
-        ra.fecha_fin,
-        ra.jornada,
-        CAST(ra.dias_semana AS CHAR) AS dias_semana,
-        ra.hora_inicio,
-        ra.hora_fin,
-        ra.id_clase,
-        c.estado_clase,
-        CASE WHEN ra.id_clase IS NULL THEN 'Permanente' ELSE 'Temporal' END AS tipo_asignacion
-      FROM Responsabilidades_Ambiente ra
-      INNER JOIN Ambientes a ON ra.id_ambiente = a.id_ambiente
-      LEFT JOIN Clases c ON ra.id_clase = c.id_clase
-      WHERE ra.id_usuario = ?
-        AND ra.estado_responsabilidad = 'Activa'
-        -- SISTEMA 100% MANUAL: Eliminadas comparaciones con NOW() y CURDATE()
-        -- El estado_responsabilidad = 'Activa' es suficiente para determinar responsabilidades activas
-        -- AND ra.fecha_inicio <= NOW()
-        -- AND (ra.fecha_fin IS NULL OR ra.fecha_fin >= NOW())
-        AND (
-          -- Asignaciones permanentes (con días/horarios o jornada)
-          (ra.id_clase IS NULL)
-          OR
-          -- Asignaciones temporales (clases) - SOLO si la clase está EN_CURSO
-          -- NO mostrar clases Programadas porque aún no han iniciado (no tiene acceso al inventario)
-          -- NO mostrar clases Finalizadas porque ya terminaron (ya no tiene acceso)
-          (ra.id_clase IS NOT NULL 
-           AND c.estado_clase = 'En Curso')
-        )
-      ORDER BY a.nombre_ambiente`,
-      [userId]
+        (
+          SELECT ra2.jornada
+          FROM Responsabilidades_Ambiente ra2
+          WHERE ra2.id_ambiente = a.id_ambiente
+            AND ra2.id_usuario = ?
+            AND ra2.estado_responsabilidad = 'Activa'
+          ORDER BY ra2.id_responsabilidad_ambiente
+          LIMIT 1
+        ) AS jornada
+      FROM Ambientes a
+      WHERE a.id_ambiente IN (
+        SELECT ra.id_ambiente
+        FROM Responsabilidades_Ambiente ra
+        LEFT JOIN Clases c ON ra.id_clase = c.id_clase
+        WHERE ra.id_usuario = ?
+          AND ra.estado_responsabilidad = 'Activa'
+          AND (
+            ra.id_clase IS NULL
+            OR (ra.id_clase IS NOT NULL AND c.estado_clase = 'En Curso')
+          )
+        UNION
+        SELECT e.id_ambiente
+        FROM Elementos e
+        WHERE e.id_cuentadante = ?
+          AND e.id_ambiente IS NOT NULL
+          AND e.estado_fisico != 'Baja'
+      )
+      ORDER BY a.nombre_ambiente, a.codigo_ambiente`,
+      [userId, userId, userId]
     );
 
-    // Log para debug
-    logger.debug('Verificación Inventario', { 
-      instructor: userId, 
-      ambientesEncontrados: ambientes.length 
-    })
-    if (ambientes.length > 0) {
-      logger.debug('Ambientes encontrados', { 
-        ambientes: ambientes.map(a => ({
-          ambiente: a.nombre_ambiente,
-          tipo: a.tipo_asignacion,
-          estado_clase: a.estado_clase,
-          id_clase: a.id_clase,
-          dias_semana: a.dias_semana,
-          hora_inicio: a.hora_inicio,
-          hora_fin: a.hora_fin
-        }))
-      })
-    }
+    logger.debug('Verificación Inventario', {
+      userId,
+      ambientesEncontrados: ambientes.length,
+    });
 
     if (ambientes.length === 0) {
       return res.json({
