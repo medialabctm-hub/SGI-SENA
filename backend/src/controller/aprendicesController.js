@@ -150,17 +150,38 @@ export async function ensureAprendicesTable() {
 /**
  * Verificar si un documento existe en el roster de Aprendices (público, sin autenticación).
  * Usado por el autoservicio: el aprendiz solo confirma su documento antes de pedir un equipo.
- * No expone PII (nombre, ficha, ids): la respuesta solo indica existencia.
- * No ejecuta ensureAprendicesTable() en esta ruta: la migración de la tabla corre
- * en las rutas autenticadas de escritura (crearAprendiz, importAprendices, etc.),
- * nunca en un endpoint público sin autenticación.
+ *
+ * Contrato de seguridad (MDL-125 + MDL-201 / H-05):
+ * - No expone PII (nombre, ficha, ids): la respuesta solo indica existencia.
+ * - No ejecuta ensureAprendicesTable() ni DDL en esta ruta.
+ * - Siempre responde HTTP 200 cuando el documento es sintácticamente válido, tanto
+ *   si existe como si no: el código de estado no debe actuar como oráculo de
+ *   enumeración. La existencia queda solo en el booleano `existe` (necesario para
+ *   el flujo de autoservicio) y se mitiga con rate-limit dual IP+documento.
+ * - Formato inválido → 400 scrubbed, sin consultar la BD.
  */
+const DOCUMENTO_PUBLICO_RE = /^[A-Za-z0-9._\-]{5,50}$/
+
 export async function verificarAprendizPorDocumento(req, res) {
   const { documento } = req.params
   const documentoNormalizado = typeof documento === 'string' ? documento.trim() : ''
 
   if (!documentoNormalizado) {
-    return res.status(400).json({ existe: false, error: 'El documento es obligatorio' })
+    return res.status(400).json({
+      success: false,
+      existe: false,
+      error: 'El documento es obligatorio',
+      userMessage: 'El documento es obligatorio',
+    })
+  }
+
+  if (!DOCUMENTO_PUBLICO_RE.test(documentoNormalizado)) {
+    return res.status(400).json({
+      success: false,
+      existe: false,
+      error: 'Documento inválido.',
+      userMessage: 'Documento inválido.',
+    })
   }
 
   try {
@@ -169,7 +190,7 @@ export async function verificarAprendizPorDocumento(req, res) {
       [documentoNormalizado]
     )
 
-    return res.status(aprendiz ? 200 : 404).json({ existe: Boolean(aprendiz) })
+    return res.status(200).json({ existe: Boolean(aprendiz) })
   } catch (error) {
     logger.error('Error al verificar aprendiz por documento', { error: error.message, stack: error.stack })
     return handleControllerError(error, res, 'verificarAprendizPorDocumento', 'Error al verificar el documento');

@@ -3,7 +3,7 @@ import { listarAprendices, crearAprendiz, actualizarAprendiz, eliminarAprendiz, 
 import { authenticate } from '../middleware/authMiddleware.js'
 import { requirePermission } from '../middleware/authorization.js'
 import { PERMISSIONS } from '../config/permissions.js'
-import { publicLookupLimiter } from '../middleware/rateLimiter.js'
+import { publicLookupLimiter, publicLookupDocumentoLimiter } from '../middleware/rateLimiter.js'
 
 const router = express.Router()
 
@@ -15,6 +15,7 @@ const router = express.Router()
 router.get(
   '/verificar/:documento',
   publicLookupLimiter,
+  publicLookupDocumentoLimiter,
   verificarAprendizPorDocumento
 )
 

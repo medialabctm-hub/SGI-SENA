@@ -24,6 +24,7 @@ const {
   strictLimiter,
   searchLimiter,
   publicLookupLimiter,
+  publicLookupDocumentoLimiter,
   identityReauthIpLimiter,
   identityReauthUserLimiter,
   invitationIpLimiter,
@@ -35,23 +36,30 @@ const {
 
 describe('rateLimiter config', () => {
   it('debe registrar todos los limiters esperados', () => {
-    expect(rateLimitMock).toHaveBeenCalledTimes(15);
+    expect(rateLimitMock).toHaveBeenCalledTimes(16);
     expect(authLimiter.__options.windowMs).toBe(15 * 60 * 1000);
     expect(registerLimiter.__options.windowMs).toBe(60 * 60 * 1000);
     expect(passwordResetLimiter.__options.windowMs).toBe(60 * 60 * 1000);
     expect(webhookLimiter.__options.max).toBe(100);
   });
 
-  it('publicLookupLimiter debe ser tan estricto como authLimiter (10 intentos / 15 min por IP)', () => {
+  it('publicLookupLimiter (IP) y publicLookupDocumentoLimiter mitigan enumeración (MDL-201)', () => {
     expect(publicLookupLimiter.__options.windowMs).toBe(15 * 60 * 1000);
     expect(publicLookupLimiter.__options.max).toBe(10);
+    expect(publicLookupDocumentoLimiter.__options.windowMs).toBe(15 * 60 * 1000);
+    expect(publicLookupDocumentoLimiter.__options.max).toBe(5);
 
-    const key = publicLookupLimiter.__options.keyGenerator({
+    const req = {
       user: null,
       ip: '10.2.2.2',
+      params: { documento: ' 1234567890 ' },
       connection: { remoteAddress: '10.0.0.2' },
-    });
-    expect(key).toBe('10.2.2.2');
+    };
+    const ipKey = publicLookupLimiter.__options.keyGenerator(req);
+    const docKey = publicLookupDocumentoLimiter.__options.keyGenerator(req);
+    expect(ipKey).toBe('public_lookup_ip_10.2.2.2');
+    expect(docKey).toMatch(/^public_lookup_documento_[0-9a-f]{64}$/);
+    expect(docKey).not.toContain('1234567890');
 
     const res = { status: jest.fn().mockReturnThis(), json: jest.fn().mockReturnThis() };
     publicLookupLimiter.__options.handler({}, res);

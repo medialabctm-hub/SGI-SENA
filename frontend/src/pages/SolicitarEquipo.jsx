@@ -20,7 +20,6 @@ export default function SolicitarEquipo() {
   const [paso, setPaso] = useState(PASO_DOCUMENTO);
   const [documento, setDocumento] = useState('');
   const [placa, setPlaca] = useState('');
-  const [aprendiz, setAprendiz] = useState(null);
   const [prestamo, setPrestamo] = useState(null);
   const [loading, setLoading] = useState(false);
   const [errores, setErrores] = useState({});
@@ -57,8 +56,11 @@ export default function SolicitarEquipo() {
       });
       const data = await parseApiResponse(res, 'No se pudo verificar el documento');
       if (!requestGuardRef.current.isCurrent(request.id)) return;
-      const aprendizData = data?.data?.aprendiz || data?.aprendiz || data;
-      setAprendiz(aprendizData);
+      // MDL-201: el backend responde siempre 200 con { existe }; no hay PII/nombre.
+      if (!data?.existe) {
+        setErrores({ documento: 'No se encontró un aprendiz con ese documento' });
+        return;
+      }
       setPaso(PASO_PLACA);
     } catch (err) {
       if (isRequestTimeout(err, request)) {
@@ -124,7 +126,6 @@ export default function SolicitarEquipo() {
     setPaso(PASO_DOCUMENTO);
     setDocumento('');
     setPlaca('');
-    setAprendiz(null);
     setPrestamo(null);
     setErrores({});
     setToast(null);
@@ -186,7 +187,7 @@ export default function SolicitarEquipo() {
           <div className="logo-box">
             <div className="logo"><img src="/images/logoSena.png" alt="Logo SENA" /></div>
           </div>
-          <h1 className="title">Hola, {aprendiz?.nombre}</h1>
+          <h1 className="title">Documento verificado</h1>
           <p className="subtitle">Escribe la placa del equipo que vas a usar</p>
 
           <form onSubmit={handleSolicitarEquipo} className="form">
