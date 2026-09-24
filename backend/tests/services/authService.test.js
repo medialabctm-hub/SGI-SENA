@@ -457,10 +457,12 @@ describe('AuthService', () => {
 
   // ─── getUserByCedula ────────────────────────────────────────────────────────
   describe('getUserByCedula', () => {
-    it('debe retornar usuario por cédula', async () => {
+        it('debe retornar usuario por cédula sin contrasena (MDL-230)', async () => {
       mockUserRepository.findByCedula.mockResolvedValue(baseUser);
       const result = await authService.getUserByCedula('1234567890');
       expect(result.id_usuario).toBe(1);
+      expect(result).not.toHaveProperty('contrasena');
+      expect(JSON.stringify(result)).not.toMatch(/\$2[aby]\$/);
     });
 
     it('debe lanzar NotFoundError si no existe usuario con esa cédula', async () => {
@@ -599,7 +601,12 @@ describe('AuthService', () => {
       expect(result.message).toContain('actualizado');
       expect(mockLogger.info).toHaveBeenCalledWith(
         'Cambio de identidad (cédula) por administrador',
-        expect.objectContaining({ targetUserId: 1, adminId: 99, field: 'cedula' })
+        expect.objectContaining({
+          targetUserId: 1,
+          adminId: 99,
+          field: 'cedula',
+          motivo: 'Corrección de documento',
+        })
       );
       const logMeta = mockLogger.info.mock.calls.find(
         ([msg]) => msg.includes('Cambio de identidad')
@@ -612,6 +619,75 @@ describe('AuthService', () => {
         authService.updateUser(1, { cedula: '9876543210' }, adminActor)
       ).rejects.toThrow(ValidationError);
       expect(mockUserRepository.update).not.toHaveBeenCalled();
+    });
+
+    it('Admin cambia correo ajeno con motivo (log sin valor de correo)', async () => {
+      mockUserRepository.update.mockResolvedValue({ affectedRows: 1 });
+      const result = await authService.updateUser(1, {
+        correo: 'nuevo-admin-target@test.com',
+        motivo: 'Actualización de contacto institucional',
+      }, adminActor);
+      expect(result.message).toContain('actualizado');
+      expect(mockLogger.info).toHaveBeenCalledWith(
+        'Cambio de identidad (correo) por administrador',
+        expect.objectContaining({
+          targetUserId: 1,
+          adminId: 99,
+          field: 'correo',
+          motivo: 'Actualización de contacto institucional',
+        })
+      );
+      const logMeta = mockLogger.info.mock.calls.find(
+        ([msg]) => msg.includes('Cambio de identidad (correo)')
+      )[1];
+      const blob = JSON.stringify(logMeta);
+      expect(blob).not.toContain('nuevo-admin-target@test.com');
+      expect(blob).not.toContain(baseUser.correo);
+    });
+
+    it('Admin sin motivo al cambiar correo ajeno → rechazo genérico', async () => {
+      await expect(
+        authService.updateUser(1, { correo: 'otro@test.com' }, adminActor)
+      ).rejects.toThrow(/No se pudo completar la operación/);
+      expect(mockUserRepository.update).not.toHaveBeenCalled();
+    });
+
+    it('Admin cambia cédula y correo ajenos con un solo motivo', async () => {
+      mockUserRepository.update.mockResolvedValue({ affectedRows: 1 });
+      await authService.updateUser(1, {
+        cedula: '5555555555',
+        correo: 'ambos@test.com',
+        motivo: 'Corrección integral de ficha',
+      }, adminActor);
+      expect(mockLogger.info).toHaveBeenCalledWith(
+        'Cambio de identidad (cédula) por administrador',
+        expect.objectContaining({ field: 'cedula', motivo: 'Corrección integral de ficha' })
+      );
+      expect(mockLogger.info).toHaveBeenCalledWith(
+        'Cambio de identidad (correo) por administrador',
+        expect.objectContaining({ field: 'correo', motivo: 'Corrección integral de ficha' })
+      );
+      const [, updateArg] = mockUserRepository.update.mock.calls[0];
+      expect(updateArg.cedula).toBe('5555555555');
+      expect(updateArg.correo).toBe('ambos@test.com');
+    });
+
+    it('correo propio sigue exigiendo contrasena_actual, no motivo', async () => {
+      mockUserRepository.findOne.mockResolvedValue({ contrasena: 'hashedPassword' });
+      mockPasswordService.compare.mockResolvedValue(true);
+      mockUserRepository.update.mockResolvedValue({ affectedRows: 1 });
+
+      await authService.updateUser(1, {
+        correo: 'mio-nuevo@test.com',
+        contrasena_actual: 'Pass123*Seg',
+        motivo: 'no-debe-bastar-solo',
+      }, selfActor);
+
+      expect(mockPasswordService.compare).toHaveBeenCalled();
+      expect(mockLogger.info).not.toHaveBeenCalledWith(
+        expect.stringContaining('Cambio de identidad (correo)'),
+        expect.anything()
+      );
     });
 
     it('borra contrasena_actual del payload y no lo pasa al repositorio (sentinel)', async () => {
