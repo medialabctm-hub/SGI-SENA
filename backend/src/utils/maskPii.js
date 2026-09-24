@@ -31,6 +31,17 @@ export function maskCorreo(correo) {
 }
 
 /**
+ * Reemplaza cualquier correo dentro de un texto libre (p. ej. mensajes de error
+ * del proveedor de correo) por su versión enmascarada.
+ * @param {unknown} text
+ * @returns {string}
+ */
+export function redactEmails(text) {
+  if (text == null) return '';
+  return String(text).replace(/[^\s@<>"'(),;:]+@[^\s@<>"'(),;:]+/g, (m) => maskCorreo(m) || '***');
+}
+
+/**
  * Tope de filas de datos por archivo de import (MDL-192 SECURITY).
  * Env `IMPORT_MAX_ROWS`; default 5000; inválido o ≤0 → default;
  * nunca supera IMPORT_MAX_ROWS_CEILING (10000).

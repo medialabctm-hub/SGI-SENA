@@ -2,6 +2,7 @@ import { describe, it, expect } from '@jest/globals';
 import {
   maskCedula,
   maskCorreo,
+  redactEmails,
   getImportMaxRows,
   IMPORT_MAX_ROWS_DEFAULT,
   IMPORT_MAX_ROWS_CEILING,
@@ -52,5 +53,19 @@ describe('getImportMaxRows (MDL-192)', () => {
     expect(getImportMaxRows({ IMPORT_MAX_ROWS: '0' })).toBe(5000);
     expect(getImportMaxRows({ IMPORT_MAX_ROWS: '-3' })).toBe(5000);
     expect(getImportMaxRows({ IMPORT_MAX_ROWS: 'abc' })).toBe(5000);
+  });
+});
+
+describe('redactEmails (MDL-192 SECURITY)', () => {
+  it('enmascara cada correo embebido vía maskCorreo', () => {
+    expect(redactEmails('Invalid recipient ana.perez@sena.edu.co')).toBe(
+      'Invalid recipient a***@sena.edu.co',
+    );
+    expect(redactEmails('<x@y.co>, b@c.org')).toBe('<*@y.co>, *@c.org');
+  });
+
+  it('texto sin correo queda igual; null → vacío', () => {
+    expect(redactEmails('Error al enviar correo')).toBe('Error al enviar correo');
+    expect(redactEmails(null)).toBe('');
   });
 });

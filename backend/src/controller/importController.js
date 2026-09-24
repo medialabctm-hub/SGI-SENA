@@ -20,6 +20,7 @@ import { normalizeCorreo } from '../utils/normalizeIdentity.js';
 import {
   maskCedula,
   maskCorreo,
+  redactEmails,
   getImportMaxRows,
 } from '../utils/maskPii.js';
 import {
@@ -1239,12 +1240,17 @@ export async function importarUsuarios(req, res) {
       logger.info(`Resultado de envío de correos: ${correosResultado.exitosos} exitosos, ${correosResultado.fallidos} fallidos`);
 
       if (correosResultado.errores.length > 0) {
-        logger.warn(`Errores al enviar correos:`, correosResultado.errores);
+        // SECURITY (MDL-192): sin correo ni nombre en logs; solo conteo y razones redactadas.
+        const razonesFallo = [...new Set(correosResultado.errores.map((e) => redactEmails(e?.razon)))];
+        logger.warn('Errores al enviar correos', {
+          fallidos: correosResultado.errores.length,
+          razones: razonesFallo,
+        });
         correosResultado.errores.forEach(error => {
           resultados.errores.push({
             fila: 'N/A',
-            cedula: maskCedula(error.nombre),
-            error: `Usuario creado pero no se pudo enviar correo: ${error.razon}`
+            correo: maskCorreo(error.correo),
+            error: `Usuario creado pero no se pudo enviar correo: ${redactEmails(error.razon)}`
           });
         });
       }

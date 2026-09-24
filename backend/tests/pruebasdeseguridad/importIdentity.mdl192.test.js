@@ -16,6 +16,7 @@ const __dirname = dirname(__filename);
 const mockExecute = jest.fn();
 const mockBcryptHash = jest.fn();
 const mockGeneratePassword = jest.fn();
+const mockEnviarContrasenasMasivo = jest.fn().mockResolvedValue({ exitosos: 0, fallidos: 0, errores: [] });
 const mockLogger = { info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() };
 
 await jest.unstable_mockModule(resolve(__dirname, '../../src/config/dbconfig.js'), () => ({
@@ -30,7 +31,7 @@ await jest.unstable_mockModule('bcrypt', () => ({
 await jest.unstable_mockModule(resolve(__dirname, '../../src/services/emailService.js'), () => ({
   default: {
     generatePassword: mockGeneratePassword,
-    enviarContrasenasMasivo: jest.fn().mockResolvedValue({ exitosos: 0, fallidos: 0, errores: [] }),
+    enviarContrasenasMasivo: mockEnviarContrasenasMasivo,
   },
 }));
 
@@ -559,4 +560,86 @@ describe('MDL-192 SECURITY: cédula enmascarada + tope de filas', () => {
     expect(mockExecute).not.toHaveBeenCalled();
   });
 
+});
+
+describe('MDL-192 SECURITY: fallos de envío de correo sin PII en logs', () => {
+  beforeEach(() => {
+    delete process.env.IMPORT_MAX_ROWS;
+    mockExecute.mockReset();
+    mockLogger.info.mockReset();
+    mockLogger.warn.mockReset();
+    mockLogger.error.mockReset();
+    mockBcryptHash.mockReset();
+    mockBcryptHash.mockResolvedValue('$2b$10$hashedvaluexxxxxxxxxxxx');
+    mockGeneratePassword.mockReset();
+    mockGeneratePassword.mockReturnValue('GenPass1!Abcd');
+    mockEnviarContrasenasMasivo.mockReset();
+    mockEnviarContrasenasMasivo.mockResolvedValue({ exitosos: 0, fallidos: 0, errores: [] });
+    xlsxRows.current = [];
+  });
+
+  it('logger.warn registra solo {fallidos, razones} redactadas; respuesta con correo enmascarado', async () => {
+    const FULL_CORREO = 'persona.secreta@sena.edu.co';
+    const FULL_NOMBRE = 'Persona Secreta';
+    const FULL_CEDULA = '9876543210';
+
+    xlsxRows.current = [{
+      nombre_usuario: FULL_NOMBRE,
+      cedula: FULL_CEDULA,
+      correo: FULL_CORREO,
+      rol: 'Aprendiz',
+    }];
+    // Misma secuencia de DB que QA-192B-08 (lookup cedula, lookup correo, rol, insert)
+    mockExecute
+      .mockResolvedValueOnce([[]])
+      .mockResolvedValueOnce([[]])
+      .mockResolvedValueOnce([[{ id_rol: 3 }]])
+      .mockResolvedValueOnce([{ insertId: 51 }]);
+    mockEnviarContrasenasMasivo.mockResolvedValueOnce({
+      exitosos: 0,
+      fallidos: 1,
+      errores: [{
+        correo: FULL_CORREO,
+        nombre: FULL_NOMBRE,
+        razon: `Invalid recipient ${FULL_CORREO}`,
+      }],
+    });
+
+    const res = mockRes();
+    await importarUsuarios(mockReq(), res);
+
+    expect(mockGeneratePassword).toHaveBeenCalled();
+    expect(mockEnviarContrasenasMasivo).toHaveBeenCalled();
+
+    const allLogs = JSON.stringify([
+      mockLogger.warn.mock.calls,
+      mockLogger.info.mock.calls,
+      mockLogger.error.mock.calls,
+    ]);
+    expect(allLogs).not.toContain(FULL_CORREO);
+    expect(allLogs).not.toContain(FULL_NOMBRE);
+    expect(allLogs).not.toContain(FULL_CEDULA);
+
+    const warnCall = mockLogger.warn.mock.calls.find(
+      (c) => String(c[0]) === 'Errores al enviar correos',
+    );
+    expect(warnCall).toBeDefined();
+    expect(warnCall[1]).toEqual({
+      fallidos: 1,
+      razones: ['Invalid recipient p***@sena.edu.co'],
+    });
+
+    const payload = res.json.mock.calls[0][0];
+    const body = JSON.stringify(payload);
+    expect(body).not.toContain(FULL_CORREO);
+    expect(body).not.toContain(FULL_NOMBRE);
+    expect(body).not.toContain(FULL_CEDULA);
+    expect(body).toContain('p***@sena.edu.co');
+
+    const mailErr = payload.resultados.errores.find((e) => e.fila === 'N/A');
+    expect(mailErr).toBeDefined();
+    expect(mailErr.correo).toBe('p***@sena.edu.co');
+    expect(mailErr.error).toMatch(/Invalid recipient p\*\*\*@sena\.edu\.co/);
+    expect(mailErr).not.toHaveProperty('cedula');
+  });
 });
