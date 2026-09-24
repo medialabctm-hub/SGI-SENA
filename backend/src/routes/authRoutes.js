@@ -26,6 +26,7 @@ import {
   loginSchema,
   loginPlacaSchema,
   updateUserSchema,
+  solicitarRecuperacionSchema,
 } from '../validators/authValidator.js';
 import { authLimiter, registerLimiter, passwordResetLimiter } from '../middleware/rateLimiter.js';
 import { uploadProfileImage, handleProfileUploadError } from '../middleware/uploadProfileMiddleware.js';
@@ -49,7 +50,7 @@ router.post('/logout', logoutUser);
 router.post('/login-placa', authLimiter, validate(loginPlacaSchema), loginUserWithPlaca);
 
 // Solicitar recuperación de contraseña (público) - Protegido con rate limiting
-router.post('/recuperar-contrasena', passwordResetLimiter, solicitarRecuperacionContrasena);
+router.post('/recuperar-contrasena', passwordResetLimiter, validate(solicitarRecuperacionSchema), solicitarRecuperacionContrasena);
 
 // Validar token de recuperación (público) - Protegido con rate limiting
 router.get('/validar-token/:token', passwordResetLimiter, validarTokenRecuperacion);

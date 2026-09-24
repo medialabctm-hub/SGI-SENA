@@ -682,46 +682,31 @@ export class AuthService {
    * @returns {Promise<Object>} Resultado de la solicitud
    */
   async solicitarRecuperacionContrasena(cedula, correo) {
-    // Normalizar el correo del input
-    const correoNormalizado = correo?.toLowerCase().trim();
-    
-    // Verificar primero si el usuario existe por cédula (para diagnóstico)
-    const usuarioPorCedula = await this.userRepository.findOne(
-      'SELECT id_usuario, nombre_usuario, correo, estado FROM Usuarios WHERE cedula = ?',
-      [cedula]
-    );
-    
-    if (usuarioPorCedula) {
-      this.logger.info('Usuario encontrado por cédula', {
-        cedula,
-        correoEnBD: usuarioPorCedula.correo,
-        correoIngresado: correo,
-        correoNormalizado: correoNormalizado,
-        estado: usuarioPorCedula.estado
-      });
-    }
-    
-    // Buscar usuario normalizando también el correo de la base de datos para comparación case-insensitive
+    const GENERIC_MESSAGE = {
+      message: 'Si el usuario existe, se enviará un correo con las instrucciones',
+    };
+
+    // Normalización mínima (trim / lowercase). Shared normalizeIdentity → PR #44.
+    const cedulaNormalizada = String(cedula ?? '').trim();
+    const correoNormalizado = String(correo ?? '').trim().toLowerCase();
+
+    // Una sola búsqueda; no hay lookup diagnóstico por cédula (anti-PII / MDL-231).
     const usuario = await this.userRepository.findOne(
       'SELECT id_usuario, nombre_usuario, correo FROM Usuarios WHERE cedula = ? AND LOWER(TRIM(correo)) = ? AND estado = "Activo"',
-      [cedula, correoNormalizado]
+      [cedulaNormalizada, correoNormalizado]
     );
 
     if (!usuario) {
-      // Por seguridad, no revelamos si el usuario existe o no
-      this.logger.warn('Intento de recuperación de contraseña - Usuario no encontrado', { 
-        cedula,
-        correoIngresado: correo,
-        correoNormalizado: correoNormalizado,
-        usuarioExistePorCedula: !!usuarioPorCedula,
-        correoEnBD: usuarioPorCedula?.correo,
-        estadoUsuario: usuarioPorCedula?.estado
+      // Misma respuesta que el camino exitoso; sin flag de existencia ni PII.
+      this.logger.info('Solicitud de recuperación de contraseña procesada', {
+        outcome: 'noop',
       });
-      return { message: 'Si el usuario existe, se enviará un correo con las instrucciones' };
+      return GENERIC_MESSAGE;
     }
 
     // Generar token único. El token en claro (rawToken) viaja al usuario por
     // correo; en la BD solo se persiste su hash SHA-256 (H-09).
+    // Formato de enlace (?token=) sin cambios aquí — el fragmento #token= es PR #48 / MDL-232.
     const rawToken = crypto.randomBytes(32).toString('hex');
     const tokenHash = hashResetToken(rawToken);
     const fechaExpiracion = new Date();
@@ -740,7 +725,7 @@ export class AuthService {
     // Asegurar que el servicio esté inicializado antes de enviar
     const apiKey = process.env.BREVO_API_KEY;
     if (!emailService.apiInstance && apiKey) {
-      this.logger.info('Reinicializando servicio de email API con BREVO_API_KEY encontrada');
+      this.logger.info('Reinicializando servicio de email API');
       emailService.reinitialize();
     }
     
@@ -753,26 +738,20 @@ export class AuthService {
     );
 
     if (!resultadoCorreo.success) {
-      this.logger.warn('Error al enviar correo de recuperación', { 
+      this.logger.warn('Error al enviar correo de recuperación', {
         userId: usuario.id_usuario,
-        cedula,
-        error: resultadoCorreo.error
+        outcome: 'email_failed',
       });
     } else {
-      this.logger.info('Solicitud de recuperación de contraseña procesada', { 
+      this.logger.info('Solicitud de recuperación de contraseña procesada', {
         userId: usuario.id_usuario,
-        cedula 
+        outcome: 'email_queued',
       });
     }
 
-    return { message: 'Si el usuario existe, se enviará un correo con las instrucciones' };
+    return GENERIC_MESSAGE;
   }
 
-  /**
-   * Valida un token de recuperación de contraseña
-   * @param {string} token - Token de recuperación
-   * @returns {Promise<Object>} Información del token
-   */
   async validarTokenRecuperacion(token) {
     // Se busca por el hash del token; en la BD nunca está el token en claro (H-09).
     const tokenData = await this.userRepository.findOne(

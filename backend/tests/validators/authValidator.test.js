@@ -10,6 +10,7 @@ import {
   loginPlacaSchema,
   registerSchema,
   updateUserSchema,
+  solicitarRecuperacionSchema,
   validate,
 } from '../../src/validators/authValidator.js';
 
@@ -366,5 +367,39 @@ describe('registerSchema – errorMap de tipo_documento', () => {
     expect(() =>
       registerSchema.parse({ ...baseData, rol: 'SuperAdmin' })
     ).toThrow();
+  });
+});
+
+describe('solicitarRecuperacionSchema (MDL-231)', () => {
+  it('acepta cedula+correo y normaliza', () => {
+    const parsed = solicitarRecuperacionSchema.parse({
+      cedula: ' 1234567890 ',
+      correo: '  User@Sena.Edu.Co ',
+      extra: 'strip-me',
+    });
+    expect(parsed).toEqual({ cedula: '1234567890', correo: 'user@sena.edu.co' });
+    expect(parsed.extra).toBeUndefined();
+  });
+
+  it('rechaza body vacío o campos faltantes', () => {
+    expect(() => solicitarRecuperacionSchema.parse({})).toThrow();
+    expect(() => solicitarRecuperacionSchema.parse({ cedula: '1234567890' })).toThrow();
+    expect(() => solicitarRecuperacionSchema.parse({ correo: 'a@b.co' })).toThrow();
+  });
+
+  it('rechaza correo o cédula inválidos', () => {
+    expect(() => solicitarRecuperacionSchema.parse({ cedula: '12', correo: 'a@b.co' })).toThrow();
+    expect(() => solicitarRecuperacionSchema.parse({ cedula: '1234567890', correo: 'no-email' })).toThrow();
+  });
+
+  it('validate() responde 400 genérico sin 500', () => {
+    const { req, res, next } = makeReqRes({});
+    validate(solicitarRecuperacionSchema)(req, res, next);
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
+      success: false,
+      error: 'Error de validación',
+    }));
+    expect(next).not.toHaveBeenCalled();
   });
 });
