@@ -18,6 +18,43 @@ const LOG_LEVEL_NAMES = {
   3: 'DEBUG',
 };
 
+
+const SENSITIVE_LOG_KEYS = new Set([
+  'token',
+  'nuevaContrasena',
+  'contrasena',
+  'contrasenaActual',
+  'password',
+  'passwordConfirmation',
+  'currentPassword',
+  'newPassword',
+  'authorization',
+  'Authorization',
+]);
+
+/**
+ * Redacta campos sensibles en meta de logs / bodies de request (MDL-232).
+ * Nunca registrar tokens de reset ni contraseñas en claro.
+ */
+export function redactSensitive(value, depth = 0) {
+  if (value == null || depth > 6) return value;
+  if (Array.isArray(value)) {
+    return value.map((item) => redactSensitive(item, depth + 1));
+  }
+  if (typeof value !== 'object') return value;
+  const out = {};
+  for (const [key, val] of Object.entries(value)) {
+    if (SENSITIVE_LOG_KEYS.has(key)) {
+      out[key] = '[REDACTED]';
+    } else if (typeof val === 'object' && val !== null) {
+      out[key] = redactSensitive(val, depth + 1);
+    } else {
+      out[key] = val;
+    }
+  }
+  return out;
+}
+
 class Logger {
   constructor() {
     this.level = this.getLogLevel();
@@ -31,7 +68,8 @@ class Logger {
   formatMessage(level, message, meta = {}) {
     const timestamp = new Date().toISOString();
     const levelName = LOG_LEVEL_NAMES[level];
-    const safeMeta = redactSensitiveFields(meta);
+    // develop: redactSensitiveFields (errorScrubber); #48: redactSensitive (tokens/passwords)
+    const safeMeta = redactSensitive(redactSensitiveFields(meta));
     const metaStr = Object.keys(safeMeta).length > 0 ? JSON.stringify(safeMeta) : '';
 
     return `[${timestamp}] [${levelName}] ${message} ${metaStr}`;

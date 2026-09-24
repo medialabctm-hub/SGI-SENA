@@ -112,6 +112,8 @@ const applySecurityMiddleware = (app) => {
     },
     crossOriginEmbedderPolicy: false,
     crossOriginResourcePolicy: { policy: 'cross-origin' },
+    // MDL-232 / R42-03: no filtrar #token= de la página de reset vía Referer.
+    referrerPolicy: { policy: 'no-referrer' },
   }));
   app.use(cors(corsOptions));
   app.use(hpp());
@@ -131,10 +133,21 @@ const applySecurityMiddleware = (app) => {
     asyncHandler(serveEnvironmentImage)
   );
 
+  // Redactar restos de token en URL (legado GET /validar-token/:token) — MDL-232.
+  morgan.token('url-safe', (req) => {
+    const raw = req.originalUrl || req.url || '';
+    return raw.replace(/(\/validar-token\/)[^/?#]+/gi, '$1[REDACTED]');
+  });
+
   if (process.env.NODE_ENV === 'development') {
-    app.use(morgan('dev'));
+    app.use(morgan(':method :url-safe :status :response-time ms'));
   } else {
-    app.use(morgan('common', { skip: (req, res) => res.statusCode < 400 }));
+    app.use(
+      morgan(
+        ':remote-addr - :remote-user [:date[clf]] ":method :url-safe HTTP/:http-version" :status :res[content-length]',
+        { skip: (req, res) => res.statusCode < 400 },
+      ),
+    );
   }
 };
 

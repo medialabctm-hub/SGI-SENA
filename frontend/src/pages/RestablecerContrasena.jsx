@@ -1,14 +1,25 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { FiLock, FiEye, FiEyeOff, FiCheckCircle } from 'react-icons/fi';
 import Toast from '../components/Toast';
 import { buildErrorMessage, parseApiResponse } from '../utils/api';
 import { getPasswordError, PASSWORD_POLICY_HELP } from '../utils/passwordPolicy';
 import '../styles/auth.css';
 
+/**
+ * Lee el token de recuperación desde el fragmento (#token=...), nunca desde
+ * query/path (MDL-232): así no viaja en Referer ni en access logs de path.
+ */
+function readResetTokenFromHash() {
+  if (typeof window === 'undefined') return null;
+  const hash = window.location.hash || '';
+  const cleaned = hash.startsWith('#') ? hash.slice(1) : hash;
+  const params = new URLSearchParams(cleaned);
+  return params.get('token');
+}
+
 export default function RestablecerContrasena() {
-  const [searchParams] = useSearchParams();
-  const token = searchParams.get('token');
+  const [token, setToken] = useState(null);
   const [nuevaContrasena, setNuevaContrasena] = useState('');
   const [confirmarContrasena, setConfirmarContrasena] = useState('');
   const [mostrarNueva, setMostrarNueva] = useState(false);
@@ -23,9 +34,17 @@ export default function RestablecerContrasena() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Validar token al cargar
+    const tokenFromHash = readResetTokenFromHash();
+    setToken(tokenFromHash);
+
+    // Quitar el fragmento de la barra de direcciones para que no quede en historial.
+    if (tokenFromHash && typeof window !== 'undefined') {
+      const { pathname, search } = window.location;
+      window.history.replaceState(null, '', `${pathname}${search}`);
+    }
+
     const validarToken = async () => {
-      if (!token) {
+      if (!tokenFromHash) {
         setTokenValido(false);
         setValidando(false);
         setToast({
@@ -36,7 +55,12 @@ export default function RestablecerContrasena() {
       }
 
       try {
-        const res = await fetch(`/api/auth/validar-token/${token}`);
+        // POST body: el token no debe ir en path ni query (MDL-232).
+        const res = await fetch('/api/auth/validar-token', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token: tokenFromHash }),
+        });
         const data = await parseApiResponse(res, 'Token inválido');
         setTokenValido(true);
         setUsuario(data);
@@ -52,7 +76,7 @@ export default function RestablecerContrasena() {
     };
 
     validarToken();
-  }, [token]);
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();

@@ -246,11 +246,12 @@ export const solicitarRecuperacionContrasena = async (req, res, next) => {
  */
 export const validarTokenRecuperacion = async (req, res, next) => {
   try {
-    const { token } = req.params;
+    const { token } = req.body;
     const authService = ServiceFactory.create('authService');
     const result = await authService.validarTokenRecuperacion(token);
     return res.json(result);
   } catch (error) {
+    // No incluir token en logs (MDL-232).
     logger.error('Error en validarTokenRecuperacion', { error: error.message });
     return next(error);
   }

@@ -40,6 +40,24 @@ export function hashResetToken(token) {
   return crypto.createHash('sha256').update(String(token)).digest('hex');
 }
 
+/** TTL del token de reset (MDL-232): máximo 1 hora. */
+export const PASSWORD_RESET_TOKEN_TTL_HOURS = 1;
+
+/**
+ * Enmascara un correo para respuestas de validar-token (MDL-232).
+ * Ej.: "abc@example.com" → "a***@example.com"
+ */
+export function maskEmail(email) {
+  if (!email || typeof email !== 'string' || !email.includes('@')) {
+    return '***';
+  }
+  const [local, domain] = email.split('@');
+  if (!local.length) return `***@${domain}`;
+  const visible = local.slice(0, 1);
+  return `${visible}***@${domain}`;
+}
+
+
 export class AuthService {
   constructor(userRepository, roleRepository, passwordService, jwtService, logger) {
     this.userRepository = userRepository;
@@ -800,13 +818,22 @@ export class AuthService {
       return GENERIC_MESSAGE;
     }
 
+    // Invalidar tokens previos activos del usuario (MDL-232 / R42-05).
+    await this.userRepository.db.execute(
+      `UPDATE Tokens_Recuperacion_Contrasena
+       SET usado = 1, fecha_uso = NOW()
+       WHERE id_usuario = ? AND usado = 0`,
+      [usuario.id_usuario]
+    );
+
     // Generar token único. El token en claro (rawToken) viaja al usuario por
     // correo; en la BD solo se persiste su hash SHA-256 (H-09).
-    // Formato de enlace (?token=) sin cambios aquí — el fragmento #token= es PR #48 / MDL-232.
     const rawToken = crypto.randomBytes(32).toString('hex');
     const tokenHash = hashResetToken(rawToken);
     const fechaExpiracion = new Date();
-    fechaExpiracion.setHours(fechaExpiracion.getHours() + 1); // Expira en 1 hora
+    fechaExpiracion.setTime(
+      fechaExpiracion.getTime() + PASSWORD_RESET_TOKEN_TTL_HOURS * 60 * 60 * 1000
+    ); // Expira en ≤ 1 hora (MDL-232)
 
     // Guardar SOLO el hash del token en la base de datos
     await this.userRepository.db.execute(
@@ -815,7 +842,9 @@ export class AuthService {
       [usuario.id_usuario, tokenHash, fechaExpiracion]
     );
 
-    const urlRecuperacion = `${process.env.FRONTEND_URL || 'https://sgi-sena.up.railway.app/'}/restablecer-contrasena?token=${rawToken}`;
+    // Token en fragmento (#token=) para no filtrarlo en Referer/logs de query (MDL-232).
+    const frontendBase = (process.env.FRONTEND_URL || 'https://sgi-sena.up.railway.app/').replace(/\/?$/, '/');
+    const urlRecuperacion = `${frontendBase}restablecer-contrasena#token=${rawToken}`;
 
     // MDL-231: no await del mailer en el path HTTP — misma latencia exista o no.
     // Errores se capturan en background; logs solo userId/outcome (sin correo/token).
@@ -907,10 +936,9 @@ export class AuthService {
     }
 
     return {
-      // Se devuelve el token en claro recibido, no el hash almacenado.
-      token,
+      // No devolvemos el token: el cliente ya lo tiene. Correo enmascarado (MDL-232).
       nombre_usuario: tokenData.nombre_usuario,
-      correo: tokenData.correo
+      correo: maskEmail(tokenData.correo),
     };
   }
 
@@ -921,54 +949,74 @@ export class AuthService {
    * @returns {Promise<Object>} Resultado del restablecimiento
    */
   async restablecerContrasena(token, nuevaContrasena) {
-    // Validar token por su hash (en la BD no hay token en claro, H-09).
-    const tokenHash = hashResetToken(token);
-    const tokenData = await this.userRepository.findOne(
-      `SELECT t.id_token, t.id_usuario, t.token, t.fecha_expiracion, t.usado
-       FROM Tokens_Recuperacion_Contrasena t
-       INNER JOIN Usuarios u ON u.id_usuario = t.id_usuario
-       WHERE t.token = ? AND t.usado = 0 AND t.fecha_expiracion > NOW()`,
-      [tokenHash]
-    );
-
-    if (!tokenData) {
-      throw new AuthenticationError('Token inválido o expirado');
-    }
-
-    // Validar nueva contraseña
+    // Validar política ANTES de consumir el token (no quemar token por password débil).
+    // Claim atómico por hash más abajo (H-09 / MDL-232); no SELECT previo que compita con la carrera.
     const passwordResult = this.passwordValidator.validate(nuevaContrasena);
     if (!passwordResult.valid) {
       throw new ValidationError(passwordResult.error);
     }
 
-    // Hash de la nueva contraseña
+    const tokenHash = hashResetToken(token);
     const nuevaContrasenaHash = await this.passwordService.hash(nuevaContrasena);
 
-    // Actualizar contraseña y marcar token como usado
+    // Carrera atómica (MDL-232): claim del token con UPDATE ... AND usado = 0.
+    // Solo affectedRows === 1 puede cambiar la contraseña.
     const connection = await this.userRepository.db.pool.getConnection();
+    let userId;
     try {
       await connection.beginTransaction();
 
-      await connection.execute(
-        'UPDATE Usuarios SET contrasena = ?, requiere_cambio_contrasena = 0 WHERE id_usuario = ?',
-        [nuevaContrasenaHash, tokenData.id_usuario]
+      const [claimResult] = await connection.execute(
+        `UPDATE Tokens_Recuperacion_Contrasena
+         SET usado = 1, fecha_uso = NOW()
+         WHERE token = ? AND usado = 0 AND fecha_expiracion > NOW()`,
+        [tokenHash]
       );
 
-      await connection.execute(
-        'UPDATE Tokens_Recuperacion_Contrasena SET usado = 1, fecha_uso = NOW() WHERE token = ?',
+      if (!claimResult || claimResult.affectedRows !== 1) {
+        await connection.rollback();
+        // 400 genérico: no distinguir expirado / ya usado / carrera (MDL-232).
+        throw new ValidationError('Token inválido o expirado');
+      }
+
+      const [tokenRows] = await connection.execute(
+        `SELECT id_usuario FROM Tokens_Recuperacion_Contrasena WHERE token = ? LIMIT 1`,
         [tokenHash]
+      );
+      userId = tokenRows?.[0]?.id_usuario;
+      if (!userId) {
+        await connection.rollback();
+        throw new ValidationError('Token inválido o expirado');
+      }
+
+      await connection.execute(
+        'UPDATE Usuarios SET contrasena = ?, requiere_cambio_contrasena = 0 WHERE id_usuario = ?',
+        [nuevaContrasenaHash, userId]
+      );
+
+      // Invalidar demás tokens activos del usuario (R42-04).
+      await connection.execute(
+        `UPDATE Tokens_Recuperacion_Contrasena
+         SET usado = 1, fecha_uso = NOW()
+         WHERE id_usuario = ? AND usado = 0 AND token <> ?`,
+        [userId, tokenHash]
       );
 
       await connection.commit();
     } catch (error) {
-      await connection.rollback();
+      // Si ya hicimos rollback por claim fallido, evitar segundo rollback ruidoso.
+      try {
+        await connection.rollback();
+      } catch {
+        // ignore
+      }
       throw error;
     } finally {
       connection.release();
     }
 
-    this.logger.info('Contraseña restablecida exitosamente', { 
-      userId: tokenData.id_usuario 
+    this.logger.info('Contraseña restablecida exitosamente', {
+      userId,
     });
 
     return { message: 'Contraseña restablecida correctamente' };
