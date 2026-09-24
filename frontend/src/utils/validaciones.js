@@ -1,3 +1,5 @@
+import { getPasswordError } from './passwordPolicy';
+
 export const validarCaracteresEspeciales = (valor, campo) => {
   const caracteresProhibidos = /[<>"'/\\(){}[\]=;:%&]/;
   if (caracteresProhibidos.test(valor)) {
@@ -76,10 +78,7 @@ export const validarTelefono = telefono => {
 };
 
 export const validarContraseña = contraseña => {
-  if (contraseña.length < 8) {
-    return 'La contraseña debe tener al menos 8 caracteres';
-  }
-
+  // Espacios: regla adicional de registro (la política H-10 no los exige).
   if (contraseña !== contraseña.trim()) {
     return 'La contraseña no puede tener espacios al inicio ni al final';
   }
@@ -88,23 +87,8 @@ export const validarContraseña = contraseña => {
     return 'La contraseña no puede contener espacios en blanco';
   }
 
-  if (!/(?=.*[a-z])/.test(contraseña)) {
-    return 'La contraseña debe contener al menos una letra minúscula';
-  }
-
-  if (!/(?=.*[A-Z])/.test(contraseña)) {
-    return 'La contraseña debe contener al menos una letra mayúscula';
-  }
-
-  if (!/(?=.*\d)/.test(contraseña)) {
-    return 'La contraseña debe contener al menos un número';
-  }
-
-  if (!/(?=.*[!@#$%^&*(),.?":{}|<>])/.test(contraseña)) {
-    return 'La contraseña debe contener al menos un símbolo especial';
-  }
-
-  return null;
+  // Misma política que backend PasswordValidationStrategy (8–128 + complejidad).
+  return getPasswordError(contraseña);
 };
 
 export const validarCampoRequerido = (valor, campo) => {
@@ -151,13 +135,17 @@ export const validarRegistro = datos => {
   const espaciosErrorNombre = validarEspaciosEnBlanco(datos.nombre_usuario, 'nombre');
   if (espaciosErrorNombre) errores.nombre_usuario = espaciosErrorNombre;
 
-  ['correo_usuario', 'telefono_usuario', 'contraseña_usuario'].forEach(campo => {
+  // Correo y teléfono: sin caracteres peligrosos. La contraseña NO pasa por
+  // validarCaracteresEspeciales: el backend acepta (){}<>" vía /[^A-Za-z0-9]/ (MDL-232).
+  ['correo_usuario', 'telefono_usuario'].forEach(campo => {
     const nombreCampo = campo.replace('_usuario', '');
     const caracteresError = validarCaracteresEspeciales(datos[campo], nombreCampo);
     if (caracteresError) errores[campo] = caracteresError;
     const espaciosError = validarEspaciosEnBlanco(datos[campo], nombreCampo);
     if (espaciosError) errores[campo] = espaciosError;
   });
+  // Espacios en blanco en contraseña ya cubiertos por validarContraseña.
+
 
   return errores;
 };
