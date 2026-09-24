@@ -1528,6 +1528,49 @@ describe('obtenerEquiposAmbientesInstructor', () => {
     expect(params.every((p) => p === 2)).toBe(true);
     expect(params).not.toContain(1);
   });
+
+  it('MDL-234: estado_fisico NULL en Elementos no excluye el aula (UNION)', async () => {
+    mockExecute.mockResolvedValueOnce([[]]);
+    const req = mockReq({ user: { id: 2, rol: 'Cuentadante' } });
+    const res = mockRes();
+    await obtenerEquiposAmbientesInstructor(req, res);
+    const [sql] = mockExecute.mock.calls[0];
+    expect(sql).toMatch(/e\.estado_fisico IS NULL OR e\.estado_fisico <> 'Baja'/);
+    expect(sql).not.toMatch(/e\.estado_fisico != 'Baja'/);
+  });
+
+  it('MDL-234: equipos de aula solo por id_cuentadante se piden con ese id_ambiente', async () => {
+    // Primera query: aula 25 solo vía id_cuentadante (sin responsabilidad).
+    mockExecute
+      .mockResolvedValueOnce([[{
+        id_ambiente: 25,
+        nombre_ambiente: 'Aula 303',
+        codigo_ambiente: '303',
+        jornada: null,
+      }]])
+      .mockResolvedValueOnce([[{
+        codigo_equipo: 77,
+        id_ambiente: 25,
+        placa: 'P-77',
+        estado_fisico: null,
+      }]]);
+    const req = mockReq({ user: { id: 2, rol: 'Cuentadante' } });
+    const res = mockRes();
+    await obtenerEquiposAmbientesInstructor(req, res);
+
+    expect(mockExecute).toHaveBeenCalledTimes(2);
+    const [equiposSql, equiposParams] = mockExecute.mock.calls[1];
+    expect(equiposSql).toMatch(/e\.id_ambiente IN \(\?\)/);
+    expect(equiposSql).toMatch(/e\.estado_fisico IS NULL OR e\.estado_fisico <> 'Baja'/);
+    // userId×3 (subqueries verificación) + ambienteIds del primer result
+    expect(equiposParams).toEqual([2, 2, 2, 25]);
+
+    const body = res.json.mock.calls[0][0];
+    expect(body.ambientes.map((a) => a.id_ambiente)).toEqual([25]);
+    expect(body.equipos).toEqual([
+      expect.objectContaining({ codigo_equipo: 77, id_ambiente: 25, estado_fisico: null }),
+    ]);
+  });
 });
 
 describe('registrarVerificacionInventario', () => {

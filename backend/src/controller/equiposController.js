@@ -1435,7 +1435,7 @@ export async function obtenerEquiposAmbientesInstructor(req, res) {
         FROM Elementos e
         WHERE e.id_cuentadante = ?
           AND e.id_ambiente IS NOT NULL
-          AND e.estado_fisico != 'Baja'
+          AND (e.estado_fisico IS NULL OR e.estado_fisico <> 'Baja')
       )
       ORDER BY a.nombre_ambiente, a.codigo_ambiente`,
       [userId, userId, userId]
@@ -1487,7 +1487,7 @@ export async function obtenerEquiposAmbientesInstructor(req, res) {
       FROM Elementos e
       INNER JOIN Ambientes a ON e.id_ambiente = a.id_ambiente
       WHERE e.id_ambiente IN (${ambienteIds.map(() => '?').join(',')})
-        AND e.estado_fisico != 'Baja'
+        AND (e.estado_fisico IS NULL OR e.estado_fisico <> 'Baja')
       ORDER BY a.nombre_ambiente, e.placa`,
       [userId, userId, userId, ...ambienteIds]
     )
