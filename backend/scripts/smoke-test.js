@@ -120,7 +120,10 @@ async function checkFrontend(fetchImpl, baseUrl, log) {
 
 async function checkPublicValidation(fetchImpl, baseUrl, log) {
   const result = await request(fetchImpl, baseUrl, PUBLIC_VALIDATION_ENDPOINT);
-  if (![400, 404].includes(result.status) || result.json?.existe === true) {
+  // MDL-201: documento sintácticamente válido inexistente → 200 { existe: false }.
+  // Formato inválido → 400. Nunca debe afirmar existencia para el probe fijo.
+  const statusOk = [200, 400].includes(result.status);
+  if (!statusOk || result.json?.existe === true) {
     throw new Error(`Validación pública falló: ${responseSummary(result)}`);
   }
   log.log('Public validation check passed (read-only)');
