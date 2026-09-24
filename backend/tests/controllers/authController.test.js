@@ -284,8 +284,13 @@ describe('authController', () => {
     it('updateUser actualiza por id', async () => {
       req.params = { id: '8' };
       req.body = { nombre: 'Nuevo' };
+      req.user = { id: 8, rol: 'Aprendiz' };
       await updateUser(req, res, next);
-      expect(mockAuthService.updateUser).toHaveBeenCalledWith('8', { nombre: 'Nuevo' });
+      expect(mockAuthService.updateUser).toHaveBeenCalledWith(
+        '8',
+        { nombre: 'Nuevo' },
+        { id: 8, rol: 'Aprendiz' }
+      );
     });
 
     it('deleteUser elimina por id', async () => {

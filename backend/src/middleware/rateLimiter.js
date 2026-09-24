@@ -350,6 +350,45 @@ export const autoservicioIdentifierLimiter = rateLimit({
 });
 
 /**
+ * Rate limiters para re-autenticación en cambios de identidad
+ * (PUT /api/auth/user/:id cuando cambia correo propio — MDL-192 / H-07 fase 1).
+ *
+ * skipSuccessfulRequests: solo cuentan fallos (4xx/5xx), p. ej. contraseña
+ * actual incorrecta o ausente. Éxitos (200) no consumen cuota.
+ * Dimensiones: IP (como authLimiter) y usuario autenticado.
+ */
+const identityReauthRateLimitHandler = (req, res) => {
+  res.status(429).json({
+    success: false,
+    error: 'Demasiados intentos. Por favor intenta nuevamente en 15 minutos.',
+    retryAfter: 15,
+  });
+};
+
+export const identityReauthIpLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  skipSuccessfulRequests: true,
+  keyGenerator: (req) => `identity_reauth_ip_${getClientIp(req)}`,
+  handler: identityReauthRateLimitHandler,
+});
+
+export const identityReauthUserLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  skipSuccessfulRequests: true,
+  keyGenerator: (req) => {
+    const id = req.user?.id;
+    return id != null ? `identity_reauth_user_${id}` : `identity_reauth_user_${getClientIp(req)}`;
+  },
+  handler: identityReauthRateLimitHandler,
+});
+
+/**
  * Rate limiter para webhooks externos
  * 100 peticiones por minuto
  */

@@ -64,6 +64,8 @@ jest.mock('../../src/middleware/rateLimiter.js', () => ({
   invitationIpLimiter: noop,
   invitationCodeLimiter: noop,
   passwordResetLimiter: noop,
+  identityReauthIpLimiter: noop,
+  identityReauthUserLimiter: noop,
 }), { virtual: true });
 
 // ---- validators ----

@@ -14,7 +14,8 @@ export default function Perfil() {
   const [uploading, setUploading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
-  const [form, setForm] = useState({ nombre_usuario: '', correo: '', telefono: '', cedula: '' });
+  const [form, setForm] = useState({ nombre_usuario: '', correo: '', telefono: '', cedula: '', contrasena_actual: '' });
+  const [correoOriginal, setCorreoOriginal] = useState('');
   const [toast, setToast] = useState(null);
   const fileInputRef = useRef(null);
   const [currentUser, setCurrentUser] = useState(null);
@@ -67,8 +68,10 @@ export default function Perfil() {
             nombre_usuario: data.user.nombre_usuario || '',
             correo: data.user.correo || '',
             telefono: data.user.telefono || '',
-            cedula: data.user.cedula || ''
+            cedula: data.user.cedula || '',
+            contrasena_actual: '',
           });
+          setCorreoOriginal(data.user.correo || '');
           // Actualizar localStorage
           try {
             localStorage.setItem('user', JSON.stringify(data.user));
@@ -161,7 +164,11 @@ export default function Perfil() {
           cedula: form.cedula,
           correo: form.correo,
           telefono: form.telefono,
-          rol: userData?.nombre_rol || 'Aprendiz'
+          rol: userData?.nombre_rol || 'Aprendiz',
+          // MDL-192: solo se exige en backend si el correo normalizado cambia
+          ...(form.contrasena_actual
+            ? { contrasena_actual: form.contrasena_actual }
+            : {}),
         })
       });
       const data = await parseApiResponse(res, 'No se pudo actualizar el perfil');
@@ -377,8 +384,9 @@ export default function Perfil() {
                         name="cedula"
                         value={form.cedula}
                         onChange={onChange}
-                        readOnly={!editing}
-                        className={!editing ? 'readonly' : ''}
+                        readOnly
+                        className="readonly"
+                        title="La cédula no se puede cambiar desde el perfil"
                       />
                     </div>
 
@@ -395,6 +403,22 @@ export default function Perfil() {
                         className={!editing ? 'readonly' : ''}
                       />
                     </div>
+
+                    {editing && form.correo.trim().toLowerCase() !== (correoOriginal || '').trim().toLowerCase() && (
+                      <div className="perfil-form-row">
+                        <label>
+                          Contraseña actual
+                        </label>
+                        <input
+                          type="password"
+                          name="contrasena_actual"
+                          value={form.contrasena_actual}
+                          onChange={onChange}
+                          autoComplete="current-password"
+                          placeholder="Requerida para cambiar el correo"
+                        />
+                      </div>
+                    )}
 
                     <div className="perfil-form-row">
                       <label>
