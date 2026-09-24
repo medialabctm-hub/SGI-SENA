@@ -6,7 +6,12 @@
 
 import crypto from 'node:crypto';
 import { describe, it, expect, beforeEach, jest } from '@jest/globals';
-import { AuthService, hashResetToken } from '../../src/services/authService.js';
+import {
+  AuthService,
+  hashResetToken,
+  maskEmail,
+  PASSWORD_RESET_TOKEN_TTL_HOURS,
+} from '../../src/services/authService.js';
 import {
   AuthenticationError,
   ValidationError,
@@ -637,7 +642,7 @@ describe('AuthService', () => {
 
   // ─── validarTokenRecuperacion ───────────────────────────────────────────────
   describe('validarTokenRecuperacion', () => {
-    it('debe retornar datos de un token válido', async () => {
+    it('debe retornar datos de un token válido con correo enmascarado (MDL-232)', async () => {
       mockUserRepository.findOne.mockResolvedValue({
         token: 'valid_token',
         nombre_usuario: 'Test',
@@ -645,8 +650,9 @@ describe('AuthService', () => {
       });
 
       const result = await authService.validarTokenRecuperacion('valid_token');
-      expect(result.token).toBe('valid_token');
+      expect(result.token).toBeUndefined();
       expect(result.nombre_usuario).toBe('Test');
+      expect(result.correo).toBe('t***@example.com');
       // H-09: la búsqueda usa el HASH del token, nunca el token en claro.
       const lookupArgs = mockUserRepository.findOne.mock.calls[0][1];
       expect(lookupArgs).toEqual([hashResetToken('valid_token')]);
@@ -687,39 +693,52 @@ describe('AuthService', () => {
 
   // ─── restablecerContrasena ──────────────────────────────────────────────────
   describe('restablecerContrasena', () => {
-    it('debe lanzar AuthenticationError con token inválido o expirado', async () => {
-      mockUserRepository.findOne.mockResolvedValue(null);
+    it('debe lanzar ValidationError genérico si el token no se puede reclamar', async () => {
+      mockConnection.execute.mockResolvedValueOnce([{ affectedRows: 0 }]);
       await expect(
-        authService.restablecerContrasena('invalid_token', 'nuevaPass123')
-      ).rejects.toThrow(AuthenticationError);
-    });
-
-    it('debe lanzar ValidationError si la nueva contraseña es inválida', async () => {
-      mockUserRepository.findOne.mockResolvedValue({ token: 'abc', id_usuario: 1 });
-      await expect(
-        authService.restablecerContrasena('abc', 'abc')
+        authService.restablecerContrasena('invalid_token', 'ValidPass123*')
       ).rejects.toThrow(ValidationError);
     });
 
-    it('debe restablecer la contraseña exitosamente', async () => {
-      mockUserRepository.findOne.mockResolvedValue({ token: 'abc', id_usuario: 1 });
+    it('debe lanzar ValidationError si la nueva contraseña es inválida (sin tocar BD)', async () => {
+      await expect(
+        authService.restablecerContrasena('abc', 'abc')
+      ).rejects.toThrow(ValidationError);
+      expect(mockConnection.beginTransaction).not.toHaveBeenCalled();
+    });
+
+    it('debe restablecer la contraseña con claim atómico (affectedRows === 1)', async () => {
+      mockConnection.execute
+        .mockResolvedValueOnce([{ affectedRows: 1 }]) // claim token
+        .mockResolvedValueOnce([[{ id_usuario: 1 }]]) // select user id
+        .mockResolvedValueOnce([{ affectedRows: 1 }]) // update password
+        .mockResolvedValueOnce([{ affectedRows: 0 }]); // invalidate others
 
       const result = await authService.restablecerContrasena('abc', 'ValidPass123*');
       expect(result.message).toContain('Contraseña');
       expect(mockConnection.beginTransaction).toHaveBeenCalled();
       expect(mockConnection.commit).toHaveBeenCalled();
       expect(mockConnection.release).toHaveBeenCalled();
-      // H-09: la fila del token se busca y se marca como usada por su HASH.
-      expect(mockUserRepository.findOne.mock.calls[0][1]).toEqual([hashResetToken('abc')]);
-      const updateTokenCall = mockConnection.execute.mock.calls.find(
-        (c) => /UPDATE Tokens_Recuperacion_Contrasena/.test(c[0])
-      );
-      expect(updateTokenCall).toBeDefined();
-      expect(updateTokenCall[1]).toEqual([hashResetToken('abc')]);
+      // Ya no hay pre-SELECT fuera de la tx; el claim usa el HASH.
+      const claimCall = mockConnection.execute.mock.calls[0];
+      expect(claimCall[0]).toMatch(/UPDATE Tokens_Recuperacion_Contrasena/);
+      expect(claimCall[0]).toMatch(/usado = 0/);
+      expect(claimCall[0]).toMatch(/fecha_expiracion > NOW\(\)/);
+      expect(claimCall[1]).toEqual([hashResetToken('abc')]);
+    });
+
+    it('debe responder ValidationError 400 genérico si el claim no afecta 1 fila (carrera)', async () => {
+      mockConnection.execute.mockResolvedValueOnce([{ affectedRows: 0 }]);
+
+      await expect(
+        authService.restablecerContrasena('abc', 'ValidPass123*')
+      ).rejects.toThrow(ValidationError);
+
+      expect(mockConnection.rollback).toHaveBeenCalled();
+      expect(mockConnection.commit).not.toHaveBeenCalled();
     });
 
     it('debe hacer rollback y re-lanzar error en fallo de transacción', async () => {
-      mockUserRepository.findOne.mockResolvedValue({ token: 'abc', id_usuario: 1 });
       mockConnection.execute.mockRejectedValueOnce(new Error('DB error en transacción'));
 
       await expect(
@@ -752,5 +771,24 @@ describe('hashResetToken (H-09)', () => {
 
   it('produce hashes distintos para tokens distintos', () => {
     expect(hashResetToken('token-a')).not.toBe(hashResetToken('token-b'));
+  });
+});
+
+
+describe('PASSWORD_RESET_TOKEN_TTL_HOURS (MDL-232)', () => {
+  it('es exactamente 1 hora (≤ 1h)', () => {
+    expect(PASSWORD_RESET_TOKEN_TTL_HOURS).toBe(1);
+    expect(PASSWORD_RESET_TOKEN_TTL_HOURS).toBeLessThanOrEqual(1);
+  });
+});
+
+describe('maskEmail (MDL-232)', () => {
+  it('enmascara el local-part dejando el primer carácter', () => {
+    expect(maskEmail('usuario@sena.edu.co')).toBe('u***@sena.edu.co');
+  });
+
+  it('tolera entradas inválidas', () => {
+    expect(maskEmail('')).toBe('***');
+    expect(maskEmail(null)).toBe('***');
   });
 });

@@ -52,7 +52,7 @@ router.post('/login-placa', authLimiter, validate(loginPlacaSchema), loginUserWi
 router.post('/recuperar-contrasena', passwordResetLimiter, solicitarRecuperacionContrasena);
 
 // Validar token de recuperación (público) - Protegido con rate limiting
-router.get('/validar-token/:token', passwordResetLimiter, validarTokenRecuperacion);
+router.post('/validar-token', passwordResetLimiter, validarTokenRecuperacion);
 
 // Restablecer contraseña con token (público) - Protegido con rate limiting
 router.post('/restablecer-contrasena', passwordResetLimiter, restablecerContrasena);

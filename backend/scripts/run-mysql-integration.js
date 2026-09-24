@@ -42,6 +42,7 @@ function runJest(environment) {
         '--runInBand',
         '--forceExit',
         'tests/integration/equipmentClaim.mysql.test.js',
+        'tests/integration/passwordReset.mysql.test.js',
       ],
       { env: environment, stdio: 'inherit' },
     );

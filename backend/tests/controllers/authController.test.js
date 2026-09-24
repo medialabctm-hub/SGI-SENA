@@ -323,7 +323,7 @@ describe('authController', () => {
     });
 
     it('validarTokenRecuperacion llama al servicio', async () => {
-      req.params = { token: 'tkn' };
+      req.body = { token: 'tkn' };
       await validarTokenRecuperacion(req, res, next);
       expect(mockAuthService.validarTokenRecuperacion).toHaveBeenCalledWith('tkn');
     });
