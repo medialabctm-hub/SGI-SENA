@@ -492,4 +492,71 @@ describe('MDL-192 SECURITY: cédula enmascarada + tope de filas', () => {
     expect(res.json.mock.calls[0][0].error).toMatch(/máximo de 2 filas/i);
     expect(mockExecute).not.toHaveBeenCalled();
   });
+
+  it('errores.push (rol inválido / contraseña débil) nunca llevan cédula completa', async () => {
+    const FULL_CEDULA = '9876543210';
+    const FULL_CORREO = 'leak@evil.test';
+    xlsxRows.current = [
+      {
+        nombre_usuario: 'BadRole',
+        cedula: FULL_CEDULA,
+        correo: FULL_CORREO,
+        rol: 'Administrador',
+        contrasena: 'ValidPass1*',
+      },
+      {
+        nombre_usuario: 'WeakPwd',
+        cedula: '1122334455',
+        correo: 'weak@evil.test',
+        rol: 'Aprendiz',
+        contrasena: 'short',
+      },
+    ];
+    mockExecute.mockImplementation(async (sql) => {
+      if (/Roles|id_rol/i.test(String(sql))) return [[{ id_rol: 3 }]];
+      return [[]];
+    });
+
+    const res = mockRes();
+    await importarUsuarios(mockReq(), res);
+    const body = res.json.mock.calls[0][0];
+    const blob = JSON.stringify(body);
+    expect(blob).not.toMatch(/9876543210/);
+    expect(blob).not.toMatch(/1122334455/);
+    expect(blob).not.toMatch(/leak@evil\.test/i);
+    expect(blob).not.toMatch(/weak@evil\.test/i);
+
+    for (const err of body.resultados.errores) {
+      expect(err.cedula).toMatch(/^\*{3}.{1,4}$/);
+      expect(String(err.cedula)).not.toBe(FULL_CEDULA);
+      expect(err).not.toHaveProperty('correo');
+    }
+    expect(body.resultados.errores.some((e) => e.cedula === '***3210')).toBe(true);
+    expect(body.resultados.errores.some((e) => e.cedula === '***4455')).toBe(true);
+  });
+
+  it('techo IMPORT_MAX_ROWS: env 50000 → efectivo 10000; 10001 filas → 400', async () => {
+    process.env.IMPORT_MAX_ROWS = '50000';
+    const rows = [];
+    rows.length = 10001;
+    xlsxRows.current = rows;
+    const res = mockRes();
+    await importarUsuarios(mockReq(), res);
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json.mock.calls[0][0].error).toMatch(/máximo de 10000 filas/i);
+    expect(mockExecute).not.toHaveBeenCalled();
+  });
+
+  it('IMPORT_MAX_ROWS=8000 se respeta (8001 → 400 con mensaje 8000)', async () => {
+    process.env.IMPORT_MAX_ROWS = '8000';
+    const rows = [];
+    rows.length = 8001;
+    xlsxRows.current = rows;
+    const res = mockRes();
+    await importarUsuarios(mockReq(), res);
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json.mock.calls[0][0].error).toMatch(/máximo de 8000 filas/i);
+    expect(mockExecute).not.toHaveBeenCalled();
+  });
+
 });

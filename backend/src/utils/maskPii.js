@@ -32,12 +32,19 @@ export function maskCorreo(correo) {
 
 /**
  * Tope de filas de datos por archivo de import (MDL-192 SECURITY).
- * Env `IMPORT_MAX_ROWS`; default 5000; inválido o ≤0 → default.
+ * Env `IMPORT_MAX_ROWS`; default 5000; inválido o ≤0 → default;
+ * nunca supera IMPORT_MAX_ROWS_CEILING (10000).
  * @param {NodeJS.ProcessEnv} [env]
  * @returns {number}
  */
 export const IMPORT_MAX_ROWS_DEFAULT = 5000;
+/** Techo duro: ni siquiera con env se puede superar este valor (MDL-192 SECURITY). */
+export const IMPORT_MAX_ROWS_CEILING = 10000;
 
+/**
+ * Tope efectivo = min(parsed env, CEILING).
+ * Default 5000 si unset / inválido / ≤0.
+ */
 export function getImportMaxRows(env = process.env) {
   const raw = env.IMPORT_MAX_ROWS;
   if (raw === undefined || raw === null || raw === '') {
@@ -47,5 +54,5 @@ export function getImportMaxRows(env = process.env) {
   if (!Number.isFinite(n) || n <= 0) {
     return IMPORT_MAX_ROWS_DEFAULT;
   }
-  return Math.floor(n);
+  return Math.min(Math.floor(n), IMPORT_MAX_ROWS_CEILING);
 }

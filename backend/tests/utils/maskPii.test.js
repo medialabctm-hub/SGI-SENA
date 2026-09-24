@@ -4,6 +4,7 @@ import {
   maskCorreo,
   getImportMaxRows,
   IMPORT_MAX_ROWS_DEFAULT,
+  IMPORT_MAX_ROWS_CEILING,
 } from '../../src/utils/maskPii.js';
 
 describe('maskCedula (MDL-192)', () => {
@@ -37,8 +38,14 @@ describe('getImportMaxRows (MDL-192)', () => {
     expect(getImportMaxRows({ IMPORT_MAX_ROWS: '' })).toBe(5000);
   });
 
-  it('respeta override válido', () => {
+  it('respeta override válido bajo el techo', () => {
     expect(getImportMaxRows({ IMPORT_MAX_ROWS: '100' })).toBe(100);
+    expect(getImportMaxRows({ IMPORT_MAX_ROWS: '8000' })).toBe(8000);
+  });
+
+  it('aplica techo duro 10000 (env 50000 → 10000)', () => {
+    expect(IMPORT_MAX_ROWS_CEILING).toBe(10000);
+    expect(getImportMaxRows({ IMPORT_MAX_ROWS: '50000' })).toBe(10000);
   });
 
   it('inválido o ≤0 cae al default', () => {

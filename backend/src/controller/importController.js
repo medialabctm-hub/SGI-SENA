@@ -1034,7 +1034,7 @@ export async function importarUsuarios(req, res) {
         if (!roleGate.ok) {
           resultados.errores.push({
             fila: numeroFila,
-            cedula,
+            cedula: maskCedula(cedula),
             error: roleGate.error
           });
           resultados.fallidos++;
@@ -1090,7 +1090,7 @@ export async function importarUsuarios(req, res) {
         if (!rolRow?.id_rol) {
           resultados.errores.push({
             fila: numeroFila,
-            cedula,
+            cedula: maskCedula(cedula),
             error: `Rol "${rol}" no encontrado. Roles importables: Instructor, Aprendiz (Admin/Cuentadante requieren invitación)`
           });
           resultados.fallidos++;
@@ -1113,7 +1113,7 @@ export async function importarUsuarios(req, res) {
           if (!pwdCheck.valid) {
             resultados.errores.push({
               fila: numeroFila,
-              cedula,
+              cedula: maskCedula(cedula),
               error: GENERIC_WEAK_PASSWORD,
             });
             resultados.fallidos++;
