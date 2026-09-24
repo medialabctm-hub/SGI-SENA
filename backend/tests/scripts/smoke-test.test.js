@@ -66,7 +66,7 @@ describe('smoke test de Railway', () => {
       if (url.endsWith('/health')) return jsonResponse({ status: 'ok', autoservicio: { ready: true } });
       if (url.endsWith('/')) return htmlResponse();
       if (url.endsWith('/api/aprendices/verificar/00000000000000000000')) {
-        return jsonResponse({ existe: false }, 404);
+        return jsonResponse({ existe: false }, 200);
       }
       if (url.endsWith('/autoservicio/iniciar-uso') && Object.keys(JSON.parse(options.body || '{}')).length === 0) {
         return jsonResponse({ success: false }, 400);

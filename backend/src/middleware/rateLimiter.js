@@ -216,29 +216,54 @@ export const searchLimiter = rateLimit({
 });
 
 /**
- * Rate limiter estricto para verificación pública de documentos (sin autenticación)
- * Mismo umbral que authLimiter: este endpoint permite adivinar números de documento
- * válidos por fuerza bruta, un riesgo de enumeración equivalente al de un login
- * 10 intentos cada 15 minutos por IP
+ * Rate limiters para verificación pública de documentos (GET /verificar/:documento).
+ *
+ * MDL-201 / H-05 (2026-09-21): la respuesta pública indica existencia del documento
+ * en el roster (contrato de autoservicio), así que el control principal contra
+ * enumeración útil es el rate-limit dual:
+ *   - por IP (10 / 15 min): frena barridos desde un origen
+ *   - por documento hasheado (5 / 15 min): frena reintentos del mismo identificador
+ *     aunque el atacante rote IPs
+ * El documento se normaliza (trim + mayúsculas) y se hashea para que el store del
+ * limiter no conserve el valor en claro.
  */
+const publicLookupRateLimitHandler = (req, res) => {
+  res.status(429).json({
+    success: false,
+    error: 'Demasiados intentos de verificación. Por favor intenta nuevamente en 15 minutos.',
+    retryAfter: 15
+  });
+};
+
+const getPublicLookupDocumento = (req) => {
+  const source = req.params?.documento;
+  const normalized = source == null ? '' : String(source).trim();
+  return normalized === '' ? 'missing' : normalized;
+};
+
 export const publicLookupLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutos
-  max: 10, // máximo 10 intentos
+  max: 10, // máximo 10 intentos por IP
   standardHeaders: true,
   legacyHeaders: false,
+  skipSuccessfulRequests: false,
   message: {
     success: false,
     error: 'Demasiados intentos de verificación. Por favor intenta nuevamente en 15 minutos.',
     retryAfter: 15
   },
-  keyGenerator: (req) => getIdentifier(req),
-  handler: (req, res) => {
-    res.status(429).json({
-      success: false,
-      error: 'Demasiados intentos de verificación. Por favor intenta nuevamente en 15 minutos.',
-      retryAfter: 15
-    });
-  }
+  keyGenerator: (req) => `public_lookup_ip_${getClientIp(req)}`,
+  handler: publicLookupRateLimitHandler,
+});
+
+export const publicLookupDocumentoLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  skipSuccessfulRequests: false,
+  keyGenerator: (req) => `public_lookup_documento_${hashIdentifier(getPublicLookupDocumento(req))}`,
+  handler: publicLookupRateLimitHandler,
 });
 
 /**
@@ -322,6 +347,45 @@ export const autoservicioIdentifierLimiter = rateLimit({
   skipSuccessfulRequests: false,
   keyGenerator: (req) => `autoservicio_identifier_${hashIdentifier(getAutoservicioIdentifier(req))}`,
   handler: autoservicioRateLimitHandler,
+});
+
+/**
+ * Rate limiters para re-autenticación en cambios de identidad
+ * (PUT /api/auth/user/:id cuando cambia correo propio — MDL-192 / H-07 fase 1).
+ *
+ * skipSuccessfulRequests: solo cuentan fallos (4xx/5xx), p. ej. contraseña
+ * actual incorrecta o ausente. Éxitos (200) no consumen cuota.
+ * Dimensiones: IP (como authLimiter) y usuario autenticado.
+ */
+const identityReauthRateLimitHandler = (req, res) => {
+  res.status(429).json({
+    success: false,
+    error: 'Demasiados intentos. Por favor intenta nuevamente en 15 minutos.',
+    retryAfter: 15,
+  });
+};
+
+export const identityReauthIpLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  skipSuccessfulRequests: true,
+  keyGenerator: (req) => `identity_reauth_ip_${getClientIp(req)}`,
+  handler: identityReauthRateLimitHandler,
+});
+
+export const identityReauthUserLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  skipSuccessfulRequests: true,
+  keyGenerator: (req) => {
+    const id = req.user?.id;
+    return id != null ? `identity_reauth_user_${id}` : `identity_reauth_user_${getClientIp(req)}`;
+  },
+  handler: identityReauthRateLimitHandler,
 });
 
 /**

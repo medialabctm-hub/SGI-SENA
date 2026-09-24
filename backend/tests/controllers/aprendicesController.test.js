@@ -63,12 +63,12 @@ describe('aprendicesController', () => {
       expect(mockExecute.mock.calls.some(([, params]) => params?.[0] === 'TI-009')).toBe(true);
     });
 
-    it('responde { existe: false } con 404 cuando el documento no existe', async () => {
+    it('responde { existe: false } con 200 (no 404) cuando el documento no existe — sin oráculo de status (MDL-201)', async () => {
       mockExecute.mockResolvedValueOnce([[undefined]]);
 
       await verificarAprendizPorDocumento({ params: { documento: 'NO-EXISTE' } }, res);
 
-      expect(res.status).toHaveBeenCalledWith(404);
+      expect(res.status).toHaveBeenCalledWith(200);
       expect(res.json).toHaveBeenCalledWith({ existe: false });
     });
 
@@ -76,7 +76,24 @@ describe('aprendicesController', () => {
       await verificarAprendizPorDocumento({ params: { documento: '   ' } }, res);
 
       expect(res.status).toHaveBeenCalledWith(400);
-      expect(res.json).toHaveBeenCalledWith({ existe: false, error: 'El documento es obligatorio' });
+      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
+        existe: false,
+        error: 'El documento es obligatorio',
+      }));
+      expect(mockExecute).not.toHaveBeenCalled();
+    });
+
+    it('responde 400 scrubbed sin consultar la BD cuando el formato es inválido', async () => {
+      await verificarAprendizPorDocumento({ params: { documento: 'ab' } }, res);
+
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
+        success: false,
+        existe: false,
+        error: 'Documento inválido.',
+      }));
+      const [[body]] = res.json.mock.calls;
+      expect(JSON.stringify(body)).not.toMatch(/Aprendices|SELECT|INFORMATION_SCHEMA/i);
       expect(mockExecute).not.toHaveBeenCalled();
     });
 

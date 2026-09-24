@@ -58,6 +58,8 @@ jest.mock('../../src/middleware/rateLimiter.js', () => ({
   authLimiter: jest.fn((req, res, next) => next()),
   registerLimiter: jest.fn((req, res, next) => next()),
   passwordResetLimiter: jest.fn((req, res, next) => next()),
+  identityReauthIpLimiter: jest.fn((req, res, next) => next()),
+  identityReauthUserLimiter: jest.fn((req, res, next) => next()),
 }), { virtual: true });
 
 jest.mock('../../src/middleware/uploadProfileMiddleware.js', () => ({
