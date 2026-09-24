@@ -4,8 +4,9 @@
  * Ejecutar con: npm test -- authService.test.js
  */
 
+import crypto from 'node:crypto';
 import { describe, it, expect, beforeEach, jest } from '@jest/globals';
-import { AuthService } from '../../src/services/authService.js';
+import { AuthService, hashResetToken } from '../../src/services/authService.js';
 import {
   AuthenticationError,
   ValidationError,
@@ -85,7 +86,7 @@ const validAprendizData = {
   tipo_documento: 'CC',
   correo: 'test@example.com',
   telefono: '3001234567',
-  contrasena: 'pass123',
+  contrasena: 'Pass123*Seg',
   rol: 'Aprendiz',
 };
 
@@ -190,7 +191,7 @@ describe('AuthService', () => {
       expect(() =>
         authService.validateUserData({
           correo: 'test@example.com',
-          contrasena: 'pass123',
+          contrasena: 'Pass123*',
           cedula: '12345',
         })
       ).not.toThrow();
@@ -456,10 +457,12 @@ describe('AuthService', () => {
 
   // ─── getUserByCedula ────────────────────────────────────────────────────────
   describe('getUserByCedula', () => {
-    it('debe retornar usuario por cédula', async () => {
+        it('debe retornar usuario por cédula sin contrasena (MDL-230)', async () => {
       mockUserRepository.findByCedula.mockResolvedValue(baseUser);
       const result = await authService.getUserByCedula('1234567890');
       expect(result.id_usuario).toBe(1);
+      expect(result).not.toHaveProperty('contrasena');
+      expect(JSON.stringify(result)).not.toMatch(/\$2[aby]\$/);
     });
 
     it('debe lanzar NotFoundError si no existe usuario con esa cédula', async () => {
@@ -595,7 +598,7 @@ describe('AuthService', () => {
       mockUserRepository.findOne.mockResolvedValue({ contrasena: 'hashed', requiere_cambio_contrasena: 1 });
       mockPasswordService.compare.mockResolvedValue(true);
 
-      const result = await authService.cambiarContrasenaObligatorio(1, 'actual123', 'nueva123');
+      const result = await authService.cambiarContrasenaObligatorio(1, 'actual123', 'Nueva123*');
       expect(result.message).toContain('Contraseña');
       expect(mockUserRepository.db.execute).toHaveBeenCalled();
     });
@@ -646,6 +649,10 @@ describe('AuthService', () => {
       const result = await authService.validarTokenRecuperacion('valid_token');
       expect(result.token).toBe('valid_token');
       expect(result.nombre_usuario).toBe('Test');
+      // H-09: la búsqueda usa el HASH del token, nunca el token en claro.
+      const lookupArgs = mockUserRepository.findOne.mock.calls[0][1];
+      expect(lookupArgs).toEqual([hashResetToken('valid_token')]);
+      expect(lookupArgs).not.toContain('valid_token');
     });
 
     it('debe lanzar AuthenticationError con token inválido o expirado', async () => {
@@ -699,11 +706,18 @@ describe('AuthService', () => {
     it('debe restablecer la contraseña exitosamente', async () => {
       mockUserRepository.findOne.mockResolvedValue({ token: 'abc', id_usuario: 1 });
 
-      const result = await authService.restablecerContrasena('abc', 'validPass123');
+      const result = await authService.restablecerContrasena('abc', 'ValidPass123*');
       expect(result.message).toContain('Contraseña');
       expect(mockConnection.beginTransaction).toHaveBeenCalled();
       expect(mockConnection.commit).toHaveBeenCalled();
       expect(mockConnection.release).toHaveBeenCalled();
+      // H-09: la fila del token se busca y se marca como usada por su HASH.
+      expect(mockUserRepository.findOne.mock.calls[0][1]).toEqual([hashResetToken('abc')]);
+      const updateTokenCall = mockConnection.execute.mock.calls.find(
+        (c) => /UPDATE Tokens_Recuperacion_Contrasena/.test(c[0])
+      );
+      expect(updateTokenCall).toBeDefined();
+      expect(updateTokenCall[1]).toEqual([hashResetToken('abc')]);
     });
 
     it('debe hacer rollback y re-lanzar error en fallo de transacción', async () => {
@@ -711,7 +725,7 @@ describe('AuthService', () => {
       mockConnection.execute.mockRejectedValueOnce(new Error('DB error en transacción'));
 
       await expect(
-        authService.restablecerContrasena('abc', 'validPass123')
+        authService.restablecerContrasena('abc', 'ValidPass123*')
       ).rejects.toThrow('DB error en transacción');
 
       expect(mockConnection.rollback).toHaveBeenCalled();
@@ -722,3 +736,23 @@ describe('AuthService', () => {
 
 
 
+
+// ─── H-09: helper hashResetToken ─────────────────────────────────────────────
+describe('hashResetToken (H-09)', () => {
+  it('produce el SHA-256 hex del token (64 chars) y no el token en claro', () => {
+    const raw = 'a'.repeat(64);
+    const esperado = crypto.createHash('sha256').update(raw).digest('hex');
+    const h = hashResetToken(raw);
+    expect(h).toBe(esperado);
+    expect(h).toHaveLength(64);
+    expect(h).not.toBe(raw);
+  });
+
+  it('es determinista para el mismo token', () => {
+    expect(hashResetToken('token-x')).toBe(hashResetToken('token-x'));
+  });
+
+  it('produce hashes distintos para tokens distintos', () => {
+    expect(hashResetToken('token-a')).not.toBe(hashResetToken('token-b'));
+  });
+});

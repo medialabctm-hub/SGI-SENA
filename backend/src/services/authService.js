@@ -7,6 +7,7 @@
  * Contiene la lógica de negocio de autenticación, usando repositorios
  * y servicios inyectados en lugar de acceder directamente a la base de datos.
  */
+import crypto from 'node:crypto';
 import {
   ValidationError,
   AuthenticationError,
@@ -24,6 +25,19 @@ import {
   CedulaValidationStrategy,
   ValidationContext,
 } from '../strategies/ValidationStrategy.js';
+import { toPublicUser, toPublicUserList } from '../utils/usuarioPublico.js';
+
+/**
+ * Hash en reposo del token de recuperación (H-09).
+ * El token en claro solo viaja por el correo/URL al usuario; en la base de
+ * datos únicamente se guarda su SHA-256, de modo que una filtración de la BD
+ * no entrega tokens de reset utilizables.
+ * @param {string} token Token en claro.
+ * @returns {string} SHA-256 en hexadecimal.
+ */
+export function hashResetToken(token) {
+  return crypto.createHash('sha256').update(String(token)).digest('hex');
+}
 
 export class AuthService {
   constructor(userRepository, roleRepository, passwordService, jwtService, logger) {
@@ -35,7 +49,7 @@ export class AuthService {
 
     // Configurar estrategias de validación
     this.emailValidator = new ValidationContext(new EmailValidationStrategy());
-    this.passwordValidator = new ValidationContext(new PasswordValidationStrategy(6));
+    this.passwordValidator = new ValidationContext(new PasswordValidationStrategy(8));
     this.cedulaValidator = new ValidationContext(new CedulaValidationStrategy(5));
   }
 
@@ -299,14 +313,14 @@ export class AuthService {
     return {
       token,
       requiereCambioContrasena: usuario.requiere_cambio_contrasena === 1 || usuario.requiere_cambio_contrasena === true,
-      user: {
+      user: toPublicUser({
         id_usuario: usuario.id_usuario,
         nombre_usuario: usuario.nombre_usuario,
         correo: usuario.correo,
         telefono: usuario.telefono,
         cedula: usuario.cedula,
         nombre_rol: usuario.nombre_rol,
-      },
+      }),
     };
   }
 
@@ -375,14 +389,14 @@ export class AuthService {
     return {
       token,
       requiereCambioContrasena: usuario.requiere_cambio_contrasena === 1 || usuario.requiere_cambio_contrasena === true,
-      user: {
+      user: toPublicUser({
         id_usuario: usuario.id_usuario,
         nombre_usuario: usuario.nombre_usuario,
         correo: usuario.correo,
         telefono: usuario.telefono,
         cedula: usuario.cedula,
         nombre_rol: usuario.nombre_rol,
-      },
+      }),
       equipo: {
         codigo_equipo: equipoConPlaca.codigo_equipo,
         placa: equipoConPlaca.placa,
@@ -404,7 +418,7 @@ export class AuthService {
       throw new NotFoundError('Usuario');
     }
 
-    return {
+    return toPublicUser({
       id_usuario: user.id_usuario,
       nombre_usuario: user.nombre_usuario,
       correo: user.correo,
@@ -413,7 +427,7 @@ export class AuthService {
       nombre_rol: user.nombre_rol,
       foto_perfil: user.foto_perfil,
       requiere_cambio_contrasena: user.requiere_cambio_contrasena === 1 || user.requiere_cambio_contrasena === true,
-    };
+    });
   }
 
   /**
@@ -421,7 +435,8 @@ export class AuthService {
    * @returns {Promise<Array>} Lista de usuarios
    */
   async listUsers(rol = null) {
-    return this.userRepository.findAll(rol);
+    // Defensa en profundidad MDL-230 (findAll ya omite contrasena).
+    return toPublicUserList(await this.userRepository.findAll(rol));
   }
 
   /**
@@ -439,14 +454,14 @@ export class AuthService {
     const equipos = await this.userRepository.getAssignedEquipos(userId);
 
     return {
-      user: {
+      user: toPublicUser({
         id_usuario: user.id_usuario,
         nombre_usuario: user.nombre_usuario,
         cedula: user.cedula,
         correo: user.correo,
         telefono: user.telefono,
         nombre_rol: user.nombre_rol,
-      },
+      }),
       equipos,
     };
   }
@@ -461,7 +476,8 @@ export class AuthService {
     const user = await this.userRepository.findByCedula(documentoNormalizado);
 
     if (user) {
-      return user;
+      // MDL-230: findByCedula incluye contrasena para login; nunca devolverla al cliente.
+      return toPublicUser(user);
     }
 
     const db = this.userRepository.db;
@@ -573,7 +589,7 @@ export class AuthService {
     this.logger.info('Foto de perfil actualizada', { userId });
     return { 
       message: 'Foto de perfil actualizada correctamente',
-      user: updatedUser,
+      user: toPublicUser(updatedUser),
       foto_perfil: fotoPerfilPath
     };
   }
@@ -707,17 +723,18 @@ export class AuthService {
       return { message: 'Si el usuario existe, se enviará un correo con las instrucciones' };
     }
 
-    // Generar token único
-    const crypto = await import('crypto');
-    const token = crypto.default.randomBytes(32).toString('hex');
+    // Generar token único. El token en claro (rawToken) viaja al usuario por
+    // correo; en la BD solo se persiste su hash SHA-256 (H-09).
+    const rawToken = crypto.randomBytes(32).toString('hex');
+    const tokenHash = hashResetToken(rawToken);
     const fechaExpiracion = new Date();
     fechaExpiracion.setHours(fechaExpiracion.getHours() + 1); // Expira en 1 hora
 
-    // Guardar token en la base de datos
+    // Guardar SOLO el hash del token en la base de datos
     await this.userRepository.db.execute(
       `INSERT INTO Tokens_Recuperacion_Contrasena (id_usuario, token, fecha_expiracion)
        VALUES (?, ?, ?)`,
-      [usuario.id_usuario, token, fechaExpiracion]
+      [usuario.id_usuario, tokenHash, fechaExpiracion]
     );
 
     // Enviar correo con el token
@@ -730,7 +747,7 @@ export class AuthService {
       emailService.reinitialize();
     }
     
-    const urlRecuperacion = `${process.env.FRONTEND_URL || 'https://sgi-sena.up.railway.app/'}/restablecer-contrasena?token=${token}`;
+    const urlRecuperacion = `${process.env.FRONTEND_URL || 'https://sgi-sena.up.railway.app/'}/restablecer-contrasena?token=${rawToken}`;
     
     const resultadoCorreo = await emailService.enviarCorreoRecuperacion(
       usuario.correo,
@@ -760,12 +777,14 @@ export class AuthService {
    * @returns {Promise<Object>} Información del token
    */
   async validarTokenRecuperacion(token) {
+    // Se busca por el hash del token; en la BD nunca está el token en claro (H-09).
     const tokenData = await this.userRepository.findOne(
-      `SELECT t.*, u.nombre_usuario, u.correo 
+      `SELECT t.id_token, t.id_usuario, t.token, t.fecha_creacion, t.fecha_expiracion, t.usado, t.fecha_uso,
+              u.nombre_usuario, u.correo
        FROM Tokens_Recuperacion_Contrasena t
        INNER JOIN Usuarios u ON u.id_usuario = t.id_usuario
        WHERE t.token = ? AND t.usado = 0 AND t.fecha_expiracion > NOW()`,
-      [token]
+      [hashResetToken(token)]
     );
 
     if (!tokenData) {
@@ -773,7 +792,8 @@ export class AuthService {
     }
 
     return {
-      token: tokenData.token,
+      // Se devuelve el token en claro recibido, no el hash almacenado.
+      token,
       nombre_usuario: tokenData.nombre_usuario,
       correo: tokenData.correo
     };
@@ -786,13 +806,14 @@ export class AuthService {
    * @returns {Promise<Object>} Resultado del restablecimiento
    */
   async restablecerContrasena(token, nuevaContrasena) {
-    // Validar token
+    // Validar token por su hash (en la BD no hay token en claro, H-09).
+    const tokenHash = hashResetToken(token);
     const tokenData = await this.userRepository.findOne(
-      `SELECT t.*, u.id_usuario 
+      `SELECT t.id_token, t.id_usuario, t.token, t.fecha_expiracion, t.usado
        FROM Tokens_Recuperacion_Contrasena t
        INNER JOIN Usuarios u ON u.id_usuario = t.id_usuario
        WHERE t.token = ? AND t.usado = 0 AND t.fecha_expiracion > NOW()`,
-      [token]
+      [tokenHash]
     );
 
     if (!tokenData) {
@@ -820,7 +841,7 @@ export class AuthService {
 
       await connection.execute(
         'UPDATE Tokens_Recuperacion_Contrasena SET usado = 1, fecha_uso = NOW() WHERE token = ?',
-        [token]
+        [tokenHash]
       );
 
       await connection.commit();

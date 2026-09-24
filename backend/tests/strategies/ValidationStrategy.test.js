@@ -94,68 +94,83 @@ describe('EmailValidationStrategy', () => {
 // ──────────────────────────────────────────────
 // PasswordValidationStrategy
 // ──────────────────────────────────────────────
-describe('PasswordValidationStrategy', () => {
-  describe('con minLength por defecto (6)', () => {
-    let strategy;
+describe('PasswordValidationStrategy (H-10: longitud + complejidad)', () => {
+  let strategy;
 
-    beforeEach(() => {
-      strategy = new PasswordValidationStrategy();
-    });
-
-    it('debe ser válido con exactamente 6 caracteres', () => {
-      const result = strategy.validate('abc123');
-      expect(result.valid).toBe(true);
-      expect(result.error).toBeNull();
-    });
-
-    it('debe ser válido con más de 6 caracteres', () => {
-      const result = strategy.validate('contraseña-segura-123');
-      expect(result.valid).toBe(true);
-      expect(result.error).toBeNull();
-    });
-
-    it('debe fallar si la contraseña es null', () => {
-      const result = strategy.validate(null);
-      expect(result.valid).toBe(false);
-      expect(result.error).toBe('La contraseña es requerida');
-    });
-
-    it('debe fallar si la contraseña es undefined', () => {
-      const result = strategy.validate(undefined);
-      expect(result.valid).toBe(false);
-      expect(result.error).toBe('La contraseña es requerida');
-    });
-
-    it('debe fallar si la contraseña es vacía', () => {
-      const result = strategy.validate('');
-      expect(result.valid).toBe(false);
-      expect(result.error).toBe('La contraseña es requerida');
-    });
-
-    it('debe fallar si la contraseña tiene 5 caracteres', () => {
-      const result = strategy.validate('abc12');
-      expect(result.valid).toBe(false);
-      expect(result.error).toMatch('al menos 6 caracteres');
-    });
+  beforeEach(() => {
+    strategy = new PasswordValidationStrategy();
   });
 
-  describe('con minLength personalizado (8)', () => {
-    let strategy;
+  it('es válida con 8 caracteres que cumplen la complejidad', () => {
+    const result = strategy.validate('Abcdef1*');
+    expect(result.valid).toBe(true);
+    expect(result.error).toBeNull();
+  });
 
-    beforeEach(() => {
-      strategy = new PasswordValidationStrategy(8);
-    });
+  it('es válida con una contraseña larga y compleja', () => {
+    const result = strategy.validate('Contrasena-Segura-123*');
+    expect(result.valid).toBe(true);
+    expect(result.error).toBeNull();
+  });
 
-    it('debe fallar con 7 caracteres cuando el mínimo es 8', () => {
-      const result = strategy.validate('abcdefg');
-      expect(result.valid).toBe(false);
-      expect(result.error).toMatch('al menos 8 caracteres');
-    });
+  it('falla si la contraseña es null', () => {
+    const result = strategy.validate(null);
+    expect(result.valid).toBe(false);
+    expect(result.error).toBe('La contraseña es requerida');
+  });
 
-    it('debe ser válido con 8 caracteres', () => {
-      const result = strategy.validate('abcdefgh');
-      expect(result.valid).toBe(true);
-    });
+  it('falla si la contraseña es undefined', () => {
+    const result = strategy.validate(undefined);
+    expect(result.valid).toBe(false);
+    expect(result.error).toBe('La contraseña es requerida');
+  });
+
+  it('falla si la contraseña está vacía', () => {
+    const result = strategy.validate('');
+    expect(result.valid).toBe(false);
+    expect(result.error).toBe('La contraseña es requerida');
+  });
+
+  it('falla con menos de 8 caracteres', () => {
+    const result = strategy.validate('Abc1*d');
+    expect(result.valid).toBe(false);
+    expect(result.error).toMatch('al menos 8 caracteres');
+  });
+
+  it('falla si supera la longitud máxima (128)', () => {
+    const result = strategy.validate(`A1*${'a'.repeat(130)}`);
+    expect(result.valid).toBe(false);
+    expect(result.error).toMatch('128 caracteres');
+  });
+
+  it('falla si no incluye minúscula', () => {
+    const result = strategy.validate('ABCDEF1*');
+    expect(result.valid).toBe(false);
+    expect(result.error).toMatch('minúscula');
+  });
+
+  it('falla si no incluye mayúscula', () => {
+    const result = strategy.validate('abcdef1*');
+    expect(result.valid).toBe(false);
+    expect(result.error).toMatch('mayúscula');
+  });
+
+  it('falla si no incluye número', () => {
+    const result = strategy.validate('Abcdefg*');
+    expect(result.valid).toBe(false);
+    expect(result.error).toMatch('número');
+  });
+
+  it('falla si no incluye carácter especial', () => {
+    const result = strategy.validate('Abcdefg1');
+    expect(result.valid).toBe(false);
+    expect(result.error).toMatch('especial');
+  });
+
+  it('respeta un minLength personalizado', () => {
+    const s = new PasswordValidationStrategy(12);
+    expect(s.validate('Abcdef1*').valid).toBe(false); // 8 < 12
+    expect(s.validate('Abcdefghij1*').valid).toBe(true); // 12
   });
 });
 
