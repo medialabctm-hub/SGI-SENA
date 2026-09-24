@@ -480,7 +480,7 @@ describe('importarUsuarios', () => {
   it('updates existing user when cedula already registered (upsert)', async () => {
     fakeWorkbook([{ nombre_usuario: 'Juan Actualizado', cedula: '12345', rol: 'Instructor', estado: 'Activo' }]);
     mockExecute
-      .mockResolvedValueOnce([[{ id_usuario: 5 }]]) // cedula existe
+      .mockResolvedValueOnce([[{ id_usuario: 5, correo: null }]]) // cedula existe
       .mockResolvedValueOnce([[{ id_rol: 2 }]])     // rol Instructor
       .mockResolvedValueOnce([{ affectedRows: 1 }]); // UPDATE
     const req = mockReq({ file: { buffer: Buffer.from('data') } });
@@ -532,6 +532,30 @@ describe('importarUsuarios', () => {
     expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
       resultados: expect.objectContaining({ exitosos: 1, fallidos: 0 })
     }));
+    const insertCall = mockExecute.mock.calls.find((c) => String(c[0]).includes('INSERT INTO Usuarios'));
+    // Excel trae contraseña → requiere_cambio_contrasena = 1 (MDL-192)
+    expect(insertCall[1][9]).toBe(1);
+  });
+
+  it('MDL-192: UPDATE de existente no escribe correo (identidad)', async () => {
+    fakeWorkbook([{
+      nombre_usuario: 'Juan',
+      cedula: '12345',
+      correo: 'old@x.com',
+      rol: 'Instructor',
+      telefono: '300',
+    }]);
+    mockExecute
+      .mockResolvedValueOnce([[{ id_usuario: 5, correo: 'old@x.com' }]])
+      .mockResolvedValueOnce([[]]) // sin colisión
+      .mockResolvedValueOnce([[{ id_rol: 2 }]])
+      .mockResolvedValueOnce([{ affectedRows: 1 }]);
+    const req = mockReq({ file: { buffer: Buffer.from('data') } });
+    const res = mockRes();
+    await importarUsuarios(req, res);
+    const updateCall = mockExecute.mock.calls.find((c) => String(c[0]).includes('UPDATE Usuarios'));
+    expect(updateCall[0]).not.toMatch(/correo\s*=/);
+    expect(JSON.stringify(updateCall[1])).not.toContain('old@x.com');
   });
 
   it('handles DB errors in rows gracefully (adds to errores)', async () => {

@@ -58,6 +58,7 @@ jest.mock('../../src/middleware/rateLimiter.js', () => ({
   identityReauthIpLimiter: mockMiddleware,
   identityReauthUserLimiter: mockMiddleware,
   passwordResetLimiter: mockMiddleware,
+  passwordResetIdentifierLimiter: mockMiddleware,
   writeLimiter: mockMiddleware,
   readLimiter: mockMiddleware,
   strictLimiter: mockMiddleware,

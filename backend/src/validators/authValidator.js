@@ -92,5 +92,28 @@ export const updateUserSchema = z.object({
   path: ['tipo_documento_otro'],
 });
 
+
+/**
+ * MDL-231 — POST /api/auth/recuperar-contrasena
+ * Campos que envía OlvidarContrasena.jsx: { cedula, correo }.
+ * Normalización inline (trim / lowercase). `normalizeIdentity.js` vive en PR #44
+ * y aún no está en develop; al mergear #44 se puede reutilizar.
+ * Claves desconocidas se descartan (comportamiento default de Zod object).
+ */
+export const solicitarRecuperacionSchema = z.object({
+  cedula: z
+    .string({ required_error: 'Datos inválidos' })
+    .trim()
+    .min(5, 'Datos inválidos')
+    .max(20, 'Datos inválidos'),
+  correo: z
+    .string({ required_error: 'Datos inválidos' })
+    .trim()
+    .min(3, 'Datos inválidos')
+    .max(254, 'Datos inválidos')
+    .email('Datos inválidos')
+    .transform((v) => v.toLowerCase()),
+});
+
 export { validate } from '../middleware/validate.js';
 

@@ -19,6 +19,7 @@ const {
   authLimiter,
   registerLimiter,
   passwordResetLimiter,
+  passwordResetIdentifierLimiter,
   writeLimiter,
   readLimiter,
   strictLimiter,
@@ -36,11 +37,38 @@ const {
 
 describe('rateLimiter config', () => {
   it('debe registrar todos los limiters esperados', () => {
-    expect(rateLimitMock).toHaveBeenCalledTimes(16);
+    expect(rateLimitMock).toHaveBeenCalledTimes(17);
     expect(authLimiter.__options.windowMs).toBe(15 * 60 * 1000);
     expect(registerLimiter.__options.windowMs).toBe(60 * 60 * 1000);
     expect(passwordResetLimiter.__options.windowMs).toBe(60 * 60 * 1000);
     expect(webhookLimiter.__options.max).toBe(100);
+  });
+
+  it('passwordResetIdentifierLimiter: 3/hora, clave hasheada sin PII (MDL-231)', () => {
+    expect(passwordResetIdentifierLimiter.__options.windowMs).toBe(60 * 60 * 1000);
+    expect(passwordResetIdentifierLimiter.__options.max).toBe(3);
+
+    const req = {
+      body: { cedula: '123.456.789', correo: '  User@Example.COM ' },
+      ip: '10.1.1.1',
+    };
+    const key = passwordResetIdentifierLimiter.__options.keyGenerator(req);
+    expect(key).toMatch(/^password_reset_identifier_[0-9a-f]{64}$/);
+    expect(key).not.toContain('123456789');
+    expect(key).not.toContain('123.456.789');
+    expect(key.toLowerCase()).not.toContain('user@example.com');
+
+    // Misma identidad normalizada → misma clave
+    const req2 = {
+      body: { cedula: '123456789', correo: 'user@example.com' },
+      ip: '10.9.9.9',
+    };
+    expect(passwordResetIdentifierLimiter.__options.keyGenerator(req2)).toBe(key);
+
+    // Misma forma de mensaje 429 que el limiter por IP
+    expect(passwordResetIdentifierLimiter.__options.message).toEqual(
+      passwordResetLimiter.__options.message,
+    );
   });
 
   it('publicLookupLimiter (IP) y publicLookupDocumentoLimiter mitigan enumeración (MDL-201)', () => {

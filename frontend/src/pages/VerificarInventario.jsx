@@ -11,6 +11,23 @@ import '../styles/pages/equipos.css'
 import '../styles/pages/verificaciones.css'
 import { LoadingScreen } from './LoadingDemo'
 
+
+/**
+ * MDL-234: colapsa filas duplicadas por id_ambiente (defensa en profundidad
+ * si el backend o un cache devolviera N filas de la misma aula).
+ * @param {Array<{id_ambiente?: number}>} ambientes
+ * @returns {Array}
+ */
+export function dedupeAmbientesById(ambientes) {
+  const map = new Map()
+  for (const ambiente of ambientes || []) {
+    const id = ambiente?.id_ambiente
+    if (id == null) continue
+    if (!map.has(id)) map.set(id, ambiente)
+  }
+  return Array.from(map.values())
+}
+
 export default function VerificarInventario() {
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(false)
@@ -84,7 +101,7 @@ export default function VerificarInventario() {
         credentials: 'include'
       })
       const data = await parseApiResponse(res, 'No se pudo obtener los equipos de los ambientes')
-      setAmbientes(data.ambientes || [])
+      setAmbientes(dedupeAmbientesById(data.ambientes))
       setEquipos(data.equipos || [])
       
       // Inicializar verificaciones con el estado real desde el backend
