@@ -25,6 +25,10 @@ import { LoadingScreen } from './LoadingDemo'
 const TAB_PENDIENTES = 'pendientes'
 const TAB_HISTORIAL = 'historial'
 
+function equiposDesdeRespuesta(data) {
+  return data?.equipos || (Array.isArray(data) ? data : [])
+}
+
 export default function AutorizacionesMovimiento() {
   const location = useLocation()
   const sectionGestionRef = useRef(null)
@@ -44,6 +48,7 @@ export default function AutorizacionesMovimiento() {
   // Resultados de la búsqueda de equipo por placa/código, traídos del backend
   // bajo demanda (no un dump completo del inventario, ver efecto de búsqueda abajo).
   const [resultadosBusquedaEquipo, setResultadosBusquedaEquipo] = useState([])
+  const [mensajeBusquedaEquipo, setMensajeBusquedaEquipo] = useState('')
   const [buscandoEquipo, setBuscandoEquipo] = useState(false)
   const [equipoSeleccionado, setEquipoSeleccionado] = useState(null)
   const [errores, setErrores] = useState({})
@@ -106,23 +111,41 @@ export default function AutorizacionesMovimiento() {
     const termino = busquedaPlaca.trim()
     if (!puedeSolicitar || termino.length < 1) {
       setResultadosBusquedaEquipo([])
+      setMensajeBusquedaEquipo('')
       setBuscandoEquipo(false)
       return
     }
     let cancelado = false
     setBuscandoEquipo(true)
+    setMensajeBusquedaEquipo('')
     const timeoutId = setTimeout(() => {
       const qs = new URLSearchParams({ search: termino, status_verificacion: 'Verificado', limit: '20' })
       fetch(`/api/equipos?${qs.toString()}`, { credentials: 'include' })
         .then(r => parseApiResponse(r, 'No se pudo buscar equipos'))
-        .then(data => {
+        .then(async data => {
           if (cancelado) return
-          const equipos = data?.equipos || (Array.isArray(data) ? data : [])
-          setResultadosBusquedaEquipo(equipos.filter(eq => eq.status_verificacion === 'Verificado'))
+          const equiposVerificados = equiposDesdeRespuesta(data).filter(eq => eq.status_verificacion === 'Verificado')
+          if (equiposVerificados.length > 0) {
+            setResultadosBusquedaEquipo(equiposVerificados)
+            return
+          }
+
+          const todosLosEstadosQs = new URLSearchParams({ search: termino, limit: '20' })
+          const respuestaTodosLosEstados = await fetch(`/api/equipos?${todosLosEstadosQs.toString()}`, { credentials: 'include' })
+          const datosTodosLosEstados = await parseApiResponse(respuestaTodosLosEstados, 'No se pudo comprobar el estado del equipo')
+          if (cancelado) return
+
+          const equipoNoVerificado = equiposDesdeRespuesta(datosTodosLosEstados)
+            .find(eq => eq.status_verificacion !== 'Verificado')
+          setResultadosBusquedaEquipo([])
+          setMensajeBusquedaEquipo(equipoNoVerificado
+            ? `El equipo ${equipoNoVerificado.placa || equipoNoVerificado.codigo_inventario || equipoNoVerificado.codigo_equipo} no está verificado. Consulte al cuentadante sobre su estado antes de continuar.`
+            : 'No se encontraron equipos con esa placa o código.')
         })
         .catch(err => {
           if (cancelado) return
           setResultadosBusquedaEquipo([])
+          setMensajeBusquedaEquipo('')
           setToast({ message: buildErrorMessage(err, 'No se pudo buscar equipos'), type: 'error' })
         })
         .finally(() => {
@@ -171,6 +194,7 @@ export default function AutorizacionesMovimiento() {
     setBusquedaPlaca('')
     setMostrarResultadosPlaca(false)
     setResultadosBusquedaEquipo([])
+    setMensajeBusquedaEquipo('')
     setErrores(prev => ({ ...prev, codigo_equipo: '' }))
   }
 
@@ -180,6 +204,7 @@ export default function AutorizacionesMovimiento() {
     setBusquedaPlaca('')
     setMostrarResultadosPlaca(false)
     setResultadosBusquedaEquipo([])
+    setMensajeBusquedaEquipo('')
   }
 
   async function handleSubmitSolicitud(e) {
@@ -391,7 +416,12 @@ export default function AutorizacionesMovimiento() {
                               {buscandoEquipo ? (
                                 <li className="solicitud-resultado-vacio">Buscando equipos...</li>
                               ) : resultadosBusquedaEquipo.length === 0 ? (
-                                <li className="solicitud-resultado-vacio">No hay equipos verificados con esa placa o código.</li>
+                                <li
+                                  className={`solicitud-resultado-vacio${mensajeBusquedaEquipo ? ' solicitud-resultado-alerta' : ''}`}
+                                  role={mensajeBusquedaEquipo ? 'alert' : undefined}
+                                >
+                                  {mensajeBusquedaEquipo || 'No hay equipos verificados con esa placa o código.'}
+                                </li>
                               ) : (
                                 resultadosBusquedaEquipo.slice(0, 10).map(eq => (
                                   <li key={eq.codigo_equipo}>
