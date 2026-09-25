@@ -157,6 +157,31 @@ describe('EquipoRepository', () => {
       expect(mainQuery.toLowerCase()).toContain('like');
     });
 
+    it('debe buscar una placa verificada antes de aplicar la paginación', async () => {
+      const equipoVerificado = {
+        ...equipoMock,
+        codigo_equipo: 920,
+        placa: '92051011721',
+        status_verificacion: 'Verificado',
+      };
+      setupFindAllMock([equipoVerificado], 1);
+
+      const result = await repo.findAll(
+        { search: '92051011721', status_verificacion: 'Verificado' },
+        { page: 1, limit: 20 }
+      );
+
+      expect(result.equipos).toEqual([equipoVerificado]);
+      const countQuery = db.execute.mock.calls[0][0];
+      const dataQuery = db.execute.mock.calls[1][0];
+      const dataParams = db.execute.mock.calls[1][1];
+      expect(countQuery).toMatch(/Verificaciones_Inventario/i);
+      expect(dataQuery).toMatch(/Verificaciones_Inventario/i);
+      expect(dataParams).toContain('%92051011721%');
+      expect(dataParams).toContain('Verificado');
+      expect(dataQuery.toUpperCase().indexOf('WHERE')).toBeLessThan(dataQuery.toUpperCase().indexOf('LIMIT'));
+    });
+
     it('debe filtrar por categoria', async () => {
       setupFindAllMock([], 0);
 

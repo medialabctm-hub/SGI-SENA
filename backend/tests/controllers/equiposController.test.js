@@ -491,6 +491,26 @@ describe('actualizarEquipo', () => {
     expect(mockEmitToAll).not.toHaveBeenCalled();
   });
 
+  it('aplica el estado histórico Verificado aunque la bandera externa siga en cero', async () => {
+    mockConnectionExecute.mockResolvedValueOnce([[
+      {
+        id_ambiente: 1,
+        verificado_ambiente: 0,
+        estado_verificacion_actual: 'Verificado',
+      },
+    ]]);
+    const res = mockRes();
+
+    await actualizarEquipo(mockReq({
+      params: { codigo: '5' },
+      body: { id_ambiente: 2 },
+    }), res);
+
+    expect(mockConnection.rollback).toHaveBeenCalledTimes(1);
+    expect(res.status).toHaveBeenCalledWith(403);
+    expect(mockConnectionExecute).toHaveBeenCalledTimes(1);
+  });
+
   it('rolls back when the conditional authorization consumption conflicts', async () => {
     mockConnectionExecute
       .mockResolvedValueOnce([[{ id_ambiente: 1, verificado_ambiente: 1 }]])
@@ -1439,6 +1459,23 @@ describe('obtenerEquiposAmbientesInstructor', () => {
     expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ ambientes: expect.any(Array), equipos: expect.any(Array) }));
   });
 
+  it('uses the global latest verification status for the verification view', async () => {
+    mockExecute
+      .mockResolvedValueOnce([[{ id_ambiente: 1 }]])
+      .mockResolvedValueOnce([[]])
+      .mockResolvedValueOnce([[{ id_ambiente: 1, nombre_ambiente: 'Lab', codigo_ambiente: '101' }]])
+      .mockResolvedValueOnce([[]]);
+    const req = mockReq({ user: { id: 5, rol: 'Instructor' } });
+    const res = mockRes();
+
+    await obtenerEquiposAmbientesInstructor(req, res);
+
+    const [equiposSql, equiposParams] = mockExecute.mock.calls[3];
+    expect(equiposSql).toMatch(/SELECT vi\.estado_verificacion[\s\S]+WHERE vi\.codigo_equipo = e\.codigo_equipo/i);
+    expect(equiposSql).toMatch(/AS estado_verificacion_actual/i);
+    expect(equiposParams).toEqual([1]);
+  });
+
   it('returns 500 on DB error', async () => {
     mockExecute.mockRejectedValueOnce(new Error('fail'));
     const req = mockReq({ user: { id: 5, rol: 'Instructor' } });
@@ -1518,8 +1555,7 @@ describe('obtenerEquiposAmbientesInstructor', () => {
     const [equiposSql, equiposParams] = mockExecute.mock.calls[3];
     expect(equiposSql).toMatch(/e\.id_ambiente IN \(\?\) AND e\.id_cuentadante = \?/);
     expect(equiposSql).not.toMatch(/e\.id_ambiente IN \(\?\)\s*$/m);
-    // userId×3 verificación + id 25 + userId cuentadante
-    expect(equiposParams).toEqual([2, 2, 2, 25, 2]);
+    expect(equiposParams).toEqual([25, 2]);
 
     const body = res.json.mock.calls[0][0];
     expect(body.ambientes[0].alcance).toBe('propios');
@@ -1551,7 +1587,7 @@ describe('obtenerEquiposAmbientesInstructor', () => {
 
     const [equiposSql, equiposParams] = mockExecute.mock.calls[3];
     expect(equiposSql).toMatch(/\(e\.id_ambiente IN \(\?\) AND e\.id_cuentadante = \?\)/);
-    expect(equiposParams).toEqual([2, 2, 2, 1, 2]);
+    expect(equiposParams).toEqual([1, 2]);
     const body = res.json.mock.calls[0][0];
     expect(body.equipos.every((e) => e.id_cuentadante === 2)).toBe(true);
     expect(body.equipos.map((e) => e.codigo_equipo)).not.toContain(99); // ajeno no retornado
@@ -1580,7 +1616,7 @@ describe('obtenerEquiposAmbientesInstructor', () => {
     const [equiposSql, equiposParams] = mockExecute.mock.calls[3];
     expect(equiposSql).toMatch(/WHERE \(e\.id_ambiente IN \(\?\)\)/);
     expect(equiposSql).not.toMatch(/id_cuentadante = \?\)/);
-    expect(equiposParams).toEqual([2, 2, 2, 7]);
+    expect(equiposParams).toEqual([7]);
     const body = res.json.mock.calls[0][0];
     expect(body.ambientes[0].alcance).toBe('responsable');
     expect(body.equipos.map((e) => e.codigo_equipo).sort()).toEqual([1, 2]);
@@ -1609,7 +1645,7 @@ describe('obtenerEquiposAmbientesInstructor', () => {
     const [equiposSql, equiposParams] = mockExecute.mock.calls[3];
     // Solo rama responsabilidad (cta-only vacío porque 7 está en resp)
     expect(equiposSql).toMatch(/WHERE \(e\.id_ambiente IN \(\?\)\)/);
-    expect(equiposParams).toEqual([2, 2, 2, 7]);
+    expect(equiposParams).toEqual([7]);
     expect(res.json.mock.calls[0][0].ambientes[0].alcance).toBe('responsable');
     expect(res.json.mock.calls[0][0].equipos).toHaveLength(2);
   });
@@ -1633,7 +1669,7 @@ describe('obtenerEquiposAmbientesInstructor', () => {
     expect(mockExecute.mock.calls[1][1]).toEqual([5]);
     const [equiposSql, equiposParams] = mockExecute.mock.calls[3];
     expect(equiposSql).toMatch(/WHERE \(e\.id_ambiente IN \(\?\)\)/);
-    expect(equiposParams).toEqual([5, 5, 5, 3]);
+    expect(equiposParams).toEqual([3]);
     expect(res.json.mock.calls[0][0].ambientes[0].alcance).toBe('responsable');
   });
 
