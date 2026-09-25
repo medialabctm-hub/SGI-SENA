@@ -47,6 +47,7 @@ import preferencesRoutes from './routes/preferencesRoutes.js';
 import webhookRoutes from './routes/webhookRoutes.js';
 import imagenesEquipoRoutes from './routes/imagenesEquipoRoutes.js';
 import imagenesAmbienteRoutes from './routes/imagenesAmbienteRoutes.js';
+import navegacionRoutes from './routes/navegacionRoutes.js';
 
 const normalizeOrigin = (origin) => (origin || '').trim().replace(/\/+$/, '') || origin;
 
@@ -175,6 +176,7 @@ const applyRoutes = (app, readinessProvider) => {
   // router.use(authenticate) sin restricción de ruta: si se montan primero, interceptan
   // (con 401) cualquier request bajo /api/*, incluidas las rutas públicas de aprendicesRoutes.
   app.use('/api/aprendices', aprendicesRoutes);
+  app.use('/api/navegacion', navegacionRoutes);
   app.use('/api', imagenesAmbienteRoutes);
   app.use('/api', ambientesRoutes);
   app.use('/api/notifications', notificationsRoutes);
