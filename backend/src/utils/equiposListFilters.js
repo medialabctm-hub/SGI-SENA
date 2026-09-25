@@ -51,7 +51,8 @@ export function parseListarEquiposQuery(query = {}) {
     vista_inventario: aTexto(query.vista_inventario),
     // Filtros por columna de la tabla (coincidencia parcial, sin comodines del usuario)
     placa: aTexto(query.placa),
-    tipo_modelo: aTexto(query.tipo_modelo),
+    tipo_texto: aTexto(query.tipo_texto),
+    modelo: aTexto(query.modelo),
     en_prestamo: PRESTAMO_FILTRO_VALUES.includes(prestamo) ? prestamo : null,
     // Solo el Administrador puede filtrar por cuentadante (EquipoService lo descarta para otros roles)
     id_cuentadante: aEnteroPositivo(query.id_cuentadante),

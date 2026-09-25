@@ -215,10 +215,13 @@ export class EquipoRepository extends BaseRepository {
       conditions.push('TRIM(e.placa) LIKE ?');
       params.push(`%${escaparLike(filters.placa)}%`);
     }
-    if (filters.tipo_modelo) {
-      const patron = `%${escaparLike(filters.tipo_modelo)}%`;
-      conditions.push('(e.tipo LIKE ? OR e.modelo LIKE ?)');
-      params.push(patron, patron);
+    if (filters.tipo_texto) {
+      conditions.push('e.tipo LIKE ?');
+      params.push(`%${escaparLike(filters.tipo_texto)}%`);
+    }
+    if (filters.modelo) {
+      conditions.push('e.modelo LIKE ?');
+      params.push(`%${escaparLike(filters.modelo)}%`);
     }
     if (filters.en_prestamo === 'si') {
       conditions.push(EN_PRESTAMO_SQL);

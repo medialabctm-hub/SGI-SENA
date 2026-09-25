@@ -169,16 +169,17 @@ describe('EquipoRepository', () => {
       expect(countParams).toEqual([12, 7, 99]);
     });
 
-    it('filtra por placa, tipo/modelo y cuentadante escapando comodines', async () => {
+    it('filtra por placa, tipo, modelo y cuentadante escapando comodines', async () => {
       setupFindAllMock([], 0);
 
-      await repo.findAll({ placa: '92_1', tipo_modelo: '50%', id_cuentadante: 3 });
+      await repo.findAll({ placa: '92_1', tipo_texto: 'Port', modelo: '50%', id_cuentadante: 3 });
 
       const [countQuery, countParams] = db.execute.mock.calls[0];
       expect(countQuery).toContain('TRIM(e.placa) LIKE ?');
-      expect(countQuery).toContain('(e.tipo LIKE ? OR e.modelo LIKE ?)');
+      expect(countQuery).toContain('e.tipo LIKE ?');
+      expect(countQuery).toContain('e.modelo LIKE ?');
       expect(countQuery).toContain('e.id_cuentadante = ?');
-      expect(countParams).toEqual(['%92\\_1%', '%50\\%%', '%50\\%%', 3]);
+      expect(countParams).toEqual(['%92\\_1%', '%Port%', '%50\\%%', 3]);
     });
 
     it('filtra equipos en préstamo y sin préstamo', async () => {
