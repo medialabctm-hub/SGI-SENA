@@ -1,0 +1,609 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prototipo de navegación SGI</title>
+<style>
+  :root {
+    --verde: #01af00; --verde-osc: #0e6e29; --verde-50: #f0fdf4; --verde-100: #dcfce7;
+    --gris-50: #f7f6f5; --gris-100: #e6e4e2; --gris-200: #dad6d3; --gris-500: #8c8178; --gris-700: #5e5650; --gris-800: #2f2b28;
+    --info: #1770e6; --info-50: #e6f0ff; --warn: #a47b00; --warn-50: #fff4cc; --err: #a61d2a; --err-50: #fde8ea;
+    --morado: #6e06b3; --morado-50: #f3e8ff;
+    --radio: 10px; --sombra: 0 6px 18px rgba(17,17,17,.06);
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif; color: var(--gris-800); background: #f3f4f3; font-size: 14px; line-height: 1.45; }
+  button { font: inherit; cursor: pointer; }
+  a { color: var(--info); }
+  .proto-banner { background: var(--gris-800); color: #fff; padding: 8px 16px; display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; font-size: 13px; }
+  .proto-banner strong { color: #bef264; }
+  .proto-banner label { display: flex; align-items: center; gap: 6px; }
+  .proto-banner select { font: inherit; padding: 3px 6px; border-radius: 6px; }
+  .app-header { background: #fff; border-bottom: 1px solid var(--gris-200); padding: 10px 16px; display: flex; align-items: center; gap: 12px; }
+  .logo { width: 34px; height: 34px; border-radius: 8px; background: var(--verde); color: #fff; display: grid; place-items: center; font-weight: 700; }
+  .app-header h1 { font-size: 16px; margin: 0; }
+  .app-header .user { margin-left: auto; color: var(--gris-700); font-size: 13px; }
+  .menu-btn { display: none; border: 1px solid var(--gris-200); background: #fff; border-radius: 8px; padding: 6px 10px; }
+  .layout { display: flex; min-height: calc(100vh - 100px); }
+  .sidebar { width: 250px; flex-shrink: 0; background: #fff; border-right: 1px solid var(--gris-200); padding: 12px; display: flex; flex-direction: column; gap: 4px; }
+  .nav-item { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; border: 0; background: none; padding: 10px 12px; border-radius: 8px; color: var(--gris-800); }
+  .nav-item:hover { background: var(--gris-50); }
+  .nav-item[aria-current="page"] { background: var(--verde-100); color: var(--verde-osc); font-weight: 600; }
+  .nav-item .ico { width: 20px; text-align: center; }
+  .badge-count { margin-left: auto; background: var(--err); color: #fff; font-size: 11px; border-radius: 999px; padding: 1px 7px; }
+  .nav-sub { padding-left: 30px; display: none; flex-direction: column; }
+  .nav-sub.open { display: flex; }
+  .nav-sub .nav-item { padding: 7px 10px; font-size: 13px; }
+  .sidebar-note { margin-top: auto; font-size: 12px; color: var(--gris-500); border-top: 1px dashed var(--gris-200); padding-top: 10px; }
+  main { flex: 1; min-width: 0; padding: 18px; }
+  .section-tabs { display: flex; gap: 4px; overflow-x: auto; border-bottom: 1px solid var(--gris-200); margin-bottom: 16px; }
+  .section-tabs button { border: 0; background: none; padding: 10px 14px; white-space: nowrap; color: var(--gris-700); border-bottom: 3px solid transparent; }
+  .section-tabs button[aria-current="page"] { color: var(--verde-osc); border-color: var(--verde); font-weight: 600; }
+  .card { background: #fff; border: 1px solid var(--gris-200); border-radius: var(--radio); box-shadow: var(--sombra); padding: 16px; margin-bottom: 16px; }
+  .page-title { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 0 0 12px; }
+  .page-title h2 { margin: 0; font-size: 20px; }
+  .muted { color: var(--gris-500); }
+  .small { font-size: 12px; }
+  .pills { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+  .pill { border: 1px solid var(--gris-200); background: #fff; border-radius: 999px; padding: 6px 12px; }
+  .pill[aria-pressed="true"] { background: var(--verde); border-color: var(--verde); color: #fff; }
+  .filters { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 10px; align-items: end; }
+  .field { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--gris-700); }
+  .field input, .field select { font: inherit; font-size: 14px; padding: 7px 9px; border: 1px solid var(--gris-200); border-radius: 8px; background: #fff; min-width: 0; }
+  .field.wide { grid-column: span 2; }
+  .toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 12px 0; }
+  .toolbar .spacer { flex: 1; }
+  .btn { border: 1px solid var(--gris-200); background: #fff; border-radius: 8px; padding: 7px 12px; display: inline-flex; align-items: center; gap: 6px; }
+  .btn:hover { background: var(--gris-50); }
+  .btn.primary { background: var(--verde); border-color: var(--verde); color: #fff; }
+  .btn.primary:hover { background: var(--verde-osc); }
+  .btn.sm { padding: 4px 9px; font-size: 13px; }
+  .btn.danger { color: var(--err); }
+  .table-wrap { overflow-x: auto; border: 1px solid var(--gris-200); border-radius: var(--radio); background: #fff; }
+  table { border-collapse: collapse; width: 100%; min-width: 760px; }
+  th, td { padding: 9px 10px; border-bottom: 1px solid var(--gris-100); text-align: left; vertical-align: top; }
+  th { background: var(--gris-50); font-size: 12px; text-transform: uppercase; letter-spacing: .02em; color: var(--gris-700); position: sticky; top: 0; }
+  tr:last-child td { border-bottom: 0; }
+  .tag { display: inline-block; border-radius: 999px; padding: 2px 8px; font-size: 12px; font-weight: 600; white-space: nowrap; }
+  .t-ok { background: var(--verde-100); color: var(--verde-osc); }
+  .t-info { background: var(--info-50); color: var(--info); }
+  .t-warn { background: var(--warn-50); color: var(--warn); }
+  .t-err { background: var(--err-50); color: var(--err); }
+  .t-gray { background: var(--gris-100); color: var(--gris-700); }
+  .t-mor { background: var(--morado-50); color: var(--morado); }
+  .row-actions { display: flex; gap: 6px; align-items: center; position: relative; }
+  .menu { position: absolute; right: 0; top: 100%; z-index: 20; background: #fff; border: 1px solid var(--gris-200); border-radius: 8px; box-shadow: 0 12px 28px rgba(0,0,0,.12); min-width: 230px; padding: 6px; display: none; }
+  .menu.open { display: block; }
+  .menu button { display: block; width: 100%; text-align: left; border: 0; background: none; padding: 8px 10px; border-radius: 6px; }
+  .menu button:hover, .menu button:focus { background: var(--verde-50); outline: none; }
+  .menu hr { border: 0; border-top: 1px solid var(--gris-100); margin: 4px 0; }
+  .pager { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; margin-top: 10px; }
+  .kpis { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; margin-bottom: 14px; }
+  .kpi { background: #fff; border: 1px solid var(--gris-200); border-radius: var(--radio); padding: 12px; }
+  .kpi .v { font-size: 22px; font-weight: 700; }
+  .kpi .l { font-size: 12px; color: var(--gris-700); }
+  .kpi.eq { background: var(--gris-50); }
+  .inner-tabs { display: flex; gap: 4px; overflow-x: auto; margin: 4px 0 14px; }
+  .inner-tabs button { border: 1px solid var(--gris-200); background: #fff; border-radius: 8px; padding: 7px 12px; white-space: nowrap; }
+  .inner-tabs button[aria-selected="true"] { background: var(--gris-800); border-color: var(--gris-800); color: #fff; }
+  .grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
+  .kv { display: grid; grid-template-columns: 150px 1fr; gap: 6px 12px; }
+  .kv dt { color: var(--gris-500); font-size: 12px; text-transform: uppercase; }
+  .kv dd { margin: 0; }
+  .timeline-day { margin: 14px 0 6px; font-weight: 700; color: var(--gris-700); font-size: 13px; }
+  .event { display: grid; grid-template-columns: 64px 1fr; gap: 12px; padding: 10px 12px; border: 1px solid var(--gris-200); border-radius: var(--radio); background: #fff; margin-bottom: 8px; }
+  .event .hora { font-weight: 700; font-size: 13px; }
+  .event .hora span { display: block; font-weight: 400; color: var(--gris-500); font-size: 11px; }
+  .event h4 { margin: 0 0 2px; font-size: 14px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .event .meta { font-size: 12px; color: var(--gris-700); }
+  .event .ref { font-family: ui-monospace, Consolas, monospace; font-size: 11px; color: var(--gris-500); }
+  .linked { margin-top: 8px; border-left: 3px solid var(--morado); padding: 6px 10px; background: var(--morado-50); border-radius: 0 8px 8px 0; font-size: 13px; }
+  .nodata { border: 1px dashed var(--gris-200); border-radius: var(--radio); padding: 10px 12px; color: var(--gris-700); background: var(--gris-50); font-size: 13px; margin-bottom: 8px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip { border: 1px solid var(--gris-200); background: #fff; border-radius: 999px; padding: 4px 10px; font-size: 13px; }
+  .chip[aria-pressed="true"] { background: var(--gris-800); color: #fff; border-color: var(--gris-800); }
+  .note { background: var(--info-50); border: 1px solid #cfe3ff; color: #0b47a6; border-radius: var(--radio); padding: 10px 12px; font-size: 13px; margin-bottom: 12px; }
+  .warnbox { background: var(--warn-50); border: 1px solid #ffe083; color: #6b5000; border-radius: var(--radio); padding: 10px 12px; font-size: 13px; margin-bottom: 12px; }
+  .empty { text-align: center; padding: 36px 16px; color: var(--gris-500); }
+  .toast { position: fixed; right: 16px; bottom: 16px; max-width: 420px; background: var(--gris-800); color: #fff; padding: 12px 14px; border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,.25); font-size: 13px; display: none; z-index: 50; }
+  .toast.show { display: block; }
+  .toast code { color: #bef264; word-break: break-all; }
+  .imgs { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px; }
+  .img { aspect-ratio: 4/3; background: repeating-linear-gradient(45deg, var(--gris-100), var(--gris-100) 8px, #fff 8px, #fff 16px); border-radius: 8px; display: grid; place-items: center; color: var(--gris-500); font-size: 12px; border: 1px solid var(--gris-200); }
+  .forbidden { text-align: center; padding: 40px 16px; }
+  .forbidden .big { font-size: 40px; }
+  :focus-visible { outline: 3px solid #74b4ff; outline-offset: 2px; }
+  @media (max-width: 860px) {
+    .menu-btn { display: inline-block; }
+    .sidebar { position: fixed; left: 0; top: 0; bottom: 0; z-index: 40; transform: translateX(-100%); transition: transform .2s; box-shadow: 0 0 30px rgba(0,0,0,.2); }
+    .sidebar.open { transform: translateX(0); }
+    main { padding: 12px 16px; }
+    .field.wide { grid-column: span 1; }
+    .kv { grid-template-columns: 1fr; }
+    .app-header .user { display: none; }
+  }
+</style>
+</head>
+<body>
+<div class="proto-banner" role="note">
+  <span><strong>Prototipo navegable</strong> · datos sintéticos · no es la aplicación ni se conecta a ninguna base de datos</span>
+  <label>Ver como
+    <select id="rol" aria-label="Rol simulado">
+      <option>Administrador</option><option>Instructor</option><option selected>Cuentadante</option><option>Aprendiz</option>
+    </select>
+  </label>
+  <label>Ir a
+    <select id="atajo" aria-label="Pantalla del prototipo">
+      <option value="inventario">Inventario (listado unificado)</option>
+      <option value="ficha">Ficha de equipo</option>
+      <option value="ambiente">Ficha de ambiente</option>
+      <option value="informe">Informe de uso y préstamos</option>
+      <option value="rutas">Rutas antiguas → nuevas</option>
+    </select>
+  </label>
+</div>
+<header class="app-header">
+  <button class="menu-btn" id="menuBtn" aria-controls="sidebar" aria-expanded="false">☰ Menú</button>
+  <div class="logo" aria-hidden="true">SGI</div>
+  <h1>Sistema de Gestión de Inventario</h1>
+  <span class="user" id="userLabel"></span>
+</header>
+<div class="layout">
+  <nav class="sidebar" id="sidebar" aria-label="Navegación principal"></nav>
+  <main id="main" tabindex="-1"></main>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+const ADMIN = 'Administrador', INS = 'Instructor', CTA = 'Cuentadante', APR = 'Aprendiz';
+const ALL = [ADMIN, INS, CTA, APR];
+const STAFF = [ADMIN, INS, CTA];
+
+const state = {
+  rol: CTA, screen: 'inventario', vista: 'todos', page: 1, openMenu: null,
+  fichaTab: 'resumen', ambTab: 'resumen', tiposHist: new Set(), misVacio: false,
+  incluirAsignaciones: false, configOpen: false
+};
+
+// ---------- Datos sintéticos ----------
+const AMB = { 12: ['AMB-303', 'Aula 303 Multimedia'], 14: ['AMB-304', 'Aula 304 Software'], 7: ['LAB-02', 'Laboratorio de Redes'] };
+const EQUIPOS = [
+  { id: 1045, placa: '9211045', tipo: 'Portátil', modelo: 'Latitude 5420', amb: 12, fis: 'Bueno', op: 'En Uso', ver: 'Con Novedad', prest: true, cta: 'Carlos M.' },
+  { id: 1046, placa: '9211046', tipo: 'Portátil', modelo: 'Latitude 5420', amb: 12, fis: 'Bueno', op: 'Disponible', ver: 'Verificado', prest: false, cta: 'Carlos M.' },
+  { id: 1047, placa: '9211047', tipo: 'Monitor', modelo: 'P2422H', amb: 12, fis: 'Regular', op: 'Disponible', ver: 'No Verificado', prest: false, cta: 'Carlos M.' },
+  { id: 1102, placa: '9211102', tipo: 'Torre', modelo: 'OptiPlex 7090', amb: 14, fis: 'Nuevo', op: 'En Mantenimiento', ver: 'Verificado', prest: false, cta: 'Carlos M.' },
+  { id: 1103, placa: '9211103', tipo: 'Torre', modelo: 'OptiPlex 7090', amb: 14, fis: 'Bueno', op: 'En Uso', ver: 'Verificado', prest: true, cta: 'Carlos M.' },
+  { id: 1210, placa: '9211210', tipo: 'Switch', modelo: 'Catalyst 2960', amb: 7, fis: 'Bueno', op: 'Disponible', ver: 'Verificado', prest: false, cta: 'Diana R.' },
+  { id: 1211, placa: '9211211', tipo: 'Router', modelo: 'ISR 4331', amb: 7, fis: 'Dañado', op: 'Dañado', ver: 'Con Novedad', prest: false, cta: 'Diana R.' },
+  { id: 1212, placa: '9211212', tipo: 'Tablet', modelo: 'Galaxy Tab A8', amb: 7, fis: 'Bueno', op: 'Disponible', ver: 'No Verificado', prest: false, cta: 'Diana R.' }
+];
+const MIS = [
+  { id: 1045, placa: '9211045', tipo: 'Portátil', modelo: 'Latitude 5420', amb: 12, resp: 'Principal', desde: '02/09/2026', dias: 23, por: 'Admin S.', obs: 'Uso en clase de diseño' },
+  { id: 1103, placa: '9211103', tipo: 'Torre', modelo: 'OptiPlex 7090', amb: 14, resp: 'Secundario', desde: '15/09/2026', dias: 10, por: 'Carlos M.', obs: '—' },
+  { id: 1047, placa: '9211047', tipo: 'Monitor', modelo: 'P2422H', amb: 12, resp: 'Inventario a cargo', desde: '10/03/2025', dias: null, por: 'Inventario a cargo', obs: '—' }
+];
+
+// ---------- Navegación: una sola configuración para sidebar y pestañas ----------
+const SECTIONS = [
+  { key: 'inicio', title: 'Inicio', ico: '⌂', roles: ALL, tabs: [{ key: 'dashboard', title: 'Inicio', roles: ALL, screen: 'dashboard' }] },
+  { key: 'equipos', title: 'Equipos e inventario', ico: '▣', roles: ALL, tabs: [
+    { key: 'inventario', title: 'Inventario', roles: ALL, screen: 'inventario' },
+    { key: 'registrar', title: 'Registrar', roles: [ADMIN, CTA], path: '/equipos' },
+    { key: 'verificar', title: 'Verificar', roles: [INS, CTA], path: '/equipos/verificar' },
+    { key: 'prestamos', title: 'Préstamos en curso', roles: STAFF, path: '/equipos/prestados' },
+    { key: 'asignaciones', title: 'Asignaciones', roles: STAFF, path: '/equipos/asignar' },
+    { key: 'informe', title: 'Informe de uso', roles: STAFF, screen: 'informe' },
+    { key: 'documento', title: 'Documento PDF', roles: [ADMIN, CTA], path: '/equipos/documento' },
+    { key: 'cuentadante', title: 'Buscar cuentadante', roles: [ADMIN], path: '/equipos/cuentadantes/buscar' }
+  ] },
+  { key: 'ambientes', title: 'Ambientes y horarios', ico: '⌖', roles: STAFF, tabs: [
+    { key: 'ambientes', title: 'Ambientes', roles: [ADMIN, CTA], screen: 'ambiente' },
+    { key: 'agenda', title: 'Agenda de horarios', roles: STAFF, path: '/horarios' },
+    { key: 'asignar-amb', title: 'Asignar ambientes', roles: [ADMIN], path: '/ambientes/asignar' }
+  ] },
+  { key: 'incidencias', title: 'Incidencias y mantenimiento', ico: '⚠', roles: STAFF, tabs: [
+    { key: 'novedades', title: 'Novedades y reportes', roles: STAFF, path: '/novedades' },
+    { key: 'mant', title: 'Mantenimientos', roles: [ADMIN, CTA], path: '/mantenimientos' }
+  ] },
+  { key: 'autorizaciones', title: 'Autorizaciones', ico: '✓', roles: STAFF, badge: true, tabs: [{ key: 'aut', title: 'Autorizaciones', roles: STAFF, path: '/equipos/autorizaciones' }] }
+];
+const CONFIG = [
+  { t: 'Usuarios', r: STAFF }, { t: 'Aprendices', r: [ADMIN] }, { t: 'Seguridad', r: ALL }, { t: 'Códigos de seguridad', r: [ADMIN] },
+  { t: 'Tipos de equipos', r: [ADMIN] }, { t: 'Roles y áreas', r: [ADMIN, CTA] }, { t: 'Notificaciones', r: ALL }
+];
+const can = roles => roles.includes(state.rol);
+const sectionOf = screen => ({ dashboard: 'inicio', inventario: 'equipos', ficha: 'equipos', informe: 'equipos', ambiente: 'ambientes', rutas: null })[screen];
+const tabOf = screen => ({ inventario: 'inventario', ficha: 'inventario', informe: 'informe', ambiente: 'ambientes' })[screen];
+
+function toast(html) {
+  const t = document.getElementById('toast');
+  t.innerHTML = html; t.classList.add('show');
+  clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove('show'), 5200);
+}
+function goTab(tab) {
+  if (tab.screen) { go(tab.screen); return; }
+  toast(`En la app esto abre la pantalla existente <code>${tab.path}</code>, que conserva su funcionalidad y muestra esta misma barra de pestañas.`);
+}
+function go(screen) {
+  if (screen === 'ambiente' && !can([ADMIN, CTA])) { toast('Con este rol la ficha de ambiente no está en el menú (igual que hoy). Se muestra igualmente para revisar el diseño.'); }
+  state.screen = screen; state.openMenu = null;
+  document.getElementById('atajo').value = ['inventario', 'ficha', 'ambiente', 'informe', 'rutas'].includes(screen) ? screen : 'inventario';
+  document.getElementById('sidebar').classList.remove('open');
+  render(); document.getElementById('main').focus();
+}
+
+function renderSidebar() {
+  const current = sectionOf(state.screen);
+  let html = '';
+  for (const s of SECTIONS) {
+    if (!can(s.roles)) continue;
+    const first = s.tabs.find(t => can(t.roles));
+    if (!first) continue;
+    const badge = s.badge && can([ADMIN, CTA]) ? '<span class="badge-count" title="3 solicitudes pendientes">3</span>' : '';
+    html += `<button class="nav-item" data-sec="${s.key}" ${current === s.key ? 'aria-current="page"' : ''}><span class="ico" aria-hidden="true">${s.ico}</span>${s.title}${badge}</button>`;
+  }
+  const cfg = CONFIG.filter(c => can(c.r));
+  html += `<button class="nav-item" id="cfgBtn" aria-expanded="${state.configOpen}" aria-controls="cfgSub"><span class="ico" aria-hidden="true">⚙</span>Configuración<span style="margin-left:auto">${state.configOpen ? '▾' : '▸'}</span></button>
+    <div class="nav-sub ${state.configOpen ? 'open' : ''}" id="cfgSub">${cfg.map(c => `<button class="nav-item" data-cfg="${c.t}">${c.t}</button>`).join('')}</div>
+    <div class="sidebar-note">Antes: 10 entradas de inventario + 4 grupos. Ahora: ${SECTIONS.filter(s => can(s.roles)).length} entradas + Configuración. Cada sección abre su pestaña más usada.</div>`;
+  const sb = document.getElementById('sidebar');
+  sb.innerHTML = html;
+  sb.querySelectorAll('[data-sec]').forEach(b => b.onclick = () => {
+    const s = SECTIONS.find(x => x.key === b.dataset.sec);
+    goTab(s.tabs.find(t => can(t.roles)));
+  });
+  document.getElementById('cfgBtn').onclick = () => { state.configOpen = !state.configOpen; renderSidebar(); };
+  sb.querySelectorAll('[data-cfg]').forEach(b => b.onclick = () => toast(`Configuración → ${b.dataset.cfg} (sin cambios en esta entrega).`));
+}
+
+function sectionTabs() {
+  const sec = SECTIONS.find(s => s.key === sectionOf(state.screen));
+  if (!sec || sec.tabs.length < 2) return '';
+  const active = tabOf(state.screen);
+  return `<nav class="section-tabs" aria-label="${sec.title}">${sec.tabs.filter(t => can(t.roles)).map(t =>
+    `<button data-tab="${t.key}" ${t.key === active ? 'aria-current="page"' : ''}>${t.title}</button>`).join('')}</nav>`;
+}
+function bindSectionTabs(root) {
+  const sec = SECTIONS.find(s => s.key === sectionOf(state.screen));
+  root.querySelectorAll('[data-tab]').forEach(b => b.onclick = () => goTab(sec.tabs.find(t => t.key === b.dataset.tab)));
+}
+
+// ---------- Badges ----------
+const tagFis = v => `<span class="tag ${({ Nuevo: 't-info', Bueno: 't-ok', Regular: 't-warn', Malo: 't-err', 'Dañado': 't-err' })[v] || 't-gray'}">${v}</span>`;
+const tagOp = v => `<span class="tag ${({ Disponible: 't-ok', 'En Uso': 't-warn', 'En Mantenimiento': 't-info', 'Dañado': 't-err', 'Dado de Baja': 't-err' })[v] || 't-gray'}">${v}</span>`;
+const tagVer = v => `<span class="tag ${({ Verificado: 't-ok', 'Con Novedad': 't-warn', 'No Verificado': 't-gray' })[v]}">${v}</span>`;
+const ambTxt = id => `${AMB[id][0]} · ${AMB[id][1]}`;
+
+// ---------- Inventario ----------
+function vistasPorRol() {
+  return ({
+    [ADMIN]: [['todos', 'Todos los equipos'], ['mia', 'Bajo mi responsabilidad']],
+    [INS]: [['ambientes', 'Equipos de mis ambientes'], ['mia', 'Bajo mi responsabilidad']],
+    [CTA]: [['todos', 'Todos (mis ambientes + a cargo)'], ['ambientes', 'Mis ambientes'], ['cargo', 'Inventario a cargo'], ['mia', 'Bajo mi responsabilidad']],
+    [APR]: [['habilitados', 'Equipos habilitados'], ['mia', 'Bajo mi responsabilidad']]
+  })[state.rol];
+}
+function accionesFila(eq) {
+  const a = [];
+  if (can([INS, CTA])) a.push(['Verificar', `/equipos/verificar?equipo=${eq.id}`]);
+  if (can(STAFF)) a.push([eq.ver === 'Verificado' ? 'Solicitar autorización de movimiento' : 'Mover de ambiente', `/equipos/autorizaciones?equipo=${eq.id}#solicitar`]);
+  if (can([ADMIN])) a.push(['Asignar responsable', `/equipos/asignar?equipo=${eq.id}`]);
+  if (can([INS, CTA])) a.push(['Asignar a aprendiz', `/equipos/asignar?equipo=${eq.id}`]);
+  if (can(STAFF)) a.push(['Registrar uso por aprendiz', `/equipos/detalle/${eq.id}?por=id&tab=responsables`]);
+  if (can(STAFF)) a.push(['Registrar novedad', `/novedades?tab=crear&equipo=${eq.id}`]);
+  if (can([ADMIN, CTA])) a.push(['Registrar mantenimiento', `/mantenimientos?tab=crear&equipo=${eq.id}`]);
+  if (can(STAFF)) a.push(['Ver movimientos', `/equipos/${eq.id}/historial?tipos=movimiento`]);
+  if (can([ADMIN, CTA])) a.push(['—'], ['Editar en línea', 'edit'], ['Eliminar…', 'delete']);
+  return a;
+}
+function renderInventario() {
+  const vistas = vistasPorRol();
+  if (!vistas.some(v => v[0] === state.vista)) state.vista = vistas[0][0];
+  const mia = state.vista === 'mia';
+  let rows = EQUIPOS;
+  if (state.rol === INS || state.vista === 'ambientes') rows = EQUIPOS.filter(e => e.amb !== 7);
+  if (state.vista === 'cargo') rows = EQUIPOS.filter(e => e.cta === 'Carlos M.');
+  if (state.rol === APR) rows = EQUIPOS.filter(e => [1045, 1103].includes(e.id));
+  const total = state.rol === APR ? rows.length : state.vista === 'cargo' ? 187 : state.rol === INS ? 64 : 312;
+  const pages = Math.max(1, Math.ceil(total / 25));
+  const from = (state.page - 1) * 25 + 1, to = Math.min(total, state.page * 25);
+  const verCta = can([ADMIN, CTA]);
+
+  let body = `${sectionTabs()}
+  <div class="page-title"><h2>Equipos e inventario</h2><span class="muted small">Vista canónica: un solo listado, alcance aplicado en el servidor</span></div>
+  <div class="pills" role="group" aria-label="Vista">${vistas.map(([k, l]) => `<button class="pill" data-vista="${k}" aria-pressed="${state.vista === k}">${l}</button>`).join('')}</div>`;
+
+  if (mia) {
+    body += `<div class="card"><div class="note">«Bajo mi responsabilidad» conserva las columnas de la antigua pantalla <b>Mis Equipos</b> y su propia consulta de alcance personal. Un equipo del ambiente <b>no</b> aparece aquí salvo que tengas una responsabilidad o lo tengas a cargo.</div>
+      <div class="toolbar"><label class="small"><input type="checkbox" id="misVacio" ${state.misVacio ? 'checked' : ''}> Simular «sin equipos asignados»</label><span class="spacer"></span><span class="muted small">${state.misVacio ? 0 : MIS.length} equipos</span></div>
+      ${state.misVacio ? `<div class="empty"><div style="font-size:34px">📭</div><h3>No tienes equipos bajo tu responsabilidad</h3><p>Cuando te asignen un equipo como principal o secundario aparecerá aquí.</p></div>` : `
+      <div class="table-wrap"><table><thead><tr><th>Placa</th><th>Tipo / modelo</th><th>Ambiente</th><th>Responsabilidad</th><th>Desde</th><th>Días</th><th>Asignado por</th><th>Observaciones</th><th>Acciones</th></tr></thead><tbody>
+      ${MIS.map(m => `<tr><td><b>${m.placa}</b><div class="muted small">ID ${m.id}</div></td><td>${m.tipo}<div class="muted small">${m.modelo}</div></td><td>${ambTxt(m.amb)}</td>
+        <td><span class="tag ${m.resp === 'Principal' ? 't-ok' : m.resp === 'Secundario' ? 't-info' : 't-gray'}">${m.resp}</span></td><td>${m.desde}</td><td>${m.dias ?? '—'}</td><td>${m.por}</td><td>${m.obs}</td>
+        <td><div class="row-actions"><button class="btn sm" data-ficha="${m.id}">Ficha</button><button class="btn sm" data-hist="${m.id}">Historial</button></div></td></tr>`).join('')}
+      </tbody></table></div>`}</div>`;
+  } else {
+    body += `<div class="card">
+      <form class="filters" onsubmit="return false" aria-label="Filtros del inventario">
+        <label class="field wide">Buscar (placa, modelo, tipo, descripción)<input placeholder="Ej. 9211045 o Latitude" value=""></label>
+        <label class="field">Ambiente<select><option>Todos</option><option>AMB-303 · Aula 303</option><option>AMB-304 · Aula 304</option>${state.rol === INS ? '' : '<option>LAB-02 · Redes</option>'}<option>Varios… (2 seleccionados)</option></select></label>
+        <label class="field">Tipo<input placeholder="Portátil, Torre…"></label>
+        <label class="field">Modelo<input placeholder="Latitude…"></label>
+        <label class="field">Estado físico<select><option>Todos</option><option>Nuevo</option><option>Bueno</option><option>Regular</option><option>Malo</option><option>Dañado</option></select></label>
+        <label class="field">Estado operativo<select><option>Todos</option><option>Disponible</option><option>En Uso</option><option>En Mantenimiento</option><option>Dañado</option><option>Dado de Baja</option></select></label>
+        <label class="field">Verificación<select><option>Todas</option><option>Verificado</option><option>Con Novedad</option><option>No Verificado</option></select></label>
+        <label class="field">Préstamo<select><option>Todos</option><option>En préstamo ahora</option><option>Sin préstamo</option></select></label>
+        ${state.rol === ADMIN ? '<label class="field">Cuentadante<select><option>Todos</option><option>Carlos M.</option><option>Diana R.</option></select></label>' : ''}
+      </form>
+      <div class="toolbar">
+        <button class="btn primary" id="aplicar">Aplicar filtros</button><button class="btn" id="limpiar">Limpiar</button>
+        <span class="spacer"></span>
+        <button class="btn" id="cols">Columnas</button>
+        ${state.rol !== APR ? '<button class="btn" id="excel">⬇ Excel (mismos filtros)</button>' : ''}
+        ${can(STAFF) ? '<button class="btn" id="informe">Informe de uso y préstamos</button>' : ''}
+      </div>
+      <p class="small muted" style="margin:0 0 8px">Mostrando <b>${from}–${to}</b> de <b>${total}</b> equipos · el total y la exportación usan exactamente el mismo alcance y filtros que la tabla.</p>
+      <div class="table-wrap"><table><thead><tr><th>Placa</th><th>Tipo / modelo</th><th>Ambiente</th><th>Estado físico</th><th>Operativo</th><th>Verificación</th><th>Préstamo</th>${verCta ? '<th>Cuentadante</th>' : ''}<th style="min-width:230px">Acciones</th></tr></thead><tbody>
+      ${rows.map(e => `<tr><td><b>${e.placa}</b><div class="muted small">ID interno ${e.id}</div></td><td>${e.tipo}<div class="muted small">${e.modelo}</div></td><td>${ambTxt(e.amb)}</td>
+        <td>${tagFis(e.fis)}</td><td>${tagOp(e.op)}</td><td>${tagVer(e.ver)}</td><td>${e.prest ? '<span class="tag t-warn">En préstamo</span>' : '<span class="muted">—</span>'}</td>${verCta ? `<td>${e.cta}</td>` : ''}
+        <td><div class="row-actions"><button class="btn sm" data-ficha="${e.id}">Ficha</button><button class="btn sm" data-hist="${e.id}">Historial</button>
+        ${state.rol !== APR ? `<button class="btn sm" data-menu="${e.id}" aria-haspopup="menu" aria-expanded="${state.openMenu === e.id}" aria-label="Más acciones para ${e.placa}">⋯</button>
+        <div class="menu ${state.openMenu === e.id ? 'open' : ''}" role="menu" aria-label="Acciones de ${e.placa}">${accionesFila(e).map(([t, p]) => t === '—' ? '<hr>' : `<button role="menuitem" data-accion="${p}" data-titulo="${t}" class="${p === 'delete' ? 'danger' : ''}">${t}</button>`).join('')}</div>` : ''}
+        </div></td></tr>`).join('')}
+      </tbody></table></div>
+      <div class="pager"><span class="small muted">Página ${state.page} de ${pages}</span>
+        <div style="display:flex;gap:6px;align-items:center"><button class="btn sm" id="prev" ${state.page === 1 ? 'disabled' : ''}>‹ Anterior</button><button class="btn sm" id="next" ${state.page === pages ? 'disabled' : ''}>Siguiente ›</button>
+        <label class="small">Por página <select><option>25</option><option>50</option><option>100</option></select></label></div></div>
+    </div>`;
+  }
+  return body;
+}
+function bindInventario(root) {
+  root.querySelectorAll('[data-vista]').forEach(b => b.onclick = () => { state.vista = b.dataset.vista; state.page = 1; render(); });
+  const mv = root.querySelector('#misVacio'); if (mv) mv.onchange = () => { state.misVacio = mv.checked; render(); };
+  root.querySelectorAll('[data-ficha]').forEach(b => b.onclick = () => { state.fichaTab = 'resumen'; go('ficha'); });
+  root.querySelectorAll('[data-hist]').forEach(b => b.onclick = () => { state.fichaTab = 'historial'; state.tiposHist = new Set(); go('ficha'); });
+  root.querySelectorAll('[data-menu]').forEach(b => b.onclick = ev => {
+    ev.stopPropagation(); const id = Number(b.dataset.menu); state.openMenu = state.openMenu === id ? null : id; render();
+    const first = document.querySelector('.menu.open [role=menuitem]'); if (first) first.focus();
+  });
+  root.querySelectorAll('[data-accion]').forEach(b => b.onclick = () => {
+    const p = b.dataset.accion; state.openMenu = null; render();
+    if (p === 'edit') toast('La edición en línea actual se conserva (movimiento de equipo verificado sigue exigiendo una autorización aprobada de un solo uso).');
+    else if (p === 'delete') toast('Se conserva la confirmación destructiva actual (frase «confirmar accion»).');
+    else toast(`<b>${b.dataset.titulo}</b>: abre <code>${p}&volver=/equipos/consultar</code> con el equipo ya cargado y un botón «Volver a la ficha/listado».`);
+  });
+  const q = id => root.querySelector(id);
+  if (q('#prev')) q('#prev').onclick = () => { state.page--; render(); };
+  if (q('#next')) q('#next').onclick = () => { state.page++; render(); };
+  if (q('#aplicar')) q('#aplicar').onclick = () => toast('Los filtros viajan en la URL (<code>/equipos/consultar?vista=todos&ambiente=12&ambiente=14&estado_operativo=En+Uso</code>): se pueden compartir y sobreviven a volver atrás.');
+  if (q('#limpiar')) q('#limpiar').onclick = () => toast('Limpia los filtros y vuelve a la página 1.');
+  if (q('#cols')) q('#cols').onclick = () => toast('Selector de columnas actual (se guarda por navegador).');
+  if (q('#excel')) q('#excel').onclick = () => toast('Exporta los <b>312</b> equipos del filtro (todas las páginas), no solo los visibles. Celdas saneadas contra fórmulas.');
+  if (q('#informe')) q('#informe').onclick = () => go('informe');
+}
+
+// ---------- Ficha de equipo ----------
+function eventos() {
+  const esApr = state.rol === APR;
+  const actor = (n, r) => esApr && n !== 'Tú' ? `<i>${r}</i>` : `${n} <span class="muted">(${r})</span>`;
+  return [
+    { dia: 'Miércoles 24 sep 2026', h: '10:42', tipo: 'verificacion', t: 'Verificación: Con Novedad', tag: tagVer('Con Novedad'),
+      meta: `${actor('Laura P.', 'Instructor')} · AMB-303 · clase «Diseño web», ficha 2758421, jornada Mañana`, obs: 'Teclado con dos teclas sueltas.', ref: 'verificacion:5512',
+      linked: '<b>Novedad #88 · Daño físico · Pendiente</b> — registrada en la misma verificación (mismo actor, misma descripción, 10 s después). Se agrupa para no mostrar el hecho dos veces; ambas fuentes conservan su referencia: <span class="ref">novedad:88</span>' },
+    { dia: 'Miércoles 24 sep 2026', h: '08:05', tipo: 'uso', t: 'Sesión de uso · 08:05 → 11:58 (3 h 53 min)', tag: '<span class="tag t-ok">Cerrada</span>',
+      meta: `${actor(esApr ? 'Tú' : 'Julián P.', 'Aprendiz sin cuenta · autoservicio')} · clase «Diseño web», ficha 2758421 · cerrada al finalizar la clase`, ref: 'uso:20931' },
+    { dia: 'Sábado 20 sep 2026', h: '15:10', tipo: 'movimiento', t: 'Movimiento de ambiente: AMB-304 → AMB-303', tag: '<span class="tag t-info">Con autorización</span>',
+      meta: `Registrado por ${actor('Carlos M.', 'Cuentadante')} · autorizado por ${actor('Sofía A.', 'Administrador')} · motivo: «Refuerzo de aula 303»`, ref: 'movimiento:7781 · autorizacion:31', noApr: false },
+    { dia: 'Viernes 19 sep 2026', h: '09:00', tipo: 'autorizacion', t: 'Autorización #31 aprobada', tag: '<span class="tag t-ok">Aprobada</span>', meta: `${actor('Sofía A.', 'Administrador')} · usada el 20 sep en el movimiento 7781`, ref: 'autorizacion:31', noApr: true },
+    { dia: 'Jueves 18 sep 2026', h: '16:22', tipo: 'autorizacion', t: 'Autorización #31 solicitada (AMB-304 → AMB-303)', tag: '<span class="tag t-gray">Pendiente → resuelta</span>', meta: `${actor('Carlos M.', 'Cuentadante')}`, ref: 'autorizacion:31', noApr: true },
+    { dia: 'Miércoles 10 sep 2026', h: '14:00', tipo: 'mantenimiento', t: 'Mantenimiento preventivo · Completado', tag: '<span class="tag t-ok">Completado</span>', meta: `Técnico ${actor('Andrés V.', 'Técnico')} · limpieza interna y cambio de pasta térmica`, ref: 'mantenimiento:402',
+      linked: '<b>Reporte automático #219</b> generado por el mismo mantenimiento — agrupado aquí. <span class="ref">reporte:219</span>' },
+    { dia: 'Martes 02 sep 2026', h: '07:30', tipo: 'responsable', t: 'Responsable asignado: Principal', tag: '<span class="tag t-ok">Activo</span>', meta: `${actor(esApr ? 'Tú' : 'Julián P.', 'Aprendiz')} · asignado por ${actor('Laura P.', 'Instructor')}`, ref: 'responsable:3310' },
+    { dia: 'Sábado 30 ago 2026', h: '18:00', tipo: 'responsable', t: 'Responsabilidad finalizada: Secundario', tag: '<span class="tag t-gray">Finalizado</span>', meta: `${actor('Marta L.', 'Aprendiz')}`, ref: 'responsable:3102', noApr: true }
+  ].filter(e => !(esApr && e.noApr));
+}
+const TIPOS = [['verificacion', 'Verificaciones'], ['movimiento', 'Movimientos'], ['responsable', 'Responsables'], ['uso', 'Sesiones de uso'], ['autorizacion', 'Autorizaciones'], ['novedad', 'Novedades'], ['reporte', 'Reportes'], ['mantenimiento', 'Mantenimiento'], ['estado', 'Cambios de estado']];
+function renderHistorial() {
+  const evs = eventos().filter(e => state.tiposHist.size === 0 || state.tiposHist.has(e.tipo) || (e.linked && ((state.tiposHist.has('novedad') && e.tipo === 'verificacion') || (state.tiposHist.has('reporte') && e.tipo === 'mantenimiento'))));
+  const counts = t => eventos().filter(e => e.tipo === t).length + (t === 'novedad' ? 1 : t === 'reporte' ? 1 : 0);
+  const tipos = TIPOS.filter(([k]) => !(state.rol === APR && k === 'autorizacion'));
+  let html = `<div class="toolbar" style="margin-top:0">
+    <div class="chips" role="group" aria-label="Tipos de evento"><button class="chip" data-tipo="" aria-pressed="${state.tiposHist.size === 0}">Todo</button>${tipos.map(([k, l]) => `<button class="chip" data-tipo="${k}" aria-pressed="${state.tiposHist.has(k)}">${l} (${counts(k)})</button>`).join('')}</div></div>
+    <div class="filters" style="margin-bottom:10px"><label class="field">Desde<input type="date" value="2026-08-01"></label><label class="field">Hasta<input type="date" value="2026-09-25"></label></div>
+    <p class="small muted">Orden: más reciente primero (fecha, luego tipo y referencia para desempatar). Horas en hora de Colombia (COT, UTC−5). ${state.rol === APR ? 'Como Aprendiz ves solo equipos vinculados a ti; los demás actores se muestran por rol.' : ''}</p>`;
+  let dia = null;
+  for (const e of evs) {
+    if (e.dia !== dia) { dia = e.dia; html += `<div class="timeline-day">${dia}</div>`; }
+    html += `<article class="event"><div class="hora">${e.h}<span>COT</span></div><div><h4>${e.t} ${e.tag}</h4><div class="meta">${e.meta}</div>${e.obs ? `<div style="margin-top:4px">«${e.obs}»</div>` : ''}
+      <div style="display:flex;gap:10px;align-items:center;margin-top:6px"><span class="ref">${e.ref}</span><a href="#" onclick="toast('Abre el registro fuente si tu rol puede verlo.');return false">Ver detalle</a></div>
+      ${e.linked ? `<div class="linked">${e.linked}</div>` : ''}</div></article>`;
+  }
+  if (!evs.length) html += '<div class="empty">No hay eventos de ese tipo en el rango.</div>';
+  html += `<div class="nodata"><b>Entregas y devoluciones físicas:</b> sin datos registrados — el sistema no las guarda como evento propio; solo existen el inicio/fin de sesiones de uso y la finalización de responsabilidades.</div>
+    <div class="nodata"><b>Cambios en una responsabilidad (horario, observaciones):</b> sin datos registrados — se editan sobre el mismo registro. Se muestran solo alta y finalización.</div>
+    <div class="pager"><span class="small muted">Eventos 1–${evs.length} de ${evs.length}</span><div><button class="btn sm" disabled>‹</button> <button class="btn sm" disabled>›</button></div></div>`;
+  return html;
+}
+function renderFicha() {
+  const tabs = [['resumen', 'Resumen'], ['responsables', 'Responsables y préstamos'], ['historial', 'Historial'], ['incidencias', 'Incidencias y mantenimiento'], ['imagenes', 'Imágenes']];
+  const acc = [];
+  if (can([INS, CTA])) acc.push('<button class="btn primary" data-a="/equipos/verificar?equipo=1045">Verificar</button>');
+  if (can(STAFF)) acc.push('<button class="btn" data-a="/novedades?tab=crear&equipo=1045">Registrar novedad</button>');
+  if (can(STAFF)) acc.push('<button class="btn" data-a="/equipos/autorizaciones?equipo=1045#solicitar">Solicitar movimiento</button>');
+  let panel = '';
+  if (state.fichaTab === 'resumen') {
+    panel = `<div class="grid-2"><div class="card"><dl class="kv">
+      <dt>Placa (código de inventario)</dt><dd><b>9211045</b></dd><dt>ID interno</dt><dd>1045 <span class="muted small">(no es la placa)</span></dd>
+      <dt>Tipo / modelo</dt><dd>Portátil · Latitude 5420</dd><dt>Ambiente</dt><dd><a href="#" data-go="ambiente">AMB-303 · Aula 303 Multimedia</a> <span class="muted small">(id_ambiente 12)</span></dd>
+      <dt>Estado físico</dt><dd>${tagFis('Bueno')}</dd><dt>Operativo</dt><dd>${tagOp('En Uso')}</dd><dt>Verificación</dt><dd>${tagVer('Con Novedad')} <span class="muted small">24 sep 10:42</span></dd>
+      ${can([ADMIN, CTA]) ? '<dt>Cuentadante</dt><dd>Carlos M. · doc. ***4821</dd><dt>Valor de ingreso</dt><dd>$ 3.450.000</dd>' : ''}
+      </dl></div><div class="card"><div class="img" style="aspect-ratio:16/10">Imagen principal</div></div></div>`;
+  } else if (state.fichaTab === 'responsables') {
+    panel = `<div class="grid-2"><div class="card"><h3 style="margin-top:0">Responsables asignados</h3><p class="small muted">Asignación de responsabilidad: <b>no demuestra uso</b>.</p>
+      <div class="table-wrap"><table style="min-width:0"><thead><tr><th>Persona</th><th>Tipo</th><th>Desde</th>${can(STAFF) ? '<th></th>' : ''}</tr></thead><tbody>
+      <tr><td>${state.rol === APR ? 'Tú' : 'Julián P.'} <div class="muted small">Aprendiz · ficha 2758421</div></td><td><span class="tag t-ok">Principal</span></td><td>02/09/2026</td>${can(STAFF) ? '<td><button class="btn sm">Editar</button></td>' : ''}</tr>
+      ${state.rol === APR ? '' : '<tr><td>Laura P. <div class="muted small">Instructor</div></td><td><span class="tag t-info">Secundario</span></td><td>15/09/2026</td><td><button class="btn sm">Editar</button></td></tr>'}
+      </tbody></table></div>${can(STAFF) ? '<div class="toolbar"><button class="btn" data-a="/equipos/asignar?equipo=1045">Asignar responsable</button></div>' : ''}</div>
+      <div class="card"><h3 style="margin-top:0">Préstamo / sesión de uso en curso</h3>
+      <dl class="kv"><dt>Usuario</dt><dd>${state.rol === APR ? 'Tú' : 'Julián P.'} <span class="muted small">(Aprendiz sin cuenta · autoservicio)</span></dd><dt>Desde</dt><dd>25 sep 2026 08:03 COT · hace 2 h 10 min</dd><dt>Clase</dt><dd>Diseño web · ficha 2758421 · se cierra al finalizar la clase</dd></dl>
+      ${can(STAFF) ? '<div class="toolbar"><button class="btn" data-a="/equipos/detalle/1045?por=id&tab=responsables">Registrar uso por aprendiz</button><button class="btn" data-go="informe">Ver en informe de uso</button></div>' : ''}</div></div>`;
+  } else if (state.fichaTab === 'historial') {
+    panel = `<div class="card">${renderHistorial()}</div>`;
+  } else if (state.fichaTab === 'incidencias') {
+    panel = `<div class="card"><div class="toolbar" style="margin-top:0">${can(STAFF) ? '<button class="btn primary" data-a="/novedades?tab=crear&equipo=1045">Registrar novedad</button>' : ''}${can([ADMIN, CTA]) ? '<button class="btn" data-a="/mantenimientos?tab=crear&equipo=1045">Registrar mantenimiento</button>' : ''}</div>
+      <div class="table-wrap"><table><thead><tr><th>Fecha</th><th>Tipo</th><th>Detalle</th><th>Estado</th><th>Ref.</th></tr></thead><tbody>
+      <tr><td>24/09/2026 10:42</td><td>Novedad · Daño físico</td><td>Teclado con dos teclas sueltas (desde verificación 5512)</td><td><span class="tag t-warn">Pendiente</span></td><td class="ref">novedad:88</td></tr>
+      <tr><td>10/09/2026 14:00</td><td>Mantenimiento preventivo</td><td>Limpieza interna · reporte automático 219 agrupado</td><td><span class="tag t-ok">Completado</span></td><td class="ref">mantenimiento:402</td></tr>
+      <tr><td>02/03/2027</td><td>Mantenimiento programado</td><td>Próximo preventivo</td><td><span class="tag t-info">Programado</span></td><td class="ref">mantenimiento:455</td></tr>
+      </tbody></table></div></div>`;
+  } else {
+    panel = `<div class="card"><div class="toolbar" style="margin-top:0">${can([ADMIN, CTA]) ? '<button class="btn">Cargar imágenes</button>' : '<span class="muted small">Tu rol puede ver las imágenes pero no subirlas.</span>'}</div><div class="imgs"><div class="img">Principal</div><div class="img">Lateral</div><div class="img">Serie</div><div class="img">Daño</div></div></div>`;
+  }
+  return `${sectionTabs()}
+    <div class="toolbar" style="margin-top:0"><button class="btn sm" data-go="inventario">‹ Volver al inventario</button><span class="muted small">Equipos e inventario › Inventario › 9211045</span></div>
+    <div class="page-title"><h2>Portátil Latitude 5420 · 9211045</h2>${tagOp('En Uso')} ${tagVer('Con Novedad')}<span class="spacer" style="flex:1"></span>${acc.join('')}
+      ${state.rol !== APR ? `<div class="row-actions"><button class="btn" id="masFicha" aria-haspopup="menu" aria-expanded="${state.openMenu === 'ficha'}">Más acciones ▾</button><div class="menu ${state.openMenu === 'ficha' ? 'open' : ''}" role="menu">${accionesFila(EQUIPOS[0]).map(([t, p]) => t === '—' ? '<hr>' : `<button role="menuitem" data-a="${p}">${t}</button>`).join('')}</div></div>` : ''}</div>
+    <div class="inner-tabs" role="tablist" aria-label="Secciones de la ficha">${tabs.map(([k, l]) => `<button role="tab" data-ftab="${k}" aria-selected="${state.fichaTab === k}">${l}</button>`).join('')}</div>
+    ${panel}`;
+}
+function bindFicha(root) {
+  root.querySelectorAll('[data-ftab]').forEach(b => b.onclick = () => { state.fichaTab = b.dataset.ftab; render(); });
+  root.querySelectorAll('[data-tipo]').forEach(b => b.onclick = () => {
+    const t = b.dataset.tipo; if (!t) state.tiposHist = new Set(); else { state.tiposHist.has(t) ? state.tiposHist.delete(t) : state.tiposHist.add(t); } render();
+  });
+  const mf = root.querySelector('#masFicha'); if (mf) mf.onclick = ev => { ev.stopPropagation(); state.openMenu = state.openMenu === 'ficha' ? null : 'ficha'; render(); };
+  root.querySelectorAll('[data-a]').forEach(b => b.onclick = () => toast(`Abre <code>${b.dataset.a}&volver=/equipos/detalle/1045?por=id</code> con el equipo precargado; al guardar vuelve a esta ficha con los datos actualizados.`));
+}
+
+// ---------- Ficha de ambiente ----------
+function renderAmbiente() {
+  const tabs = [['resumen', 'Resumen'], ['responsables', 'Responsables'], ['inventario', 'Inventario (24)'], ['horarios', 'Horarios'], ['imagenes', 'Imágenes']];
+  let panel = '';
+  if (state.ambTab === 'resumen') {
+    panel = `<div class="kpis"><div class="kpi eq"><div class="v">24</div><div class="l">Total de equipos</div></div><div class="kpi"><div class="v">15</div><div class="l">Disponibles*</div></div><div class="kpi"><div class="v">4</div><div class="l">En uso</div></div><div class="kpi"><div class="v">2</div><div class="l">En mantenimiento</div></div><div class="kpi"><div class="v">2</div><div class="l">Dañados</div></div><div class="kpi"><div class="v">1</div><div class="l">Dados de baja</div></div></div>
+      <div class="note">15 + 4 + 2 + 2 + 1 = <b>24</b>. *Incluye 3 equipos sin estado operativo registrado, contados como «Disponible» con la misma regla del listado de inventario. Antes la ficha solo sumaba 3 estados y omitía estos casos, por eso el total «no cuadraba» sin haber duplicados.</div>
+      <div class="card"><dl class="kv"><dt>Código / id</dt><dd>AMB-303 · id_ambiente 12</dd><dt>Tipo</dt><dd>Aula</dd><dt>Estado</dt><dd><span class="tag t-ok">Activo</span></dd><dt>Capacidad</dt><dd>30 personas</dd><dt>Edificio / piso</dt><dd>Bloque B · piso 3</dd><dt>Uso ahora</dt><dd>Clase «Diseño web» en curso (07:00–12:00) · Laura P.</dd></dl></div>`;
+  } else if (state.ambTab === 'responsables') {
+    panel = `<div class="grid-2"><div class="card"><h3 style="margin-top:0">Cuentadantes</h3><p><span class="tag t-ok">Principal</span> Carlos M.</p><p><span class="tag t-info">Secundario</span> Laura P.</p>${can([ADMIN]) ? '<button class="btn">Gestionar cuentadantes</button>' : ''}</div>
+      <div class="card"><h3 style="margin-top:0">Instructores autorizados</h3><p>Laura P. · Mañana (permanente)</p><p>Pedro G. · Tarde (permanente)</p><p class="small muted">Uso recurrente: Laura P., 5 martes consecutivos.</p>${can([ADMIN]) ? '<button class="btn">Asignar instructor a este ambiente</button>' : ''}</div></div>`;
+  } else if (state.ambTab === 'inventario') {
+    panel = `<div class="card"><div class="toolbar" style="margin-top:0"><button class="btn" data-go="inventario">Ver en el inventario con filtro AMB-303</button></div><div class="table-wrap"><table><thead><tr><th>Placa</th><th>ID</th><th>Tipo / modelo</th><th>Operativo</th><th>Físico</th><th></th></tr></thead><tbody>
+      ${EQUIPOS.filter(e => e.amb === 12).map(e => `<tr><td><b>${e.placa}</b></td><td>${e.id}</td><td>${e.tipo} · ${e.modelo}</td><td>${tagOp(e.op)}</td><td>${tagFis(e.fis)}</td><td><button class="btn sm" data-go="ficha">Ficha</button></td></tr>`).join('')}</tbody></table></div></div>`;
+  } else if (state.ambTab === 'horarios') {
+    panel = `<div class="card"><div class="filters"><label class="field">Desde<input type="date" value="2026-09-22"></label><label class="field">Hasta<input type="date" value="2026-09-28"></label><label class="field">Estado<select><option>Todos</option><option>Programada</option><option>En Curso</option><option>Finalizada</option><option>Cancelada</option></select></label></div>
+      <div class="toolbar">${can(STAFF) ? '<button class="btn primary">Nueva clase en este ambiente</button>' : ''}${can([ADMIN]) ? '<button class="btn">Importar horarios (Excel)</button><button class="btn">Plantilla</button>' : ''}<span class="spacer"></span><button class="btn" onclick="toast('Abre /horarios?ambiente=12: la agenda global de la misma sección, prefiltrada.')">Abrir en la agenda global</button></div>
+      <p class="small muted">Solo clases de <b>id_ambiente 12</b>. Iniciar y finalizar siguen siendo acciones manuales (sin sincronización automática).</p>
+      <div class="table-wrap"><table><thead><tr><th>Fecha</th><th>Horario</th><th>Clase</th><th>Ficha</th><th>Instructor</th><th>Estado</th><th></th></tr></thead><tbody>
+      <tr><td>Jue 25/09</td><td>07:00–12:00</td><td>Diseño web</td><td>2758421</td><td>Laura P.</td><td><span class="tag t-warn">En Curso</span></td><td><button class="btn sm">Finalizar…</button></td></tr>
+      <tr><td>Jue 25/09</td><td>13:00–18:00</td><td>Bases de datos</td><td>2758430</td><td>Pedro G.</td><td><span class="tag t-info">Programada</span></td><td><button class="btn sm">Iniciar…</button></td></tr>
+      <tr><td>Vie 26/09</td><td>07:00–12:00</td><td>Diseño web</td><td>2758421</td><td>Laura P.</td><td><span class="tag t-info">Programada</span></td><td></td></tr>
+      <tr><td>Mar 23/09</td><td>07:00–12:00</td><td>Diseño web</td><td>2758421</td><td>Laura P.</td><td><span class="tag t-gray">Finalizada</span></td><td></td></tr>
+      </tbody></table></div></div>`;
+  } else {
+    panel = `<div class="card"><div class="toolbar" style="margin-top:0">${can([ADMIN]) ? '<button class="btn">Subir imágenes</button>' : '<span class="muted small">Solo quien puede editar el ambiente sube imágenes.</span>'}</div><div class="imgs"><div class="img">Panorámica</div><div class="img">Plano</div><div class="img">Detalle</div></div></div>`;
+  }
+  return `${sectionTabs()}
+    <div class="toolbar" style="margin-top:0"><button class="btn sm" onclick="toast('Vuelve al listado de ambientes.')">‹ Ambientes</button><span class="muted small">Ambientes y horarios › AMB-303</span></div>
+    <div class="page-title"><h2>Aula 303 Multimedia · AMB-303</h2><span class="tag t-ok">Activo</span><span style="flex:1"></span>${can([ADMIN]) ? '<button class="btn">Editar ambiente</button><button class="btn">Asignar instructor</button>' : ''}</div>
+    <div class="inner-tabs" role="tablist" aria-label="Secciones del ambiente">${tabs.map(([k, l]) => `<button role="tab" data-atab="${k}" aria-selected="${state.ambTab === k}">${l}</button>`).join('')}</div>${panel}`;
+}
+function bindAmbiente(root) { root.querySelectorAll('[data-atab]').forEach(b => b.onclick = () => { state.ambTab = b.dataset.atab; render(); }); }
+
+// ---------- Informe ----------
+function renderInforme() {
+  if (state.rol === APR) return `${sectionTabs()}<div class="card forbidden"><div class="big">🔒</div><h2>No tienes acceso al informe de uso</h2><p class="muted">El servidor responde 403 también si se llama directamente al endpoint o a la exportación.</p></div>`;
+  const admin = state.rol === ADMIN;
+  const doc = d => admin ? d : `***${d.slice(-4)}`;
+  const filas = [
+    { rel: 'uso', relT: 'Uso por aprendiz', placa: '9211045', id: 1045, eq: 'Portátil · Latitude 5420', amb: 'AMB-303', ambNota: 'de la clase', resp: 'Carlos M.', usr: 'Julián P.', doc: doc('1002003004'), rol: 'Aprendiz (sin cuenta)', clase: 'Diseño web · 2758421', ini: '24/09 08:05', fin: '24/09 11:58', dur: '3 h 53 min', origen: 'Autoservicio', estado: 'Cerrada', ref: 'uso:20931' },
+    { rel: 'uso', relT: 'Uso por aprendiz', placa: '9211045', id: 1045, eq: 'Portátil · Latitude 5420', amb: 'AMB-303', ambNota: 'de la clase', resp: 'Carlos M.', usr: 'Julián P.', doc: doc('1002003004'), rol: 'Aprendiz (sin cuenta)', clase: 'Diseño web · 2758421', ini: '25/09 08:03', fin: 'En uso', dur: '2 h 10 min (en curso, no suma)', origen: 'Autoservicio', estado: 'Abierta', ref: 'uso:21007' },
+    { rel: 'uso', relT: 'Sesión de uso', placa: '9211103', id: 1103, eq: 'Torre · OptiPlex 7090', amb: 'AMB-304', ambNota: 'actual del equipo', resp: 'Carlos M.', usr: 'Rosa T.', doc: doc('52999888'), rol: 'Instructor', clase: 'sin dato', ini: '22/09 13:10', fin: '22/09 17:40', dur: '4 h 30 min', origen: 'App', estado: 'Cerrada', ref: 'uso:20877' },
+    { rel: 'uso', relT: 'Uso por aprendiz', placa: '9211210', id: 1210, eq: 'Switch · Catalyst 2960', amb: 'LAB-02', ambNota: 'actual del equipo', resp: 'Diana R.', usr: 'Kevin S.', doc: doc('1099887766'), rol: 'Aprendiz (registro externo)', clase: 'sin dato', ini: '02/09 09:12', fin: 'En uso', dur: '23 d 1 h (en curso, no suma)', origen: 'Registro externo', estado: 'Abierta', revisar: true, ref: 'uso:20344' },
+    { rel: 'uso', relT: 'Sesión de uso', placa: '9211046', id: 1046, eq: 'Portátil · Latitude 5420', amb: 'AMB-303', ambNota: 'actual del equipo', resp: 'Carlos M.', usr: 'sin dato', doc: 'sin dato', rol: 'sin dato', clase: 'sin dato', ini: '21/09 10:00', fin: '21/09 09:40', dur: 'inválida (fin < inicio), excluida', origen: 'App', estado: 'Cerrada', invalida: true, ref: 'uso:20860' }
+  ];
+  if (state.incluirAsignaciones) filas.push({ rel: 'asig', relT: 'Asignación de responsabilidad', placa: '9211045', id: 1045, eq: 'Portátil · Latitude 5420', amb: 'AMB-303', ambNota: 'actual del equipo', resp: 'Carlos M.', usr: 'Julián P.', doc: doc('1002003004'), rol: 'Aprendiz', clase: '—', ini: '02/09 07:30', fin: 'Activa', dur: 'no aplica (no demuestra uso)', origen: 'Asignación web', estado: 'Activa', ref: 'responsable:3310' });
+  return `${sectionTabs()}
+  <div class="page-title"><h2>Informe de uso y préstamos</h2><span class="muted small">Qué equipo se usó, por quién, dónde, cuándo y cuánto tiempo</span></div>
+  <div class="card"><form class="filters" onsubmit="return false" aria-label="Filtros del informe">
+    <label class="field">Desde<input type="date" value="2026-09-01"></label><label class="field">Hasta<input type="date" value="2026-09-25"></label>
+    <label class="field">Ambiente<select><option>Todos</option><option>AMB-303</option><option>AMB-304</option><option>LAB-02</option></select></label>
+    <label class="field">Equipo (placa o ID)<input placeholder="9211045"></label>
+    <label class="field">Usuario<input placeholder="${admin ? 'Nombre o documento' : 'Nombre'}"></label>
+    <label class="field">Estado de sesión<select><option>Todas</option><option>Abiertas</option><option>Cerradas</option></select></label>
+    <label class="field">Relación<select><option>Uso real (sesiones)</option><option>Solo uso por aprendiz</option><option>Solo sesiones de otros usuarios</option></select></label>
+    <label class="field">Clase / ficha<input placeholder="2758421"></label>
+  </form>
+  <div class="toolbar"><label class="small"><input type="checkbox" id="asig" ${state.incluirAsignaciones ? 'checked' : ''}> Incluir asignaciones de responsabilidad (se rotulan aparte: no demuestran uso)</label><span class="spacer"></span>
+    <button class="btn primary" onclick="toast('Actualiza la vista previa en el servidor con estos filtros.')">Generar vista previa</button>
+    <button class="btn" onclick="toast('CSV UTF-8 con BOM: exactamente los 47 registros del filtro (todas las páginas), celdas saneadas contra fórmulas, fechas en hora de Colombia.')">⬇ CSV</button>
+    <button class="btn" onclick="toast('Excel con los 47 registros filtrados y una hoja «Criterios» con filtros, zona horaria y reglas de exclusión.')">⬇ Excel</button></div>
+  </div>
+  <div class="kpis">
+    <div class="kpi"><div class="v">47</div><div class="l">Sesiones en el rango</div></div><div class="kpi"><div class="v">6</div><div class="l">Abiertas (en uso)</div></div><div class="kpi"><div class="v">41</div><div class="l">Cerradas</div></div>
+    <div class="kpi"><div class="v">128 h 40 min</div><div class="l">Duración total válida</div></div><div class="kpi"><div class="v">2</div><div class="l">Excluidas por dato inválido</div></div><div class="kpi"><div class="v" style="color:var(--err)">1</div><div class="l">Abiertas &gt; 24 h: revisar</div></div>
+    <div class="kpi"><div class="v">19</div><div class="l">Equipos distintos</div></div><div class="kpi"><div class="v">23</div><div class="l">Usuarios distintos</div></div>
+  </div>
+  <div class="warnbox">1 sesión lleva <b>23 días</b> abierta (registro externo sin clase): ningún flujo la cierra automáticamente. Se marca para revisión; <b>el informe no la cierra</b>.</div>
+  <div class="table-wrap"><table style="min-width:1250px"><thead><tr><th>Relación</th><th>Placa / ID</th><th>Equipo</th><th>Ambiente</th><th>Resp. institucional</th><th>Usuario de la sesión</th><th>Rol</th><th>Clase / ficha</th><th>Inicio</th><th>Fin</th><th>Duración</th><th>Origen · estado</th><th>Ref.</th></tr></thead><tbody>
+  ${filas.map(f => `<tr ${f.rel === 'asig' ? 'style="background:var(--gris-50)"' : ''}><td><span class="tag ${f.rel === 'asig' ? 't-gray' : f.relT.startsWith('Uso por') ? 't-mor' : 't-info'}">${f.relT}</span></td>
+    <td><b>${f.placa}</b><div class="muted small">ID ${f.id}</div></td><td>${f.eq}</td><td>${f.amb}<div class="muted small">${f.ambNota}</div></td><td>${f.resp}</td>
+    <td>${f.usr === 'sin dato' ? '<i class="muted">sin dato</i>' : f.usr}<div class="muted small">${f.doc === 'sin dato' ? '' : 'doc. ' + f.doc}</div></td><td>${f.rol === 'sin dato' ? '<i class="muted">sin dato</i>' : f.rol}</td><td>${f.clase === 'sin dato' ? '<i class="muted">sin dato</i>' : f.clase}</td>
+    <td>${f.ini}</td><td>${f.fin === 'En uso' ? '<span class="tag t-warn">En uso</span>' : f.fin}</td>
+    <td>${f.invalida ? `<span class="tag t-err">${f.dur}</span>` : f.dur}${f.revisar ? '<div><span class="tag t-err">Revisar</span></div>' : ''}</td><td>${f.origen}<div class="muted small">${f.estado}</div></td><td class="ref">${f.ref}</td></tr>`).join('')}
+  </tbody></table></div>
+  <div class="pager"><span class="small muted">Registros 1–${filas.length} de ${47 + (state.incluirAsignaciones ? 12 : 0)} · horas en COT (UTC−5)</span><div><button class="btn sm" disabled>‹</button> <button class="btn sm">›</button></div></div>
+  <div class="card" style="margin-top:14px"><h3 style="margin-top:0">Criterios del informe</h3><ul class="small" style="margin:0;padding-left:18px">
+    <li>Rango por <b>solapamiento</b>: entra toda sesión cuyo intervalo toque el rango (máximo 366 días).</li>
+    <li>Duración = fin − inicio. Sesiones abiertas se muestran con el tiempo transcurrido pero <b>no suman</b>; fin anterior a inicio o falta de inicio → «sin dato»/inválida y se excluye de los agregados.</li>
+    <li>«Dónde»: ambiente de la clase asociada; si no hay clase, el ambiente <b>actual</b> del equipo, rotulado como tal.</li>
+    <li>Una asignación de responsabilidad nunca cuenta como uso.</li>
+    <li>Documento: ${admin ? 'completo para Administrador' : 'enmascarado (solo últimos 4 dígitos) para tu rol'}; nunca se exporta correo.</li>
+    <li>Alcance: el mismo del servidor que la ficha de equipo para tu rol; exportación = mismos filtros, todas las páginas.</li></ul></div>`;
+}
+function bindInforme(root) { const a = root.querySelector('#asig'); if (a) a.onchange = () => { state.incluirAsignaciones = a.checked; render(); }; }
+
+// ---------- Rutas antiguas ----------
+function renderRutas() {
+  const r = [
+    ['/equipos/consultar', 'Inventario (vista canónica)', 'Se conserva'], ['/mis-equipos', '/equipos/consultar?vista=mi_responsabilidad', 'Redirige'],
+    ['/equipos/asignar · /asignaciones', 'Pestaña Asignaciones', 'Se conservan'], ['/equipos/verificar', 'Pestaña Verificar', 'Se conserva'],
+    ['/equipos/prestados', 'Pestaña Préstamos en curso', 'Se conserva'], ['/equipos/historial-verificaciones/:codigo', 'Ficha › Historial filtrado a verificaciones', 'Redirige'],
+    ['/equipos/historial-movimientos/:codigo', 'Ficha › Historial filtrado a movimientos', 'Redirige'], ['/ambientes · /ambientes/:id', 'Ambientes y horarios', 'Se conservan'],
+    ['/horarios', 'Agenda (misma sección; acepta ?ambiente=)', 'Se conserva'], ['/reportes · /novedades', 'Incidencias y mantenimiento', 'Se conservan'],
+    ['/mantenimientos', 'Incidencias › Mantenimientos', 'Se conserva'], ['/equipos/documento', 'Pestaña Documento PDF (≠ informe de uso)', 'Se conserva']
+  ];
+  return `<div class="page-title"><h2>Rutas antiguas → destino</h2></div><div class="note">Ningún enlace guardado se rompe: las rutas se conservan o redirigen una sola vez, conservando la consulta (sin bucles).</div>
+    <div class="table-wrap"><table><thead><tr><th>Ruta antigua</th><th>Destino</th><th>Decisión</th></tr></thead><tbody>${r.map(x => `<tr><td><code>${x[0]}</code></td><td>${x[1]}</td><td><span class="tag ${x[2] === 'Redirige' ? 't-info' : 't-ok'}">${x[2]}</span></td></tr>`).join('')}</tbody></table></div>`;
+}
+function renderDashboard() {
+  return `<div class="card"><h2 style="margin-top:0">¡Bienvenido, ${state.rol}!</h2><p class="muted">Accesos rápidos actualizados:</p><div class="toolbar">
+    <button class="btn primary" data-go="inventario">Inventario</button>${can(STAFF) ? '<button class="btn" data-go="informe">Informe de uso</button>' : ''}${can([ADMIN, CTA]) ? '<button class="btn" data-go="ambiente">Ambientes y horarios</button><button class="btn">Registrar inventario</button><button class="btn">Documento PDF</button>' : ''}${can(STAFF) ? '<button class="btn">Registrar novedad</button>' : ''}</div></div>`;
+}
+
+// ---------- Render ----------
+function render() {
+  document.getElementById('userLabel').textContent = `Sesión simulada: ${state.rol}`;
+  renderSidebar();
+  const main = document.getElementById('main');
+  const views = { inventario: renderInventario, ficha: renderFicha, ambiente: renderAmbiente, informe: renderInforme, rutas: renderRutas, dashboard: renderDashboard };
+  main.innerHTML = views[state.screen]();
+  bindSectionTabs(main);
+  main.querySelectorAll('[data-go]').forEach(b => b.onclick = ev => { ev.preventDefault(); go(b.dataset.go); });
+  ({ inventario: bindInventario, ficha: bindFicha, ambiente: bindAmbiente, informe: bindInforme })[state.screen]?.(main);
+}
+document.getElementById('rol').onchange = e => { state.rol = e.target.value; state.vista = ''; state.page = 1; render(); };
+document.getElementById('atajo').onchange = e => go(e.target.value);
+document.getElementById('menuBtn').onclick = () => { const s = document.getElementById('sidebar'); s.classList.toggle('open'); document.getElementById('menuBtn').setAttribute('aria-expanded', s.classList.contains('open')); };
+document.addEventListener('click', ev => { if (state.openMenu !== null && !ev.target.closest('.menu')) { state.openMenu = null; render(); } });
+document.addEventListener('keydown', ev => {
+  if (ev.key === 'Escape' && state.openMenu !== null) { state.openMenu = null; render(); return; }
+  const menu = document.querySelector('.menu.open'); if (!menu || !['ArrowDown', 'ArrowUp'].includes(ev.key)) return;
+  const items = [...menu.querySelectorAll('[role=menuitem]')]; const i = items.indexOf(document.activeElement);
+  items[(i + (ev.key === 'ArrowDown' ? 1 : items.length - 1)) % items.length].focus(); ev.preventDefault();
+});
+render();
+</script>
+</body>
+</html>
