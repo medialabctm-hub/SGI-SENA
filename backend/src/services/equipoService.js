@@ -61,6 +61,12 @@ export class EquipoService {
    * @returns {Promise<Object>} Objeto con equipos, paginación y total
    */
   async listarEquipos(filters = {}, pagination = {}, sorting = {}, userId = null, userRole = null) {
+    // Filtrar por cuentadante revela a quién pertenece cada equipo: solo el
+    // Administrador (único rol que elige cuentadante) puede usarlo.
+    if (userRole !== 'Administrador') {
+      delete filters.id_cuentadante;
+    }
+
     // Aplicar filtros según rol
     if (userRole === 'Cuentadante') {
       const ambientesIds = await this.obtenerAmbientesInstructor(userId);

@@ -1,6 +1,13 @@
 import { BaseRepository } from './BaseRepository.js';
 import { logger } from '../utils/logger.js';
 import { currentEquipmentVerificationStatusSql } from '../utils/equipoVerification.js';
+import { escaparLike } from '../utils/equiposListFilters.js';
+
+// Un equipo está «en préstamo» mientras tenga una sesión de uso abierta.
+const EN_PRESTAMO_SQL = `EXISTS (
+  SELECT 1 FROM Historial_Uso_Equipos hu_prestamo
+  WHERE hu_prestamo.codigo_equipo = e.codigo_equipo AND hu_prestamo.estado = 'En Uso'
+)`;
 
 /**
  * EquipoRepository - Repositorio para operaciones de equipos
@@ -75,6 +82,7 @@ export class EquipoRepository extends BaseRepository {
              ee.fecha_actualizacion AS fecha_actualizacion_estado,
              c.nombre_categoria,
              ${currentVerificationStatusSql} AS status_verificacion,
+             ${EN_PRESTAMO_SQL} AS en_prestamo,
              (
                SELECT ie.ruta_imagen
                FROM Imagenes_Equipo ie
@@ -195,6 +203,31 @@ export class EquipoRepository extends BaseRepository {
     if (filters.tipo) {
       conditions.push('e.tipo = ?');
       params.push(filters.tipo);
+    }
+
+    // Filtros por columna de la tabla de inventario. Se suman (AND) al alcance
+    // por rol ya aplicado arriba: pueden reducir el resultado, nunca ampliarlo.
+    if (Array.isArray(filters.ambientesFiltro) && filters.ambientesFiltro.length > 0) {
+      conditions.push(`e.id_ambiente IN (${filters.ambientesFiltro.map(() => '?').join(',')})`);
+      params.push(...filters.ambientesFiltro);
+    }
+    if (filters.placa) {
+      conditions.push('TRIM(e.placa) LIKE ?');
+      params.push(`%${escaparLike(filters.placa)}%`);
+    }
+    if (filters.tipo_modelo) {
+      const patron = `%${escaparLike(filters.tipo_modelo)}%`;
+      conditions.push('(e.tipo LIKE ? OR e.modelo LIKE ?)');
+      params.push(patron, patron);
+    }
+    if (filters.en_prestamo === 'si') {
+      conditions.push(EN_PRESTAMO_SQL);
+    } else if (filters.en_prestamo === 'no') {
+      conditions.push(`NOT ${EN_PRESTAMO_SQL}`);
+    }
+    if (filters.id_cuentadante) {
+      conditions.push('e.id_cuentadante = ?');
+      params.push(filters.id_cuentadante);
     }
 
     // Construir WHERE clause

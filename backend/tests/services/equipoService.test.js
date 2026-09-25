@@ -112,6 +112,39 @@ describe('EquipoService', () => {
       );
     });
 
+    it('conserva el ambiente elegido por el Instructor junto a su alcance', async () => {
+      mockRepository.execute.mockResolvedValue([{ id_ambiente: 1 }, { id_ambiente: 4 }]);
+      mockRepository.findAll.mockResolvedValue({ equipos: [], pagination: {} });
+
+      await service.listarEquipos({ ambientesFiltro: [4] }, {}, {}, 2, 'Instructor');
+
+      expect(mockRepository.findAll).toHaveBeenCalledWith(
+        expect.objectContaining({ ambientesIds: [1, 4], ambientesFiltro: [4] }),
+        expect.anything(),
+        expect.anything()
+      );
+    });
+
+    it.each(['Instructor', 'Cuentadante', 'Aprendiz'])(
+      'descarta el filtro por cuentadante para %s',
+      async (rol) => {
+        mockRepository.execute.mockResolvedValue([{ id_ambiente: 1 }]);
+        mockRepository.findAll.mockResolvedValue({ equipos: [], pagination: {} });
+
+        await service.listarEquipos({ id_cuentadante: 9 }, {}, {}, 2, rol);
+
+        expect(mockRepository.findAll.mock.calls[0][0]).not.toHaveProperty('id_cuentadante');
+      }
+    );
+
+    it('permite al Administrador filtrar por cuentadante', async () => {
+      mockRepository.findAll.mockResolvedValue({ equipos: [], pagination: {} });
+
+      await service.listarEquipos({ id_cuentadante: 9 }, {}, {}, 1, 'Administrador');
+
+      expect(mockRepository.findAll.mock.calls[0][0]).toMatchObject({ id_cuentadante: 9 });
+    });
+
     it('debe aplicar vista_inventario=ambientes para Cuentadante con ambientes', async () => {
       mockRepository.execute.mockResolvedValue([{ id_ambiente: 2 }]);
       mockRepository.findAll.mockResolvedValue({ equipos: [], pagination: {} });

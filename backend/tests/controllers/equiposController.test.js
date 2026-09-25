@@ -147,6 +147,22 @@ describe('listarEquipos', () => {
     const res = mockRes();
     await listarEquipos(req, res);
     expect(mockEquipoService.listarEquipos).toHaveBeenCalled();
+    expect(mockEquipoService.listarEquipos.mock.calls[0][0]).toMatchObject({ ambientesFiltro: [3] });
+  });
+
+  it('keeps the user ambiente filter apart from the role scope', async () => {
+    const req = mockReq({ query: { ambiente: ['12', '14'], placa: '9211', en_prestamo: 'si' } });
+    await listarEquipos(req, mockRes());
+    const filters = mockEquipoService.listarEquipos.mock.calls[0][0];
+    expect(filters).toMatchObject({ ambientesFiltro: [12, 14], placa: '9211', en_prestamo: 'si' });
+    expect(filters).not.toHaveProperty('ambientesIds');
+    expect(filters).not.toHaveProperty('ambiente');
+  });
+
+  it('does not drop the filter when the ambiente reference does not exist', async () => {
+    mockExecute.mockResolvedValueOnce([[]]);
+    await listarEquipos(mockReq({ query: { ambiente: 'Ambiente inexistente' } }), mockRes());
+    expect(mockEquipoService.listarEquipos.mock.calls[0][0]).toMatchObject({ ambientesFiltro: [0] });
   });
 
   it('returns 500 on service error', async () => {

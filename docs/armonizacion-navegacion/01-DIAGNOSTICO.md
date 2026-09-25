@@ -177,6 +177,7 @@ Resultado de seis iteraciones sobre el prototipo `prototipo-navegacion.html` (mi
 | D12 | Filtros **dentro de la tabla** | Una fila de filtros bajo los títulos de columna; «Columnas y filtros» oculta columna y filtro a la vez; etiquetas de filtros activos y «Limpiar filtros»; filtros en la URL. |
 | D13 | Novedades **solo consulta** | Se quita la pestaña «Crear» de Novedades; la novedad se registra desde el botón «Novedad» de la fila, en una ventana dentro del inventario. Los reportes generales (sin equipo) conservan su creación. |
 | D14 | Autorizaciones | Aprobar y rechazar se sigue haciendo dentro de su pantalla, a la que se entra desde el sidebar. |
+| D15 | Informe de préstamos **dentro de Equipos prestados** | Sin entrada propia en el sidebar. La pantalla Equipos prestados tiene botones para generar el informe (Excel y PDF) de los equipos del cuentadante que están en préstamo; por defecto «en préstamo ahora» y, opcionalmente, un rango de fechas. El Administrador puede elegir cuentadante. Se conservan las reglas del informe (uso real ≠ asignación, hora de Colombia, «sin dato», sesiones largas marcadas sin cerrarlas, documento enmascarado salvo Administrador). |
 
 ## 9. Auditoría de duplicados
 

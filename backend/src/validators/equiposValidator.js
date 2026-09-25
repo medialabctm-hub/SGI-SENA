@@ -433,6 +433,11 @@ export const listarEquiposQuerySchema = z.object({
   status_verificacion: z.enum(['Verificado', 'Con Novedad', 'No Verificado']).optional(),
   ambiente: z.union([z.string(), z.array(z.string())]).optional(),
   vista_inventario: z.string().trim().max(50).optional(),
+  // Filtros por columna de «Consultar inventario»
+  placa: z.string().trim().max(100).optional(),
+  tipo_modelo: z.string().trim().max(100).optional(),
+  en_prestamo: z.enum(['si', 'no']).optional(),
+  id_cuentadante: z.coerce.number().int().positive().optional(),
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce
     .number({ error: 'limit debe ser un número' })

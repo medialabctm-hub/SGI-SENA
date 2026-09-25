@@ -19,6 +19,7 @@ import {
 import { AppError, translateDbError } from '../utils/errors.js';
 import { beginEquipmentClaim, lockEquipmentRow } from '../utils/equipmentClaim.js';
 import { currentEquipmentVerificationStatusSql, isEquipmentVerified } from '../utils/equipoVerification.js';
+import { parseListarEquiposQuery, resolverAmbientesIds } from '../utils/equiposListFilters.js';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
@@ -50,58 +51,18 @@ export async function listarEquipos(req, res) {
     const userId = req.user?.id;
     const userRole = req.user?.rol;
 
-    // Extraer filtros de query params
-    const filters = {
-      search: req.query.search || null,
-      estado_fisico: req.query.estado_fisico ? (Array.isArray(req.query.estado_fisico) ? req.query.estado_fisico : [req.query.estado_fisico]) : null,
-      estado_operativo: req.query.estado_operativo ? (Array.isArray(req.query.estado_operativo) ? req.query.estado_operativo : [req.query.estado_operativo]) : null,
-      categoria: req.query.categoria || null,
-      tipo: req.query.tipo || null,
-      fecha_desde: req.query.fecha_desde || null,
-      fecha_hasta: req.query.fecha_hasta || null,
-      valor_min: req.query.valor_min || null,
-      valor_max: req.query.valor_max || null,
-      status_verificacion: req.query.status_verificacion || null,
-      ambiente: req.query.ambiente ? (Array.isArray(req.query.ambiente) ? req.query.ambiente : [req.query.ambiente]) : null,
-      // Vista inventario para Cuentadante con ambientes: ambientes | inventario_total | todos
-      vista_inventario: req.query.vista_inventario || null
-    };
+    // Mismo criterio para la tabla y la exportación (ver utils/equiposListFilters.js).
+    // Zod ya acotó limit ≤ 100 cuando validateQuery está en la ruta.
+    const { filters, pagination, sorting } = parseListarEquiposQuery(req.query);
 
-    // Convertir ambientes a IDs si es necesario
-    if (filters.ambiente && filters.ambiente.length > 0) {
-      const ambienteIds = [];
-      for (const amb of filters.ambiente) {
-        const ambId = parseInt(amb, 10);
-        if (!isNaN(ambId)) {
-          ambienteIds.push(ambId);
-        } else {
-          // Buscar por código o nombre
-          const [[ambRow]] = await defaultDb.execute(
-            'SELECT id_ambiente FROM Ambientes WHERE codigo_ambiente = ? OR nombre_ambiente = ? LIMIT 1',
-            [amb, amb]
-          );
-          if (ambRow?.id_ambiente) {
-            ambienteIds.push(ambRow.id_ambiente);
-          }
-        }
-      }
-      if (ambienteIds.length > 0) {
-        filters.ambientesIds = ambienteIds;
-      }
-      delete filters.ambiente;
+    // El ambiente elegido por el usuario se guarda aparte del alcance por rol
+    // (ambientesIds), para que el repositorio lo intersecte y nunca lo amplíe.
+    if (filters.ambiente) {
+      const ambientesFiltro = await resolverAmbientesIds(defaultDb, filters.ambiente);
+      // Referencias inexistentes no deben desactivar el filtro: se busca un id imposible.
+      filters.ambientesFiltro = ambientesFiltro.length > 0 ? ambientesFiltro : [0];
     }
-
-    // Paginación (Zod ya acotó limit ≤ 100 cuando validateQuery está en la ruta)
-    const pagination = {
-      page: Number(req.query.page) || 1,
-      limit: Number(req.query.limit) || 50
-    };
-
-    // Ordenamiento
-    const sorting = {
-      field: req.query.sort || 'codigo_equipo',
-      order: req.query.order || 'asc'
-    };
+    delete filters.ambiente;
 
     const result = await equipoService.listarEquipos(filters, pagination, sorting, userId, userRole);
     return res.json(result);

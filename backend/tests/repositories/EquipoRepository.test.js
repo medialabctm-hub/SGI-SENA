@@ -138,6 +138,60 @@ describe('EquipoRepository', () => {
       expect(result.pagination.limit).toBe(50);
     });
 
+    it('devuelve si el equipo está en préstamo (sesión de uso abierta)', async () => {
+      setupFindAllMock([], 0);
+
+      await repo.findAll({});
+
+      const mainQuery = db.execute.mock.calls[1][0];
+      expect(mainQuery).toContain('AS en_prestamo');
+      expect(mainQuery).toContain("hu_prestamo.estado = 'En Uso'");
+    });
+
+    it('intersecta el ambiente elegido con el alcance por rol sin reemplazarlo', async () => {
+      setupFindAllMock([], 0);
+
+      await repo.findAll({ ambientesIds: [12, 14], ambientesFiltro: [14] });
+
+      const [countQuery, countParams] = db.execute.mock.calls[0];
+      expect(countQuery).toContain('e.id_ambiente IN (?,?)');
+      expect(countQuery).toContain('e.id_ambiente IN (?)');
+      expect(countParams).toEqual([12, 14, 14]);
+    });
+
+    it('aplica el ambiente elegido también en la vista combinada del cuentadante', async () => {
+      setupFindAllMock([], 0);
+
+      await repo.findAll({ cuentadanteOrAmbientes: { ambientesIds: [12], cuentadanteId: 7 }, ambientesFiltro: [99] });
+
+      const [countQuery, countParams] = db.execute.mock.calls[0];
+      expect(countQuery).toContain('(e.id_ambiente IN (?) OR e.id_cuentadante = ?)');
+      expect(countParams).toEqual([12, 7, 99]);
+    });
+
+    it('filtra por placa, tipo/modelo y cuentadante escapando comodines', async () => {
+      setupFindAllMock([], 0);
+
+      await repo.findAll({ placa: '92_1', tipo_modelo: '50%', id_cuentadante: 3 });
+
+      const [countQuery, countParams] = db.execute.mock.calls[0];
+      expect(countQuery).toContain('TRIM(e.placa) LIKE ?');
+      expect(countQuery).toContain('(e.tipo LIKE ? OR e.modelo LIKE ?)');
+      expect(countQuery).toContain('e.id_cuentadante = ?');
+      expect(countParams).toEqual(['%92\\_1%', '%50\\%%', '%50\\%%', 3]);
+    });
+
+    it('filtra equipos en préstamo y sin préstamo', async () => {
+      setupFindAllMock([], 0);
+      await repo.findAll({ en_prestamo: 'si' });
+      expect(db.execute.mock.calls[0][0]).toMatch(/WHERE EXISTS \(\s*SELECT 1 FROM Historial_Uso_Equipos hu_prestamo/);
+
+      db.execute.mockReset();
+      setupFindAllMock([], 0);
+      await repo.findAll({ en_prestamo: 'no' });
+      expect(db.execute.mock.calls[0][0]).toContain('NOT EXISTS');
+    });
+
     it('debe filtrar por cuentadanteId cuando se provee', async () => {
       setupFindAllMock([], 0);
 
