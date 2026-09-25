@@ -1467,7 +1467,7 @@ export async function obtenerEquiposAmbientesInstructor(req, res) {
       return res.json({ ambientes, equipos: [] });
     }
 
-    const equipoParams = [userId, userId, userId, ...scope.params];
+    const equipoParams = [...scope.params];
 
     const [equipos] = await defaultDb.execute(
       `SELECT 
@@ -1481,20 +1481,13 @@ export async function obtenerEquiposAmbientesInstructor(req, res) {
         e.id_ambiente,
         a.nombre_ambiente,
         a.codigo_ambiente,
-        (SELECT MAX(fecha_verificacion) 
-         FROM Verificaciones_Inventario 
-         WHERE codigo_equipo = e.codigo_equipo 
-         AND id_usuario = ?) AS ultima_verificacion,
-        (SELECT estado_verificacion 
-         FROM Verificaciones_Inventario 
-         WHERE codigo_equipo = e.codigo_equipo 
-         AND id_usuario = ?
-         ORDER BY fecha_verificacion DESC, id_verificacion DESC
-         LIMIT 1) AS estado_verificacion_actual,
-        (SELECT observaciones 
-         FROM Verificaciones_Inventario 
-         WHERE codigo_equipo = e.codigo_equipo 
-         AND id_usuario = ?
+        (SELECT MAX(fecha_verificacion)
+         FROM Verificaciones_Inventario
+         WHERE codigo_equipo = e.codigo_equipo) AS ultima_verificacion,
+        ${currentEquipmentVerificationStatusSql('e')} AS estado_verificacion_actual,
+        (SELECT observaciones
+         FROM Verificaciones_Inventario
+         WHERE codigo_equipo = e.codigo_equipo
          ORDER BY fecha_verificacion DESC, id_verificacion DESC
          LIMIT 1) AS observaciones_verificacion
       FROM Elementos e
