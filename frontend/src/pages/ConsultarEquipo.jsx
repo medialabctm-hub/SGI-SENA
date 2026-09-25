@@ -86,10 +86,12 @@ function definirColumnas({ rol, ambientes, cuentadantes }) {
   ].filter(Boolean)
 }
 
+// Descripción y Atributos (texto largo) quedan disponibles en «Columnas y filtros»
+// pero ocultas por defecto: con las columnas de acciones la tabla ya es ancha.
 const COLUMNAS_POR_DEFECTO = [
   'codigo_inventario', 'tipo', 'modelo', 'consecutivo', 'estado_fisico', 'estado_operativo',
   'fecha_adquisicion', 'valor_ingreso', 'nombre_ambiente', 'status_verificacion', 'en_prestamo',
-  'cuentadante_principal', 'descripcion', 'specs_completas',
+  'cuentadante_principal',
 ]
 
 function leerColumnasGuardadas() {
@@ -163,6 +165,8 @@ export default function ConsultarEquipo() {
   const [paginacion, setPaginacion] = useState({ total: 0, totalPages: 0 })
   const [misEquipos, setMisEquipos] = useState([])
   const [cargando, setCargando] = useState(true)
+  // Tras la primera carga la tabla (y sus filtros) se mantiene visible al recargar.
+  const [yaCargo, setYaCargo] = useState(false)
   const [errorCarga, setErrorCarga] = useState(null)
   const [recarga, setRecarga] = useState(0)
   const [exportando, setExportando] = useState(false)
@@ -255,7 +259,10 @@ export default function ConsultarEquipo() {
         if (esMiResponsabilidad) {
           const res = await fetch('/api/equipos/mis-equipos/asignados', { credentials: 'include' })
           const data = await parseApiResponse(res, 'No se pudieron cargar tus equipos')
-          if (activo) setMisEquipos(Array.isArray(data) ? data : [])
+          if (activo) {
+            setMisEquipos(Array.isArray(data) ? data : [])
+            setYaCargo(true)
+          }
           return
         }
         const params = parametrosApiInventario(estado, { rol, cuentadanteConAmbientes })
@@ -271,6 +278,7 @@ export default function ConsultarEquipo() {
         }
         setEquipos(lista)
         setPaginacion({ total: Number(pag.total) || 0, totalPages: Number(pag.totalPages) || 0 })
+        setYaCargo(true)
       } catch (err) {
         if (activo) setErrorCarga(buildErrorMessage(err, 'No se pudo cargar el inventario'))
       } finally {
@@ -816,7 +824,7 @@ export default function ConsultarEquipo() {
                 </div>
               )}
 
-              {cargando ? (
+              {cargando && !yaCargo ? (
                 <LoadingScreen message="Cargando equipos" />
               ) : errorCarga ? (
                 <div className="users-empty" role="alert">
@@ -828,7 +836,8 @@ export default function ConsultarEquipo() {
               ) : esMiResponsabilidad ? (
                 <MisEquiposTabla equipos={misEquipos} usuario={user} grupos={grupos} onAccion={manejarAccion} />
               ) : (
-                <>
+                <div className={cargando ? 'inventario-actualizando' : undefined} aria-busy={cargando}>
+                  {cargando && <p className="inventario-actualizando-aviso" role="status">Actualizando…</p>}
                   <div className="consultar-equipo-table-wrapper">
                     <table className="users-table consultar-equipo-table inventario-tabla">
                       <caption className="sr-only">Inventario de equipos</caption>
@@ -884,7 +893,7 @@ export default function ConsultarEquipo() {
                     deshabilitado={ocupado}
                     nombre="equipos"
                   />
-                </>
+                </div>
               )}
             </div>
           </div>

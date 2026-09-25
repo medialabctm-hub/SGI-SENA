@@ -129,8 +129,10 @@ describe('Consultar inventario', () => {
     fireEvent.click(screen.getByRole('button', { name: /Filtrar por Ambiente/ }))
     fireEvent.click(await screen.findByRole('checkbox', { name: 'AMB-303 · Aula 303' }))
     await waitFor(() => expect(ultimaListaEquipos().getAll('ambiente')).toEqual(['12']))
-    fireEvent.click(screen.getByRole('button', { name: /Filtrar por Ambiente/ }))
-    fireEvent.click(await screen.findByRole('checkbox', { name: 'AMB-304 · Aula 304' }))
+    // La recarga no desmonta la tabla: la lista sigue abierta para marcar otra opción.
+    await screen.findAllByText('921101')
+    expect(screen.getByRole('checkbox', { name: 'AMB-303 · Aula 303' })).toBeChecked()
+    fireEvent.click(screen.getByRole('checkbox', { name: 'AMB-304 · Aula 304' }))
 
     await waitFor(() => expect(ultimaListaEquipos().getAll('ambiente')).toEqual(['12', '14']))
     expect(ultimaListaEquipos().get('page')).toBe('1')

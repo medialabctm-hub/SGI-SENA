@@ -30,12 +30,18 @@
 }
 
 /* ---------- Filtros por columna ---------- */
-.inventario-fila-filtros th {
-  background: var(--neutral-100);
-  padding: 6px 8px;
+/* La fila de títulos queda con borde fino y la fila de filtros cierra la cabecera. */
+.inventario-tabla thead tr:first-child th {
   border-bottom: 1px solid var(--neutral-200);
+}
+
+.inventario-tabla thead .inventario-fila-filtros th {
+  padding: 8px 10px;
+  background: var(--neutral-100);
+  border-bottom: 2px solid var(--success-700);
   font-weight: 400;
   text-transform: none;
+  letter-spacing: normal;
   vertical-align: top;
 }
 
@@ -289,6 +295,19 @@
 
 .accion-equipo--eliminar {
   --accion-color: var(--error-500);
+}
+
+/* Recarga sin desmontar la tabla: se atenúa mientras llegan los datos. */
+.inventario-actualizando .consultar-equipo-table-wrapper {
+  opacity: 0.55;
+  transition: opacity 0.15s ease;
+}
+
+.inventario-actualizando-aviso {
+  margin: 0 0 8px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--success-900);
 }
 
 /* ---------- Paginación ---------- */

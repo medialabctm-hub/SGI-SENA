@@ -5,9 +5,19 @@ import { FiChevronDown } from 'react-icons/fi'
 /**
  * Filtro de columna con selección múltiple (p. ej. dos ambientes a la vez).
  * La lista se pinta en un portal para no quedar recortada por el scroll
- * horizontal de la tabla; Escape, un clic fuera, el scroll o el cambio de
- * tamaño la cierran.
+ * horizontal de la tabla. Sigue a su botón al desplazarse y se cierra con
+ * Escape, un clic fuera o cuando el botón sale de la pantalla.
  */
+const MARGEN = 8
+
+function calcularPosicion(boton) {
+  const rect = boton.getBoundingClientRect()
+  if (rect.bottom < 0 || rect.top > window.innerHeight) return null
+  const ancho = Math.max(rect.width, 200)
+  const izquierda = Math.min(rect.left, window.innerWidth - ancho - MARGEN)
+  return { top: rect.bottom + 4, left: Math.max(MARGEN, izquierda), minWidth: ancho }
+}
+
 export default function FiltroMultiple({ etiqueta, opciones, valores = [], onCambiar }) {
   const [posicion, setPosicion] = useState(null)
   const boton = useRef(null)
@@ -29,20 +39,20 @@ export default function FiltroMultiple({ etiqueta, opciones, valores = [], onCam
         boton.current?.focus()
       }
     }
-    const cerrarAlMover = evento => {
-      if (lista.current?.contains(evento.target)) return
-      cerrar()
+    const reubicar = evento => {
+      if (evento?.target && lista.current?.contains(evento.target)) return
+      if (boton.current) setPosicion(calcularPosicion(boton.current))
     }
     document.addEventListener('mousedown', cerrarFuera)
     document.addEventListener('keydown', cerrarConEscape)
-    window.addEventListener('scroll', cerrarAlMover, true)
-    window.addEventListener('resize', cerrar)
-    lista.current?.querySelector('input')?.focus()
+    window.addEventListener('scroll', reubicar, true)
+    window.addEventListener('resize', reubicar)
+    lista.current?.querySelector('input')?.focus({ preventScroll: true })
     return () => {
       document.removeEventListener('mousedown', cerrarFuera)
       document.removeEventListener('keydown', cerrarConEscape)
-      window.removeEventListener('scroll', cerrarAlMover, true)
-      window.removeEventListener('resize', cerrar)
+      window.removeEventListener('scroll', reubicar, true)
+      window.removeEventListener('resize', reubicar)
     }
   }, [abierto])
 
@@ -51,10 +61,7 @@ export default function FiltroMultiple({ etiqueta, opciones, valores = [], onCam
       cerrar()
       return
     }
-    const rect = boton.current.getBoundingClientRect()
-    const ancho = Math.max(rect.width, 200)
-    const izquierda = Math.min(rect.left, window.innerWidth - ancho - 8)
-    setPosicion({ top: rect.bottom + 4, left: Math.max(8, izquierda), minWidth: ancho })
+    setPosicion(calcularPosicion(boton.current))
   }
 
   const seleccionadas = opciones.filter(o => valores.includes(o.value))
