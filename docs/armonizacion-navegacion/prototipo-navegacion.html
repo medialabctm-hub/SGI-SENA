@@ -149,6 +149,12 @@
   .chip-filtro { display: inline-flex; align-items: center; gap: 6px; background: var(--verde-100); color: var(--verde-osc); border-radius: 999px; padding: 3px 4px 3px 10px; font-size: 13px; }
   .chip-filtro button { border: 0; background: #fff; color: var(--verde-osc); border-radius: 999px; width: 20px; height: 20px; line-height: 1; }
   .link-btn { border: 0; background: none; color: var(--info); text-decoration: underline; padding: 0; font-size: 13px; }
+  .sidebar-seccion { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--gris-500); margin: 2px 12px 4px; }
+  .nav-grupo { font-weight: 600; }
+  .nav-estado { flex-direction: column; align-items: flex-start; gap: 1px; }
+  .estado-item { font-size: 11.5px; font-weight: 600; }
+  .e-neutro { color: var(--gris-500); } .e-info { color: var(--info); } .e-aviso { color: var(--warn); } .e-alerta { color: var(--err); }
+  .nav-item[aria-current="page"] .estado-item { opacity: .9; }
   .hub { background: #fff; border: 1px solid var(--gris-200); border-radius: var(--radio); box-shadow: var(--sombra); padding: 12px 16px 14px; margin-bottom: 16px; }
   .hub-title { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--gris-500); margin: 0 0 8px; }
   .hub-buttons { display: flex; flex-wrap: wrap; gap: 8px; }
@@ -239,38 +245,44 @@ const MIS = [
 ];
 
 // ---------- Navegación ----------
-// El sidebar ya no tiene acciones: solo las pantallas principales.
-// Las funciones generales van en la cabecera de cada página; las de UN equipo, en su fila.
+// El sidebar es para CONSULTAR y ver el ESTADO (con contadores); no ejecuta acciones.
+// Las acciones que crean o cambian algo están en la cabecera de la página y en los botones de cada fila.
 const MENU = [
   { key: 'inicio', t: 'Inicio', ico: '⌂', roles: ALL, screen: 'dashboard' },
-  { key: 'consultar', t: 'Consultar inventario', ico: '▣', roles: ALL, screen: 'inventario', count: 3, countRoles: [ADMIN, CTA], countTitle: 'autorizaciones por aprobar' },
-  { key: 'ambientes', t: 'Ambientes y horarios', ico: '⌖', roles: STAFF, screen: 'ambiente' }
+  { key: 'inventario', t: 'Inventario', ico: '▣', roles: ALL, items: [
+    { key: 'consultar', t: 'Consultar inventario', roles: ALL, screen: 'inventario', estado: r => r === APR ? '2 equipos habilitados' : r === INS ? '64 equipos en tus ambientes' : '312 equipos', tono: 'neutro' },
+    { key: 'prestados', t: 'Equipos prestados', roles: STAFF, path: '/equipos/prestados', estado: () => '12 en uso ahora · 1 por revisar', tono: 'aviso' },
+    { key: 'autorizaciones', t: 'Autorizaciones', roles: STAFF, path: '/equipos/autorizaciones', estado: r => r === INS ? '1 solicitud tuya en espera' : '3 por aprobar', tono: r => r === INS ? 'neutro' : 'alerta' },
+    { key: 'novedades', t: 'Novedades y reportes', roles: STAFF, path: '/novedades', estado: () => '5 pendientes', tono: 'alerta' },
+    { key: 'mantenimientos', t: 'Mantenimientos', roles: [ADMIN, CTA], path: '/mantenimientos', estado: () => '2 en proceso · 4 próximos', tono: 'info' },
+    { key: 'informe', t: 'Informe de uso y préstamos', roles: STAFF, screen: 'informe', estado: () => 'Nuevo', tono: 'info' },
+    { key: 'cuentadante', t: 'Buscar cuentadante', roles: [ADMIN], path: '/equipos/cuentadantes/buscar' }
+  ] },
+  { key: 'ambientes', t: 'Ambientes y horarios', ico: '⌖', roles: STAFF, items: [
+    { key: 'gestion-amb', t: 'Ambientes', roles: [ADMIN, CTA], screen: 'ambiente', estado: () => '3 activos · 1 en mantenimiento', tono: 'neutro' },
+    { key: 'horarios', t: 'Horarios', roles: STAFF, path: '/horarios', estado: r => r === ADMIN ? '6 clases hoy · 2 en curso' : '2 clases tuyas hoy', tono: 'neutro' }
+  ] }
 ];
-// Funciones generales en la cabecera de «Consultar Inventario» (mismos roles que tenía cada entrada del sidebar).
+// Acciones de la cabecera: solo lo que crea o genera algo.
 const ACCIONES_PAGINA = [
   { key: 'registrar', t: 'Registrar equipo', ico: '＋', cls: 'verde', roles: [ADMIN, CTA], path: '/equipos' },
-  { key: 'prestados', t: 'Equipos prestados', ico: '🖥', cls: 'taupe', roles: STAFF, path: '/equipos/prestados' },
-  { key: 'autorizaciones', t: 'Autorizaciones', ico: '📋', cls: 'taupe', roles: STAFF, path: '/equipos/autorizaciones', count: 3, countRoles: [ADMIN, CTA], countTitle: 'solicitudes por aprobar' },
-  { key: 'novedades', t: 'Novedades y reportes', ico: '⚠', cls: 'taupe', roles: STAFF, path: '/novedades', count: 5, countTitle: 'novedades pendientes' },
-  { key: 'mantenimientos', t: 'Mantenimientos', ico: '🛠', cls: 'taupe', roles: [ADMIN, CTA], path: '/mantenimientos' },
-  { key: 'informe', t: 'Informe de uso', ico: '📊', cls: 'taupe', roles: STAFF, screen: 'informe' },
-  { key: 'documento', t: 'Documento PDF', ico: '📄', cls: 'taupe', roles: [ADMIN, CTA], path: '/equipos/documento' },
-  { key: 'cuentadante', t: 'Buscar cuentadante', ico: '🔎', cls: 'taupe', roles: [ADMIN], path: '/equipos/cuentadantes/buscar' }
+  { key: 'documento', t: 'Generar documento PDF', ico: '📄', cls: 'taupe', roles: [ADMIN, CTA], path: '/equipos/documento' }
 ];
 const ACCIONES_AMBIENTES = [
-  { key: 'horarios', t: 'Horarios', ico: '🗓', cls: 'verde', roles: STAFF, path: '/horarios' },
+  { key: 'nuevo-amb', t: 'Nuevo ambiente', ico: '＋', cls: 'verde', roles: [ADMIN], path: '/ambientes' },
   { key: 'asignar-amb', t: 'Asignar ambientes', ico: '👥', cls: 'taupe', roles: [ADMIN], path: '/ambientes/asignar' },
-  { key: 'nuevo-amb', t: 'Nuevo ambiente', ico: '＋', cls: 'taupe', roles: [ADMIN], path: '/ambientes' }
+  { key: 'nueva-clase', t: 'Nueva clase', ico: '🗓', cls: 'taupe', roles: STAFF, path: '/horarios?crear=1&ambiente=12' }
 ];
 const CONFIG = [
   { t: 'Usuarios', r: STAFF }, { t: 'Aprendices', r: [ADMIN] }, { t: 'Seguridad', r: ALL }, { t: 'Códigos de seguridad', r: [ADMIN] },
   { t: 'Tipos de equipos', r: [ADMIN] }, { t: 'Roles y áreas', r: [ADMIN, CTA] }, { t: 'Notificaciones', r: ALL }
 ];
 const can = roles => roles.includes(state.rol);
-const esDeAmbientes = f => ACCIONES_AMBIENTES.includes(f);
+const itemsMenu = () => MENU.flatMap(g => g.items || [g]);
+const esDeAmbientes = f => ACCIONES_AMBIENTES.includes(f) || MENU.find(g => g.key === 'ambientes').items.includes(f);
 const itemActivo = () => {
-  if (state.screen === 'funcion') return esDeAmbientes(state.funcion) ? 'ambientes' : 'consultar';
-  return ({ dashboard: 'inicio', inventario: 'consultar', ficha: 'consultar', informe: 'consultar', ambiente: 'ambientes' })[state.screen];
+  if (state.screen === 'funcion') return itemsMenu().includes(state.funcion) ? state.funcion.key : (esDeAmbientes(state.funcion) ? 'gestion-amb' : 'consultar');
+  return ({ dashboard: 'inicio', inventario: 'consultar', ficha: 'consultar', informe: 'informe', ambiente: 'gestion-amb' })[state.screen];
 };
 
 function toast(html) {
@@ -278,30 +290,31 @@ function toast(html) {
   t.innerHTML = html; t.classList.add('show');
   clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove('show'), 5200);
 }
-const contador = i => i.count && (!i.countRoles || can(i.countRoles)) ? `<span class="count" title="${i.count} ${i.countTitle}">${i.count}</span>` : '';
 // Botones de la cabecera de la página, con el mismo estilo que Buscar / Columnas / Descargar Excel.
 function accionesCabecera(lista) {
   const visibles = lista.filter(i => can(i.roles));
   if (!visibles.length) return '';
   return `<div class="acciones-cabecera">${visibles.map(i =>
-    `<button class="accion ${i.cls} grande" data-pagina="${i.key}"><span aria-hidden="true">${i.ico}</span>${i.t}${contador(i)}</button>`).join('')}</div>`;
+    `<button class="accion ${i.cls} grande" data-pagina="${i.key}"><span aria-hidden="true">${i.ico}</span>${i.t}</button>`).join('')}</div>`;
 }
 function bindCabecera(root) {
   root.querySelectorAll('[data-pagina]').forEach(b => b.onclick = () => {
     const f = [...ACCIONES_PAGINA, ...ACCIONES_AMBIENTES].find(i => i.key === b.dataset.pagina);
-    if (f.screen) { go(f.screen); return; }
     state.funcion = f; go('funcion');
   });
 }
-// Pantalla existente abierta desde la cabecera: se conserva tal cual, con «Volver» arriba.
+// Pantalla existente: se conserva tal cual.
 function renderFuncion() {
   const f = state.funcion;
+  const deMenu = itemsMenu().includes(f);
   const amb = esDeAmbientes(f);
-  return `<div class="breadcrumb"><button class="btn sm" data-go="${amb ? 'ambiente' : 'inventario'}">‹ Volver a ${amb ? 'Ambientes y horarios' : 'Consultar inventario'}</button>
-      <span class="muted small">${amb ? 'Ambientes y horarios' : 'Consultar inventario'} › ${f.t}</span></div>
+  const volver = deMenu ? '' : `<button class="btn sm" data-go="${amb ? 'ambiente' : 'inventario'}">‹ Volver a ${amb ? 'Ambientes' : 'Consultar inventario'}</button>`;
+  const modo = deMenu
+    ? 'Se abre en modo <b>consulta</b> (lista y estado). Lo que se registra sobre un equipo se hace desde su fila en Consultar inventario.'
+    : 'Es una <b>acción</b>: se abre desde la cabecera de la página.';
+  return `<div class="breadcrumb">${volver}<span class="muted small">${amb ? 'Ambientes y horarios' : 'Inventario'} › ${f.t}</span></div>
     <div class="page-title"><h2>${f.t}</h2><code class="small muted">${f.path}</code></div>
-    <div class="stub"><div style="font-size:34px">${f.ico}</div><p><b>Aquí va la pantalla actual de «${f.t}», sin cambios.</b></p>
-      <p class="small">Conserva su ruta (<code>${f.path}</code>). Ya no está en el sidebar: se llega desde la cabecera de «${amb ? 'Ambientes y horarios' : 'Consultar Inventario'}», que queda resaltada en el menú.</p></div>`;
+    <div class="stub"><p><b>Aquí va la pantalla actual de «${f.t}», sin cambios.</b></p><p class="small">${modo}</p></div>`;
 }
 function go(screen) {
   state.screen = screen; state.openMenu = null; state.colsOpen = false;
@@ -312,24 +325,42 @@ function go(screen) {
 
 function renderSidebar() {
   const activo = itemActivo();
-  let html = MENU.filter(i => can(i.roles)).map(i =>
-    `<button class="nav-item" data-item="${i.key}" ${activo === i.key ? 'aria-current="page"' : ''}><span class="ico" aria-hidden="true">${i.ico}</span>${i.t}${i.count && can(i.countRoles || ALL) ? `<span class="badge-count" title="${i.count} ${i.countTitle}">${i.count}</span>` : ''}</button>`).join('');
+  const val = (v) => typeof v === 'function' ? v(state.rol) : v;
+  let html = '<p class="sidebar-seccion">Consultar y ver estado</p>';
+  for (const g of MENU) {
+    if (!can(g.roles)) continue;
+    if (!g.items) {
+      html += `<button class="nav-item" data-item="${g.key}" ${activo === g.key ? 'aria-current="page"' : ''}><span class="ico" aria-hidden="true">${g.ico}</span>${g.t}</button>`;
+      continue;
+    }
+    const items = g.items.filter(i => can(i.roles));
+    if (!items.length) continue;
+    const abierto = state.gruposAbiertos[g.key] ?? true;
+    html += `<button class="nav-item nav-grupo" data-grupo="${g.key}" aria-expanded="${abierto}"><span class="ico" aria-hidden="true">${g.ico}</span>${g.t}<span style="margin-left:auto">${abierto ? '▾' : '▸'}</span></button>
+      <div class="nav-sub ${abierto ? 'open' : ''}">${items.map(i => {
+        const estado = i.estado ? `<span class="estado-item e-${val(i.tono)}">${val(i.estado)}</span>` : '';
+        return `<button class="nav-item nav-estado" data-item="${i.key}" ${activo === i.key ? 'aria-current="page"' : ''}><span>${i.t}</span>${estado}</button>`;
+      }).join('')}</div>`;
+  }
   const cfg = CONFIG.filter(c => can(c.r));
   const cfgAbierto = state.gruposAbiertos.config ?? false;
-  html += `<button class="nav-item" data-grupo="config" aria-expanded="${cfgAbierto}"><span class="ico" aria-hidden="true">⚙</span>Configuración<span style="margin-left:auto">${cfgAbierto ? '▾' : '▸'}</span></button>
+  html += `<button class="nav-item nav-grupo" data-grupo="config" aria-expanded="${cfgAbierto}"><span class="ico" aria-hidden="true">⚙</span>Configuración<span style="margin-left:auto">${cfgAbierto ? '▾' : '▸'}</span></button>
     <div class="nav-sub ${cfgAbierto ? 'open' : ''}">${cfg.map(c => `<button class="nav-item" data-cfg="${c.t}">${c.t}</button>`).join('')}</div>
-    <div class="sidebar-note">El menú solo lleva a las pantallas principales. Las funciones generales están en la cabecera de cada pantalla y las de un equipo, en su fila.</div>`;
+    <div class="sidebar-note">El menú sirve para <b>consultar y ver el estado</b>. Las acciones (registrar, verificar, asignar, reportar, mover…) se hacen desde los botones de la página y de cada equipo.</div>`;
   const sb = document.getElementById('sidebar');
   sb.innerHTML = html;
-  sb.querySelector('[data-grupo="config"]').onclick = () => { state.gruposAbiertos.config = !cfgAbierto; renderSidebar(); };
+  sb.querySelectorAll('[data-grupo]').forEach(b => b.onclick = () => {
+    const k = b.dataset.grupo;
+    state.gruposAbiertos[k] = !(state.gruposAbiertos[k] ?? (k !== 'config')); renderSidebar();
+  });
   sb.querySelectorAll('[data-item]').forEach(b => b.onclick = () => {
-    const item = MENU.find(i => i.key === b.dataset.item);
-    if (item.key === 'ambientes' && !can([ADMIN, CTA])) { state.funcion = ACCIONES_AMBIENTES[0]; go('funcion'); return; }
-    go(item.screen);
+    const item = itemsMenu().find(i => i.key === b.dataset.item);
+    if (item.screen) { go(item.screen); return; }
+    state.funcion = item; go('funcion');
   });
   sb.querySelectorAll('[data-cfg]').forEach(b => b.onclick = () => toast(`Configuración → ${b.dataset.cfg} (sin cambios en esta entrega).`));
 }
-const volverInventario = etiqueta => `<div class="breadcrumb"><button class="btn sm" data-go="inventario">‹ Volver a Consultar inventario</button><span class="muted small">Consultar inventario › ${etiqueta}</span></div>`;
+const volverInventario = etiqueta => `<div class="breadcrumb"><button class="btn sm" data-go="inventario">‹ Volver a Consultar inventario</button><span class="muted small">Inventario › ${etiqueta}</span></div>`;
 
 // ---------- Badges ----------
 const tagFis = v => `<span class="tag ${({ Nuevo: 't-info', Bueno: 't-ok', Regular: 't-warn', Malo: 't-err', 'Dañado': 't-err' })[v] || 't-gray'}">${v}</span>`;
@@ -720,20 +751,21 @@ function bindInforme(root) { const a = root.querySelector('#asig'); if (a) a.onc
 // ---------- Rutas antiguas ----------
 function renderRutas() {
   const r = [
-    ['/equipos/consultar', 'Sidebar › Consultar inventario (pantalla principal)', 'Se conserva'],
+    ['/equipos/consultar', 'Sidebar › Inventario › Consultar inventario', 'Se conserva'],
     ['/mis-equipos', 'Consultar inventario › vista «Bajo mi responsabilidad»', 'Redirige'],
-    ['/equipos · /equipos/prestados · /equipos/autorizaciones', 'Botones en la cabecera de Consultar Inventario', 'Sale del sidebar'],
-    ['/novedades · /reportes · /mantenimientos', 'Botones en la cabecera de Consultar Inventario', 'Sale del sidebar'],
-    ['/equipos/documento · /equipos/cuentadantes/buscar', 'Botones en la cabecera de Consultar Inventario', 'Sale del sidebar'],
-    ['(nuevo) /equipos/informe-uso', 'Botón «Informe de uso» en la cabecera', 'Nuevo'],
+    ['/equipos/prestados · /equipos/autorizaciones', 'Sidebar › Inventario (consulta con contador de estado)', 'Se conservan'],
+    ['/novedades · /reportes · /mantenimientos', 'Sidebar › Inventario (consulta con contador de estado)', 'Se conservan'],
+    ['/equipos/cuentadantes/buscar', 'Sidebar › Inventario › Buscar cuentadante (Admin)', 'Se conserva'],
+    ['(nuevo) /equipos/informe-uso', 'Sidebar › Inventario › Informe de uso y préstamos', 'Nuevo'],
+    ['/equipos (registrar) · /equipos/documento', 'Botones de la cabecera de Consultar Inventario', 'Sale del sidebar'],
     ['/equipos/verificar · /equipos/asignar', 'Botones «Verificar» y «Asignar» de cada fila', 'Sale del sidebar'],
     ['Botón «Movimientos» de la fila', 'Botón «Historial» con filtro Movimientos', 'Se une'],
     ['/equipos/historial-verificaciones/:codigo', 'Historial del equipo filtrado a verificaciones', 'Redirige'],
     ['/equipos/historial-movimientos/:codigo', 'Historial del equipo filtrado a movimientos', 'Redirige'],
-    ['/ambientes · /ambientes/:id', 'Sidebar › Ambientes y horarios', 'Se conservan'],
-    ['/horarios · /ambientes/asignar', 'Botones en la cabecera de Ambientes y horarios', 'Sale del sidebar']
+    ['/ambientes · /ambientes/:id · /horarios', 'Sidebar › Ambientes y horarios (consulta)', 'Se conservan'],
+    ['/ambientes/asignar', 'Botón en la cabecera de Ambientes', 'Sale del sidebar']
   ];
-  return `<div class="page-title"><h2>Rutas antiguas → destino</h2></div><div class="note">«Sale del sidebar» no significa que desaparezca: la pantalla y su ruta siguen iguales y se llega desde un botón de la cabecera o de la fila. Ningún enlace guardado se rompe.</div>
+  return `<div class="page-title"><h2>Rutas antiguas → destino</h2></div><div class="note">El sidebar queda para <b>consultar y ver estado</b>. «Sale del sidebar» se aplica solo a las acciones: su pantalla y su ruta siguen iguales y se llega desde un botón de la cabecera o de la fila. Ningún enlace guardado se rompe.</div>
     <div class="table-wrap"><table><thead><tr><th>Ruta antigua</th><th>Destino</th><th>Decisión</th></tr></thead><tbody>${r.map(x => `<tr><td><code>${x[0]}</code></td><td>${x[1]}</td><td><span class="tag ${({ Redirige: 't-info', 'Sale del sidebar': 't-warn', 'Se une': 't-mor', Nuevo: 't-info' })[x[2]] || 't-ok'}">${x[2]}</span></td></tr>`).join('')}</tbody></table></div>`;
 }
 function renderDashboard() {
