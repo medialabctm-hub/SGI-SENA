@@ -111,7 +111,6 @@
   .titulo-verde { color: #01af00; font-size: 28px !important; font-weight: 800; }
   .busqueda { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
   .buscar-input { flex: 1 1 260px; min-width: 0; font: inherit; padding: 11px 14px; border: 1px solid var(--gris-200); border-radius: 10px; }
-  .filtros-rapidos { display: grid; grid-template-columns: repeat(auto-fill, minmax(165px, 1fr)); gap: 10px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--gris-100); }
   .acciones-fila { display: flex; flex-wrap: wrap; gap: 6px; max-width: 560px; }
   .accion { border: 0; border-radius: 10px; padding: 7px 11px; color: #fff; font-weight: 700; font-size: 13px; display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
   .accion.grande { padding: 10px 16px; font-size: 14px; }
@@ -136,6 +135,20 @@
   .acciones-ficha { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 14px; }
   .grupo-ficha { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; background: #fff; border: 1px solid var(--gris-200); border-radius: 10px; padding: 6px 8px; }
   .grupo-t { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--gris-500); margin-right: 2px; }
+  .cabecera-pagina { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; margin-bottom: 14px; }
+  .cabecera-pagina h2 { margin: 0; flex: 0 0 auto; }
+  .acciones-cabecera { display: flex; flex-wrap: wrap; gap: 8px; margin-left: auto; justify-content: flex-end; }
+  .accion .count { background: #fff; color: var(--err); font-size: 11px; border-radius: 999px; padding: 0 6px; margin-left: 2px; }
+  .fila-filtros th { background: #eeedeb; padding: 6px 8px; position: static; }
+  .filtro-col { width: 100%; min-width: 90px; font: inherit; font-size: 13px; padding: 5px 7px; border: 1px solid var(--gris-200); border-radius: 7px; background: #fff; }
+  .filtro-col.activo { border-color: #01af00; box-shadow: 0 0 0 2px var(--verde-100); }
+  .cols-wrap { position: relative; }
+  .cols-panel { position: absolute; right: 0; top: calc(100% + 6px); z-index: 30; width: 290px; background: #fff; border: 1px solid var(--gris-200); border-radius: 10px; box-shadow: 0 12px 28px rgba(0,0,0,.14); padding: 12px; }
+  .col-opt { display: flex; align-items: center; gap: 8px; padding: 5px 2px; font-size: 14px; }
+  .resumen-filtros { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 12px 0 10px; }
+  .chip-filtro { display: inline-flex; align-items: center; gap: 6px; background: var(--verde-100); color: var(--verde-osc); border-radius: 999px; padding: 3px 4px 3px 10px; font-size: 13px; }
+  .chip-filtro button { border: 0; background: #fff; color: var(--verde-osc); border-radius: 999px; width: 20px; height: 20px; line-height: 1; }
+  .link-btn { border: 0; background: none; color: var(--info); text-decoration: underline; padding: 0; font-size: 13px; }
   .hub { background: #fff; border: 1px solid var(--gris-200); border-radius: var(--radio); box-shadow: var(--sombra); padding: 12px 16px 14px; margin-bottom: 16px; }
   .hub-title { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--gris-500); margin: 0 0 8px; }
   .hub-buttons { display: flex; flex-wrap: wrap; gap: 8px; }
@@ -204,7 +217,7 @@ const STAFF = [ADMIN, INS, CTA];
 const state = {
   rol: CTA, screen: 'inventario', vista: 'todos', page: 1, openMenu: null, filtroAmb: '',
   fichaTab: 'resumen', ambTab: 'resumen', tiposHist: new Set(), misVacio: false,
-  incluirAsignaciones: false, gruposAbiertos: {}, layout: 'columnas'
+  incluirAsignaciones: false, gruposAbiertos: {}, layout: 'columnas', filtros: {}, colsOcultas: new Set(), colsOpen: false
 };
 
 // ---------- Datos sintéticos ----------
@@ -226,105 +239,97 @@ const MIS = [
 ];
 
 // ---------- Navegación ----------
-// El sidebar conserva solo las pantallas GENERALES. Lo que se hace sobre UN equipo
-// (verificar, novedad, asignar, uso, mover, mantenimiento, historial) está en los botones de cada fila.
+// El sidebar ya no tiene acciones: solo las pantallas principales.
+// Las funciones generales van en la cabecera de cada página; las de UN equipo, en su fila.
 const MENU = [
   { key: 'inicio', t: 'Inicio', ico: '⌂', roles: ALL, screen: 'dashboard' },
-  { key: 'inventario', t: 'Inventario', ico: '▣', roles: ALL, items: [
-    { key: 'consultar', t: 'Consultar inventario', roles: ALL, screen: 'inventario' },
-    { key: 'registrar', t: 'Registrar inventario', roles: [ADMIN, CTA], path: '/equipos' },
-    { key: 'prestados', t: 'Equipos prestados', roles: STAFF, path: '/equipos/prestados' },
-    { key: 'autorizaciones', t: 'Autorizaciones', roles: STAFF, path: '/equipos/autorizaciones', count: 3, countRoles: [ADMIN, CTA], countTitle: 'solicitudes por aprobar' },
-    { key: 'informe', t: 'Informe de uso y préstamos', roles: STAFF, screen: 'informe', nuevo: true },
-    { key: 'cuentadante', t: 'Buscar cuentadante', roles: [ADMIN], path: '/equipos/cuentadantes/buscar' }
-  ] },
-  { key: 'incidencias', t: 'Incidencias', ico: '⚠', roles: STAFF, items: [
-    { key: 'novedades', t: 'Novedades y reportes', roles: STAFF, path: '/novedades', count: 5, countTitle: 'novedades pendientes' },
-    { key: 'mantenimientos', t: 'Mantenimientos', roles: [ADMIN, CTA], path: '/mantenimientos' }
-  ] },
-  { key: 'ambientes', t: 'Ambientes y horarios', ico: '⌖', roles: STAFF, items: [
-    { key: 'gestion-amb', t: 'Gestión de ambientes', roles: [ADMIN, CTA], screen: 'ambiente' },
-    { key: 'asignar-amb', t: 'Asignar ambientes', roles: [ADMIN], path: '/ambientes/asignar' },
-    { key: 'horarios', t: 'Horarios', roles: STAFF, path: '/horarios' }
-  ] }
+  { key: 'consultar', t: 'Consultar inventario', ico: '▣', roles: ALL, screen: 'inventario', count: 3, countRoles: [ADMIN, CTA], countTitle: 'autorizaciones por aprobar' },
+  { key: 'ambientes', t: 'Ambientes y horarios', ico: '⌖', roles: STAFF, screen: 'ambiente' }
+];
+// Funciones generales en la cabecera de «Consultar Inventario» (mismos roles que tenía cada entrada del sidebar).
+const ACCIONES_PAGINA = [
+  { key: 'registrar', t: 'Registrar equipo', ico: '＋', cls: 'verde', roles: [ADMIN, CTA], path: '/equipos' },
+  { key: 'prestados', t: 'Equipos prestados', ico: '🖥', cls: 'taupe', roles: STAFF, path: '/equipos/prestados' },
+  { key: 'autorizaciones', t: 'Autorizaciones', ico: '📋', cls: 'taupe', roles: STAFF, path: '/equipos/autorizaciones', count: 3, countRoles: [ADMIN, CTA], countTitle: 'solicitudes por aprobar' },
+  { key: 'novedades', t: 'Novedades y reportes', ico: '⚠', cls: 'taupe', roles: STAFF, path: '/novedades', count: 5, countTitle: 'novedades pendientes' },
+  { key: 'mantenimientos', t: 'Mantenimientos', ico: '🛠', cls: 'taupe', roles: [ADMIN, CTA], path: '/mantenimientos' },
+  { key: 'informe', t: 'Informe de uso', ico: '📊', cls: 'taupe', roles: STAFF, screen: 'informe' },
+  { key: 'documento', t: 'Documento PDF', ico: '📄', cls: 'taupe', roles: [ADMIN, CTA], path: '/equipos/documento' },
+  { key: 'cuentadante', t: 'Buscar cuentadante', ico: '🔎', cls: 'taupe', roles: [ADMIN], path: '/equipos/cuentadantes/buscar' }
+];
+const ACCIONES_AMBIENTES = [
+  { key: 'horarios', t: 'Horarios', ico: '🗓', cls: 'verde', roles: STAFF, path: '/horarios' },
+  { key: 'asignar-amb', t: 'Asignar ambientes', ico: '👥', cls: 'taupe', roles: [ADMIN], path: '/ambientes/asignar' },
+  { key: 'nuevo-amb', t: 'Nuevo ambiente', ico: '＋', cls: 'taupe', roles: [ADMIN], path: '/ambientes' }
 ];
 const CONFIG = [
   { t: 'Usuarios', r: STAFF }, { t: 'Aprendices', r: [ADMIN] }, { t: 'Seguridad', r: ALL }, { t: 'Códigos de seguridad', r: [ADMIN] },
   { t: 'Tipos de equipos', r: [ADMIN] }, { t: 'Roles y áreas', r: [ADMIN, CTA] }, { t: 'Notificaciones', r: ALL }
 ];
 const can = roles => roles.includes(state.rol);
-// Qué entrada del sidebar queda resaltada en cada pantalla.
+const esDeAmbientes = f => ACCIONES_AMBIENTES.includes(f);
 const itemActivo = () => {
-  if (state.screen === 'funcion') return state.funcion?.key;
-  return ({ dashboard: 'inicio', inventario: 'consultar', ficha: 'consultar', informe: 'informe', ambiente: 'gestion-amb' })[state.screen];
+  if (state.screen === 'funcion') return esDeAmbientes(state.funcion) ? 'ambientes' : 'consultar';
+  return ({ dashboard: 'inicio', inventario: 'consultar', ficha: 'consultar', informe: 'consultar', ambiente: 'ambientes' })[state.screen];
 };
-const grupoDe = key => MENU.find(g => g.key === key || g.items?.some(i => i.key === key))?.key;
 
 function toast(html) {
   const t = document.getElementById('toast');
   t.innerHTML = html; t.classList.add('show');
   clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove('show'), 5200);
 }
-// Pantalla existente abierta desde el sidebar: se conserva tal cual.
+const contador = i => i.count && (!i.countRoles || can(i.countRoles)) ? `<span class="count" title="${i.count} ${i.countTitle}">${i.count}</span>` : '';
+// Botones de la cabecera de la página, con el mismo estilo que Buscar / Columnas / Descargar Excel.
+function accionesCabecera(lista) {
+  const visibles = lista.filter(i => can(i.roles));
+  if (!visibles.length) return '';
+  return `<div class="acciones-cabecera">${visibles.map(i =>
+    `<button class="accion ${i.cls} grande" data-pagina="${i.key}"><span aria-hidden="true">${i.ico}</span>${i.t}${contador(i)}</button>`).join('')}</div>`;
+}
+function bindCabecera(root) {
+  root.querySelectorAll('[data-pagina]').forEach(b => b.onclick = () => {
+    const f = [...ACCIONES_PAGINA, ...ACCIONES_AMBIENTES].find(i => i.key === b.dataset.pagina);
+    if (f.screen) { go(f.screen); return; }
+    state.funcion = f; go('funcion');
+  });
+}
+// Pantalla existente abierta desde la cabecera: se conserva tal cual, con «Volver» arriba.
 function renderFuncion() {
   const f = state.funcion;
-  const grupo = MENU.find(g => g.items?.includes(f));
-  return `<div class="breadcrumb"><span class="muted small">${grupo ? grupo.t + ' › ' : ''}${f.t}</span></div>
+  const amb = esDeAmbientes(f);
+  return `<div class="breadcrumb"><button class="btn sm" data-go="${amb ? 'ambiente' : 'inventario'}">‹ Volver a ${amb ? 'Ambientes y horarios' : 'Consultar inventario'}</button>
+      <span class="muted small">${amb ? 'Ambientes y horarios' : 'Consultar inventario'} › ${f.t}</span></div>
     <div class="page-title"><h2>${f.t}</h2><code class="small muted">${f.path}</code></div>
-    <div class="stub"><p><b>Aquí va la pantalla actual de «${f.t}», sin cambios.</b></p>
-      <p class="small">Misma ruta (<code>${f.path}</code>) y misma entrada del sidebar.</p></div>`;
+    <div class="stub"><div style="font-size:34px">${f.ico}</div><p><b>Aquí va la pantalla actual de «${f.t}», sin cambios.</b></p>
+      <p class="small">Conserva su ruta (<code>${f.path}</code>). Ya no está en el sidebar: se llega desde la cabecera de «${amb ? 'Ambientes y horarios' : 'Consultar Inventario'}», que queda resaltada en el menú.</p></div>`;
 }
 function go(screen) {
-  state.screen = screen; state.openMenu = null;
+  state.screen = screen; state.openMenu = null; state.colsOpen = false;
   document.getElementById('atajo').value = ['inventario', 'ficha', 'ambiente', 'informe', 'rutas'].includes(screen) ? screen : 'inventario';
   document.getElementById('sidebar').classList.remove('open');
   render(); document.getElementById('main').focus();
 }
-function abrirItem(item) {
-  if (item.screen) { go(item.screen); return; }
-  state.funcion = item; go('funcion');
-}
 
 function renderSidebar() {
   const activo = itemActivo();
-  const grupoActivo = grupoDe(activo);
-  let html = '';
-  for (const g of MENU) {
-    if (!can(g.roles)) continue;
-    if (!g.items) {
-      html += `<button class="nav-item" data-item="${g.key}" ${activo === g.key ? 'aria-current="page"' : ''}><span class="ico" aria-hidden="true">${g.ico}</span>${g.t}</button>`;
-      continue;
-    }
-    const items = g.items.filter(i => can(i.roles));
-    if (!items.length) continue;
-    const abierto = state.gruposAbiertos[g.key] ?? (g.key === grupoActivo);
-    html += `<button class="nav-item" data-grupo="${g.key}" aria-expanded="${abierto}"><span class="ico" aria-hidden="true">${g.ico}</span>${g.t}<span style="margin-left:auto">${abierto ? '▾' : '▸'}</span></button>
-      <div class="nav-sub ${abierto ? 'open' : ''}">${items.map(i => {
-        const conteo = i.count && (!i.countRoles || can(i.countRoles)) ? `<span class="badge-count" title="${i.count} ${i.countTitle}">${i.count}</span>` : '';
-        const nuevo = i.nuevo ? '<span class="tag t-info" style="margin-left:auto">nuevo</span>' : '';
-        return `<button class="nav-item" data-item="${i.key}" ${activo === i.key ? 'aria-current="page"' : ''}>${i.t}${conteo}${nuevo}</button>`;
-      }).join('')}</div>`;
-  }
+  let html = MENU.filter(i => can(i.roles)).map(i =>
+    `<button class="nav-item" data-item="${i.key}" ${activo === i.key ? 'aria-current="page"' : ''}><span class="ico" aria-hidden="true">${i.ico}</span>${i.t}${i.count && can(i.countRoles || ALL) ? `<span class="badge-count" title="${i.count} ${i.countTitle}">${i.count}</span>` : ''}</button>`).join('');
   const cfg = CONFIG.filter(c => can(c.r));
   const cfgAbierto = state.gruposAbiertos.config ?? false;
   html += `<button class="nav-item" data-grupo="config" aria-expanded="${cfgAbierto}"><span class="ico" aria-hidden="true">⚙</span>Configuración<span style="margin-left:auto">${cfgAbierto ? '▾' : '▸'}</span></button>
     <div class="nav-sub ${cfgAbierto ? 'open' : ''}">${cfg.map(c => `<button class="nav-item" data-cfg="${c.t}">${c.t}</button>`).join('')}</div>
-    <div class="sidebar-note"><b>Salen del sidebar:</b> Mis Equipos (vista «Bajo mi responsabilidad» en Consultar), Asignar Equipo y Verificar Inventario (botones en cada fila). Mantenimiento y Horarios se agrupan en Incidencias y Ambientes.</div>`;
+    <div class="sidebar-note">El menú solo lleva a las pantallas principales. Las funciones generales están en la cabecera de cada pantalla y las de un equipo, en su fila.</div>`;
   const sb = document.getElementById('sidebar');
   sb.innerHTML = html;
-  sb.querySelectorAll('[data-grupo]').forEach(b => b.onclick = () => {
-    const k = b.dataset.grupo;
-    const actual = state.gruposAbiertos[k] ?? (k === grupoActivo);
-    state.gruposAbiertos[k] = !actual; renderSidebar();
-  });
+  sb.querySelector('[data-grupo="config"]').onclick = () => { state.gruposAbiertos.config = !cfgAbierto; renderSidebar(); };
   sb.querySelectorAll('[data-item]').forEach(b => b.onclick = () => {
-    const k = b.dataset.item;
-    const item = MENU.find(g => g.key === k) || MENU.flatMap(g => g.items || []).find(i => i.key === k);
-    abrirItem(item);
+    const item = MENU.find(i => i.key === b.dataset.item);
+    if (item.key === 'ambientes' && !can([ADMIN, CTA])) { state.funcion = ACCIONES_AMBIENTES[0]; go('funcion'); return; }
+    go(item.screen);
   });
   sb.querySelectorAll('[data-cfg]').forEach(b => b.onclick = () => toast(`Configuración → ${b.dataset.cfg} (sin cambios en esta entrega).`));
 }
-const volverInventario = etiqueta => `<div class="breadcrumb"><button class="btn sm" data-go="inventario">‹ Volver a Consultar inventario</button><span class="muted small">Inventario › ${etiqueta}</span></div>`;
+const volverInventario = etiqueta => `<div class="breadcrumb"><button class="btn sm" data-go="inventario">‹ Volver a Consultar inventario</button><span class="muted small">Consultar inventario › ${etiqueta}</span></div>`;
 
 // ---------- Badges ----------
 const tagFis = v => `<span class="tag ${({ Nuevo: 't-info', Bueno: 't-ok', Regular: 't-warn', Malo: 't-err', 'Dañado': 't-err' })[v] || 't-gray'}">${v}</span>`;
@@ -398,24 +403,57 @@ function leyendaIconos() {
     `<span><span class="accion ico-only ${x.cls}" aria-hidden="true">${x.ico}</span>${x.t}</span>`).join('')}</div>`;
 }
 
+// Columnas de la tabla: cada una trae su propio filtro. «Columnas» muestra u oculta columna y filtro a la vez.
+const FIS = ['Nuevo', 'Bueno', 'Regular', 'Malo', 'Dañado'];
+const OPS = ['Disponible', 'En Uso', 'En Mantenimiento', 'Dañado', 'Dado de Baja'];
+const VERS = ['Verificado', 'Con Novedad', 'No Verificado'];
+function columnas() {
+  const ambientes = Object.entries(AMB).filter(([id]) => !(state.rol === INS && id === '7')).map(([id, [c]]) => [id, c]);
+  return [
+    { key: 'placa', t: 'Código inventario', filtro: 'texto', ph: 'Placa…', celda: e => `<b>${e.placa}</b>`, cumple: (e, v) => e.placa.includes(v.trim()) },
+    { key: 'tipo', t: 'Tipo / modelo', filtro: 'texto', ph: 'Portátil, Latitude…', celda: e => `${e.tipo}<div class="muted small">${e.modelo}</div>`, cumple: (e, v) => `${e.tipo} ${e.modelo}`.toLowerCase().includes(v.trim().toLowerCase()) },
+    { key: 'amb', t: 'Ambiente', filtro: 'select', opciones: ambientes, celda: e => ambTxt(e.amb), cumple: (e, v) => String(e.amb) === v },
+    { key: 'fis', t: 'Estado físico', filtro: 'select', opciones: FIS.map(x => [x, x]), celda: e => tagFis(e.fis), cumple: (e, v) => e.fis === v },
+    { key: 'op', t: 'Estado operativo', filtro: 'select', opciones: OPS.map(x => [x, x]), celda: e => tagOp(e.op), cumple: (e, v) => e.op === v },
+    { key: 'ver', t: 'Estado verificación', filtro: 'select', opciones: VERS.map(x => [x, x]), celda: e => tagVer(e.ver), cumple: (e, v) => e.ver === v },
+    { key: 'prest', t: 'Préstamo', filtro: 'select', opciones: [['si', 'En préstamo'], ['no', 'Sin préstamo']], celda: e => e.prest ? '<span class="tag t-warn">En préstamo</span>' : '<span class="muted">—</span>', cumple: (e, v) => (v === 'si') === e.prest },
+    { key: 'cta', t: 'Cuentadante', roles: [ADMIN, CTA], filtro: state.rol === ADMIN ? 'select' : null, opciones: [['Carlos M.', 'Carlos M.'], ['Diana R.', 'Diana R.']], celda: e => e.cta, cumple: (e, v) => e.cta === v }
+  ].filter(c => !c.roles || can(c.roles));
+}
+const colVisible = c => !state.colsOcultas.has(c.key);
+const filtrosActivos = () => columnas().filter(c => colVisible(c) && state.filtros[c.key]);
+
+function filtroCelda(c) {
+  const v = state.filtros[c.key] || '';
+  if (c.filtro === 'texto') return `<input class="filtro-col" data-filtro="${c.key}" value="${v.replace(/"/g, '&quot;')}" placeholder="${c.ph}" aria-label="Filtrar por ${c.t}">`;
+  if (c.filtro === 'select') return `<select class="filtro-col${v ? ' activo' : ''}" data-filtro="${c.key}" aria-label="Filtrar por ${c.t}"><option value="">Todos</option>${c.opciones.map(([val, lab]) => `<option value="${val}" ${v === val ? 'selected' : ''}>${lab}</option>`).join('')}</select>`;
+  return '';
+}
+function panelColumnas() {
+  if (!state.colsOpen) return '';
+  return `<div class="cols-panel" role="dialog" aria-label="Columnas visibles"><p class="small muted" style="margin:0 0 8px">Al ocultar una columna también se oculta (y se limpia) su filtro.</p>
+    ${columnas().map(c => `<label class="col-opt"><input type="checkbox" data-col="${c.key}" ${colVisible(c) ? 'checked' : ''}> ${c.t}${c.filtro ? ' <span class="muted small">· con filtro</span>' : ''}</label>`).join('')}
+    <div class="toolbar" style="margin:8px 0 0"><button class="btn sm" id="colsTodas">Mostrar todas</button><span class="spacer"></span><button class="btn sm primary" id="colsListo">Listo</button></div></div>`;
+}
+
 function renderInventario() {
   const vistas = vistasPorRol();
   if (!vistas.some(v => v[0] === state.vista)) state.vista = vistas[0][0];
   const mia = state.vista === 'mia';
+  const cols = columnas().filter(colVisible);
   let rows = EQUIPOS;
   if (state.rol === INS || state.vista === 'ambientes') rows = EQUIPOS.filter(e => e.amb !== 7);
   if (state.vista === 'cargo') rows = EQUIPOS.filter(e => e.cta === 'Carlos M.');
   if (state.rol === APR) rows = EQUIPOS.filter(e => [1045, 1103].includes(e.id));
-  if (state.filtroAmb) rows = rows.filter(e => String(e.amb) === state.filtroAmb);
+  const activos = filtrosActivos();
+  for (const c of activos) rows = rows.filter(e => c.cumple(e, state.filtros[c.key]));
   const base = state.rol === APR ? rows.length : state.vista === 'cargo' ? 187 : state.rol === INS ? 64 : 312;
-  const total = state.filtroAmb ? rows.length : base;
+  const total = activos.length ? rows.length : base;
   const pages = Math.max(1, Math.ceil(total / 25));
   const from = total ? (state.page - 1) * 25 + 1 : 0, to = Math.min(total, state.page * 25);
-  const verCta = can([ADMIN, CTA]);
-  const ambOpts = Object.entries(AMB).filter(([id]) => !(state.rol === INS && id === '7'))
-    .map(([id, [c, n]]) => `<option value="${id}" ${state.filtroAmb === id ? 'selected' : ''}>${c} · ${n}</option>`).join('');
+  const nAcc = state.layout === 'columnas' ? gruposVisibles().length : 1;
 
-  let body = `<div class="page-title"><h2 class="titulo-verde">Consultar Inventario</h2></div>
+  let body = `<div class="cabecera-pagina"><h2 class="titulo-verde">Consultar Inventario</h2>${accionesCabecera(ACCIONES_PAGINA)}</div>
   <div class="pills" role="group" aria-label="Vista">${vistas.map(([k, l]) => `<button class="pill" data-vista="${k}" aria-pressed="${state.vista === k}">${l}</button>`).join('')}</div>`;
 
   if (mia) {
@@ -427,37 +465,35 @@ function renderInventario() {
         <td><span class="tag ${m.resp === 'Principal' ? 't-ok' : m.resp === 'Secundario' ? 't-info' : 't-gray'}">${m.resp}</span></td><td>${m.desde}</td><td>${m.dias ?? '—'}</td><td>${m.por}</td><td>${m.obs}</td>
         ${celdasAcciones(EQUIPOS.find(e => e.id === m.id))}</tr>`).join('')}
       </tbody></table></div>`}</div>`;
-  } else {
-    body += `<div class="card">
-      <form class="busqueda" id="formBuscar" aria-label="Buscar en el inventario">
-        <input class="buscar-input" aria-label="Buscar" placeholder="Buscar por código, nombre, modelo o categoría...">
-        <button type="submit" class="accion verde grande"><span aria-hidden="true">🔍</span>Buscar</button>
-        <button type="button" class="accion taupe grande" id="todos"><span aria-hidden="true">☰</span>Mostrar todos</button>
-        <span class="spacer" style="flex:1"></span>
-        <button type="button" class="accion taupe grande" id="cols"><span aria-hidden="true">⚙</span>Columnas</button>
-        ${state.rol !== APR ? '<button type="button" class="accion verde grande" id="excel"><span aria-hidden="true">⬇</span>Descargar Excel</button>' : ''}
-      </form>
-      <div class="filtros-rapidos" aria-label="Filtros rápidos">
-        <label class="field">Ambiente<select id="fAmb"><option value="">Todos los ambientes</option>${ambOpts}</select></label>
-        <label class="field">Estado físico<select><option>Todos</option><option>Nuevo</option><option>Bueno</option><option>Regular</option><option>Malo</option><option>Dañado</option></select></label>
-        <label class="field">Estado operativo<select><option>Todos</option><option>Disponible</option><option>En Uso</option><option>En Mantenimiento</option><option>Dañado</option><option>Dado de Baja</option></select></label>
-        <label class="field">Verificación<select><option>Todas</option><option>Verificado</option><option>Con Novedad</option><option>No Verificado</option></select></label>
-        <label class="field">Préstamo<select><option>Todos</option><option>En préstamo ahora</option><option>Sin préstamo</option></select></label>
-        <label class="field">Tipo<input placeholder="Portátil, Torre…"></label>
-        ${state.rol === ADMIN ? '<label class="field">Cuentadante<select><option>Todos</option><option>Carlos M.</option><option>Diana R.</option></select></label>' : ''}
-      </div>
-      <p class="small muted" style="margin:10px 0 8px">Mostrando <b>${from}–${to}</b> de <b>${total}</b> equipos${state.filtroAmb ? ` en <b>${AMB[state.filtroAmb][0]}</b>` : ''} · la búsqueda, los filtros, el total y «Descargar Excel» usan exactamente los mismos datos.</p>
-      ${leyendaIconos()}
-      <div class="table-wrap"><table style="min-width:1180px"><thead><tr><th>Código inventario</th><th>Tipo / modelo</th><th>Ambiente</th><th>Estado físico</th><th>Estado operativo</th><th>Estado verificación</th><th>Préstamo</th>${verCta ? '<th>Cuentadante</th>' : ''}${cabeceraAcciones()}</tr></thead><tbody>
-      ${rows.length ? rows.map(e => `<tr><td><b>${e.placa}</b></td><td>${e.tipo}<div class="muted small">${e.modelo}</div></td><td>${ambTxt(e.amb)}</td>
-        <td>${tagFis(e.fis)}</td><td>${tagOp(e.op)}</td><td>${tagVer(e.ver)}</td><td>${e.prest ? '<span class="tag t-warn">En préstamo</span>' : '<span class="muted">—</span>'}</td>${verCta ? `<td>${e.cta}</td>` : ''}
-        ${celdasAcciones(e)}</tr>`).join('') : `<tr><td colspan="12" class="empty">No hay equipos con esos filtros.</td></tr>`}
-      </tbody></table></div>
-      <div class="pager"><span class="small muted">Página ${state.page} de ${pages}</span>
-        <div style="display:flex;gap:6px;align-items:center"><button class="btn sm" id="prev" ${state.page === 1 ? 'disabled' : ''}>‹ Anterior</button><button class="btn sm" id="next" ${state.page >= pages ? 'disabled' : ''}>Siguiente ›</button>
-        <label class="small">Por página <select><option>25</option><option>50</option><option>100</option></select></label></div></div>
-    </div>`;
+    return body;
   }
+
+  body += `<div class="card">
+    <form class="busqueda" id="formBuscar" aria-label="Buscar en el inventario">
+      <input class="buscar-input" aria-label="Buscar" placeholder="Buscar por código, nombre, modelo o categoría...">
+      <button type="submit" class="accion verde grande"><span aria-hidden="true">🔍</span>Buscar</button>
+      <button type="button" class="accion taupe grande" id="todos"><span aria-hidden="true">☰</span>Mostrar todos</button>
+      <span class="spacer" style="flex:1"></span>
+      <span class="cols-wrap"><button type="button" class="accion taupe grande" id="cols" aria-expanded="${state.colsOpen}"><span aria-hidden="true">⚙</span>Columnas y filtros</button>${panelColumnas()}</span>
+      ${state.rol !== APR ? '<button type="button" class="accion verde grande" id="excel"><span aria-hidden="true">⬇</span>Descargar Excel</button>' : ''}
+    </form>
+    <div class="resumen-filtros">
+      <span class="small muted">Mostrando <b>${from}–${to}</b> de <b>${total}</b> equipos</span>
+      ${activos.map(c => `<span class="chip-filtro">${c.t}: <b>${(c.opciones?.find(([v]) => v === state.filtros[c.key]) || [0, state.filtros[c.key]])[1]}</b><button data-quitar="${c.key}" aria-label="Quitar filtro ${c.t}">✕</button></span>`).join('')}
+      ${activos.length ? '<button class="link-btn" id="limpiarFiltros">Limpiar filtros</button>' : '<span class="small muted">· filtra desde la fila gris bajo los títulos</span>'}
+    </div>
+    ${leyendaIconos()}
+    <div class="table-wrap"><table style="min-width:1180px"><thead>
+      <tr>${cols.map(c => `<th>${c.t}</th>`).join('')}${cabeceraAcciones()}</tr>
+      <tr class="fila-filtros">${cols.map(c => `<th>${filtroCelda(c)}</th>`).join('')}<th colspan="${nAcc}"></th></tr>
+    </thead><tbody>
+    ${rows.length ? rows.map(e => `<tr>${cols.map(c => `<td>${c.celda(e)}</td>`).join('')}${celdasAcciones(e)}</tr>`).join('')
+      : `<tr><td colspan="${cols.length + nAcc}" class="empty">No hay equipos con esos filtros. <button class="link-btn" id="limpiarVacio">Limpiar filtros</button></td></tr>`}
+    </tbody></table></div>
+    <div class="pager"><span class="small muted">Página ${state.page} de ${pages}</span>
+      <div style="display:flex;gap:6px;align-items:center"><button class="btn sm" id="prev" ${state.page === 1 ? 'disabled' : ''}>‹ Anterior</button><button class="btn sm" id="next" ${state.page >= pages ? 'disabled' : ''}>Siguiente ›</button>
+      <label class="small">Por página <select><option>25</option><option>50</option><option>100</option></select></label></div></div>
+  </div>`;
   return body;
 }
 function accionFila(b) {
@@ -477,14 +513,28 @@ function bindInventario(root) {
     ev.stopPropagation(); const id = b.dataset.menuGrupo; state.openMenu = state.openMenu === id ? null : id; render();
     document.querySelector('.menu.open [role=menuitem]')?.focus();
   });
+  // Filtros de columna: los select filtran al cambiar; los de texto al pulsar Enter o salir del campo.
+  root.querySelectorAll('[data-filtro]').forEach(el => el.onchange = () => {
+    state.filtros[el.dataset.filtro] = el.value; state.page = 1; render();
+  });
+  root.querySelectorAll('[data-quitar]').forEach(b => b.onclick = () => { delete state.filtros[b.dataset.quitar]; render(); });
+  const limpiar = () => { state.filtros = {}; state.page = 1; render(); };
   const q = id => root.querySelector(id);
-  if (q('#fAmb')) q('#fAmb').onchange = e => { state.filtroAmb = e.target.value; state.page = 1; render(); };
-  if (q('#formBuscar')) q('#formBuscar').onsubmit = ev => { ev.preventDefault(); toast('«Buscar» aplica el texto y los filtros rápidos juntos. Los filtros quedan en la URL (<code>?ambiente=12&estado_operativo=En+Uso</code>) y se conservan al volver de una función.'); };
-  if (q('#todos')) q('#todos').onclick = () => { state.filtroAmb = ''; state.page = 1; render(); toast('«Mostrar todos» limpia el texto y los filtros.'); };
+  if (q('#limpiarFiltros')) q('#limpiarFiltros').onclick = limpiar;
+  if (q('#limpiarVacio')) q('#limpiarVacio').onclick = limpiar;
+  if (q('#formBuscar')) q('#formBuscar').onsubmit = ev => { ev.preventDefault(); toast('«Buscar» combina el texto con los filtros de columna. Todo queda en la URL (<code>?ambiente=12&estado_operativo=En+Uso</code>) y se conserva al volver de una función.'); };
+  if (q('#todos')) q('#todos').onclick = () => { limpiar(); toast('«Mostrar todos» limpia el texto y los filtros de columna.'); };
+  if (q('#cols')) q('#cols').onclick = ev => { ev.stopPropagation(); state.colsOpen = !state.colsOpen; render(); };
+  root.querySelectorAll('[data-col]').forEach(ch => ch.onchange = () => {
+    const k = ch.dataset.col;
+    if (ch.checked) state.colsOcultas.delete(k); else { state.colsOcultas.add(k); delete state.filtros[k]; }
+    render();
+  });
+  if (q('#colsTodas')) q('#colsTodas').onclick = () => { state.colsOcultas = new Set(); render(); };
+  if (q('#colsListo')) q('#colsListo').onclick = () => { state.colsOpen = false; render(); };
   if (q('#prev')) q('#prev').onclick = () => { state.page--; render(); };
   if (q('#next')) q('#next').onclick = () => { state.page++; render(); };
-  if (q('#cols')) q('#cols').onclick = () => toast('Selector de columnas actual (se guarda por navegador).');
-  if (q('#excel')) q('#excel').onclick = () => toast('Descarga todos los equipos del filtro actual (todas las páginas), no solo los visibles. Celdas saneadas contra fórmulas.');
+  if (q('#excel')) q('#excel').onclick = () => toast(`Descarga los <b>${root.querySelector('.resumen-filtros b:nth-of-type(2)')?.textContent || ''}</b> equipos del filtro actual (todas las páginas), con las columnas visibles. Celdas saneadas contra fórmulas.`);
 }
 
 // ---------- Ficha de equipo ----------
@@ -609,7 +659,7 @@ function renderAmbiente() {
   }
   return `
     <div class="toolbar" style="margin-top:0"><button class="btn sm" onclick="toast('Vuelve al listado de ambientes.')">‹ Ambientes</button><span class="muted small">Ambientes y horarios › AMB-303</span></div>
-    <div class="page-title"><h2>Aula 303 Multimedia · AMB-303</h2><span class="tag t-ok">Activo</span><span style="flex:1"></span>${can([ADMIN]) ? '<button class="btn">Editar ambiente</button><button class="btn">Asignar instructor</button>' : ''}</div>
+    <div class="cabecera-pagina"><h2 class="titulo-verde" style="font-size:24px!important">Aula 303 Multimedia · AMB-303 <span class="tag t-ok" style="vertical-align:middle">Activo</span></h2>${accionesCabecera(ACCIONES_AMBIENTES)}</div>
     <div class="inner-tabs" role="tablist" aria-label="Secciones del ambiente">${tabs.map(([k, l]) => `<button role="tab" data-atab="${k}" aria-selected="${state.ambTab === k}">${l}</button>`).join('')}</div>${panel}`;
 }
 function bindAmbiente(root) { root.querySelectorAll('[data-atab]').forEach(b => b.onclick = () => { state.ambTab = b.dataset.atab; render(); }); }
@@ -670,21 +720,20 @@ function bindInforme(root) { const a = root.querySelector('#asig'); if (a) a.onc
 // ---------- Rutas antiguas ----------
 function renderRutas() {
   const r = [
-    ['/equipos/consultar', 'Inventario › Consultar inventario', 'Se conserva'],
+    ['/equipos/consultar', 'Sidebar › Consultar inventario (pantalla principal)', 'Se conserva'],
     ['/mis-equipos', 'Consultar inventario › vista «Bajo mi responsabilidad»', 'Redirige'],
-    ['/equipos/verificar', 'Botón «Verificar» de cada fila (la pantalla sigue igual)', 'Sale del sidebar'],
-    ['/equipos/asignar · /asignaciones', 'Botón «Asignar» de cada fila (la pantalla sigue igual)', 'Sale del sidebar'],
+    ['/equipos · /equipos/prestados · /equipos/autorizaciones', 'Botones en la cabecera de Consultar Inventario', 'Sale del sidebar'],
+    ['/novedades · /reportes · /mantenimientos', 'Botones en la cabecera de Consultar Inventario', 'Sale del sidebar'],
+    ['/equipos/documento · /equipos/cuentadantes/buscar', 'Botones en la cabecera de Consultar Inventario', 'Sale del sidebar'],
+    ['(nuevo) /equipos/informe-uso', 'Botón «Informe de uso» en la cabecera', 'Nuevo'],
+    ['/equipos/verificar · /equipos/asignar', 'Botones «Verificar» y «Asignar» de cada fila', 'Sale del sidebar'],
     ['Botón «Movimientos» de la fila', 'Botón «Historial» con filtro Movimientos', 'Se une'],
     ['/equipos/historial-verificaciones/:codigo', 'Historial del equipo filtrado a verificaciones', 'Redirige'],
     ['/equipos/historial-movimientos/:codigo', 'Historial del equipo filtrado a movimientos', 'Redirige'],
-    ['/equipos · /equipos/prestados · /equipos/autorizaciones', 'Inventario (sidebar)', 'Se conservan'],
-    ['/equipos/cuentadantes/buscar', 'Inventario › Buscar cuentadante (Admin)', 'Se conserva'],
-    ['(nuevo) /equipos/informe-uso', 'Inventario › Informe de uso y préstamos', 'Nuevo'],
-    ['/novedades · /reportes · /mantenimientos', 'Incidencias (sidebar)', 'Se agrupan'],
-    ['/ambientes · /ambientes/:id · /ambientes/asignar · /horarios', 'Ambientes y horarios (sidebar)', 'Se agrupan'],
-    ['/equipos/documento', 'Accesos rápidos del Inicio (como hoy)', 'Se conserva']
+    ['/ambientes · /ambientes/:id', 'Sidebar › Ambientes y horarios', 'Se conservan'],
+    ['/horarios · /ambientes/asignar', 'Botones en la cabecera de Ambientes y horarios', 'Sale del sidebar']
   ];
-  return `<div class="page-title"><h2>Rutas antiguas → destino</h2></div><div class="note">«Sale del sidebar» no significa que desaparezca: la pantalla y su ruta siguen iguales y se llega desde el botón de la fila. Ningún enlace guardado se rompe.</div>
+  return `<div class="page-title"><h2>Rutas antiguas → destino</h2></div><div class="note">«Sale del sidebar» no significa que desaparezca: la pantalla y su ruta siguen iguales y se llega desde un botón de la cabecera o de la fila. Ningún enlace guardado se rompe.</div>
     <div class="table-wrap"><table><thead><tr><th>Ruta antigua</th><th>Destino</th><th>Decisión</th></tr></thead><tbody>${r.map(x => `<tr><td><code>${x[0]}</code></td><td>${x[1]}</td><td><span class="tag ${({ Redirige: 't-info', 'Sale del sidebar': 't-warn', 'Se une': 't-mor', Nuevo: 't-info' })[x[2]] || 't-ok'}">${x[2]}</span></td></tr>`).join('')}</tbody></table></div>`;
 }
 function renderDashboard() {
@@ -699,6 +748,7 @@ function render() {
   const main = document.getElementById('main');
   const views = { inventario: renderInventario, ficha: renderFicha, ambiente: renderAmbiente, informe: renderInforme, rutas: renderRutas, dashboard: renderDashboard, funcion: renderFuncion };
   main.innerHTML = views[state.screen]();
+  bindCabecera(main);
   main.querySelectorAll('[data-go]').forEach(b => b.onclick = ev => { ev.preventDefault(); go(b.dataset.go); });
   ({ inventario: bindInventario, ficha: bindFicha, ambiente: bindAmbiente, informe: bindInforme })[state.screen]?.(main);
 }
@@ -706,7 +756,10 @@ document.getElementById('rol').onchange = e => { state.rol = e.target.value; sta
 document.getElementById('atajo').onchange = e => go(e.target.value);
 document.getElementById('layout').onchange = e => { state.layout = e.target.value; state.openMenu = null; render(); };
 document.getElementById('menuBtn').onclick = () => { const s = document.getElementById('sidebar'); s.classList.toggle('open'); document.getElementById('menuBtn').setAttribute('aria-expanded', s.classList.contains('open')); };
-document.addEventListener('click', ev => { if (state.openMenu !== null && !ev.target.closest('.menu')) { state.openMenu = null; render(); } });
+document.addEventListener('click', ev => {
+  if (state.openMenu !== null && !ev.target.closest('.menu')) { state.openMenu = null; render(); }
+  else if (state.colsOpen && !ev.target.closest('.cols-wrap')) { state.colsOpen = false; render(); }
+});
 document.addEventListener('keydown', ev => {
   if (ev.key === 'Escape' && state.openMenu !== null) { state.openMenu = null; render(); return; }
   const menu = document.querySelector('.menu.open'); if (!menu || !['ArrowDown', 'ArrowUp'].includes(ev.key)) return;
