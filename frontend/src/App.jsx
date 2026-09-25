@@ -12,7 +12,6 @@ import Aprendices from './pages/Aprendices';
 import Config from './pages/Config';
 import CrearNovedad from './pages/CrearNovedad';
 import AsignarEquipo from './pages/AsignarEquipo';
-import MisEquipos from './pages/MisEquipos';
 import Novedades from './pages/Novedades';
 import Mantenimientos from './pages/Mantenimientos';
 import PaginaNoEncontrada from './pages/PaginaNoEncontrada.jsx';
@@ -201,13 +200,10 @@ export default function App() {
               </ProtectedRoute>
             }
           />
+          {/* «Mis Equipos» es ahora la vista «Bajo mi responsabilidad» de Consultar inventario */}
           <Route
             path="/mis-equipos"
-            element={
-              <ProtectedRoute>
-                <MisEquipos />
-              </ProtectedRoute>
-            }
+            element={<Navigate to="/equipos/consultar?vista=mi_responsabilidad" replace />}
           />
           <Route
             path="/mantenimientos"

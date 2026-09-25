@@ -8,6 +8,18 @@ const DEFAULT_ROLE_PERMISSIONS = {
   Cuentadante: ['equipos:assign_to_aprendiz'],
 };
 
+// Roles que por defecto tienen equipos:update (config/permissions.js del backend).
+const DEFAULT_UPDATE_ROLES = ['Administrador', 'Cuentadante'];
+
+/**
+ * ¿Puede editar equipos (p. ej. moverlos de ambiente)? Solo decide qué se
+ * muestra: el backend exige equipos:update en PUT /api/equipos/:codigo.
+ */
+export function canUpdateEquipos(user) {
+  if (Array.isArray(user?.permisos)) return user.permisos.includes('equipos:update');
+  return DEFAULT_UPDATE_ROLES.includes(user?.nombre_rol);
+}
+
 export function canManageEquipoAssignments(user) {
   const permissions = Array.isArray(user?.permisos)
     ? user.permisos
