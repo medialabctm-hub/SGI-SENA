@@ -120,6 +120,22 @@
   .accion.verde { background: #01af00; } .accion.verde-osc { background: #0e6e29; }
   .accion.rojo { background: #dc3545; } .accion.naranja { background: #d9480f; }
   .accion.morado { background: #6e06b3; } .accion.gris-osc { background: #5e5650; } .accion.taupe { background: #8c8178; }
+  .th-acc { text-align: center; border-left: 1px solid var(--gris-200); }
+  .td-acc { border-left: 1px solid var(--gris-100); background: #fcfcfb; }
+  .td-acc .acciones-fila { flex-wrap: nowrap; }
+  .acciones-iconos { display: flex; gap: 10px; }
+  .icono-grupo { display: inline-flex; gap: 4px; padding-right: 10px; border-right: 1px solid var(--gris-200); }
+  .icono-grupo:last-child { border-right: 0; }
+  .accion.ico-only { width: 34px; height: 34px; padding: 0; justify-content: center; font-size: 15px; }
+  .leyenda { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12px; color: var(--gris-700); margin: 0 0 10px; }
+  .leyenda > span { display: inline-flex; align-items: center; gap: 6px; }
+  .leyenda .accion.ico-only { width: 24px; height: 24px; font-size: 12px; border-radius: 6px; }
+  .menu .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
+  .dot.azul { background: #1770e6; } .dot.azul-osc { background: #0b47a6; } .dot.verde-osc { background: #0e6e29; } .dot.naranja { background: #d9480f; }
+  .dot.morado { background: #6e06b3; } .dot.gris-osc { background: #5e5650; }
+  .acciones-ficha { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 14px; }
+  .grupo-ficha { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; background: #fff; border: 1px solid var(--gris-200); border-radius: 10px; padding: 6px 8px; }
+  .grupo-t { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--gris-500); margin-right: 2px; }
   .hub { background: #fff; border: 1px solid var(--gris-200); border-radius: var(--radio); box-shadow: var(--sombra); padding: 12px 16px 14px; margin-bottom: 16px; }
   .hub-title { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--gris-500); margin: 0 0 8px; }
   .hub-buttons { display: flex; flex-wrap: wrap; gap: 8px; }
@@ -149,6 +165,13 @@
   <label>Ver como
     <select id="rol" aria-label="Rol simulado">
       <option>Administrador</option><option>Instructor</option><option selected>Cuentadante</option><option>Aprendiz</option>
+    </select>
+  </label>
+  <label>Botones de fila
+    <select id="layout" aria-label="Organización de los botones de fila">
+      <option value="columnas">A · Columnas por tipo de acción</option>
+      <option value="menus">B · Menús por grupo</option>
+      <option value="iconos">C · Solo íconos con leyenda</option>
     </select>
   </label>
   <label>Ir a
@@ -181,7 +204,7 @@ const STAFF = [ADMIN, INS, CTA];
 const state = {
   rol: CTA, screen: 'inventario', vista: 'todos', page: 1, openMenu: null, filtroAmb: '',
   fichaTab: 'resumen', ambTab: 'resumen', tiposHist: new Set(), misVacio: false,
-  incluirAsignaciones: false, configOpen: false
+  incluirAsignaciones: false, gruposAbiertos: {}, layout: 'columnas'
 };
 
 // ---------- Datos sintéticos ----------
@@ -203,102 +226,105 @@ const MIS = [
 ];
 
 // ---------- Navegación ----------
-// Sidebar corto: las funciones de inventario viven como botones dentro de «Consultar inventario».
-const SECTIONS = [
-  { key: 'inicio', title: 'Inicio', ico: '⌂', roles: ALL, screen: 'dashboard' },
-  { key: 'equipos', title: 'Consultar inventario', ico: '▣', roles: ALL, screen: 'inventario', badge: true },
-  { key: 'ambientes', title: 'Ambientes y horarios', ico: '⌖', roles: STAFF, screen: 'ambiente' }
-];
-// Botones de funciones dentro de Consultar inventario (mismos roles que tenía cada entrada del sidebar).
-const HUB = [
-  { key: 'registrar', t: 'Registrar equipo', ico: '＋', roles: [ADMIN, CTA], path: '/equipos', primary: true },
-  { key: 'verificar', t: 'Verificar inventario', ico: '✔', roles: [INS, CTA], path: '/equipos/verificar', primary: true },
-  { key: 'novedades', t: 'Novedades y reportes', ico: '⚠', roles: STAFF, path: '/novedades', count: 5, countTitle: 'novedades pendientes' },
-  { key: 'asignar', t: 'Asignar equipo', ico: '👤', roles: STAFF, path: '/equipos/asignar' },
-  { key: 'prestados', t: 'Equipos prestados', ico: '🖥', roles: STAFF, path: '/equipos/prestados' },
-  { key: 'autorizaciones', t: 'Autorizaciones', ico: '📋', roles: STAFF, path: '/equipos/autorizaciones', count: 3, countRoles: [ADMIN, CTA], countTitle: 'solicitudes por aprobar' },
-  { key: 'mantenimientos', t: 'Mantenimientos', ico: '🛠', roles: [ADMIN, CTA], path: '/mantenimientos' },
-  { key: 'informe', t: 'Informe de uso y préstamos', ico: '📊', roles: STAFF, screen: 'informe' },
-  { key: 'documento', t: 'Documento PDF', ico: '📄', roles: [ADMIN, CTA], path: '/equipos/documento' },
-  { key: 'cuentadante', t: 'Buscar cuentadante', ico: '🔎', roles: [ADMIN], path: '/equipos/cuentadantes/buscar' }
-];
-const HUB_AMB = [
-  { key: 'agenda', t: 'Agenda de horarios', ico: '🗓', roles: STAFF, path: '/horarios', primary: true },
-  { key: 'asignar-amb', t: 'Asignar ambientes', ico: '👥', roles: [ADMIN], path: '/ambientes/asignar' },
-  { key: 'nuevo-amb', t: 'Nuevo ambiente', ico: '＋', roles: [ADMIN], path: '/ambientes' }
+// El sidebar conserva solo las pantallas GENERALES. Lo que se hace sobre UN equipo
+// (verificar, novedad, asignar, uso, mover, mantenimiento, historial) está en los botones de cada fila.
+const MENU = [
+  { key: 'inicio', t: 'Inicio', ico: '⌂', roles: ALL, screen: 'dashboard' },
+  { key: 'inventario', t: 'Inventario', ico: '▣', roles: ALL, items: [
+    { key: 'consultar', t: 'Consultar inventario', roles: ALL, screen: 'inventario' },
+    { key: 'registrar', t: 'Registrar inventario', roles: [ADMIN, CTA], path: '/equipos' },
+    { key: 'prestados', t: 'Equipos prestados', roles: STAFF, path: '/equipos/prestados' },
+    { key: 'autorizaciones', t: 'Autorizaciones', roles: STAFF, path: '/equipos/autorizaciones', count: 3, countRoles: [ADMIN, CTA], countTitle: 'solicitudes por aprobar' },
+    { key: 'informe', t: 'Informe de uso y préstamos', roles: STAFF, screen: 'informe', nuevo: true },
+    { key: 'cuentadante', t: 'Buscar cuentadante', roles: [ADMIN], path: '/equipos/cuentadantes/buscar' }
+  ] },
+  { key: 'incidencias', t: 'Incidencias', ico: '⚠', roles: STAFF, items: [
+    { key: 'novedades', t: 'Novedades y reportes', roles: STAFF, path: '/novedades', count: 5, countTitle: 'novedades pendientes' },
+    { key: 'mantenimientos', t: 'Mantenimientos', roles: [ADMIN, CTA], path: '/mantenimientos' }
+  ] },
+  { key: 'ambientes', t: 'Ambientes y horarios', ico: '⌖', roles: STAFF, items: [
+    { key: 'gestion-amb', t: 'Gestión de ambientes', roles: [ADMIN, CTA], screen: 'ambiente' },
+    { key: 'asignar-amb', t: 'Asignar ambientes', roles: [ADMIN], path: '/ambientes/asignar' },
+    { key: 'horarios', t: 'Horarios', roles: STAFF, path: '/horarios' }
+  ] }
 ];
 const CONFIG = [
   { t: 'Usuarios', r: STAFF }, { t: 'Aprendices', r: [ADMIN] }, { t: 'Seguridad', r: ALL }, { t: 'Códigos de seguridad', r: [ADMIN] },
   { t: 'Tipos de equipos', r: [ADMIN] }, { t: 'Roles y áreas', r: [ADMIN, CTA] }, { t: 'Notificaciones', r: ALL }
 ];
 const can = roles => roles.includes(state.rol);
-const sectionOf = screen => {
-  if (screen === 'funcion') return HUB_AMB.includes(state.funcion) ? 'ambientes' : 'equipos';
-  return ({ dashboard: 'inicio', inventario: 'equipos', ficha: 'equipos', informe: 'equipos', ambiente: 'ambientes', rutas: null })[screen];
+// Qué entrada del sidebar queda resaltada en cada pantalla.
+const itemActivo = () => {
+  if (state.screen === 'funcion') return state.funcion?.key;
+  return ({ dashboard: 'inicio', inventario: 'consultar', ficha: 'consultar', informe: 'informe', ambiente: 'gestion-amb' })[state.screen];
 };
+const grupoDe = key => MENU.find(g => g.key === key || g.items?.some(i => i.key === key))?.key;
 
 function toast(html) {
   const t = document.getElementById('toast');
   t.innerHTML = html; t.classList.add('show');
   clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove('show'), 5200);
 }
-// Barra de botones de funciones (mismo estilo que Buscar / Columnas / Excel de la pantalla actual).
-function hubBar(items, titulo) {
-  const visibles = items.filter(i => can(i.roles));
-  if (!visibles.length) return '';
-  return `<section class="hub" aria-label="${titulo}"><p class="hub-title">${titulo}</p><div class="hub-buttons">${visibles.map(i => {
-    const conteo = i.count && (!i.countRoles || can(i.countRoles)) ? `<span class="count" title="${i.count} ${i.countTitle}">${i.count}</span>` : '';
-    return `<button class="btn ${i.primary ? 'primary' : 'gris'}" data-hub="${i.key}"><span aria-hidden="true">${i.ico}</span>${i.t}${conteo}</button>`;
-  }).join('')}</div></section>`;
-}
-function bindHub(root) {
-  root.querySelectorAll('[data-hub]').forEach(b => b.onclick = () => {
-    const item = [...HUB, ...HUB_AMB].find(i => i.key === b.dataset.hub);
-    if (item.screen) { go(item.screen); return; }
-    state.funcion = item; go('funcion');
-  });
-}
-// Pantalla existente abierta desde un botón: se conserva tal cual, con «Volver» arriba.
+// Pantalla existente abierta desde el sidebar: se conserva tal cual.
 function renderFuncion() {
   const f = state.funcion;
-  const esAmb = HUB_AMB.includes(f);
-  return `<div class="breadcrumb"><button class="btn sm" data-go="${esAmb ? 'ambiente' : 'inventario'}">‹ Volver a ${esAmb ? 'Ambientes y horarios' : 'Consultar inventario'}</button>
-      <span class="muted small">${esAmb ? 'Ambientes y horarios' : 'Consultar inventario'} › ${f.t}</span></div>
+  const grupo = MENU.find(g => g.items?.includes(f));
+  return `<div class="breadcrumb"><span class="muted small">${grupo ? grupo.t + ' › ' : ''}${f.t}</span></div>
     <div class="page-title"><h2>${f.t}</h2><code class="small muted">${f.path}</code></div>
-    <div class="stub"><div style="font-size:34px">${f.ico}</div><p><b>Aquí se muestra la pantalla actual de «${f.t}» sin cambios.</b></p>
-      <p class="small">La ruta se conserva (<code>${f.path}</code>), solo deja de estar en el sidebar. En el sidebar queda resaltado «${esAmb ? 'Ambientes y horarios' : 'Consultar inventario'}» para que el usuario sepa dónde está.</p></div>`;
+    <div class="stub"><p><b>Aquí va la pantalla actual de «${f.t}», sin cambios.</b></p>
+      <p class="small">Misma ruta (<code>${f.path}</code>) y misma entrada del sidebar.</p></div>`;
 }
 function go(screen) {
-  if (screen === 'ambiente' && !can([ADMIN, CTA])) { toast('Con este rol la ficha de ambiente no está en el menú (igual que hoy). Se muestra igualmente para revisar el diseño.'); }
   state.screen = screen; state.openMenu = null;
   document.getElementById('atajo').value = ['inventario', 'ficha', 'ambiente', 'informe', 'rutas'].includes(screen) ? screen : 'inventario';
   document.getElementById('sidebar').classList.remove('open');
   render(); document.getElementById('main').focus();
 }
+function abrirItem(item) {
+  if (item.screen) { go(item.screen); return; }
+  state.funcion = item; go('funcion');
+}
 
 function renderSidebar() {
-  const current = sectionOf(state.screen);
+  const activo = itemActivo();
+  const grupoActivo = grupoDe(activo);
   let html = '';
-  for (const s of SECTIONS) {
-    if (!can(s.roles)) continue;
-    const badge = s.badge && can([ADMIN, CTA]) ? '<span class="badge-count" title="3 autorizaciones por aprobar">3</span>' : '';
-    html += `<button class="nav-item" data-sec="${s.key}" ${current === s.key ? 'aria-current="page"' : ''}><span class="ico" aria-hidden="true">${s.ico}</span>${s.title}${badge}</button>`;
+  for (const g of MENU) {
+    if (!can(g.roles)) continue;
+    if (!g.items) {
+      html += `<button class="nav-item" data-item="${g.key}" ${activo === g.key ? 'aria-current="page"' : ''}><span class="ico" aria-hidden="true">${g.ico}</span>${g.t}</button>`;
+      continue;
+    }
+    const items = g.items.filter(i => can(i.roles));
+    if (!items.length) continue;
+    const abierto = state.gruposAbiertos[g.key] ?? (g.key === grupoActivo);
+    html += `<button class="nav-item" data-grupo="${g.key}" aria-expanded="${abierto}"><span class="ico" aria-hidden="true">${g.ico}</span>${g.t}<span style="margin-left:auto">${abierto ? '▾' : '▸'}</span></button>
+      <div class="nav-sub ${abierto ? 'open' : ''}">${items.map(i => {
+        const conteo = i.count && (!i.countRoles || can(i.countRoles)) ? `<span class="badge-count" title="${i.count} ${i.countTitle}">${i.count}</span>` : '';
+        const nuevo = i.nuevo ? '<span class="tag t-info" style="margin-left:auto">nuevo</span>' : '';
+        return `<button class="nav-item" data-item="${i.key}" ${activo === i.key ? 'aria-current="page"' : ''}>${i.t}${conteo}${nuevo}</button>`;
+      }).join('')}</div>`;
   }
   const cfg = CONFIG.filter(c => can(c.r));
-  html += `<button class="nav-item" id="cfgBtn" aria-expanded="${state.configOpen}" aria-controls="cfgSub"><span class="ico" aria-hidden="true">⚙</span>Configuración<span style="margin-left:auto">${state.configOpen ? '▾' : '▸'}</span></button>
-    <div class="nav-sub ${state.configOpen ? 'open' : ''}" id="cfgSub">${cfg.map(c => `<button class="nav-item" data-cfg="${c.t}">${c.t}</button>`).join('')}</div>
-    <div class="sidebar-note">Antes: Inventario (10 entradas), Incidencias, Mantenimiento y Horarios. Ahora: ${SECTIONS.filter(s => can(s.roles)).length} entradas + Configuración; las funciones están como botones dentro de cada pantalla.</div>`;
+  const cfgAbierto = state.gruposAbiertos.config ?? false;
+  html += `<button class="nav-item" data-grupo="config" aria-expanded="${cfgAbierto}"><span class="ico" aria-hidden="true">⚙</span>Configuración<span style="margin-left:auto">${cfgAbierto ? '▾' : '▸'}</span></button>
+    <div class="nav-sub ${cfgAbierto ? 'open' : ''}">${cfg.map(c => `<button class="nav-item" data-cfg="${c.t}">${c.t}</button>`).join('')}</div>
+    <div class="sidebar-note"><b>Salen del sidebar:</b> Mis Equipos (vista «Bajo mi responsabilidad» en Consultar), Asignar Equipo y Verificar Inventario (botones en cada fila). Mantenimiento y Horarios se agrupan en Incidencias y Ambientes.</div>`;
   const sb = document.getElementById('sidebar');
   sb.innerHTML = html;
-  sb.querySelectorAll('[data-sec]').forEach(b => b.onclick = () => {
-    const s = SECTIONS.find(x => x.key === b.dataset.sec);
-    if (s.key === 'ambientes' && !can([ADMIN, CTA])) { state.funcion = HUB_AMB[0]; go('funcion'); return; }
-    go(s.screen);
+  sb.querySelectorAll('[data-grupo]').forEach(b => b.onclick = () => {
+    const k = b.dataset.grupo;
+    const actual = state.gruposAbiertos[k] ?? (k === grupoActivo);
+    state.gruposAbiertos[k] = !actual; renderSidebar();
   });
-  document.getElementById('cfgBtn').onclick = () => { state.configOpen = !state.configOpen; renderSidebar(); };
+  sb.querySelectorAll('[data-item]').forEach(b => b.onclick = () => {
+    const k = b.dataset.item;
+    const item = MENU.find(g => g.key === k) || MENU.flatMap(g => g.items || []).find(i => i.key === k);
+    abrirItem(item);
+  });
   sb.querySelectorAll('[data-cfg]').forEach(b => b.onclick = () => toast(`Configuración → ${b.dataset.cfg} (sin cambios en esta entrega).`));
 }
-const volverInventario = etiqueta => `<div class="breadcrumb"><button class="btn sm" data-go="inventario">‹ Volver a Consultar inventario</button><span class="muted small">Consultar inventario › ${etiqueta}</span></div>`;
+const volverInventario = etiqueta => `<div class="breadcrumb"><button class="btn sm" data-go="inventario">‹ Volver a Consultar inventario</button><span class="muted small">Inventario › ${etiqueta}</span></div>`;
 
 // ---------- Badges ----------
 const tagFis = v => `<span class="tag ${({ Nuevo: 't-info', Bueno: 't-ok', Regular: 't-warn', Malo: 't-err', 'Dañado': 't-err' })[v] || 't-gray'}">${v}</span>`;
@@ -315,27 +341,62 @@ function vistasPorRol() {
     [APR]: [['habilitados', 'Equipos habilitados'], ['mia', 'Bajo mi responsabilidad']]
   })[state.rol];
 }
-// Botones de la fila: los de hoy (Ver Detalle, Historial, Editar, Eliminar) + las funciones sobre ESE equipo.
+// Botones de la fila, organizados por tipo de acción.
 // «Movimientos» deja de ser un botón aparte: es un filtro dentro de «Historial».
+const GRUPOS = [['consultar', 'Consultar'], ['gestionar', 'Gestionar'], ['registrar', 'Registrar'], ['administrar', 'Administrar']];
 function accionesFila(eq) {
   const a = [
-    { t: 'Ver Detalle', ico: '👁', cls: 'azul', roles: ALL, go: 'ficha' },
-    { t: 'Historial', ico: '🕘', cls: 'azul', roles: ALL, go: 'historial' },
-    { t: 'Verificar', ico: '✔', cls: 'verde-osc', roles: [INS, CTA], path: `/equipos/verificar?equipo=${eq.id}` },
-    { t: 'Novedad', ico: '⚠', cls: 'naranja', roles: STAFF, path: `/novedades?tab=crear&equipo=${eq.id}` },
-    { t: 'Asignar', ico: '👤', cls: 'morado', roles: STAFF, path: `/equipos/asignar?equipo=${eq.id}` },
-    { t: 'Registrar uso', ico: '🖥', cls: 'azul-osc', roles: STAFF, path: `/equipos/detalle/${eq.id}?por=id&tab=responsables` },
-    { t: 'Mover', ico: '⇄', cls: 'azul-osc', roles: STAFF,
+    { g: 'consultar', t: 'Ver Detalle', ico: '👁', cls: 'azul', roles: ALL, go: 'ficha' },
+    { g: 'consultar', t: 'Historial', ico: '🕘', cls: 'azul', roles: ALL, go: 'historial' },
+    { g: 'gestionar', t: 'Verificar', ico: '✔', cls: 'verde-osc', roles: [INS, CTA], path: `/equipos/verificar?equipo=${eq.id}` },
+    { g: 'gestionar', t: 'Asignar', ico: '👤', cls: 'morado', roles: STAFF, path: `/equipos/asignar?equipo=${eq.id}` },
+    { g: 'gestionar', t: 'Mover', ico: '⇄', cls: 'azul-osc', roles: STAFF,
       path: eq.ver === 'Verificado' ? `/equipos/autorizaciones?equipo=${eq.id}#solicitar` : 'edit',
       nota: eq.ver === 'Verificado' ? 'Equipo verificado: se pide autorización (un solo uso).' : 'Sin verificar: se mueve editando el ambiente.' },
-    { t: 'Mantenimiento', ico: '🛠', cls: 'gris-osc', roles: [ADMIN, CTA], path: `/mantenimientos?tab=crear&equipo=${eq.id}` },
-    { t: 'Editar', ico: '', cls: 'verde', roles: [ADMIN], path: 'edit' },
-    { t: 'Eliminar', ico: '', cls: 'rojo', roles: [ADMIN], path: 'delete' }
+    { g: 'registrar', t: 'Novedad', ico: '⚠', cls: 'naranja', roles: STAFF, path: `/novedades?tab=crear&equipo=${eq.id}` },
+    { g: 'registrar', t: 'Registrar uso', ico: '🖥', cls: 'azul-osc', roles: STAFF, path: `/equipos/detalle/${eq.id}?por=id&tab=responsables` },
+    { g: 'registrar', t: 'Mantenimiento', ico: '🛠', cls: 'gris-osc', roles: [ADMIN, CTA], path: `/mantenimientos?tab=crear&equipo=${eq.id}` },
+    { g: 'administrar', t: 'Editar', ico: '✎', cls: 'verde', roles: [ADMIN], path: 'edit' },
+    { g: 'administrar', t: 'Eliminar', ico: '🗑', cls: 'rojo', roles: [ADMIN], path: 'delete' }
   ];
   return a.filter(x => can(x.roles));
 }
-const botonesFila = eq => `<div class="acciones-fila">${accionesFila(eq).map((x, i) =>
-  `<button class="accion ${x.cls}" data-fila="${i}" data-eq="${eq.id}" title="${x.nota || x.t}">${x.ico ? `<span aria-hidden="true">${x.ico}</span>` : ''}${x.t}</button>`).join('')}</div>`;
+const gruposVisibles = () => GRUPOS.filter(([g]) => accionesFila(EQUIPOS[0]).some(x => x.g === g));
+const botonAccion = (x, i, eq, soloIcono = false) => soloIcono
+  ? `<button class="accion ico-only ${x.cls}" data-fila="${i}" data-eq="${eq.id}" aria-label="${x.t}" title="${x.nota ? x.t + ' — ' + x.nota : x.t}">${x.ico}</button>`
+  : `<button class="accion ${x.cls}" data-fila="${i}" data-eq="${eq.id}" title="${x.nota || x.t}"><span aria-hidden="true">${x.ico}</span>${x.t}</button>`;
+
+// Cabecera y celdas de acciones según la organización elegida en el selector del prototipo.
+function cabeceraAcciones() {
+  if (state.layout === 'columnas') return gruposVisibles().map(([, t]) => `<th class="th-acc">${t}</th>`).join('');
+  return '<th>Acciones</th>';
+}
+function celdasAcciones(eq) {
+  const acciones = accionesFila(eq).map((x, i) => ({ ...x, i }));
+  if (state.layout === 'columnas') {
+    return gruposVisibles().map(([g]) =>
+      `<td class="td-acc"><div class="acciones-fila">${acciones.filter(x => x.g === g).map(x => botonAccion(x, x.i, eq)).join('')}</div></td>`).join('');
+  }
+  if (state.layout === 'iconos') {
+    return `<td><div class="acciones-iconos">${gruposVisibles().map(([g]) =>
+      `<span class="icono-grupo">${acciones.filter(x => x.g === g).map(x => botonAccion(x, x.i, eq, true)).join('')}</span>`).join('')}</div></td>`;
+  }
+  // 'menus': Consultar y Administrar visibles; Gestionar y Registrar como menús desplegables.
+  const partes = gruposVisibles().map(([g, t]) => {
+    const del = acciones.filter(x => x.g === g);
+    if (g === 'consultar' || g === 'administrar' || del.length === 1) return del.map(x => botonAccion(x, x.i, eq)).join('');
+    const id = `${eq.id}:${g}`;
+    return `<div class="row-actions"><button class="accion taupe" data-menu-grupo="${id}" aria-haspopup="menu" aria-expanded="${state.openMenu === id}">${t} ▾</button>
+      <div class="menu ${state.openMenu === id ? 'open' : ''}" role="menu" aria-label="${t}">${del.map(x =>
+        `<button role="menuitem" data-fila="${x.i}" data-eq="${eq.id}"><span class="dot ${x.cls}" aria-hidden="true"></span>${x.ico} ${x.t}</button>`).join('')}</div></div>`;
+  });
+  return `<td><div class="acciones-fila">${partes.join('')}</div></td>`;
+}
+function leyendaIconos() {
+  if (state.layout !== 'iconos') return '';
+  return `<div class="leyenda" aria-label="Leyenda de íconos">${accionesFila(EQUIPOS[0]).map(x =>
+    `<span><span class="accion ico-only ${x.cls}" aria-hidden="true">${x.ico}</span>${x.t}</span>`).join('')}</div>`;
+}
 
 function renderInventario() {
   const vistas = vistasPorRol();
@@ -355,17 +416,16 @@ function renderInventario() {
     .map(([id, [c, n]]) => `<option value="${id}" ${state.filtroAmb === id ? 'selected' : ''}>${c} · ${n}</option>`).join('');
 
   let body = `<div class="page-title"><h2 class="titulo-verde">Consultar Inventario</h2></div>
-  ${hubBar(HUB, 'Funciones de inventario')}
   <div class="pills" role="group" aria-label="Vista">${vistas.map(([k, l]) => `<button class="pill" data-vista="${k}" aria-pressed="${state.vista === k}">${l}</button>`).join('')}</div>`;
 
   if (mia) {
     body += `<div class="card"><div class="note">«Bajo mi responsabilidad» conserva las columnas de la antigua pantalla <b>Mis Equipos</b> y su propia consulta de alcance personal. Un equipo del ambiente <b>no</b> aparece aquí salvo que tengas una responsabilidad o lo tengas a cargo.</div>
       <div class="toolbar"><label class="small"><input type="checkbox" id="misVacio" ${state.misVacio ? 'checked' : ''}> Simular «sin equipos asignados»</label><span class="spacer"></span><span class="muted small">${state.misVacio ? 0 : MIS.length} equipos</span></div>
       ${state.misVacio ? `<div class="empty"><div style="font-size:34px">📭</div><h3>No tienes equipos bajo tu responsabilidad</h3><p>Cuando te asignen un equipo como principal o secundario aparecerá aquí.</p></div>` : `
-      <div class="table-wrap"><table style="min-width:1100px"><thead><tr><th>Código inventario</th><th>Tipo / modelo</th><th>Ambiente</th><th>Responsabilidad</th><th>Desde</th><th>Días</th><th>Asignado por</th><th>Observaciones</th><th>Acciones</th></tr></thead><tbody>
+      <div class="table-wrap"><table style="min-width:1100px"><thead><tr><th>Código inventario</th><th>Tipo / modelo</th><th>Ambiente</th><th>Responsabilidad</th><th>Desde</th><th>Días</th><th>Asignado por</th><th>Observaciones</th>${cabeceraAcciones()}</tr></thead><tbody>
       ${MIS.map(m => `<tr><td><b>${m.placa}</b></td><td>${m.tipo}<div class="muted small">${m.modelo}</div></td><td>${ambTxt(m.amb)}</td>
         <td><span class="tag ${m.resp === 'Principal' ? 't-ok' : m.resp === 'Secundario' ? 't-info' : 't-gray'}">${m.resp}</span></td><td>${m.desde}</td><td>${m.dias ?? '—'}</td><td>${m.por}</td><td>${m.obs}</td>
-        <td>${botonesFila(EQUIPOS.find(e => e.id === m.id))}</td></tr>`).join('')}
+        ${celdasAcciones(EQUIPOS.find(e => e.id === m.id))}</tr>`).join('')}
       </tbody></table></div>`}</div>`;
   } else {
     body += `<div class="card">
@@ -387,10 +447,11 @@ function renderInventario() {
         ${state.rol === ADMIN ? '<label class="field">Cuentadante<select><option>Todos</option><option>Carlos M.</option><option>Diana R.</option></select></label>' : ''}
       </div>
       <p class="small muted" style="margin:10px 0 8px">Mostrando <b>${from}–${to}</b> de <b>${total}</b> equipos${state.filtroAmb ? ` en <b>${AMB[state.filtroAmb][0]}</b>` : ''} · la búsqueda, los filtros, el total y «Descargar Excel» usan exactamente los mismos datos.</p>
-      <div class="table-wrap"><table style="min-width:1180px"><thead><tr><th>Código inventario</th><th>Tipo / modelo</th><th>Ambiente</th><th>Estado físico</th><th>Estado operativo</th><th>Estado verificación</th><th>Préstamo</th>${verCta ? '<th>Cuentadante</th>' : ''}<th>Acciones</th></tr></thead><tbody>
+      ${leyendaIconos()}
+      <div class="table-wrap"><table style="min-width:1180px"><thead><tr><th>Código inventario</th><th>Tipo / modelo</th><th>Ambiente</th><th>Estado físico</th><th>Estado operativo</th><th>Estado verificación</th><th>Préstamo</th>${verCta ? '<th>Cuentadante</th>' : ''}${cabeceraAcciones()}</tr></thead><tbody>
       ${rows.length ? rows.map(e => `<tr><td><b>${e.placa}</b></td><td>${e.tipo}<div class="muted small">${e.modelo}</div></td><td>${ambTxt(e.amb)}</td>
         <td>${tagFis(e.fis)}</td><td>${tagOp(e.op)}</td><td>${tagVer(e.ver)}</td><td>${e.prest ? '<span class="tag t-warn">En préstamo</span>' : '<span class="muted">—</span>'}</td>${verCta ? `<td>${e.cta}</td>` : ''}
-        <td>${botonesFila(e)}</td></tr>`).join('') : `<tr><td colspan="9" class="empty">No hay equipos con esos filtros.</td></tr>`}
+        ${celdasAcciones(e)}</tr>`).join('') : `<tr><td colspan="12" class="empty">No hay equipos con esos filtros.</td></tr>`}
       </tbody></table></div>
       <div class="pager"><span class="small muted">Página ${state.page} de ${pages}</span>
         <div style="display:flex;gap:6px;align-items:center"><button class="btn sm" id="prev" ${state.page === 1 ? 'disabled' : ''}>‹ Anterior</button><button class="btn sm" id="next" ${state.page >= pages ? 'disabled' : ''}>Siguiente ›</button>
@@ -412,6 +473,10 @@ function bindInventario(root) {
   root.querySelectorAll('[data-vista]').forEach(b => b.onclick = () => { state.vista = b.dataset.vista; state.page = 1; render(); });
   const mv = root.querySelector('#misVacio'); if (mv) mv.onchange = () => { state.misVacio = mv.checked; render(); };
   root.querySelectorAll('[data-fila]').forEach(b => b.onclick = () => accionFila(b));
+  root.querySelectorAll('[data-menu-grupo]').forEach(b => b.onclick = ev => {
+    ev.stopPropagation(); const id = b.dataset.menuGrupo; state.openMenu = state.openMenu === id ? null : id; render();
+    document.querySelector('.menu.open [role=menuitem]')?.focus();
+  });
   const q = id => root.querySelector(id);
   if (q('#fAmb')) q('#fAmb').onchange = e => { state.filtroAmb = e.target.value; state.page = 1; render(); };
   if (q('#formBuscar')) q('#formBuscar').onsubmit = ev => { ev.preventDefault(); toast('«Buscar» aplica el texto y los filtros rápidos juntos. Los filtros quedan en la URL (<code>?ambiente=12&estado_operativo=En+Uso</code>) y se conservan al volver de una función.'); };
@@ -468,8 +533,9 @@ function renderHistorial() {
 function renderFicha() {
   const tabs = [['resumen', 'Resumen'], ['responsables', 'Responsables y préstamos'], ['historial', 'Historial'], ['incidencias', 'Incidencias y mantenimiento'], ['imagenes', 'Imágenes']];
   // Mismos botones que la fila del inventario, sin «Ver Detalle» ni «Historial» (aquí son pestañas).
-  const acc = accionesFila(EQUIPOS[0]).map((x, i) => x.go ? '' :
-    `<button class="accion ${x.cls}" data-fila="${i}" data-eq="1045" title="${x.nota || x.t}">${x.ico ? `<span aria-hidden="true">${x.ico}</span>` : ''}${x.t}</button>`);
+  const accs = accionesFila(EQUIPOS[0]).map((x, i) => ({ ...x, i }));
+  const acc = gruposVisibles().filter(([g]) => g !== 'consultar').map(([g, t]) =>
+    `<div class="grupo-ficha"><span class="grupo-t">${t}</span>${accs.filter(x => x.g === g).map(x => botonAccion(x, x.i, EQUIPOS[0])).join('')}</div>`);
   let panel = '';
   if (state.fichaTab === 'resumen') {
     panel = `<div class="grid-2"><div class="card"><dl class="kv">
@@ -501,7 +567,7 @@ function renderFicha() {
   }
   return `${volverInventario('Equipo 9211045')}
     <div class="page-title"><h2>Portátil Latitude 5420 · 9211045</h2>${tagOp('En Uso')} ${tagVer('Con Novedad')}</div>
-    ${acc.join('') ? `<div class="acciones-fila" style="max-width:none;margin-bottom:12px">${acc.join('')}</div>` : ''}
+    ${acc.length ? `<div class="acciones-ficha">${acc.join('')}</div>` : ''}
     <div class="inner-tabs" role="tablist" aria-label="Secciones de la ficha">${tabs.map(([k, l]) => `<button role="tab" data-ftab="${k}" aria-selected="${state.fichaTab === k}">${l}</button>`).join('')}</div>
     ${panel}`;
 }
@@ -541,7 +607,7 @@ function renderAmbiente() {
   } else {
     panel = `<div class="card"><div class="toolbar" style="margin-top:0">${can([ADMIN]) ? '<button class="btn">Subir imágenes</button>' : '<span class="muted small">Solo quien puede editar el ambiente sube imágenes.</span>'}</div><div class="imgs"><div class="img">Panorámica</div><div class="img">Plano</div><div class="img">Detalle</div></div></div>`;
   }
-  return `${hubBar(HUB_AMB, 'Funciones de ambientes y horarios')}
+  return `
     <div class="toolbar" style="margin-top:0"><button class="btn sm" onclick="toast('Vuelve al listado de ambientes.')">‹ Ambientes</button><span class="muted small">Ambientes y horarios › AMB-303</span></div>
     <div class="page-title"><h2>Aula 303 Multimedia · AMB-303</h2><span class="tag t-ok">Activo</span><span style="flex:1"></span>${can([ADMIN]) ? '<button class="btn">Editar ambiente</button><button class="btn">Asignar instructor</button>' : ''}</div>
     <div class="inner-tabs" role="tablist" aria-label="Secciones del ambiente">${tabs.map(([k, l]) => `<button role="tab" data-atab="${k}" aria-selected="${state.ambTab === k}">${l}</button>`).join('')}</div>${panel}`;
@@ -604,17 +670,22 @@ function bindInforme(root) { const a = root.querySelector('#asig'); if (a) a.onc
 // ---------- Rutas antiguas ----------
 function renderRutas() {
   const r = [
-    ['/equipos/consultar', 'Consultar inventario (punto central, en el sidebar)', 'Se conserva'], ['/mis-equipos', 'Consultar inventario › vista «Bajo mi responsabilidad»', 'Redirige'],
-    ['/equipos', 'Botón «Registrar equipo»', 'Sale del sidebar'], ['/equipos/verificar', 'Botón «Verificar inventario»', 'Sale del sidebar'],
-    ['/equipos/asignar · /asignaciones', 'Botón «Asignar equipo»', 'Sale del sidebar'], ['/equipos/prestados', 'Botón «Equipos prestados»', 'Sale del sidebar'],
-    ['/equipos/autorizaciones', 'Botón «Autorizaciones» con contador (y contador en el sidebar)', 'Sale del sidebar'], ['/equipos/cuentadantes/buscar', 'Botón «Buscar cuentadante» (Admin)', 'Sale del sidebar'],
-    ['/novedades · /reportes', 'Botón «Novedades y reportes» con contador de pendientes', 'Sale del sidebar'], ['/mantenimientos', 'Botón «Mantenimientos»', 'Sale del sidebar'],
-    ['/equipos/documento', 'Botón «Documento PDF» (≠ informe de uso)', 'Se conserva'], ['/equipos/historial-verificaciones/:codigo', 'Ficha › Historial filtrado a verificaciones', 'Redirige'],
-    ['/equipos/historial-movimientos/:codigo', 'Ficha › Historial filtrado a movimientos', 'Redirige'], ['/ambientes · /ambientes/:id', 'Ambientes y horarios (en el sidebar)', 'Se conservan'],
-    ['/horarios · /ambientes/asignar', 'Botones en Ambientes y horarios', 'Sale del sidebar']
+    ['/equipos/consultar', 'Inventario › Consultar inventario', 'Se conserva'],
+    ['/mis-equipos', 'Consultar inventario › vista «Bajo mi responsabilidad»', 'Redirige'],
+    ['/equipos/verificar', 'Botón «Verificar» de cada fila (la pantalla sigue igual)', 'Sale del sidebar'],
+    ['/equipos/asignar · /asignaciones', 'Botón «Asignar» de cada fila (la pantalla sigue igual)', 'Sale del sidebar'],
+    ['Botón «Movimientos» de la fila', 'Botón «Historial» con filtro Movimientos', 'Se une'],
+    ['/equipos/historial-verificaciones/:codigo', 'Historial del equipo filtrado a verificaciones', 'Redirige'],
+    ['/equipos/historial-movimientos/:codigo', 'Historial del equipo filtrado a movimientos', 'Redirige'],
+    ['/equipos · /equipos/prestados · /equipos/autorizaciones', 'Inventario (sidebar)', 'Se conservan'],
+    ['/equipos/cuentadantes/buscar', 'Inventario › Buscar cuentadante (Admin)', 'Se conserva'],
+    ['(nuevo) /equipos/informe-uso', 'Inventario › Informe de uso y préstamos', 'Nuevo'],
+    ['/novedades · /reportes · /mantenimientos', 'Incidencias (sidebar)', 'Se agrupan'],
+    ['/ambientes · /ambientes/:id · /ambientes/asignar · /horarios', 'Ambientes y horarios (sidebar)', 'Se agrupan'],
+    ['/equipos/documento', 'Accesos rápidos del Inicio (como hoy)', 'Se conserva']
   ];
-  return `<div class="page-title"><h2>Rutas antiguas → destino</h2></div><div class="note">«Sale del sidebar» no significa que desaparezca: la pantalla y su ruta siguen iguales y se llega con un botón. Ningún enlace guardado se rompe.</div>
-    <div class="table-wrap"><table><thead><tr><th>Ruta antigua</th><th>Destino</th><th>Decisión</th></tr></thead><tbody>${r.map(x => `<tr><td><code>${x[0]}</code></td><td>${x[1]}</td><td><span class="tag ${x[2] === 'Redirige' ? 't-info' : x[2] === 'Sale del sidebar' ? 't-warn' : 't-ok'}">${x[2]}</span></td></tr>`).join('')}</tbody></table></div>`;
+  return `<div class="page-title"><h2>Rutas antiguas → destino</h2></div><div class="note">«Sale del sidebar» no significa que desaparezca: la pantalla y su ruta siguen iguales y se llega desde el botón de la fila. Ningún enlace guardado se rompe.</div>
+    <div class="table-wrap"><table><thead><tr><th>Ruta antigua</th><th>Destino</th><th>Decisión</th></tr></thead><tbody>${r.map(x => `<tr><td><code>${x[0]}</code></td><td>${x[1]}</td><td><span class="tag ${({ Redirige: 't-info', 'Sale del sidebar': 't-warn', 'Se une': 't-mor', Nuevo: 't-info' })[x[2]] || 't-ok'}">${x[2]}</span></td></tr>`).join('')}</tbody></table></div>`;
 }
 function renderDashboard() {
   return `<div class="card"><h2 style="margin-top:0">¡Bienvenido, ${state.rol}!</h2><p class="muted">Accesos rápidos actualizados:</p><div class="toolbar">
@@ -628,12 +699,12 @@ function render() {
   const main = document.getElementById('main');
   const views = { inventario: renderInventario, ficha: renderFicha, ambiente: renderAmbiente, informe: renderInforme, rutas: renderRutas, dashboard: renderDashboard, funcion: renderFuncion };
   main.innerHTML = views[state.screen]();
-  bindHub(main);
   main.querySelectorAll('[data-go]').forEach(b => b.onclick = ev => { ev.preventDefault(); go(b.dataset.go); });
   ({ inventario: bindInventario, ficha: bindFicha, ambiente: bindAmbiente, informe: bindInforme })[state.screen]?.(main);
 }
 document.getElementById('rol').onchange = e => { state.rol = e.target.value; state.vista = ''; state.page = 1; render(); };
 document.getElementById('atajo').onchange = e => go(e.target.value);
+document.getElementById('layout').onchange = e => { state.layout = e.target.value; state.openMenu = null; render(); };
 document.getElementById('menuBtn').onclick = () => { const s = document.getElementById('sidebar'); s.classList.toggle('open'); document.getElementById('menuBtn').setAttribute('aria-expanded', s.classList.contains('open')); };
 document.addEventListener('click', ev => { if (state.openMenu !== null && !ev.target.closest('.menu')) { state.openMenu = null; render(); } });
 document.addEventListener('keydown', ev => {
