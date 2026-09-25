@@ -164,6 +164,7 @@
   .btn.gris:hover { background: #5e5650; }
   .breadcrumb { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 14px; }
   .stub { border: 2px dashed var(--gris-200); border-radius: var(--radio); padding: 40px 16px; text-align: center; color: var(--gris-500); background: #fff; }
+  svg.i { flex-shrink: 0; vertical-align: -3px; }
   .forbidden { text-align: center; padding: 40px 16px; }
   .forbidden .big { font-size: 40px; }
   :focus-visible { outline: 3px solid #74b4ff; outline-offset: 2px; }
@@ -186,13 +187,6 @@
       <option>Administrador</option><option>Instructor</option><option selected>Cuentadante</option><option>Aprendiz</option>
     </select>
   </label>
-  <label>Botones de fila
-    <select id="layout" aria-label="Organización de los botones de fila">
-      <option value="columnas">A · Columnas por tipo de acción</option>
-      <option value="menus">B · Menús por grupo</option>
-      <option value="iconos">C · Solo íconos con leyenda</option>
-    </select>
-  </label>
   <label>Ir a
     <select id="atajo" aria-label="Pantalla del prototipo">
       <option value="inventario">Inventario (listado unificado)</option>
@@ -204,7 +198,7 @@
   </label>
 </div>
 <header class="app-header">
-  <button class="menu-btn" id="menuBtn" aria-controls="sidebar" aria-expanded="false">☰ Menú</button>
+  <button class="menu-btn" id="menuBtn" aria-controls="sidebar" aria-expanded="false">Menú</button>
   <div class="logo" aria-hidden="true">SGI</div>
   <h1>Sistema de Gestión de Inventario</h1>
   <span class="user" id="userLabel"></span>
@@ -220,10 +214,43 @@ const ADMIN = 'Administrador', INS = 'Instructor', CTA = 'Cuentadante', APR = 'A
 const ALL = [ADMIN, INS, CTA, APR];
 const STAFF = [ADMIN, INS, CTA];
 
+// Íconos SVG (Feather, los mismos que la app usa con react-icons/fi).
+const ICONOS = {
+  home: '<path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>',
+  package: '<line x1="16.5" y1="9.4" x2="7.5" y2="4.21"/><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/>',
+  'map-pin': '<path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>',
+  settings: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>',
+  eye: '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>',
+  clock: '<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>',
+  'check-circle': '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>',
+  'user-plus': '<path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/>',
+  repeat: '<polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/>',
+  'alert-triangle': '<path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>',
+  monitor: '<rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>',
+  tool: '<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>',
+  edit: '<path d="M17 3a2.83 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>',
+  trash: '<polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/>',
+  search: '<circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>',
+  list: '<line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>',
+  sliders: '<line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/>',
+  download: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>',
+  plus: '<line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>',
+  'file-text': '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>',
+  users: '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
+  calendar: '<rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>',
+  menu: '<line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/>',
+  x: '<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>',
+  inbox: '<polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/>',
+  lock: '<rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',
+  'chevron-down': '<polyline points="6 9 12 15 18 9"/>',
+  'chevron-right': '<polyline points="9 18 15 12 9 6"/>'
+};
+const svg = (nombre, tam = 16) => `<svg class="i" width="${tam}" height="${tam}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">${ICONOS[nombre] || ''}</svg>`;
+
 const state = {
   rol: CTA, screen: 'inventario', vista: 'todos', page: 1, openMenu: null, filtroAmb: '',
   fichaTab: 'resumen', ambTab: 'resumen', tiposHist: new Set(), misVacio: false,
-  incluirAsignaciones: false, gruposAbiertos: {}, layout: 'columnas', filtros: {}, colsOcultas: new Set(), colsOpen: false
+  incluirAsignaciones: false, gruposAbiertos: {}, filtros: {}, colsOcultas: new Set(), colsOpen: false
 };
 
 // ---------- Datos sintéticos ----------
@@ -248,8 +275,8 @@ const MIS = [
 // El sidebar es para CONSULTAR y ver el ESTADO (con contadores); no ejecuta acciones.
 // Las acciones que crean o cambian algo están en la cabecera de la página y en los botones de cada fila.
 const MENU = [
-  { key: 'inicio', t: 'Inicio', ico: '⌂', roles: ALL, screen: 'dashboard' },
-  { key: 'inventario', t: 'Inventario', ico: '▣', roles: ALL, items: [
+  { key: 'inicio', t: 'Inicio', ico: 'home', roles: ALL, screen: 'dashboard' },
+  { key: 'inventario', t: 'Inventario', ico: 'package', roles: ALL, items: [
     { key: 'consultar', t: 'Consultar inventario', roles: ALL, screen: 'inventario', estado: r => r === APR ? '2 equipos habilitados' : r === INS ? '64 equipos en tus ambientes' : '312 equipos', tono: 'neutro' },
     { key: 'prestados', t: 'Equipos prestados', roles: STAFF, path: '/equipos/prestados', estado: () => '12 en uso ahora · 1 por revisar', tono: 'aviso' },
     { key: 'autorizaciones', t: 'Autorizaciones', roles: STAFF, path: '/equipos/autorizaciones', estado: r => r === INS ? '1 solicitud tuya en espera' : '3 por aprobar', tono: r => r === INS ? 'neutro' : 'alerta' },
@@ -258,20 +285,20 @@ const MENU = [
     { key: 'informe', t: 'Informe de uso y préstamos', roles: STAFF, screen: 'informe', estado: () => 'Nuevo', tono: 'info' },
     { key: 'cuentadante', t: 'Buscar cuentadante', roles: [ADMIN], path: '/equipos/cuentadantes/buscar' }
   ] },
-  { key: 'ambientes', t: 'Ambientes y horarios', ico: '⌖', roles: STAFF, items: [
+  { key: 'ambientes', t: 'Ambientes y horarios', ico: 'map-pin', roles: STAFF, items: [
     { key: 'gestion-amb', t: 'Ambientes', roles: [ADMIN, CTA], screen: 'ambiente', estado: () => '3 activos · 1 en mantenimiento', tono: 'neutro' },
     { key: 'horarios', t: 'Horarios', roles: STAFF, path: '/horarios', estado: r => r === ADMIN ? '6 clases hoy · 2 en curso' : '2 clases tuyas hoy', tono: 'neutro' }
   ] }
 ];
 // Acciones de la cabecera: solo lo que crea o genera algo.
 const ACCIONES_PAGINA = [
-  { key: 'registrar', t: 'Registrar equipo', ico: '＋', cls: 'verde', roles: [ADMIN, CTA], path: '/equipos' },
-  { key: 'documento', t: 'Generar documento PDF', ico: '📄', cls: 'taupe', roles: [ADMIN, CTA], path: '/equipos/documento' }
+  { key: 'registrar', t: 'Registrar equipo', ico: 'plus', cls: 'verde', roles: [ADMIN, CTA], path: '/equipos' },
+  { key: 'documento', t: 'Generar documento PDF', ico: 'file-text', cls: 'taupe', roles: [ADMIN, CTA], path: '/equipos/documento' }
 ];
 const ACCIONES_AMBIENTES = [
-  { key: 'nuevo-amb', t: 'Nuevo ambiente', ico: '＋', cls: 'verde', roles: [ADMIN], path: '/ambientes' },
-  { key: 'asignar-amb', t: 'Asignar ambientes', ico: '👥', cls: 'taupe', roles: [ADMIN], path: '/ambientes/asignar' },
-  { key: 'nueva-clase', t: 'Nueva clase', ico: '🗓', cls: 'taupe', roles: STAFF, path: '/horarios?crear=1&ambiente=12' }
+  { key: 'nuevo-amb', t: 'Nuevo ambiente', ico: 'plus', cls: 'verde', roles: [ADMIN], path: '/ambientes' },
+  { key: 'asignar-amb', t: 'Asignar ambientes', ico: 'users', cls: 'taupe', roles: [ADMIN], path: '/ambientes/asignar' },
+  { key: 'nueva-clase', t: 'Nueva clase', ico: 'calendar', cls: 'taupe', roles: STAFF, path: '/horarios?crear=1&ambiente=12' }
 ];
 const CONFIG = [
   { t: 'Usuarios', r: STAFF }, { t: 'Aprendices', r: [ADMIN] }, { t: 'Seguridad', r: ALL }, { t: 'Códigos de seguridad', r: [ADMIN] },
@@ -295,7 +322,7 @@ function accionesCabecera(lista) {
   const visibles = lista.filter(i => can(i.roles));
   if (!visibles.length) return '';
   return `<div class="acciones-cabecera">${visibles.map(i =>
-    `<button class="accion ${i.cls} grande" data-pagina="${i.key}"><span aria-hidden="true">${i.ico}</span>${i.t}</button>`).join('')}</div>`;
+    `<button class="accion ${i.cls} grande" data-pagina="${i.key}">${svg(i.ico)}${i.t}</button>`).join('')}</div>`;
 }
 function bindCabecera(root) {
   root.querySelectorAll('[data-pagina]').forEach(b => b.onclick = () => {
@@ -310,7 +337,7 @@ function renderFuncion() {
   const amb = esDeAmbientes(f);
   const volver = deMenu ? '' : `<button class="btn sm" data-go="${amb ? 'ambiente' : 'inventario'}">‹ Volver a ${amb ? 'Ambientes' : 'Consultar inventario'}</button>`;
   const modo = deMenu
-    ? 'Se abre en modo <b>consulta</b> (lista y estado). Lo que se registra sobre un equipo se hace desde su fila en Consultar inventario.'
+    ? (f.key === 'novedades' ? 'Se abre en modo <b>consulta</b>: lista y estado, <b>sin la pestaña «Crear»</b>. Una novedad se registra con el botón «Novedad» de la fila del equipo.' : 'Se abre en modo <b>consulta</b> (lista y estado). Lo que se registra sobre un equipo se hace desde su fila en Consultar inventario.')
     : 'Es una <b>acción</b>: se abre desde la cabecera de la página.';
   return `<div class="breadcrumb">${volver}<span class="muted small">${amb ? 'Ambientes y horarios' : 'Inventario'} › ${f.t}</span></div>
     <div class="page-title"><h2>${f.t}</h2><code class="small muted">${f.path}</code></div>
@@ -330,13 +357,13 @@ function renderSidebar() {
   for (const g of MENU) {
     if (!can(g.roles)) continue;
     if (!g.items) {
-      html += `<button class="nav-item" data-item="${g.key}" ${activo === g.key ? 'aria-current="page"' : ''}><span class="ico" aria-hidden="true">${g.ico}</span>${g.t}</button>`;
+      html += `<button class="nav-item" data-item="${g.key}" ${activo === g.key ? 'aria-current="page"' : ''}><span class="ico">${svg(g.ico, 18)}</span>${g.t}</button>`;
       continue;
     }
     const items = g.items.filter(i => can(i.roles));
     if (!items.length) continue;
     const abierto = state.gruposAbiertos[g.key] ?? true;
-    html += `<button class="nav-item nav-grupo" data-grupo="${g.key}" aria-expanded="${abierto}"><span class="ico" aria-hidden="true">${g.ico}</span>${g.t}<span style="margin-left:auto">${abierto ? '▾' : '▸'}</span></button>
+    html += `<button class="nav-item nav-grupo" data-grupo="${g.key}" aria-expanded="${abierto}"><span class="ico">${svg(g.ico, 18)}</span>${g.t}<span style="margin-left:auto;display:inline-flex">${svg(abierto ? 'chevron-down' : 'chevron-right')}</span></button>
       <div class="nav-sub ${abierto ? 'open' : ''}">${items.map(i => {
         const estado = i.estado ? `<span class="estado-item e-${val(i.tono)}">${val(i.estado)}</span>` : '';
         return `<button class="nav-item nav-estado" data-item="${i.key}" ${activo === i.key ? 'aria-current="page"' : ''}><span>${i.t}</span>${estado}</button>`;
@@ -344,7 +371,7 @@ function renderSidebar() {
   }
   const cfg = CONFIG.filter(c => can(c.r));
   const cfgAbierto = state.gruposAbiertos.config ?? false;
-  html += `<button class="nav-item nav-grupo" data-grupo="config" aria-expanded="${cfgAbierto}"><span class="ico" aria-hidden="true">⚙</span>Configuración<span style="margin-left:auto">${cfgAbierto ? '▾' : '▸'}</span></button>
+  html += `<button class="nav-item nav-grupo" data-grupo="config" aria-expanded="${cfgAbierto}"><span class="ico">${svg('settings', 18)}</span>Configuración<span style="margin-left:auto;display:inline-flex">${svg(cfgAbierto ? 'chevron-down' : 'chevron-right')}</span></button>
     <div class="nav-sub ${cfgAbierto ? 'open' : ''}">${cfg.map(c => `<button class="nav-item" data-cfg="${c.t}">${c.t}</button>`).join('')}</div>
     <div class="sidebar-note">El menú sirve para <b>consultar y ver el estado</b>. Las acciones (registrar, verificar, asignar, reportar, mover…) se hacen desde los botones de la página y de cada equipo.</div>`;
   const sb = document.getElementById('sidebar');
@@ -382,56 +409,31 @@ function vistasPorRol() {
 const GRUPOS = [['consultar', 'Consultar'], ['gestionar', 'Gestionar'], ['registrar', 'Registrar'], ['administrar', 'Administrar']];
 function accionesFila(eq) {
   const a = [
-    { g: 'consultar', t: 'Ver Detalle', ico: '👁', cls: 'azul', roles: ALL, go: 'ficha' },
-    { g: 'consultar', t: 'Historial', ico: '🕘', cls: 'azul', roles: ALL, go: 'historial' },
-    { g: 'gestionar', t: 'Verificar', ico: '✔', cls: 'verde-osc', roles: [INS, CTA], path: `/equipos/verificar?equipo=${eq.id}` },
-    { g: 'gestionar', t: 'Asignar', ico: '👤', cls: 'morado', roles: STAFF, path: `/equipos/asignar?equipo=${eq.id}` },
-    { g: 'gestionar', t: 'Mover', ico: '⇄', cls: 'azul-osc', roles: STAFF,
+    { g: 'consultar', t: 'Ver detalle', ico: 'eye', cls: 'azul', roles: ALL, go: 'ficha' },
+    { g: 'consultar', t: 'Historial', ico: 'clock', cls: 'azul', roles: ALL, go: 'historial' },
+    { g: 'gestionar', t: 'Verificar', ico: 'check-circle', cls: 'verde-osc', roles: [INS, CTA], path: `/equipos/verificar?equipo=${eq.id}` },
+    { g: 'gestionar', t: 'Asignar', ico: 'user-plus', cls: 'morado', roles: STAFF, path: `/equipos/asignar?equipo=${eq.id}` },
+    { g: 'gestionar', t: 'Mover', ico: 'repeat', cls: 'azul-osc', roles: STAFF,
       path: eq.ver === 'Verificado' ? `/equipos/autorizaciones?equipo=${eq.id}#solicitar` : 'edit',
       nota: eq.ver === 'Verificado' ? 'Equipo verificado: se pide autorización (un solo uso).' : 'Sin verificar: se mueve editando el ambiente.' },
-    { g: 'registrar', t: 'Novedad', ico: '⚠', cls: 'naranja', roles: STAFF, path: `/novedades?tab=crear&equipo=${eq.id}` },
-    { g: 'registrar', t: 'Registrar uso', ico: '🖥', cls: 'azul-osc', roles: STAFF, path: `/equipos/detalle/${eq.id}?por=id&tab=responsables` },
-    { g: 'registrar', t: 'Mantenimiento', ico: '🛠', cls: 'gris-osc', roles: [ADMIN, CTA], path: `/mantenimientos?tab=crear&equipo=${eq.id}` },
-    { g: 'administrar', t: 'Editar', ico: '✎', cls: 'verde', roles: [ADMIN], path: 'edit' },
-    { g: 'administrar', t: 'Eliminar', ico: '🗑', cls: 'rojo', roles: [ADMIN], path: 'delete' }
+    { g: 'registrar', t: 'Novedad', ico: 'alert-triangle', cls: 'naranja', roles: STAFF, path: 'modal-novedad' },
+    { g: 'registrar', t: 'Registrar uso', ico: 'monitor', cls: 'azul-osc', roles: STAFF, path: `/equipos/detalle/${eq.id}?por=id&tab=responsables` },
+    { g: 'registrar', t: 'Mantenimiento', ico: 'tool', cls: 'gris-osc', roles: [ADMIN, CTA], path: `/mantenimientos?tab=crear&equipo=${eq.id}` },
+    { g: 'administrar', t: 'Editar', ico: 'edit', cls: 'verde', roles: [ADMIN], path: 'edit' },
+    { g: 'administrar', t: 'Eliminar', ico: 'trash', cls: 'rojo', roles: [ADMIN], path: 'delete' }
   ];
   return a.filter(x => can(x.roles));
 }
 const gruposVisibles = () => GRUPOS.filter(([g]) => accionesFila(EQUIPOS[0]).some(x => x.g === g));
-const botonAccion = (x, i, eq, soloIcono = false) => soloIcono
-  ? `<button class="accion ico-only ${x.cls}" data-fila="${i}" data-eq="${eq.id}" aria-label="${x.t}" title="${x.nota ? x.t + ' — ' + x.nota : x.t}">${x.ico}</button>`
-  : `<button class="accion ${x.cls}" data-fila="${i}" data-eq="${eq.id}" title="${x.nota || x.t}"><span aria-hidden="true">${x.ico}</span>${x.t}</button>`;
+const botonAccion = (x, i, eq) =>
+  `<button class="accion ${x.cls}" data-fila="${i}" data-eq="${eq.id}" title="${x.nota || x.t}">${svg(x.ico)}${x.t}</button>`;
 
-// Cabecera y celdas de acciones según la organización elegida en el selector del prototipo.
-function cabeceraAcciones() {
-  if (state.layout === 'columnas') return gruposVisibles().map(([, t]) => `<th class="th-acc">${t}</th>`).join('');
-  return '<th>Acciones</th>';
-}
+// Opción A elegida: cada tipo de acción es una columna de la tabla, con su título.
+const cabeceraAcciones = () => gruposVisibles().map(([, t]) => `<th class="th-acc">${t}</th>`).join('');
 function celdasAcciones(eq) {
   const acciones = accionesFila(eq).map((x, i) => ({ ...x, i }));
-  if (state.layout === 'columnas') {
-    return gruposVisibles().map(([g]) =>
-      `<td class="td-acc"><div class="acciones-fila">${acciones.filter(x => x.g === g).map(x => botonAccion(x, x.i, eq)).join('')}</div></td>`).join('');
-  }
-  if (state.layout === 'iconos') {
-    return `<td><div class="acciones-iconos">${gruposVisibles().map(([g]) =>
-      `<span class="icono-grupo">${acciones.filter(x => x.g === g).map(x => botonAccion(x, x.i, eq, true)).join('')}</span>`).join('')}</div></td>`;
-  }
-  // 'menus': Consultar y Administrar visibles; Gestionar y Registrar como menús desplegables.
-  const partes = gruposVisibles().map(([g, t]) => {
-    const del = acciones.filter(x => x.g === g);
-    if (g === 'consultar' || g === 'administrar' || del.length === 1) return del.map(x => botonAccion(x, x.i, eq)).join('');
-    const id = `${eq.id}:${g}`;
-    return `<div class="row-actions"><button class="accion taupe" data-menu-grupo="${id}" aria-haspopup="menu" aria-expanded="${state.openMenu === id}">${t} ▾</button>
-      <div class="menu ${state.openMenu === id ? 'open' : ''}" role="menu" aria-label="${t}">${del.map(x =>
-        `<button role="menuitem" data-fila="${x.i}" data-eq="${eq.id}"><span class="dot ${x.cls}" aria-hidden="true"></span>${x.ico} ${x.t}</button>`).join('')}</div></div>`;
-  });
-  return `<td><div class="acciones-fila">${partes.join('')}</div></td>`;
-}
-function leyendaIconos() {
-  if (state.layout !== 'iconos') return '';
-  return `<div class="leyenda" aria-label="Leyenda de íconos">${accionesFila(EQUIPOS[0]).map(x =>
-    `<span><span class="accion ico-only ${x.cls}" aria-hidden="true">${x.ico}</span>${x.t}</span>`).join('')}</div>`;
+  return gruposVisibles().map(([g]) =>
+    `<td class="td-acc"><div class="acciones-fila">${acciones.filter(x => x.g === g).map(x => botonAccion(x, x.i, eq)).join('')}</div></td>`).join('');
 }
 
 // Columnas de la tabla: cada una trae su propio filtro. «Columnas» muestra u oculta columna y filtro a la vez.
@@ -482,7 +484,7 @@ function renderInventario() {
   const total = activos.length ? rows.length : base;
   const pages = Math.max(1, Math.ceil(total / 25));
   const from = total ? (state.page - 1) * 25 + 1 : 0, to = Math.min(total, state.page * 25);
-  const nAcc = state.layout === 'columnas' ? gruposVisibles().length : 1;
+  const nAcc = gruposVisibles().length;
 
   let body = `<div class="cabecera-pagina"><h2 class="titulo-verde">Consultar Inventario</h2>${accionesCabecera(ACCIONES_PAGINA)}</div>
   <div class="pills" role="group" aria-label="Vista">${vistas.map(([k, l]) => `<button class="pill" data-vista="${k}" aria-pressed="${state.vista === k}">${l}</button>`).join('')}</div>`;
@@ -490,7 +492,7 @@ function renderInventario() {
   if (mia) {
     body += `<div class="card"><div class="note">«Bajo mi responsabilidad» conserva las columnas de la antigua pantalla <b>Mis Equipos</b> y su propia consulta de alcance personal. Un equipo del ambiente <b>no</b> aparece aquí salvo que tengas una responsabilidad o lo tengas a cargo.</div>
       <div class="toolbar"><label class="small"><input type="checkbox" id="misVacio" ${state.misVacio ? 'checked' : ''}> Simular «sin equipos asignados»</label><span class="spacer"></span><span class="muted small">${state.misVacio ? 0 : MIS.length} equipos</span></div>
-      ${state.misVacio ? `<div class="empty"><div style="font-size:34px">📭</div><h3>No tienes equipos bajo tu responsabilidad</h3><p>Cuando te asignen un equipo como principal o secundario aparecerá aquí.</p></div>` : `
+      ${state.misVacio ? `<div class="empty"><div>${svg('inbox', 36)}</div><h3>No tienes equipos bajo tu responsabilidad</h3><p>Cuando te asignen un equipo como principal o secundario aparecerá aquí.</p></div>` : `
       <div class="table-wrap"><table style="min-width:1100px"><thead><tr><th>Código inventario</th><th>Tipo / modelo</th><th>Ambiente</th><th>Responsabilidad</th><th>Desde</th><th>Días</th><th>Asignado por</th><th>Observaciones</th>${cabeceraAcciones()}</tr></thead><tbody>
       ${MIS.map(m => `<tr><td><b>${m.placa}</b></td><td>${m.tipo}<div class="muted small">${m.modelo}</div></td><td>${ambTxt(m.amb)}</td>
         <td><span class="tag ${m.resp === 'Principal' ? 't-ok' : m.resp === 'Secundario' ? 't-info' : 't-gray'}">${m.resp}</span></td><td>${m.desde}</td><td>${m.dias ?? '—'}</td><td>${m.por}</td><td>${m.obs}</td>
@@ -502,18 +504,17 @@ function renderInventario() {
   body += `<div class="card">
     <form class="busqueda" id="formBuscar" aria-label="Buscar en el inventario">
       <input class="buscar-input" aria-label="Buscar" placeholder="Buscar por código, nombre, modelo o categoría...">
-      <button type="submit" class="accion verde grande"><span aria-hidden="true">🔍</span>Buscar</button>
-      <button type="button" class="accion taupe grande" id="todos"><span aria-hidden="true">☰</span>Mostrar todos</button>
+      <button type="submit" class="accion verde grande">${svg('search')}Buscar</button>
+      <button type="button" class="accion taupe grande" id="todos">${svg('list')}Mostrar todos</button>
       <span class="spacer" style="flex:1"></span>
-      <span class="cols-wrap"><button type="button" class="accion taupe grande" id="cols" aria-expanded="${state.colsOpen}"><span aria-hidden="true">⚙</span>Columnas y filtros</button>${panelColumnas()}</span>
-      ${state.rol !== APR ? '<button type="button" class="accion verde grande" id="excel"><span aria-hidden="true">⬇</span>Descargar Excel</button>' : ''}
+      <span class="cols-wrap"><button type="button" class="accion taupe grande" id="cols" aria-expanded="${state.colsOpen}">${svg('sliders')}Columnas y filtros</button>${panelColumnas()}</span>
+      ${state.rol !== APR ? '<button type="button" class="accion verde grande" id="excel">' + svg('download') + 'Descargar Excel</button>' : ''}
     </form>
     <div class="resumen-filtros">
       <span class="small muted">Mostrando <b>${from}–${to}</b> de <b>${total}</b> equipos</span>
-      ${activos.map(c => `<span class="chip-filtro">${c.t}: <b>${(c.opciones?.find(([v]) => v === state.filtros[c.key]) || [0, state.filtros[c.key]])[1]}</b><button data-quitar="${c.key}" aria-label="Quitar filtro ${c.t}">✕</button></span>`).join('')}
+      ${activos.map(c => `<span class="chip-filtro">${c.t}: <b>${(c.opciones?.find(([v]) => v === state.filtros[c.key]) || [0, state.filtros[c.key]])[1]}</b><button data-quitar="${c.key}" aria-label="Quitar filtro ${c.t}">${svg('x', 12)}</button></span>`).join('')}
       ${activos.length ? '<button class="link-btn" id="limpiarFiltros">Limpiar filtros</button>' : '<span class="small muted">· filtra desde la fila gris bajo los títulos</span>'}
     </div>
-    ${leyendaIconos()}
     <div class="table-wrap"><table style="min-width:1180px"><thead>
       <tr>${cols.map(c => `<th>${c.t}</th>`).join('')}${cabeceraAcciones()}</tr>
       <tr class="fila-filtros">${cols.map(c => `<th>${filtroCelda(c)}</th>`).join('')}<th colspan="${nAcc}"></th></tr>
@@ -534,16 +535,13 @@ function accionFila(b) {
   if (x.go === 'historial') { state.fichaTab = 'historial'; state.tiposHist = new Set(); go('ficha'); return; }
   if (x.path === 'edit') toast(`${x.nota ? x.nota + ' ' : ''}Edición en línea actual: se conserva igual (mover un equipo verificado sigue exigiendo una autorización aprobada de un solo uso).`);
   else if (x.path === 'delete') toast('Se conserva la confirmación destructiva actual (frase «confirmar accion»).');
+  else if (x.path === 'modal-novedad') toast(`<b>Novedad</b> del equipo ${eq.placa}: se abre una ventana aquí mismo con el equipo ya cargado (tipo y descripción). Al guardar, la fila se actualiza sin salir del inventario. La pantalla de Novedades queda solo para consultar.`);
   else toast(`<b>${x.t}</b> del equipo ${eq.placa}: abre <code>${x.path}&volver=/equipos/consultar</code> con el equipo ya cargado; al terminar vuelve a esta lista con los mismos filtros.${x.nota ? ' ' + x.nota : ''}`);
 }
 function bindInventario(root) {
   root.querySelectorAll('[data-vista]').forEach(b => b.onclick = () => { state.vista = b.dataset.vista; state.page = 1; render(); });
   const mv = root.querySelector('#misVacio'); if (mv) mv.onchange = () => { state.misVacio = mv.checked; render(); };
   root.querySelectorAll('[data-fila]').forEach(b => b.onclick = () => accionFila(b));
-  root.querySelectorAll('[data-menu-grupo]').forEach(b => b.onclick = ev => {
-    ev.stopPropagation(); const id = b.dataset.menuGrupo; state.openMenu = state.openMenu === id ? null : id; render();
-    document.querySelector('.menu.open [role=menuitem]')?.focus();
-  });
   // Filtros de columna: los select filtran al cambiar; los de texto al pulsar Enter o salir del campo.
   root.querySelectorAll('[data-filtro]').forEach(el => el.onchange = () => {
     state.filtros[el.dataset.filtro] = el.value; state.page = 1; render();
@@ -697,7 +695,7 @@ function bindAmbiente(root) { root.querySelectorAll('[data-atab]').forEach(b => 
 
 // ---------- Informe ----------
 function renderInforme() {
-  if (state.rol === APR) return `${volverInventario('Informe de uso y préstamos')}<div class="card forbidden"><div class="big">🔒</div><h2>No tienes acceso al informe de uso</h2><p class="muted">El servidor responde 403 también si se llama directamente al endpoint o a la exportación.</p></div>`;
+  if (state.rol === APR) return `${volverInventario('Informe de uso y préstamos')}<div class="card forbidden"><div class="big">${svg('lock', 40)}</div><h2>No tienes acceso al informe de uso</h2><p class="muted">El servidor responde 403 también si se llama directamente al endpoint o a la exportación.</p></div>`;
   const admin = state.rol === ADMIN;
   const doc = d => admin ? d : `***${d.slice(-4)}`;
   const filas = [
@@ -721,8 +719,8 @@ function renderInforme() {
   </form>
   <div class="toolbar"><label class="small"><input type="checkbox" id="asig" ${state.incluirAsignaciones ? 'checked' : ''}> Incluir asignaciones de responsabilidad (se rotulan aparte: no demuestran uso)</label><span class="spacer"></span>
     <button class="btn primary" onclick="toast('Actualiza la vista previa en el servidor con estos filtros.')">Generar vista previa</button>
-    <button class="btn" onclick="toast('CSV UTF-8 con BOM: exactamente los 47 registros del filtro (todas las páginas), celdas saneadas contra fórmulas, fechas en hora de Colombia.')">⬇ CSV</button>
-    <button class="btn" onclick="toast('Excel con los 47 registros filtrados y una hoja «Criterios» con filtros, zona horaria y reglas de exclusión.')">⬇ Excel</button></div>
+    <button class="btn" onclick="toast('CSV UTF-8 con BOM: exactamente los 47 registros del filtro (todas las páginas), celdas saneadas contra fórmulas, fechas en hora de Colombia.')">${svg('download')} CSV</button>
+    <button class="btn" onclick="toast('Excel con los 47 registros filtrados y una hoja «Criterios» con filtros, zona horaria y reglas de exclusión.')">${svg('download')} Excel</button></div>
   </div>
   <div class="kpis">
     <div class="kpi"><div class="v">47</div><div class="l">Sesiones en el rango</div></div><div class="kpi"><div class="v">6</div><div class="l">Abiertas (en uso)</div></div><div class="kpi"><div class="v">41</div><div class="l">Cerradas</div></div>
@@ -786,7 +784,6 @@ function render() {
 }
 document.getElementById('rol').onchange = e => { state.rol = e.target.value; state.vista = ''; state.page = 1; render(); };
 document.getElementById('atajo').onchange = e => go(e.target.value);
-document.getElementById('layout').onchange = e => { state.layout = e.target.value; state.openMenu = null; render(); };
 document.getElementById('menuBtn').onclick = () => { const s = document.getElementById('sidebar'); s.classList.toggle('open'); document.getElementById('menuBtn').setAttribute('aria-expanded', s.classList.contains('open')); };
 document.addEventListener('click', ev => {
   if (state.openMenu !== null && !ev.target.closest('.menu')) { state.openMenu = null; render(); }

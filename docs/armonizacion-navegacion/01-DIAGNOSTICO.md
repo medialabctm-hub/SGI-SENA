@@ -164,6 +164,20 @@ Ficha de ambiente: [Resumen] [Responsables] [Inventario] [Horarios] [Imágenes]
 | D6 | ¿Endurecer `historial-verificaciones`, `historial-movimientos` y `uso/activas` (H3, H13)? | No en esta entrega; se recomienda tras validar integraciones (app Flutter) |
 | D7 | ¿Rango de fechas del informe por solapamiento o por inicio? | Por **solapamiento** del intervalo de la sesión con el rango |
 
+## 8.1 Diseño acordado con el responsable del proyecto
+
+Resultado de seis iteraciones sobre el prototipo `prototipo-navegacion.html` (misma carpeta). **Sustituye a las §2 y §6 donde difieran.**
+
+| # | Decisión | Detalle |
+|---|---|---|
+| D8 | El sidebar es para **consultar y ver el estado**, no para ejecutar acciones | Inicio · **Inventario**: Consultar inventario, Equipos prestados, Autorizaciones, Novedades y reportes, Mantenimientos, Informe de uso y préstamos, Buscar cuentadante · **Ambientes y horarios**: Ambientes, Horarios · Configuración (sin cambios). Cada entrada muestra su estado (p. ej. «3 por aprobar», «12 en uso ahora · 1 por revisar»), calculado en el servidor con el alcance del usuario. |
+| D9 | Salen del sidebar las **acciones** | Registrar Inventario y Generar documento PDF → cabecera de Consultar Inventario; Mis Equipos → vista «Bajo mi responsabilidad»; Asignar Equipo y Verificar Inventario → botones de la fila; Asignar Ambientes y Nueva clase → cabecera de Ambientes. Las rutas se conservan. |
+| D10 | Acciones por equipo en la fila, **opción A: columnas por tipo** con íconos SVG (`react-icons/fi`) | Consultar (Ver detalle, Historial) · Gestionar (Verificar, Asignar, Mover) · Registrar (Novedad, Registrar uso, Mantenimiento) · Administrar (Editar, Eliminar). Cada rol ve solo sus botones. |
+| D11 | **Historial único** | Los botones «Historial» (verificaciones) y «Movimientos» se unen en «Historial»; movimientos pasa a ser un filtro de la cronología. |
+| D12 | Filtros **dentro de la tabla** | Una fila de filtros bajo los títulos de columna; «Columnas y filtros» oculta columna y filtro a la vez; etiquetas de filtros activos y «Limpiar filtros»; filtros en la URL. |
+| D13 | Novedades **solo consulta** | Se quita la pestaña «Crear» de Novedades; la novedad se registra desde el botón «Novedad» de la fila, en una ventana dentro del inventario. Los reportes generales (sin equipo) conservan su creación. |
+| D14 | Autorizaciones | Aprobar y rechazar se sigue haciendo dentro de su pantalla, a la que se entra desde el sidebar. |
+
 ## 9. Auditoría de duplicados
 
 Las consultas de solo lectura están en `backend/scripts/auditoria-trazabilidad-solo-lectura.sql` (Q1–Q12): duplicados de `codigo_equipo` imposibles por PK; placas duplicadas normalizadas (`UPPER(TRIM(...))`) y en blanco; asignaciones activas repetidas por equipo/usuario/tipo; sesiones activas solapadas o sin cierre y con más de 24 h; verificaciones repetidas en ventanas cortas (reintentos); novedades gemelas de verificaciones «Con Novedad»; reportes automáticos de mantenimiento; filas multiplicadas por joins de novedades; equipos sin `Estado_Equipo`; conciliación de contadores por ambiente.
