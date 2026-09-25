@@ -148,6 +148,44 @@ describe('obtenerAutorizadorParaEquipo', () => {
 describe('crearSolicitud', () => {
   const bodyValido = { codigo_equipo: 5, id_ambiente_destino: 2, motivo: 'Traslado de sala' };
 
+  it('acepta un equipo verificado en el historial aunque la bandera externa siga en cero', async () => {
+    mockExecute
+      .mockResolvedValueOnce([[
+        {
+          codigo_equipo: 5,
+          id_ambiente: 1,
+          verificado_ambiente: 0,
+          estado_verificacion_actual: 'Verificado',
+        },
+      ]])
+      .mockResolvedValueOnce([[{ id_ambiente: 2 }]])
+      .mockResolvedValueOnce([[CUENTADANTE]])
+      .mockResolvedValueOnce([{ insertId: 78 }]);
+
+    const res = mockRes();
+    await crearSolicitud(mockReq({ body: bodyValido }), res);
+
+    expect(res.status).toHaveBeenCalledWith(201);
+    expect(mockExecute.mock.calls[0][0]).toMatch(/Verificaciones_Inventario/i);
+  });
+
+  it('rechaza el equipo cuando el último estado histórico ya no es Verificado', async () => {
+    mockExecute.mockResolvedValueOnce([[
+      {
+        codigo_equipo: 5,
+        id_ambiente: 1,
+        verificado_ambiente: 1,
+        estado_verificacion_actual: 'Con Novedad',
+      },
+    ]]);
+
+    const res = mockRes();
+    await crearSolicitud(mockReq({ body: bodyValido }), res);
+
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(mockExecute).toHaveBeenCalledTimes(1);
+  });
+
   it('ignora el id_autorizador del body y usa el cuentadante del equipo', async () => {
     mockExecute
       .mockResolvedValueOnce([[{ codigo_equipo: 5, id_ambiente: 1, verificado_ambiente: 1 }]]) // equipo

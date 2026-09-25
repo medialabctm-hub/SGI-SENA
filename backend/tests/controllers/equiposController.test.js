@@ -491,6 +491,26 @@ describe('actualizarEquipo', () => {
     expect(mockEmitToAll).not.toHaveBeenCalled();
   });
 
+  it('aplica el estado histórico Verificado aunque la bandera externa siga en cero', async () => {
+    mockConnectionExecute.mockResolvedValueOnce([[
+      {
+        id_ambiente: 1,
+        verificado_ambiente: 0,
+        estado_verificacion_actual: 'Verificado',
+      },
+    ]]);
+    const res = mockRes();
+
+    await actualizarEquipo(mockReq({
+      params: { codigo: '5' },
+      body: { id_ambiente: 2 },
+    }), res);
+
+    expect(mockConnection.rollback).toHaveBeenCalledTimes(1);
+    expect(res.status).toHaveBeenCalledWith(403);
+    expect(mockConnectionExecute).toHaveBeenCalledTimes(1);
+  });
+
   it('rolls back when the conditional authorization consumption conflicts', async () => {
     mockConnectionExecute
       .mockResolvedValueOnce([[{ id_ambiente: 1, verificado_ambiente: 1 }]])

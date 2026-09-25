@@ -772,6 +772,11 @@ describe('listarEquiposQuerySchema (MDL-189 / H-01)', () => {
     expect(parsed.page).toBe(1);
   });
 
+  it('acepta el filtro de estado de verificación', () => {
+    const parsed = listarEquiposQuerySchema.parse({ status_verificacion: 'Verificado' });
+    expect(parsed.status_verificacion).toBe('Verificado');
+  });
+
   it('rechaza limit > EQUIPOS_LIST_MAX_LIMIT (400 vía validateQuery)', () => {
     expect(() => listarEquiposQuerySchema.parse({ limit: '5000' })).toThrow();
     try {

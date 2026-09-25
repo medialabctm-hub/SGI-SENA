@@ -430,6 +430,7 @@ export const listarEquiposQuerySchema = z.object({
   fecha_hasta: z.string().optional(),
   valor_min: z.coerce.number().nonnegative().optional(),
   valor_max: z.coerce.number().nonnegative().optional(),
+  status_verificacion: z.enum(['Verificado', 'Con Novedad', 'No Verificado']).optional(),
   ambiente: z.union([z.string(), z.array(z.string())]).optional(),
   vista_inventario: z.string().trim().max(50).optional(),
   page: z.coerce.number().int().min(1).default(1),

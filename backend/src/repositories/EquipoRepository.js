@@ -1,5 +1,6 @@
 import { BaseRepository } from './BaseRepository.js';
 import { logger } from '../utils/logger.js';
+import { currentEquipmentVerificationStatusSql } from '../utils/equipoVerification.js';
 
 /**
  * EquipoRepository - Repositorio para operaciones de equipos
@@ -17,7 +18,8 @@ export class EquipoRepository extends BaseRepository {
    */
   async findByCodigo(codigoEquipo) {
     return this.findOne(
-      `SELECT e.*, a.nombre_ambiente, a.codigo_ambiente, c.nombre_categoria
+      `SELECT e.*, a.nombre_ambiente, a.codigo_ambiente, c.nombre_categoria,
+              ${currentEquipmentVerificationStatusSql('e')} AS status_verificacion
        FROM Elementos e
        LEFT JOIN Ambientes a ON a.id_ambiente = e.id_ambiente
        LEFT JOIN Categorias_Equipo c ON c.id_categoria = e.id_categoria
@@ -61,6 +63,7 @@ export class EquipoRepository extends BaseRepository {
       'nombre_ambiente', 'codigo_ambiente'
     ];
     const safeSortField = allowedSortFields.includes(sortField) ? sortField : 'codigo_equipo';
+    const currentVerificationStatusSql = currentEquipmentVerificationStatusSql('e');
 
     let query = `
       SELECT e.codigo_equipo, e.placa, e.placa AS codigo_inventario, e.tipo, e.modelo, e.consecutivo, e.descripcion,
@@ -71,7 +74,7 @@ export class EquipoRepository extends BaseRepository {
              ee.detalles AS detalles_estado,
              ee.fecha_actualizacion AS fecha_actualizacion_estado,
              c.nombre_categoria,
-             CASE WHEN COALESCE(e.verificado_ambiente, 0) = 1 THEN 'Verificado' ELSE 'No verificado' END AS status_verificacion,
+             ${currentVerificationStatusSql} AS status_verificacion,
              (
                SELECT ie.ruta_imagen
                FROM Imagenes_Equipo ie
@@ -137,6 +140,11 @@ export class EquipoRepository extends BaseRepository {
         c.nombre_categoria LIKE ?
       )`);
       params.push(searchTerm, searchTerm, searchTerm, searchTerm, searchTerm, searchTerm);
+    }
+
+    if (filters.status_verificacion && ['Verificado', 'Con Novedad', 'No Verificado'].includes(filters.status_verificacion)) {
+      conditions.push(`${currentVerificationStatusSql} = ?`);
+      params.push(filters.status_verificacion);
     }
 
     // Filtro por estado físico

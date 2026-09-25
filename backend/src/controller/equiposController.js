@@ -18,6 +18,7 @@ import {
 } from '../utils/verificacionInventarioScope.js';
 import { AppError, translateDbError } from '../utils/errors.js';
 import { beginEquipmentClaim, lockEquipmentRow } from '../utils/equipmentClaim.js';
+import { currentEquipmentVerificationStatusSql, isEquipmentVerified } from '../utils/equipoVerification.js';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
@@ -60,6 +61,7 @@ export async function listarEquipos(req, res) {
       fecha_hasta: req.query.fecha_hasta || null,
       valor_min: req.query.valor_min || null,
       valor_max: req.query.valor_max || null,
+      status_verificacion: req.query.status_verificacion || null,
       ambiente: req.query.ambiente ? (Array.isArray(req.query.ambiente) ? req.query.ambiente : [req.query.ambiente]) : null,
       // Vista inventario para Cuentadante con ambientes: ambientes | inventario_total | todos
       vista_inventario: req.query.vista_inventario || null
@@ -227,7 +229,7 @@ export async function obtenerEquipoPorCodigo(req, res) {
              (SELECT tipo_mantenimiento FROM Mantenimiento 
               WHERE codigo_equipo = e.codigo_equipo AND estado_mantenimiento = 'En Proceso' 
               ORDER BY fecha_mantenimiento DESC LIMIT 1) as tipo_mantenimiento_activo,
-             CASE WHEN COALESCE(e.verificado_ambiente, 0) = 1 THEN 'Verificado' ELSE 'No verificado' END AS status_verificacion
+             ${currentEquipmentVerificationStatusSql('e')} AS status_verificacion
       FROM Elementos e
       LEFT JOIN Ambientes a ON a.id_ambiente = e.id_ambiente
       LEFT JOIN Estado_Equipo ee ON e.codigo_equipo = ee.codigo_equipo
@@ -533,14 +535,19 @@ export async function actualizarEquipo(req, res) {
     let autorizacionMovimiento = null;
     if (ambienteId != null) {
       const [[equipoActual]] = await execute(
-        'SELECT id_ambiente, COALESCE(verificado_ambiente, 0) AS verificado_ambiente FROM Elementos WHERE codigo_equipo = ? FOR UPDATE',
+        `SELECT e.id_ambiente,
+                COALESCE(e.verificado_ambiente, 0) AS verificado_ambiente,
+                ${currentEquipmentVerificationStatusSql('e')} AS estado_verificacion_actual
+         FROM Elementos e
+         WHERE e.codigo_equipo = ?
+         FOR UPDATE`,
         [codigoEquipo]
       );
       if (!equipoActual) {
         return await rollbackAndRespond(404, { error: 'Equipo no encontrado' });
       }
       const ambienteCambia = Number(equipoActual.id_ambiente) !== Number(ambienteId);
-      if (ambienteCambia && equipoActual.verificado_ambiente === 1) {
+      if (ambienteCambia && isEquipmentVerified(equipoActual)) {
         if (!idSolicitudAutorizacion || idSolicitudAutorizacion <= 0) {
           return await rollbackAndRespond(403, {
             error: 'Equipo verificado en ambiente',
@@ -1482,13 +1489,13 @@ export async function obtenerEquiposAmbientesInstructor(req, res) {
          FROM Verificaciones_Inventario 
          WHERE codigo_equipo = e.codigo_equipo 
          AND id_usuario = ?
-         ORDER BY fecha_verificacion DESC 
+         ORDER BY fecha_verificacion DESC, id_verificacion DESC
          LIMIT 1) AS estado_verificacion_actual,
         (SELECT observaciones 
          FROM Verificaciones_Inventario 
          WHERE codigo_equipo = e.codigo_equipo 
          AND id_usuario = ?
-         ORDER BY fecha_verificacion DESC 
+         ORDER BY fecha_verificacion DESC, id_verificacion DESC
          LIMIT 1) AS observaciones_verificacion
       FROM Elementos e
       INNER JOIN Ambientes a ON e.id_ambiente = a.id_ambiente

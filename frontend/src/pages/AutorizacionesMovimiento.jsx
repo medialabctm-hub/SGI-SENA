@@ -112,7 +112,7 @@ export default function AutorizacionesMovimiento() {
     let cancelado = false
     setBuscandoEquipo(true)
     const timeoutId = setTimeout(() => {
-      const qs = new URLSearchParams({ search: termino, limit: '20' })
+      const qs = new URLSearchParams({ search: termino, status_verificacion: 'Verificado', limit: '20' })
       fetch(`/api/equipos?${qs.toString()}`, { credentials: 'include' })
         .then(r => parseApiResponse(r, 'No se pudo buscar equipos'))
         .then(data => {

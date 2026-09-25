@@ -1,6 +1,7 @@
 import defaultDb from '../config/dbconfig.js';
 import { logger } from '../utils/logger.js';
 import { handleControllerError } from '../utils/controllerHelpers.js';
+import { currentEquipmentVerificationStatusSql, isEquipmentVerified } from '../utils/equipoVerification.js';
 
 /**
  * Resuelve a quién debe dirigirse la autorización de movimiento de un equipo.
@@ -127,14 +128,17 @@ export async function crearSolicitud(req, res) {
     const idDestino = Number(id_ambiente_destino);
 
     const [[equipo]] = await defaultDb.execute(
-      `SELECT e.codigo_equipo, e.id_ambiente, COALESCE(e.verificado_ambiente, 0) AS verificado_ambiente
+      `SELECT e.codigo_equipo,
+              e.id_ambiente,
+              COALESCE(e.verificado_ambiente, 0) AS verificado_ambiente,
+              ${currentEquipmentVerificationStatusSql('e')} AS estado_verificacion_actual
        FROM Elementos e WHERE e.codigo_equipo = ?`,
       [codigoEq]
     );
     if (!equipo) {
       return res.status(404).json({ error: 'Equipo no encontrado' });
     }
-    if (equipo.verificado_ambiente !== 1) {
+    if (!isEquipmentVerified(equipo)) {
       return res.status(400).json({
         error: 'Solo se requiere autorización para equipos verificados',
         detalle: 'Este equipo no está verificado; puede cambiar el ambiente directamente.'
