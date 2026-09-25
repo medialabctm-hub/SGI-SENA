@@ -1,208 +1,99 @@
-import React, { useState, useEffect } from 'react'
+import React, { useMemo, useState } from 'react'
 import { useLocation } from 'react-router-dom'
-import {
-  FiPlus,
-  FiSearch,
-  FiUsers,
-  FiSettings,
-  FiAlertCircle,
-  FiPackage,
-  FiTool,
-  FiUserCheck,
-  FiChevronDown,
-  FiChevronRight,
-  FiHome,
-  FiMapPin,
-  FiUser,
-  FiShield,
-  FiKey,
-  FiBell,
-  FiCheckCircle,
-  FiCalendar,
-  FiClipboard,
-  FiMonitor
-} from 'react-icons/fi'
+import { FiChevronDown, FiChevronRight } from 'react-icons/fi'
 import { useSidebar } from '../contexts/SidebarContext'
 import { useBlockedNavigate } from '../hooks/useBlockedNavigate'
+import { useEstadoNavegacion } from '../hooks/useEstadoNavegacion'
+import { menuParaRol, entradaActiva, grupoDeEntrada } from '../config/navigation'
+import { estadoDeEntrada } from '../utils/navigationEstado'
 import '../styles/layout/sidebar.css'
 
+const leerUsuarioGuardado = () => {
+  try {
+    return JSON.parse(localStorage.getItem('user') || 'null')
+  } catch {
+    return null
+  }
+}
+
+const esMovil = () =>
+  typeof window !== 'undefined' && window.matchMedia?.('(max-width: 768px)').matches
+
+/**
+ * Menú lateral de consulta: lleva a las pantallas principales y muestra el
+ * estado de cada una. Las acciones viven en las pantallas (ver config/navigation).
+ */
 export default function Sidebar({ user }) {
   const { isOpen, closeSidebar } = useSidebar()
   const nav = useBlockedNavigate()
   const location = useLocation()
-  const userRole = user?.nombre_rol || ''
+  const usuario = user || leerUsuarioGuardado()
+  const rol = usuario?.nombre_rol || ''
 
-  // Estado de menús expandidos
-  const [expandedMenus, setExpandedMenus] = useState({
-    equipos: false,
-    incidencias: false,
-    mantenimiento: false,
-    horarios: false,
-    config: false
-  })
+  const menu = useMemo(() => menuParaRol(rol), [rol])
+  const activa = entradaActiva(rol, location.pathname, location.search)
+  const grupoActivo = grupoDeEntrada(activa)
+  const estado = useEstadoNavegacion(Boolean(usuario))
 
-  // Contador de solicitudes pendientes de autorizar (para badge en menú)
-  const [pendientesAutorizacion, setPendientesAutorizacion] = useState(0)
-  useEffect(() => {
-    if (user?.nombre_rol !== 'Administrador' && user?.nombre_rol !== 'Cuentadante') return
-    const hasSession = localStorage.getItem('user');
-    if (!hasSession) return
-    fetch('/api/equipos/autorizacion-movimiento/pendientes/count', {
-      credentials: 'include'
-    })
-      .then(r => r.ok ? r.json() : { count: 0 })
-      .then(d => setPendientesAutorizacion(d?.count ?? 0))
-      .catch(() => setPendientesAutorizacion(0))
-  }, [user?.nombre_rol])
+  // Solo se guardan los grupos que el usuario plegó o desplegó a mano; el resto
+  // sigue la regla: abiertos salvo Configuración, y siempre el de la pantalla actual.
+  const [abiertosManual, setAbiertosManual] = useState({})
+  const estaAbierto = grupo =>
+    abiertosManual[grupo.key] ?? (grupo.key === grupoActivo || !grupo.colapsadoPorDefecto)
 
-  // Expandir automáticamente el menú correspondiente según la ruta actual
-  useEffect(() => {
-    const path = location.pathname
-    
-    // Determinar qué menú debe estar expandido basándose en la ruta
-    // Solo expandir el menú correspondiente y colapsar los demás
-    if (path.startsWith('/equipos') || path.startsWith('/mis-equipos') || path.startsWith('/asignaciones') || path.startsWith('/ambientes')) {
-      setExpandedMenus({
-        equipos: true,
-        incidencias: false,
-        mantenimiento: false,
-        horarios: false,
-        config: false
-      })
-    } else if (path.startsWith('/novedades') || path.startsWith('/reportes')) {
-      setExpandedMenus({
-        equipos: false,
-        incidencias: true,
-        mantenimiento: false,
-        horarios: false,
-        config: false
-      })
-    } else if (path.startsWith('/mantenimientos')) {
-      setExpandedMenus({
-        equipos: false,
-        incidencias: false,
-        mantenimiento: true,
-        horarios: false,
-        config: false
-      })
-    } else if (path.startsWith('/horarios') || path.startsWith('/clases')) {
-      setExpandedMenus({
-        equipos: false,
-        incidencias: false,
-        mantenimiento: false,
-        horarios: true,
-        config: false
-      })
-    } else if (path.startsWith('/usuarios') || path.startsWith('/aprendices') || path.startsWith('/config')) {
-      setExpandedMenus({
-        equipos: false,
-        incidencias: false,
-        mantenimiento: false,
-        horarios: false,
-        config: true
-      })
-    }
-  }, [location.pathname])
-
-  const toggleMenu = (menu) => {
-    setExpandedMenus(prev => ({
-      ...prev,
-      [menu]: !prev[menu]
-    }))
+  const irA = path => {
+    nav(path)
+    if (esMovil()) closeSidebar()
   }
 
-  const isActive = (path) => {
-    const currentPath = location.pathname;
-    
-    if (path.includes('?')) {
-      const [basePath, query] = path.split('?')
-      if (currentPath === basePath) {
-        const urlParams = new URLSearchParams(location.search)
-        const pathParams = new URLSearchParams(query)
-        return urlParams.get('section') === pathParams.get('section')
-      }
-    }
-    return currentPath === path
-  }
-
-  const menuItems = {
-    equipos: [
-      { title: 'Registrar Inventario', path: '/equipos', icon: <FiPlus />, roles: ['Administrador', 'Cuentadante'] },
-      { title: 'Consultar Inventario', path: '/equipos/consultar', icon: <FiSearch />, roles: ['all'] },
-      { title: 'Mis Equipos', path: '/mis-equipos', icon: <FiPackage />, roles: ['all'] },
-      { title: 'Asignar Equipo', path: '/equipos/asignar', icon: <FiUsers />, roles: ['Administrador', 'Instructor', 'Cuentadante'] },
-      { title: 'Equipos Prestados', path: '/equipos/prestados', icon: <FiMonitor />, roles: ['Administrador', 'Instructor', 'Cuentadante'] },
-      { title: 'Verificar Inventario', path: '/equipos/verificar', icon: <FiCheckCircle />, roles: ['Instructor', 'Cuentadante'] },
-      { title: 'Autorizaciones', path: '/equipos/autorizaciones', icon: <FiClipboard />, roles: ['Administrador', 'Instructor', 'Cuentadante'] },
-      { title: 'Buscar Cuentadante', path: '/equipos/cuentadantes/buscar', icon: <FiSearch />, roles: ['Administrador'] },
-      { title: 'Gestión de Ambientes', path: '/ambientes', icon: <FiMapPin />, roles: ['Administrador', 'Cuentadante'] },
-      { title: 'Asignar Ambientes', path: '/ambientes/asignar', icon: <FiUserCheck />, roles: ['Administrador'] }
-    ],
-    incidencias: [
-      { title: 'Novedades', path: '/novedades', icon: <FiAlertCircle />, roles: ['Administrador', 'Instructor', 'Cuentadante'] }
-    ],
-    mantenimiento: [
-      { title: 'Historial de Mantenimientos', path: '/mantenimientos', icon: <FiTool />, roles: ['Administrador', 'Cuentadante'] }
-    ],
-    horarios: [
-      { title: 'Mis Horarios', path: '/horarios', icon: <FiCalendar />, roles: ['Instructor', 'Cuentadante'] },
-      { title: 'Gestión de Horarios', path: '/horarios', icon: <FiCalendar />, roles: ['Administrador'] },
-      /*{ title: 'Consultar Responsables', path: '/horarios/responsables', icon: <FiClock />, roles: ['all'] }*/
-    ],
-    config: [
-      { title: 'Usuarios', path: '/usuarios', icon: <FiUsers />, roles: ['Administrador', 'Instructor', 'Cuentadante'] },
-      { title: 'Aprendices', path: '/aprendices', icon: <FiUser />, roles: ['Administrador'] },
-      { title: 'Seguridad', path: '/config?section=security', icon: <FiShield />, roles: ['all'] },
-      { title: 'Códigos de Seguridad', path: '/config?section=invitation-codes', icon: <FiKey />, roles: ['Administrador'] },
-      { title: 'Tipos de Equipos', path: '/config?section=tipos-equipo', icon: <FiPackage />, roles: ['Administrador'] },
-      { title: 'Roles y Áreas', path: '/config?section=roles', icon: <FiSettings />, roles: ['Administrador', 'Cuentadante'] },
-      { title: 'Notificaciones', path: '/config?section=notifications', icon: <FiBell />, roles: ['all'] }
-    ]
-  }
-
-  const canAccess = (item) => {
-    if (item.roles.includes('all')) return true
-    return item.roles.includes(userRole)
-  }
-
-  const renderMenuSection = (key, title, icon) => {
-    const items = menuItems[key]
-    const filteredItems = items.filter(canAccess)
-    
-    if (filteredItems.length === 0) return null
-
-    const isExpanded = expandedMenus[key]
-
+  const renderItem = (item, claseExtra = '') => {
+    const Icono = item.icon
+    const estaActiva = item.key === activa
+    const infoEstado = item.estado ? estadoDeEntrada(item.estado, estado, rol) : null
     return (
-      <div key={key} className={`sidebar-section ${isExpanded ? 'expanded' : ''}`}>
+      <button
+        key={item.key}
+        type="button"
+        className={`sidebar-item ${infoEstado ? 'sidebar-item-con-estado' : ''} ${claseExtra} ${estaActiva ? 'active' : ''}`}
+        aria-current={estaActiva ? 'page' : undefined}
+        onClick={() => irA(item.path)}
+      >
+        {Icono && <Icono aria-hidden="true" />}
+        <span className="sidebar-item-texto">
+          <span className="sidebar-item-titulo">{item.title}</span>
+          {infoEstado && (
+            <span className={`sidebar-item-estado sidebar-estado-${infoEstado.tono}`}>
+              {infoEstado.texto}
+            </span>
+          )}
+        </span>
+      </button>
+    )
+  }
+
+  const renderGrupo = grupo => {
+    const Icono = grupo.icon
+    const abierto = estaAbierto(grupo)
+    const idItems = `sidebar-grupo-${grupo.key}`
+    return (
+      <div key={grupo.key} className={`sidebar-section ${abierto ? 'expanded' : ''}`}>
         <button
+          type="button"
           className="sidebar-section-header"
-          onClick={() => toggleMenu(key)}
+          aria-expanded={abierto}
+          aria-controls={idItems}
+          onClick={() => setAbiertosManual(prev => ({ ...prev, [grupo.key]: !abierto }))}
         >
-          <div className="sidebar-section-title">
-            {icon}
-            <span>{title}</span>
-          </div>
-          <span className="sidebar-chevron-wrapper">
-            {isExpanded ? <FiChevronDown /> : <FiChevronRight />}
+          <span className="sidebar-section-title">
+            <Icono aria-hidden="true" />
+            <span>{grupo.title}</span>
+          </span>
+          <span className="sidebar-chevron-wrapper" aria-hidden="true">
+            {abierto ? <FiChevronDown /> : <FiChevronRight />}
           </span>
         </button>
-        <div className={`sidebar-section-items ${isExpanded ? 'expanded' : ''}`}>
-          {filteredItems.map((item) => (
-            <button
-              key={item.path}
-              className={`sidebar-item ${isActive(item.path) ? 'active' : ''}`}
-              onClick={() => nav(item.path)}
-            >
-              {item.icon}
-              <span>{item.title}</span>
-              {item.path === '/equipos/autorizaciones' && pendientesAutorizacion > 0 && (
-                <span className="sidebar-badge sidebar-badge-pendientes" title={`${pendientesAutorizacion} solicitud(es) pendiente(s)`}>
-                  {pendientesAutorizacion > 99 ? '99+' : pendientesAutorizacion}
-                </span>
-              )}
-            </button>
-          ))}
+        <div id={idItems} className={`sidebar-section-items ${abierto ? 'expanded' : ''}`} hidden={!abierto}>
+          {grupo.items.map(item => renderItem(item))}
         </div>
       </div>
     )
@@ -210,29 +101,17 @@ export default function Sidebar({ user }) {
 
   return (
     <>
-      <div 
+      <div
         className={`sidebar-overlay ${isOpen ? 'active' : ''}`}
         onClick={closeSidebar}
         aria-hidden="true"
       />
       <aside className={`app-sidebar ${isOpen ? 'sidebar-open' : 'sidebar-closed'}`}>
-        <div className="sidebar-content">
-        <button
-          className={`sidebar-item sidebar-home ${isActive('/dashboard') || isActive('/') ? 'active' : ''}`}
-          onClick={() => nav('/dashboard')}
-        >
-          <FiHome />
-          <span>Inicio</span>
-        </button>
-
-        {renderMenuSection('equipos', 'Inventario', <FiPackage />)}
-        {renderMenuSection('incidencias', 'Incidencias / Reportes', <FiAlertCircle />)}
-        {renderMenuSection('mantenimiento', 'Mantenimiento', <FiTool />)}
-        {renderMenuSection('horarios', 'Horarios y Clases', <FiCalendar />)}
-        {renderMenuSection('config', 'Configuración / Usuarios', <FiSettings />)}
-        </div>
+        <nav className="sidebar-content" aria-label="Navegación principal">
+          <p className="sidebar-caption">Consultar y ver estado</p>
+          {menu.map(entrada => (entrada.items ? renderGrupo(entrada) : renderItem(entrada, 'sidebar-home')))}
+        </nav>
       </aside>
     </>
   )
 }
-

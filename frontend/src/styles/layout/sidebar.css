@@ -140,6 +140,69 @@
   font-weight: 600;
 }
 
+/* Sidebar de consulta: título y línea de estado bajo cada entrada */
+.sidebar-caption {
+  margin: 4px 16px 6px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--neutral-600);
+}
+
+.sidebar-item-texto {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.sidebar-item-titulo {
+  line-height: 1.25;
+}
+
+.sidebar-item-con-estado {
+  align-items: flex-start;
+}
+
+.sidebar-item-con-estado svg {
+  margin-top: 2px;
+}
+
+.sidebar-item-estado {
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.sidebar-estado-neutro {
+  color: var(--neutral-600);
+}
+
+.sidebar-estado-info {
+  color: var(--info-700);
+}
+
+.sidebar-estado-aviso {
+  color: var(--warning-800);
+}
+
+.sidebar-estado-alerta {
+  color: var(--error-600);
+}
+
+.sidebar-item.active .sidebar-item-estado {
+  color: var(--neutral-50);
+  opacity: 0.92;
+}
+
+.sidebar-item:focus-visible,
+.sidebar-section-header:focus-visible {
+  outline: 2px solid var(--info-600);
+  outline-offset: 2px;
+}
+
 /* Secciones del Sidebar */
 .sidebar-section {
   margin-top: 8px;

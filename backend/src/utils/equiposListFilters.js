@@ -20,7 +20,7 @@ const aLista = (valor) => {
 const aTexto = (valor) => {
   if (valor === undefined || valor === null) return null;
   const texto = String(valor).trim();
-  return texto ? texto : null;
+  return texto || null;
 };
 
 const aEnteroPositivo = (valor) => {
