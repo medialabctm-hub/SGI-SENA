@@ -430,6 +430,61 @@ describe('obtenerEquipoPorCodigo', () => {
     await obtenerEquipoPorCodigo(req, res);
     expect(res.status).toHaveBeenCalledWith(500);
   });
+
+  it('?por=id busca solo por el ID interno aunque exista una placa igual', async () => {
+    const porPlaca = { codigo_equipo: 900, placa: '15', tipo: 'Monitor' };
+    const porId = { codigo_equipo: 15, placa: 'INV-15', tipo: 'Portátil' };
+    mockExecute.mockImplementation((sql) => {
+      if (sql.includes('WHERE e.placa = ?')) return Promise.resolve([[porPlaca]]);
+      if (sql.includes('WHERE e.codigo_equipo = ?')) return Promise.resolve([[porId]]);
+      return Promise.resolve([[]]);
+    });
+    const res = mockRes();
+
+    await obtenerEquipoPorCodigo(mockReq({ params: { codigo: '15' }, query: { por: 'id' } }), res);
+
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ codigo_equipo: 15 }));
+    expect(mockExecute.mock.calls.some(([sql]) => sql.includes('WHERE e.placa = ?'))).toBe(false);
+  });
+
+  it('?por=id mantiene el alcance del rol', async () => {
+    mockExecute.mockResolvedValue([[]]);
+    const res = mockRes();
+
+    await obtenerEquipoPorCodigo(mockReq({
+      params: { codigo: '15' },
+      query: { por: 'id' },
+      user: { id: 55, rol: 'Aprendiz' }
+    }), res);
+
+    expect(res.status).toHaveBeenCalledWith(404);
+    expect(mockExecute).toHaveBeenCalledWith(
+      expect.stringMatching(/WHERE e\.codigo_equipo = \?[\s\S]*EXISTS[\s\S]*Responsables_Equipo/),
+      [15, 55]
+    );
+  });
+
+  it('?por=id rechaza un ID no numérico sin consultar la base', async () => {
+    const res = mockRes();
+    await obtenerEquipoPorCodigo(mockReq({ params: { codigo: 'INV-10' }, query: { por: 'id' } }), res);
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(mockExecute).not.toHaveBeenCalled();
+  });
+
+  it('no escribe nombres ni documentos de responsables en el log', async () => {
+    mockExecute.mockImplementation((sql) => {
+      if (sql.includes('WHERE e.placa = ?')) return Promise.resolve([[{ codigo_equipo: 5, placa: 'INV-5' }]]);
+      if (sql.includes('FROM Responsables_Equipo re')) {
+        return Promise.resolve([[{ id_responsable: 3, id_usuario: null, nombre_externo: 'Persona Sintética', documento_externo: '100200300' }]]);
+      }
+      return Promise.resolve([[]]);
+    });
+    await obtenerEquipoPorCodigo(mockReq({ params: { codigo: 'INV-5' } }), mockRes());
+
+    const registrado = JSON.stringify([...mockLogger.info.mock.calls, ...mockLogger.debug.mock.calls]);
+    expect(registrado).not.toContain('100200300');
+    expect(registrado).not.toContain('Persona Sintética');
+  });
 });
 
 describe('actualizarEquipo', () => {

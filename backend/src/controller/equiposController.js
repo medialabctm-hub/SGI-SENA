@@ -20,19 +20,12 @@ import { AppError, translateDbError } from '../utils/errors.js';
 import { beginEquipmentClaim, lockEquipmentRow } from '../utils/equipmentClaim.js';
 import { currentEquipmentVerificationStatusSql, isEquipmentVerified } from '../utils/equipoVerification.js';
 import { parseListarEquiposQuery, resolverAmbientesIds } from '../utils/equiposListFilters.js';
+import { ROLES_EQUIPOS_VISTA_AMPLIA, construirAlcanceEquipo, normalizarIdUsuario } from '../utils/equipoScope.js';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 
-const ROLES_EQUIPOS_VISTA_AMPLIA = ['Administrador', 'Instructor', 'Cuentadante'];
-
-function normalizarIdUsuario(rawId) {
-  if (typeof rawId !== 'number' && typeof rawId !== 'string') return null;
-
-  const id = Number(rawId);
-  return Number.isSafeInteger(id) && id > 0 ? id : null;
-}
 
 async function tieneVinculoActivoEquipo(codigoEquipo, userId) {
   const [[vinculo]] = await defaultDb.execute(
@@ -167,10 +160,18 @@ export async function obtenerEquipoPorCodigo(req, res) {
     const userRole = req.user?.rol;
     const tieneAccesoAmplio = ROLES_EQUIPOS_VISTA_AMPLIA.includes(userRole);
     const userIdNormalizado = normalizarIdUsuario(userId);
+    // ?por=id: búsqueda explícita por ID interno. Sin él se conserva el orden
+    // histórico (placa y luego ID) para no romper enlaces existentes.
+    const porId = req.query?.por === 'id';
     
     if (!codigo) return res.status(400).json({ error: 'codigo requerido' });
+    if (porId && !/^\d+$/.test(String(codigo))) {
+      return res.status(400).json({ error: 'El ID del equipo debe ser numérico' });
+    }
 
-    if (!tieneAccesoAmplio && !userIdNormalizado) {
+    // Alcance por rol compartido con el historial integral (utils/equipoScope.js).
+    const alcance = await construirAlcanceEquipo(defaultDb, req.user);
+    if (!alcance) {
       return res.status(404).json({ error: 'Equipo no encontrado' });
     }
 
@@ -197,69 +198,18 @@ export async function obtenerEquipoPorCodigo(req, res) {
       LEFT JOIN Usuarios u_cuentadante ON e.id_cuentadante = u_cuentadante.id_usuario
     `;
 
-    // Construir cláusula WHERE según el rol
-    let whereClause = '';
-    let scopeParams = [];
-    
-    if (userRole === 'Cuentadante') {
-      // El inventario propio sigue siendo visible aunque tenga ambientes habilitados.
-      const [ambientesCuentadante] = await defaultDb.execute(
-        `SELECT DISTINCT ra.id_ambiente FROM Responsabilidades_Ambiente ra
-         WHERE ra.id_usuario = ? AND ra.estado_responsabilidad = 'Activa'`,
-        [userId]
-      );
-      if (ambientesCuentadante?.length > 0) {
-        const ids = ambientesCuentadante.map(a => a.id_ambiente);
-        const placeholders = ids.map(() => '?').join(',');
-        whereClause = ` AND (e.id_cuentadante = ? OR e.id_ambiente IN (${placeholders}))`;
-        scopeParams = [userId, ...ids];
-      } else {
-        whereClause = ' AND e.id_cuentadante = ?';
-        scopeParams = [userId];
-      }
-    } else if (userRole === 'Instructor') {
-      // Los instructores solo pueden ver equipos de sus ambientes asignados
-      whereClause = ` AND e.id_ambiente IN (
-        SELECT DISTINCT ra.id_ambiente
-        FROM Responsabilidades_Ambiente ra
-        LEFT JOIN Clases c ON ra.id_clase = c.id_clase
-        WHERE ra.id_usuario = ?
-          AND ra.estado_responsabilidad = 'Activa'
-          -- SISTEMA 100% MANUAL: Eliminadas comparaciones con NOW()
-          -- El estado_responsabilidad = 'Activa' es suficiente
-          -- AND ra.fecha_inicio <= NOW()
-          -- AND (ra.fecha_fin IS NULL OR ra.fecha_fin >= NOW())
-          AND (
-            -- Asignaciones permanentes (con días/horarios o jornada)
-            (ra.id_clase IS NULL)
-            OR
-            -- Asignaciones temporales (clases) que estén programadas o en curso
-            (ra.id_clase IS NOT NULL 
-             AND c.estado_clase IN ('Programada', 'En Curso')
-             AND c.fecha_clase >= CURDATE())
-          )
-      )`;
-      scopeParams = [userId];
-    } else if (!tieneAccesoAmplio) {
-      // EQUIPOS.VIEW_OWN: resolver solo equipos vinculados al usuario actual.
-      // El EXISTS evita filtrar después de haber obtenido filas duplicadas por placa.
-      whereClause = ` AND EXISTS (
-        SELECT 1
-        FROM Responsables_Equipo re_scope
-        WHERE re_scope.codigo_equipo = e.codigo_equipo
-          AND re_scope.id_usuario = ?
-          AND re_scope.estado_responsabilidad = 'Activo'
-      )`;
-      scopeParams = [userIdNormalizado];
-    }
+    const whereClause = alcance.sql;
+    const scopeParams = alcance.params;
 
     const params = [codigo, ...scopeParams];
 
     // Buscar por placa - ahora devuelve TODOS los registros con la misma placa (permite duplicados)
-    const [rowsInventario] = await defaultDb.execute(
-      `${queryBase} WHERE e.placa = ?${whereClause}`,
-      params
-    );
+    const [rowsInventario] = porId
+      ? [[]]
+      : await defaultDb.execute(
+        `${queryBase} WHERE e.placa = ?${whereClause}`,
+        params
+      );
 
     let equipoData = null;
     let codigoEquipoParaResponsables = null;
@@ -403,16 +353,11 @@ export async function obtenerEquipoPorCodigo(req, res) {
       return resp;
     });
     
-    logger.info('Responsables obtenidos para equipo', {
+    // Sin nombres ni documentos en el log (H12): solo identificadores y conteos.
+    logger.debug('Responsables obtenidos para equipo', {
       codigo_equipo: codigoEquipoParaResponsables,
       cantidad: responsablesConDias.length,
-      responsables: responsablesConDias.map(r => ({
-        id_responsable: r.id_responsable,
-        nombre: r.nombre_usuario || r.nombre_externo,
-        documento: r.cedula || r.documento_externo,
-        ficha: r.ficha,
-        tiene_horarios: !!(r.dias_semana || r.hora_inicio || r.hora_fin)
-      }))
+      ids_responsable: responsablesConDias.map(r => r.id_responsable)
     });
 
     // Agregar responsables al objeto del equipo
