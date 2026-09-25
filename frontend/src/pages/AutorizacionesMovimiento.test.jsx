@@ -35,9 +35,11 @@ describe('AutorizacionesMovimiento', () => {
     vi.stubGlobal('fetch', vi.fn((url) => {
       if (url === '/api/ambientes/activos') return Promise.resolve(jsonResponse([]))
       if (String(url).startsWith('/api/equipos?')) {
+        const busquedaSoloVerificados = String(url).includes('status_verificacion=Verificado')
         return Promise.resolve(jsonResponse({
-          equipos: [
+          equipos: busquedaSoloVerificados ? [
             { codigo_equipo: 1, placa: '92051011721', tipo: 'Laptop', status_verificacion: 'Verificado' },
+          ] : [
             { codigo_equipo: 2, placa: '92051011722', tipo: 'Laptop', status_verificacion: 'No Verificado' },
           ],
         }))
@@ -65,5 +67,37 @@ describe('AutorizacionesMovimiento', () => {
 
     expect(await screen.findByText(/92051011721/)).toBeInTheDocument()
     expect(screen.queryByText(/92051011722/)).not.toBeInTheDocument()
+  })
+
+  it('avisa cuando la placa coincide con un equipo no verificado', async () => {
+    fetch.mockImplementation((url) => {
+      if (url === '/api/ambientes/activos') return Promise.resolve(jsonResponse([]))
+      if (String(url).includes('status_verificacion=Verificado')) {
+        return Promise.resolve(jsonResponse({ equipos: [] }))
+      }
+      if (String(url).startsWith('/api/equipos?')) {
+        return Promise.resolve(jsonResponse({
+          equipos: [
+            { codigo_equipo: 2, placa: '92051011722', tipo: 'Laptop', status_verificacion: 'No Verificado' },
+          ],
+        }))
+      }
+      return Promise.resolve(jsonResponse({ autorizador: null }))
+    })
+
+    render(
+      <MemoryRouter>
+        <AutorizacionesMovimiento />
+      </MemoryRouter>
+    )
+
+    const input = await screen.findByPlaceholderText('Escriba la placa o código del equipo')
+    fireEvent.change(input, { target: { value: '92051011722' } })
+
+    const alerta = await screen.findByRole('alert')
+    expect(alerta).toHaveTextContent('92051011722')
+    expect(alerta).toHaveTextContent('no está verificado')
+    expect(alerta).toHaveTextContent('Consulte al cuentadante')
+    expect(screen.queryByRole('button', { name: /92051011722/ })).not.toBeInTheDocument()
   })
 })
