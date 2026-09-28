@@ -169,6 +169,7 @@
   font-weight: 600;
 }
 
+.jornada-badge.manana,
 .jornada-badge.mañana {
   color: var(--warning-600);
   background: #fef3c7;

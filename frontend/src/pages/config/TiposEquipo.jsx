@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import Toast from '../../components/Toast'
+import DestructiveConfirmModal from '../../components/DestructiveConfirmModal'
 import { parseApiResponse, buildErrorMessage, getAuthHeaders } from '../../utils/api'
 import '../../styles/pages/tiposEquipo.css'
 import { LoadingScreen } from '../LoadingDemo'
@@ -17,13 +18,21 @@ export default function TiposEquipo() {
   })
   const [showForm, setShowForm] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
+  const [deleteTarget, setDeleteTarget] = useState(null)
+  const deleteInProgress = useRef(false)
+  const deleteFocusRef = useRef(null)
+  const [deleteFocusVersion, setDeleteFocusVersion] = useState(0)
+
+  useEffect(() => {
+    if (deleteFocusVersion > 0) deleteFocusRef.current?.focus()
+  }, [deleteFocusVersion])
 
   useEffect(() => {
     fetchCategorias()
   }, [])
 
-  async function fetchCategorias() {
-    setLoading(true)
+  async function fetchCategorias({ showLoading = true } = {}) {
+    if (showLoading) setLoading(true)
     try {
       const res = await fetch('/api/equipos/categorias', {
         headers: getAuthHeaders()
@@ -36,7 +45,7 @@ export default function TiposEquipo() {
         type: 'error'
       })
     } finally {
-      setLoading(false)
+      if (showLoading) setLoading(false)
     }
   }
 
@@ -111,14 +120,12 @@ export default function TiposEquipo() {
     }
   }
 
-  async function handleDelete(id, nombre) {
-    if (!window.confirm(`¿Está seguro de eliminar la categoría "${nombre}"?\n\nEsta acción no se puede deshacer.`)) {
-      return
-    }
-
+  async function handleDelete() {
+    if (!deleteTarget || deleteInProgress.current) return
+    deleteInProgress.current = true
     setSaving(true)
     try {
-      const res = await fetch(`/api/equipos/categorias/${id}`, {
+      const res = await fetch(`/api/equipos/categorias/${deleteTarget.id_categoria}`, {
         method: 'DELETE',
         headers: getAuthHeaders()
       })
@@ -129,14 +136,17 @@ export default function TiposEquipo() {
         message: 'Categoría eliminada correctamente',
         type: 'success'
       })
-      
-      fetchCategorias()
+      setDeleteTarget(null)
+
+      await fetchCategorias({ showLoading: false })
+      setDeleteFocusVersion(version => version + 1)
     } catch (err) {
       setToast({
         message: buildErrorMessage(err, 'Error al eliminar la categoría'),
         type: 'error'
       })
     } finally {
+      deleteInProgress.current = false
       setSaving(false)
     }
   }
@@ -162,7 +172,7 @@ export default function TiposEquipo() {
       
       <div className="tipos-equipo-header">
         <div>
-          <h3 className="tipos-equipo-title">Tipos de Equipos</h3>
+          <h3 ref={deleteFocusRef} tabIndex={-1} className="tipos-equipo-title">Tipos de Equipos</h3>
           <p className="tipos-equipo-description">
             Gestiona las categorías disponibles para clasificar los equipos del inventario
           </p>
@@ -314,7 +324,7 @@ export default function TiposEquipo() {
                       </button>
                       <button
                         className="tipos-equipo-btn-delete"
-                        onClick={() => handleDelete(categoria.id_categoria, categoria.nombre_categoria)}
+                        onClick={() => setDeleteTarget(categoria)}
                         title="Eliminar"
                         disabled={saving}
                       >
@@ -328,6 +338,20 @@ export default function TiposEquipo() {
           </div>
         )}
       </div>
+      <DestructiveConfirmModal
+        open={Boolean(deleteTarget)}
+        title="Eliminar categoría"
+        message={`¿Está seguro de eliminar la categoría "${deleteTarget?.nombre_categoria}"? Esta acción no se puede deshacer.`}
+        confirmText="Eliminar categoría"
+        cancelText="Cancelar"
+        confirmationPhrase="confirmar accion"
+        loading={saving}
+        returnFocusRef={deleteFocusRef}
+        onConfirm={handleDelete}
+        onCancel={() => {
+          if (!saving) setDeleteTarget(null)
+        }}
+      />
     </div>
   )
 }

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   FiDownload,
   FiUpload,
@@ -12,7 +12,9 @@ import Header from '../components/Header';
 import Sidebar from '../components/Sidebar';
 import Toast from '../components/Toast';
 import ImportarAprendices from '../components/ImportarAprendices';
+import DestructiveConfirmModal from '../components/DestructiveConfirmModal';
 import CustomSelect from '../components/CustomSelect';
+import FormDialog from '../components/FormDialog';
 import {
   parseApiResponse,
   buildErrorMessage,
@@ -243,6 +245,14 @@ export default function Aprendices() {
   const [savingCreate, setSavingCreate] = useState(false);
   const [savingEdit, setSavingEdit] = useState(false);
   const [deletingId, setDeletingId] = useState(null);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const deleteInProgress = useRef(false);
+  const deleteFocusRef = useRef(null);
+  const [deleteFocusVersion, setDeleteFocusVersion] = useState(0);
+
+  useEffect(() => {
+    if (deleteFocusVersion > 0) deleteFocusRef.current?.focus();
+  }, [deleteFocusVersion]);
 
   useEffect(() => {
     try {
@@ -480,12 +490,14 @@ export default function Aprendices() {
     }
   };
 
-  const handleDelete = async aprendiz => {
-    if (
-      !isAdministrador ||
-      !window.confirm(`¿Seguro que deseas eliminar a ${aprendiz.nombre}?`)
-    )
-      return;
+  const handleDelete = aprendiz => {
+    if (isAdministrador) setDeleteTarget(aprendiz);
+  };
+
+  const confirmDelete = async () => {
+    if (!isAdministrador || !deleteTarget || deleteInProgress.current) return;
+    const aprendiz = deleteTarget;
+    deleteInProgress.current = true;
     setDeletingId(aprendiz.id_aprendiz);
     try {
       const res = await fetch(`/api/aprendices/${aprendiz.id_aprendiz}`, {
@@ -497,13 +509,16 @@ export default function Aprendices() {
         message: 'Aprendiz eliminado correctamente',
         type: 'success',
       });
-      fetchAprendices();
+      setDeleteTarget(null);
+      await fetchAprendices();
+      setDeleteFocusVersion(version => version + 1);
     } catch (err) {
       setToast({
         message: buildErrorMessage(err, 'No se pudo eliminar el aprendiz'),
         type: 'error',
       });
     } finally {
+      deleteInProgress.current = false;
       setDeletingId(null);
     }
   };
@@ -517,20 +532,8 @@ export default function Aprendices() {
     onClose,
     submitText
   ) => (
-    <div className="modal-overlay">
-      <div className="modal-sheet form-modal">
+    <FormDialog open title={title} onClose={onClose} className="aprendiz-dialog">
         <div className="form-equipos aprendiz-modal-form">
-          <div className="modal-header aprendiz-modal-header">
-            <h3>{title}</h3>
-            <button
-              type="button"
-              className="aprendiz-modal-close"
-              onClick={onClose}
-              aria-label="Cerrar"
-            >
-              <FiX size={22} />
-            </button>
-          </div>
           <form className="modal-form" onSubmit={onSubmit}>
             <div className="form-grid">
               <AprendizBaseFields
@@ -564,8 +567,7 @@ export default function Aprendices() {
             </div>
           </form>
         </div>
-      </div>
-    </div>
+    </FormDialog>
   );
 
   return (
@@ -584,7 +586,7 @@ export default function Aprendices() {
           <div className="users-panel">
             <div className="users-toolbar">
               <div>
-                <h2>Aprendices</h2>
+                <h2 ref={deleteFocusRef} tabIndex={-1}>Aprendices</h2>
                 <p className="users-toolbar-description">
                   Registra las fichas, documentos y jornadas para llevar el
                   control académico de cada aprendiz.
@@ -784,6 +786,20 @@ export default function Aprendices() {
           closeEditModal,
           'Guardar cambios'
         )}
+      <DestructiveConfirmModal
+        open={Boolean(deleteTarget)}
+        title="Eliminar aprendiz"
+        message={`¿Seguro que deseas eliminar a ${deleteTarget?.nombre}? Esta acción no se puede deshacer.`}
+        confirmText="Eliminar aprendiz"
+        cancelText="Cancelar"
+        confirmationPhrase="confirmar accion"
+        loading={Boolean(deleteTarget && deletingId === deleteTarget.id_aprendiz)}
+        returnFocusRef={deleteFocusRef}
+        onConfirm={confirmDelete}
+        onCancel={() => {
+          if (!deletingId) setDeleteTarget(null);
+        }}
+      />
     </div>
   );
 }

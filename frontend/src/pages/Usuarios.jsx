@@ -3,6 +3,7 @@ import Header from '../components/Header';
 import Sidebar from '../components/Sidebar';
 import Toast from '../components/Toast';
 import DestructiveConfirmModal from '../components/DestructiveConfirmModal';
+import FormDialog from '../components/FormDialog';
 import ImportarUsuarios from '../components/ImportarUsuarios';
 import CustomSelect from '../components/CustomSelect';
 import { FiUpload, FiDownload } from 'react-icons/fi';
@@ -418,18 +419,13 @@ export default function Usuarios() {
 
       {/* Form modal add/edit */}
       {showForm && (
-        <div className="modal-overlay">
-          <div className="modal-sheet form-modal-small">
-            <div className="form-equipos">
-              <div className="modal-header">
-                <h3>Editar usuario</h3>
-                <button className="btn" onClick={() => setShowForm(false)}>Cerrar</button>
-              </div>
-              <form onSubmit={submitForm} className="modal-form">
+        <FormDialog open={showForm} title="Editar usuario" size="small" onClose={() => setShowForm(false)}>
+              <form onSubmit={submitForm} className="form-equipos modal-form user-edit-form">
                 <div className="form-grid">
                   <div className="form-row">
-                    <label>Nombre completo</label>
+                    <label htmlFor="usuario-nombre">Nombre completo</label>
                     <input
+                      id="usuario-nombre"
                       value={form.nombre}
                       onChange={(e) =>
                         setForm((prev) => ({ ...prev, nombre: e.target.value }))
@@ -437,9 +433,11 @@ export default function Usuarios() {
                     />
                   </div>
                   <div className="form-row">
-                    <label>Tipo de Documento</label>
+                    <label id="usuario-tipo-documento-label" htmlFor="usuario-tipo-documento">Tipo de Documento</label>
                     <CustomSelect
                       name="tipo_documento"
+                      id="usuario-tipo-documento"
+                      aria-labelledby="usuario-tipo-documento-label"
                       value={form.tipo_documento}
                       onChange={(e) =>
                         setForm((prev) => ({ ...prev, tipo_documento: e.target.value, tipo_documento_otro: e.target.value !== 'Otro' ? '' : prev.tipo_documento_otro }))
@@ -450,8 +448,9 @@ export default function Usuarios() {
                   </div>
                   {form.tipo_documento === 'Otro' && (
                     <div className="form-row">
-                      <label>Especificar Tipo de Documento</label>
+                      <label htmlFor="usuario-tipo-documento-otro">Especificar Tipo de Documento</label>
                       <input
+                        id="usuario-tipo-documento-otro"
                         type="text"
                         value={form.tipo_documento_otro}
                         onChange={(e) =>
@@ -463,8 +462,9 @@ export default function Usuarios() {
                     </div>
                   )}
                   <div className="form-row">
-                    <label>Documento</label>
+                    <label htmlFor="usuario-documento">Documento</label>
                     <input
+                      id="usuario-documento"
                       value={form.cedula}
                       onChange={(e) =>
                         setForm((prev) => ({ ...prev, cedula: e.target.value }))
@@ -472,8 +472,9 @@ export default function Usuarios() {
                     />
                   </div>
                   <div className="form-row">
-                    <label>Correo</label>
+                    <label htmlFor="usuario-correo">Correo</label>
                     <input
+                      id="usuario-correo"
                       value={form.correo}
                       onChange={(e) =>
                         setForm((prev) => ({ ...prev, correo: e.target.value }))
@@ -485,8 +486,9 @@ export default function Usuarios() {
                     || form.correo.trim().toLowerCase() !== String(editingUser.correo || '').trim().toLowerCase()
                   ) && (
                     <div className="form-row">
-                      <label>Motivo del cambio de identidad</label>
+                      <label htmlFor="usuario-motivo">Motivo del cambio de identidad</label>
                       <input
+                        id="usuario-motivo"
                         value={form.motivo}
                         onChange={(e) =>
                           setForm((prev) => ({ ...prev, motivo: e.target.value }))
@@ -498,8 +500,9 @@ export default function Usuarios() {
                     </div>
                   )}
                   <div className="form-row">
-                    <label>Teléfono</label>
+                    <label htmlFor="usuario-telefono">Teléfono</label>
                     <input
+                      id="usuario-telefono"
                       value={form.telefono}
                       onChange={(e) =>
                         setForm((prev) => ({
@@ -510,9 +513,11 @@ export default function Usuarios() {
                     />
                   </div>
                   <div className="form-row">
-                    <label>Rol</label>
+                    <label id="usuario-rol-label" htmlFor="usuario-rol">Rol</label>
                     <CustomSelect
                       name="rol"
+                      id="usuario-rol"
+                      aria-labelledby="usuario-rol-label"
                       value={form.rol}
                       onChange={(e) =>
                         setForm((prev) => ({ ...prev, rol: e.target.value }))
@@ -528,9 +533,7 @@ export default function Usuarios() {
                   <button className="btn-verde" type="submit">Guardar</button>
                 </div>
               </form>
-            </div>
-          </div>
-        </div>
+        </FormDialog>
       )}
 
       <DestructiveConfirmModal
