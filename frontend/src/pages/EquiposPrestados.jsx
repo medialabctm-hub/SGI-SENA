@@ -16,6 +16,7 @@ import { parseApiResponse, buildErrorMessage } from '../utils/api';
 import '../styles/pages/equipos.css';
 import '../styles/equiposPrestados.css';
 import { LoadingScreen } from './LoadingDemo';
+import { useNavigate } from 'react-router-dom';
 
 function parseDays(days) {
   if (Array.isArray(days)) return days;
@@ -110,6 +111,7 @@ function ScheduleDetails({ session }) {
 }
 
 export default function EquiposPrestados() {
+  const navigate = useNavigate();
   const [sessions, setSessions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -219,6 +221,11 @@ export default function EquiposPrestados() {
                 />
                 Actualizar
               </button>
+              {(user?.nombre_rol === 'Administrador' || user?.nombre_rol === 'Cuentadante') && (
+                <button type="button" className="btn-primary btn-modern prestados-report-button" onClick={() => navigate('/equipos/prestados/informe')}>
+                  Generar documento de préstamos
+                </button>
+              )}
             </div>
 
             <div className="prestados-summary">

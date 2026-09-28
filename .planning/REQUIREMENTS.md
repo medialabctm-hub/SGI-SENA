@@ -1,5 +1,17 @@
 # Requirements: SGI-SENA — hardening wave
 
+## Requisitos activos — MDL-236 (2026-09-26)
+
+- [ ] CAT-01: Catálogo Equipos único con responsabilidad patrimonial por `id_cuentadante`, filtro ambiente y paginación/exportación bajo el mismo alcance.
+- [ ] UX-01: Navegación de seguimiento separada de acciones contextuales; rutas antiguas útiles y semántica móvil/teclado.
+- [ ] TRACE-01: Cronología integral de equipo, deduplicada, fechada y autorizada en servidor.
+- [ ] ENV-01: Ficha de ambiente con equipos, responsables y agenda, sin automatismos de clase.
+- [ ] LOAN-01: Sesiones abiertas/cerradas con informe PDF y filtros por fecha, ambiente, equipo, estado y cuentadante autorizado.
+- [ ] RET-01: Retirar Habilitaciones sin invalidar `Responsables_Equipo`, historial ni permisos de aprendices.
+- [ ] QA-01: Tests de frontend/backend, lint/build, MySQL local, responsive, roles y rutas legadas; separar gates de Railway/UAT.
+
+El cierre del hardening listado abajo es histórico; sus casillas no acreditan estos requisitos nuevos.
+
 Defined: 2026-09-07
 Source: Linear issues MDL-127, MDL-131 and MDL-134.
 

@@ -1,5 +1,9 @@
 # SGI-SENA — Cierre y hardening
 
+## Alcance actual: armonización de inventario
+
+MDL-236 extiende el producto, sin reabrir el cierre de hardening descrito abajo. La base es `develop` b50d06a. Equipos es el punto de consulta y acciones; las pantallas de préstamos, autorizaciones, novedades, mantenimientos y agenda quedan como seguimiento. «Equipos a mi cargo» significa `Elementos.id_cuentadante`; «Mis ambientes» es otro alcance. La importación conserva su plantilla y asignación externa de cuentadante. Se incluye trazabilidad integral, ficha de ambiente/horarios e informe de préstamos. Habilitaciones se retiran de la experiencia web, preservando contratos de acceso hasta migración segura. No se toca producción.
+
 ## What This Is
 
 SGI-SENA es el sistema de gestión de inventario y préstamo de equipos para los ambientes de MediaLab. Esta fase de cierre endurece autenticación, flujos públicos sensibles y el contrato de despliegue en Railway sobre la base que ya está integrada en la PR #29.

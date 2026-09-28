@@ -7,12 +7,14 @@ import CustomSelect from '../components/CustomSelect'
 import { FiPlus, FiUpload, FiSearch, FiCheckCircle } from 'react-icons/fi'
 import { parseApiResponse, buildErrorMessage, handleError } from '../utils/api'
 import { useSocket } from '../contexts/SocketContext'
+import { useSearchParams } from 'react-router-dom'
 import '../styles/pages/equipos.css'
 
 const ESTADOS_FISICOS = ['Nuevo', 'Bueno', 'Regular', 'Malo', 'Dañado']
 
 export default function Equipos() {
-  const [activeTab, setActiveTab] = useState('registrar') // 'registrar' o 'importar'
+  const [searchParams, setSearchParams] = useSearchParams()
+  const activeTab = searchParams.get('tab') === 'importar' ? 'importar' : 'registrar'
   const [form, setForm] = useState({
     modelo: '',
     consecutivo: '',
@@ -191,7 +193,9 @@ export default function Equipos() {
       })
       return
     }
-    setActiveTab(tab)
+    const siguiente = new URLSearchParams(searchParams)
+    siguiente.set('tab', tab)
+    setSearchParams(siguiente)
   }
 
   // Handler para cambios en el formulario

@@ -1,0 +1,11 @@
+.informe-prestamos { max-width: 100%; }
+.informe-prestamos h1 { color: var(--neutral-900); margin-bottom: 4px; }
+.informe-prestamos-filtros { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin: 20px 0; align-items: end; }
+.informe-prestamos-filtros label { display: flex; flex-direction: column; gap: 5px; font-weight: 600; color: var(--neutral-700); }
+.informe-prestamos-filtros input, .informe-prestamos-filtros select { min-height: 44px; min-width: 0; width: 100%; border: 1px solid var(--neutral-300); border-radius: 8px; padding: 8px; font: inherit; }
+.informe-prestamos-toolbar, .informe-prestamos-pages { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin: 14px 0; }
+.informe-prestamos-table { max-width: 100%; overflow-x: auto; }
+.informe-prestamos-table table { min-width: 840px; }
+.informe-prestamos-pages button { min-height: 44px; padding: 8px 16px; border: 1px solid var(--neutral-300); border-radius: 8px; background: white; }
+.informe-prestamos-pages button:disabled { opacity: .5; }
+.informe-prestamos :is(button, input, select):focus-visible { outline: 3px solid var(--info-700); outline-offset: 2px; }

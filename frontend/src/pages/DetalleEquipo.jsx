@@ -7,11 +7,9 @@ import ConfirmModal from '../components/ConfirmModal';
 import ImageViewer from '../components/ImageViewer';
 import CustomSelect from '../components/CustomSelect';
 import { parseApiResponse, buildErrorMessage } from '../utils/api';
-import { canManageEquipoAssignments } from '../utils/permissions';
 import {
   FiArrowLeft,
   FiUpload,
-  FiTrash2,
   FiStar,
   FiImage,
   FiX,
@@ -22,7 +20,6 @@ import {
   FiDollarSign,
   FiUsers,
   FiUser,
-  FiEdit2,
   FiUserPlus,
   FiCamera,
 } from 'react-icons/fi';
@@ -86,7 +83,6 @@ export default function DetalleEquipo() {
   const [registrarUsoHoraInicio, setRegistrarUsoHoraInicio] = useState('');
   const [registrarUsoHoraFin, setRegistrarUsoHoraFin] = useState('');
   const [registrarUsoLoading, setRegistrarUsoLoading] = useState(false);
-  const canManageAssignments = canManageEquipoAssignments(user);
   const authenticatedImages = useAuthenticatedEvidenceImages(imagenes);
   const authenticatedPrincipal = authenticatedImages.find(
     (image) => image.id_imagen_equipo === imagenPrincipal?.id_imagen_equipo
@@ -180,27 +176,6 @@ export default function DetalleEquipo() {
       console.error('Error al cargar imágenes:', err);
       setImagenes([]);
     }
-  }
-
-  function handleOpenEditAsignacion(responsable) {
-    setEditAsignacionData({
-      ficha: responsable.ficha || '',
-      nombre_externo:
-        responsable.nombre_externo || responsable.nombre_usuario || '',
-      documento_externo:
-        responsable.documento_externo || responsable.cedula || '',
-      dias_semana: Array.isArray(responsable.dias_semana)
-        ? responsable.dias_semana
-        : [],
-      hora_inicio: responsable.hora_inicio
-        ? responsable.hora_inicio.substring(0, 5)
-        : '',
-      hora_fin: responsable.hora_fin
-        ? responsable.hora_fin.substring(0, 5)
-        : '',
-      observaciones: responsable.observaciones || '',
-    });
-    setEditAsignacionModal({ open: true, asignacion: responsable });
   }
 
   async function handleUpdateAsignacion() {
@@ -1295,6 +1270,7 @@ export default function DetalleEquipo() {
                           {equipo.codigo_ambiente &&
                             `(${equipo.codigo_ambiente})`}
                         </div>
+                        {equipo.id_ambiente && <button type="button" className="btn btn-secondary" onClick={() => navigate(`/ambientes/${equipo.id_ambiente}`)}>Ver ambiente y agenda</button>}
                       </div>
                     </div>
                     <div className="detalle-equipo-info-item-with-icon detalle-equipo-info-item-cell">
@@ -1603,33 +1579,6 @@ export default function DetalleEquipo() {
                                 </span>
                               )}
                             </div>
-                            {canManageAssignments && (
-                              <div className="detalle-equipo-responsable-actions">
-                                <button
-                                  onClick={() =>
-                                    handleOpenEditAsignacion(responsable)
-                                  }
-                                  className="detalle-equipo-responsable-action-btn-edit"
-                                  title="Editar asignación"
-                                >
-                                  <FiEdit2 size={14} />
-                                  Editar
-                                </button>
-                                <button
-                                  onClick={() =>
-                                    setDeleteAsignacionConfirm({
-                                      open: true,
-                                      id: responsable.id_responsable,
-                                    })
-                                  }
-                                  className="detalle-equipo-responsable-action-btn-delete-inline"
-                                  title="Eliminar asignación"
-                                >
-                                  <FiTrash2 size={14} />
-                                  Eliminar
-                                </button>
-                              </div>
-                            )}
                           </div>
                           <div className="detalle-equipo-responsable-info-grid">
                             <div className="detalle-equipo-responsable-info-item">

@@ -21,6 +21,9 @@ export default function DetalleAmbiente() {
   const [ambiente, setAmbiente] = useState(null);
   const [imagenes, setImagenes] = useState([]);
   const [instructores, setInstructores] = useState([]);
+  const [clasesAmbiente, setClasesAmbiente] = useState([]);
+  const [clasesTotal, setClasesTotal] = useState(0);
+  const [clasesError, setClasesError] = useState(false);
   const [loading, setLoading] = useState(true);
   const [loadingInstructores, setLoadingInstructores] = useState(false);
   const [toast, setToast] = useState(null);
@@ -63,6 +66,21 @@ export default function DetalleAmbiente() {
 
   useEffect(() => {
     loadAmbiente();
+  }, [id]);
+
+  useEffect(() => {
+    if (!/^[1-9]\d*$/.test(String(id))) return;
+    let cancelled = false;
+    fetch(`/api/clases?id_ambiente=${encodeURIComponent(id)}&limit=10`, { credentials: 'include' })
+      .then(response => parseApiResponse(response, 'No se pudo cargar la agenda del ambiente'))
+      .then(data => {
+        if (cancelled) return;
+        setClasesAmbiente(Array.isArray(data) ? data : (data.clases || []));
+        setClasesTotal(Number(data?.paginacion?.total) || (Array.isArray(data) ? data.length : data?.clases?.length || 0));
+        setClasesError(false);
+      })
+      .catch(() => { if (!cancelled) { setClasesAmbiente([]); setClasesError(true); } });
+    return () => { cancelled = true; };
   }, [id]);
 
   const fetchInstructoresAmbiente = async (idAmbiente) => {
@@ -452,6 +470,19 @@ export default function DetalleAmbiente() {
                 </div>
               )}
             </div>
+
+            <section className="ambiente-inventario-section" aria-labelledby="ambiente-agenda-title">
+              <h4 id="ambiente-agenda-title" className="ambiente-section-title"><FiCalendar size={18} /> Agenda del ambiente</h4>
+              {clasesError ? <p>No se pudo cargar la agenda. Abra la vista completa para reintentar.</p> : clasesAmbiente.length === 0 ? <p>No hay clases programadas en este ambiente.</p> : (
+                <ul className="ambiente-agenda-list">
+                  {clasesAmbiente.map(clase => <li key={clase.id_clase}>
+                    <strong>{clase.nombre_clase || `Clase #${clase.id_clase}`}</strong>
+                    <span>{clase.fecha_clase ? String(clase.fecha_clase).slice(0, 10) : 'Sin fecha'} · {clase.hora_inicio ? String(clase.hora_inicio).slice(0, 5) : 'Sin hora'} · {clase.estado_clase || 'Sin estado'}</span>
+                  </li>)}
+                </ul>
+              )}
+              <button type="button" className="btn btn-secondary" onClick={() => navigate(`/horarios?ambiente=${encodeURIComponent(id)}`)}>Ver agenda completa{clasesTotal > 10 ? ` (${clasesTotal} clases)` : ''}</button>
+            </section>
 
             <div className="ambiente-imagenes-section">
               <div className="ambiente-imagenes-header">

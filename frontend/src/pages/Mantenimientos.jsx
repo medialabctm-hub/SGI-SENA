@@ -52,6 +52,23 @@ export default function Mantenimientos() {
   const [loadingCrear, setLoadingCrear] = useState(false)
 
   useEffect(() => {
+    const id = new URLSearchParams(location.search).get('equipo')
+    if (!id || !/^[1-9]\d*$/.test(id)) return
+    let cancelled = false
+    fetch(`/api/equipos/${encodeURIComponent(id)}`, { credentials: 'include' })
+      .then(response => parseApiResponse(response, 'No se pudo abrir el equipo seleccionado'))
+      .then(equipo => {
+        if (cancelled) return
+        setActiveTab('crear')
+        setCodigoInventario(equipo.codigo_inventario || equipo.placa || '')
+        setEquipoEncontrado(equipo)
+        setForm(prev => ({ ...prev, codigo_equipo: equipo.codigo_equipo }))
+      })
+      .catch(error => { if (!cancelled) setToast({ message: buildErrorMessage(error, 'No se pudo abrir el equipo seleccionado'), type: 'error' }) })
+    return () => { cancelled = true }
+  }, [location.search])
+
+  useEffect(() => {
     try {
       const userData = localStorage.getItem('user')
       if (userData) {

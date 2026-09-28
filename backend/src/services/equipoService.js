@@ -69,6 +69,9 @@ export class EquipoService {
         // Cuentadante con ambientes: según vista_inventario (ambientes | inventario_total | todos)
         if (vista === 'ambientes') {
           filters.ambientesIds = ambientesIds;
+          if (filters.ambientesFiltroIds !== undefined) {
+            filters.ambientesFiltroIds = filters.ambientesFiltroIds.filter((id) => ambientesIds.includes(id));
+          }
         } else if (vista === 'inventario_total') {
           filters.cuentadanteId = userId;
         } else {
@@ -77,6 +80,19 @@ export class EquipoService {
         }
         delete filters.vista_inventario;
       } else {
+        if (vista === 'ambientes') {
+          return {
+            equipos: [],
+            pagination: {
+              page: pagination.page || 1,
+              limit: pagination.limit || 50,
+              total: 0,
+              totalPages: 0,
+              hasNext: false,
+              hasPrev: false
+            }
+          };
+        }
         // Sin ambientes asignados: solo su inventario (ignorar vista_inventario)
         filters.cuentadanteId = userId;
         delete filters.vista_inventario;
@@ -96,6 +112,9 @@ export class EquipoService {
             hasPrev: false
           }
         };
+      }
+      if (filters.ambientesFiltroIds !== undefined) {
+        filters.ambientesFiltroIds = filters.ambientesFiltroIds.filter((id) => ambientesIds.includes(id));
       }
       filters.ambientesIds = ambientesIds;
     } else if (userRole === 'Aprendiz') {

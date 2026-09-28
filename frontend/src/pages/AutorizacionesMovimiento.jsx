@@ -70,6 +70,25 @@ export default function AutorizacionesMovimiento() {
     return 'solicitar'
   })
   useEffect(() => {
+    const id = new URLSearchParams(location.search).get('equipo')
+    if (!puedeSolicitar || !id || !/^[1-9]\d*$/.test(id)) return
+    let cancelled = false
+    fetch(`/api/equipos/${encodeURIComponent(id)}`, { credentials: 'include' })
+      .then(response => parseApiResponse(response, 'No se pudo abrir el equipo seleccionado'))
+      .then(equipo => {
+        if (cancelled) return
+        if (equipo.status_verificacion !== 'Verificado') {
+          setToast({ message: 'Este equipo aún no está verificado; no se puede solicitar su movimiento.', type: 'error' })
+          return
+        }
+        setTabPrincipal('solicitar')
+        setEquipoSeleccionado(equipo)
+        setForm(prev => ({ ...prev, codigo_equipo: String(equipo.codigo_equipo) }))
+      })
+      .catch(error => { if (!cancelled) setToast({ message: buildErrorMessage(error, 'No se pudo abrir el equipo seleccionado'), type: 'error' }) })
+    return () => { cancelled = true }
+  }, [location.search, puedeSolicitar])
+  useEffect(() => {
     if (location.hash === '#pendientes' && puedeGestionar) setTabPrincipal('gestionar')
   }, [location.hash, puedeGestionar])
 

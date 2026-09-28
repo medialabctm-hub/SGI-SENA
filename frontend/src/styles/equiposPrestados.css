@@ -7,6 +7,9 @@
   flex-shrink: 0;
 }
 
+.prestados-report-button { flex-shrink: 0; min-height: 44px; }
+.prestados-page .form-header { flex-wrap: wrap; }
+
 .prestados-summary {
   display: flex;
   align-items: center;
@@ -124,6 +127,8 @@
     justify-content: center;
     min-height: 44px;
   }
+
+  .prestados-report-button { width: 100%; justify-content: center; }
 
   .prestados-summary {
     align-items: flex-start;

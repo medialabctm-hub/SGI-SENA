@@ -1,14 +1,12 @@
 import React, { useState, useEffect } from 'react'
 import { useLocation } from 'react-router-dom'
 import {
-  FiPlus,
   FiSearch,
   FiUsers,
   FiSettings,
   FiAlertCircle,
   FiPackage,
   FiTool,
-  FiUserCheck,
   FiChevronDown,
   FiChevronRight,
   FiHome,
@@ -17,7 +15,6 @@ import {
   FiShield,
   FiKey,
   FiBell,
-  FiCheckCircle,
   FiCalendar,
   FiClipboard,
   FiMonitor
@@ -35,9 +32,7 @@ export default function Sidebar({ user }) {
   // Estado de menús expandidos
   const [expandedMenus, setExpandedMenus] = useState({
     equipos: false,
-    incidencias: false,
-    mantenimiento: false,
-    horarios: false,
+    ambientesHorarios: false,
     config: false
   })
 
@@ -61,44 +56,22 @@ export default function Sidebar({ user }) {
     
     // Determinar qué menú debe estar expandido basándose en la ruta
     // Solo expandir el menú correspondiente y colapsar los demás
-    if (path.startsWith('/equipos') || path.startsWith('/mis-equipos') || path.startsWith('/asignaciones') || path.startsWith('/ambientes')) {
+    if (path.startsWith('/equipos') || path.startsWith('/mis-equipos') || path.startsWith('/asignaciones') || path.startsWith('/novedades') || path.startsWith('/reportes') || path.startsWith('/mantenimientos')) {
       setExpandedMenus({
         equipos: true,
-        incidencias: false,
-        mantenimiento: false,
-        horarios: false,
+        ambientesHorarios: false,
         config: false
       })
-    } else if (path.startsWith('/novedades') || path.startsWith('/reportes')) {
+    } else if (path.startsWith('/ambientes') || path.startsWith('/horarios') || path.startsWith('/clases')) {
       setExpandedMenus({
         equipos: false,
-        incidencias: true,
-        mantenimiento: false,
-        horarios: false,
-        config: false
-      })
-    } else if (path.startsWith('/mantenimientos')) {
-      setExpandedMenus({
-        equipos: false,
-        incidencias: false,
-        mantenimiento: true,
-        horarios: false,
-        config: false
-      })
-    } else if (path.startsWith('/horarios') || path.startsWith('/clases')) {
-      setExpandedMenus({
-        equipos: false,
-        incidencias: false,
-        mantenimiento: false,
-        horarios: true,
+        ambientesHorarios: true,
         config: false
       })
     } else if (path.startsWith('/usuarios') || path.startsWith('/aprendices') || path.startsWith('/config')) {
       setExpandedMenus({
         equipos: false,
-        incidencias: false,
-        mantenimiento: false,
-        horarios: false,
+        ambientesHorarios: false,
         config: true
       })
     }
@@ -113,6 +86,13 @@ export default function Sidebar({ user }) {
 
   const isActive = (path) => {
     const currentPath = location.pathname;
+    if (path.includes('#')) return currentPath === path.split('#')[0]
+    if (path === '/equipos/consultar') {
+      return ['/equipos', '/mis-equipos', '/asignaciones'].includes(currentPath)
+        || currentPath === path
+        || currentPath.startsWith('/equipos/detalle/')
+        || currentPath.startsWith('/equipos/verificar')
+    }
     
     if (path.includes('?')) {
       const [basePath, query] = path.split('?')
@@ -127,27 +107,15 @@ export default function Sidebar({ user }) {
 
   const menuItems = {
     equipos: [
-      { title: 'Registrar Inventario', path: '/equipos', icon: <FiPlus />, roles: ['Administrador', 'Cuentadante'] },
-      { title: 'Consultar Inventario', path: '/equipos/consultar', icon: <FiSearch />, roles: ['all'] },
-      { title: 'Mis Equipos', path: '/mis-equipos', icon: <FiPackage />, roles: ['all'] },
-      { title: 'Asignar Equipo', path: '/equipos/asignar', icon: <FiUsers />, roles: ['Administrador', 'Instructor', 'Cuentadante'] },
-      { title: 'Equipos Prestados', path: '/equipos/prestados', icon: <FiMonitor />, roles: ['Administrador', 'Instructor', 'Cuentadante'] },
-      { title: 'Verificar Inventario', path: '/equipos/verificar', icon: <FiCheckCircle />, roles: ['Instructor', 'Cuentadante'] },
-      { title: 'Autorizaciones', path: '/equipos/autorizaciones', icon: <FiClipboard />, roles: ['Administrador', 'Instructor', 'Cuentadante'] },
-      { title: 'Buscar Cuentadante', path: '/equipos/cuentadantes/buscar', icon: <FiSearch />, roles: ['Administrador'] },
-      { title: 'Gestión de Ambientes', path: '/ambientes', icon: <FiMapPin />, roles: ['Administrador', 'Cuentadante'] },
-      { title: 'Asignar Ambientes', path: '/ambientes/asignar', icon: <FiUserCheck />, roles: ['Administrador'] }
+      { title: 'Equipos', path: '/equipos/consultar', icon: <FiSearch />, roles: ['all'] },
+      { title: 'Equipos prestados', path: '/equipos/prestados', icon: <FiMonitor />, roles: ['Administrador', 'Instructor', 'Cuentadante'] },
+      { title: 'Autorizaciones', path: '/equipos/autorizaciones#pendientes', icon: <FiClipboard />, roles: ['Administrador', 'Instructor', 'Cuentadante'] },
+      { title: 'Novedades y reportes', path: '/novedades', icon: <FiAlertCircle />, roles: ['Administrador', 'Instructor', 'Cuentadante'] },
+      { title: 'Mantenimientos', path: '/mantenimientos', icon: <FiTool />, roles: ['Administrador', 'Cuentadante'] }
     ],
-    incidencias: [
-      { title: 'Novedades', path: '/novedades', icon: <FiAlertCircle />, roles: ['Administrador', 'Instructor', 'Cuentadante'] }
-    ],
-    mantenimiento: [
-      { title: 'Historial de Mantenimientos', path: '/mantenimientos', icon: <FiTool />, roles: ['Administrador', 'Cuentadante'] }
-    ],
-    horarios: [
-      { title: 'Mis Horarios', path: '/horarios', icon: <FiCalendar />, roles: ['Instructor', 'Cuentadante'] },
-      { title: 'Gestión de Horarios', path: '/horarios', icon: <FiCalendar />, roles: ['Administrador'] },
-      /*{ title: 'Consultar Responsables', path: '/horarios/responsables', icon: <FiClock />, roles: ['all'] }*/
+    ambientesHorarios: [
+      { title: 'Ambientes', path: '/ambientes', icon: <FiMapPin />, roles: ['Administrador', 'Cuentadante'] },
+      { title: 'Agenda', path: '/horarios', icon: <FiCalendar />, roles: ['Administrador', 'Instructor', 'Cuentadante'] }
     ],
     config: [
       { title: 'Usuarios', path: '/usuarios', icon: <FiUsers />, roles: ['Administrador', 'Instructor', 'Cuentadante'] },
@@ -178,6 +146,7 @@ export default function Sidebar({ user }) {
         <button
           className="sidebar-section-header"
           onClick={() => toggleMenu(key)}
+          aria-expanded={isExpanded}
         >
           <div className="sidebar-section-title">
             {icon}
@@ -226,9 +195,7 @@ export default function Sidebar({ user }) {
         </button>
 
         {renderMenuSection('equipos', 'Inventario', <FiPackage />)}
-        {renderMenuSection('incidencias', 'Incidencias / Reportes', <FiAlertCircle />)}
-        {renderMenuSection('mantenimiento', 'Mantenimiento', <FiTool />)}
-        {renderMenuSection('horarios', 'Horarios y Clases', <FiCalendar />)}
+        {renderMenuSection('ambientesHorarios', 'Ambientes y horarios', <FiMapPin />)}
         {renderMenuSection('config', 'Configuración / Usuarios', <FiSettings />)}
         </div>
       </aside>

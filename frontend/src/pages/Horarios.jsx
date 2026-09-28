@@ -73,7 +73,10 @@ export default function Horarios() {
     { nombre: 'Domingo', valor: 'Domingo' }
   ]
   const [filtros, setFiltros] = useState({
-    id_ambiente: '',
+    id_ambiente: (() => {
+      const value = new URLSearchParams(window.location.search).get('ambiente') || ''
+      return /^[1-9]\d*$/.test(value) ? value : ''
+    })(),
     id_instructor: '',
     fecha: '',
     estado_clase: ''

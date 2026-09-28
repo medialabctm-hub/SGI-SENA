@@ -253,6 +253,34 @@ describe('EquipoRepository', () => {
       expect(countQuery).toContain('id_ambiente IN');
     });
 
+    it('combina el ambiente solicitado con el alcance OR y lo aplica antes de contar y paginar', async () => {
+      setupFindAllMock([], 0);
+
+      await repo.findAll({
+        cuentadanteOrAmbientes: { cuentadanteId: 5, ambientesIds: [2, 4] },
+        ambientesFiltroIds: [8],
+      }, { page: 2, limit: 10 });
+
+      const [countQuery, countParams] = db.execute.mock.calls[0];
+      const [dataQuery, dataParams] = db.execute.mock.calls[1];
+      expect(countQuery).toMatch(/\(e\.id_ambiente IN \(\?,\?\) OR e\.id_cuentadante = \?\)/);
+      expect(countQuery).toContain('e.id_ambiente IN (?)');
+      expect(countParams).toEqual([2, 4, 5, 8]);
+      expect(dataParams).toEqual([2, 4, 5, 8]);
+      expect(dataQuery.indexOf('WHERE')).toBeLessThan(dataQuery.indexOf('LIMIT'));
+    });
+
+    it('devuelve cero coincidencias si el ambiente solicitado no se resolvió', async () => {
+      setupFindAllMock([], 0);
+
+      await repo.findAll({ ambientesFiltroIds: [] });
+
+      const [countQuery] = db.execute.mock.calls[0];
+      const [dataQuery] = db.execute.mock.calls[1];
+      expect(countQuery).toMatch(/WHERE\s+1\s*=\s*0/);
+      expect(dataQuery).toMatch(/WHERE\s+1\s*=\s*0/);
+    });
+
     it('debe filtrar por estado_operativo array', async () => {
       setupFindAllMock([], 0);
 
