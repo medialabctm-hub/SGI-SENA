@@ -740,6 +740,12 @@
   font-size: 0.9rem;
 }
 
+.solicitud-resultado-alerta {
+  color: var(--warning-600, #b45309);
+  background: var(--warning-50, #fffbeb);
+  font-weight: 600;
+}
+
 /* Pestañas y historial de autorizaciones */
 .solicitudes-autorizacion-tabs {
   display: flex;
