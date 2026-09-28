@@ -139,6 +139,32 @@ export default function Novedades() {
   }, [])
 
   useEffect(() => {
+    const id = new URLSearchParams(window.location.search).get('equipo')
+    if (!id || !/^[1-9]\d*$/.test(id)) return
+    let cancelled = false
+    fetch(`/api/equipos/${encodeURIComponent(id)}`, { credentials: 'include' })
+      .then(response => parseApiResponse(response, 'No se pudo abrir el equipo seleccionado'))
+      .then(equipo => {
+        if (cancelled) return
+        const placa = equipo.codigo_inventario || equipo.placa || ''
+        if (window.location.pathname.startsWith('/reportes')) {
+          setActiveTab('reportes')
+          setReportesTab('crear')
+          setCodigoInventarioReporte(placa)
+          setEquipoEncontradoReporte(equipo)
+          setFormReporte(prev => ({ ...prev, codigo_equipo: equipo.codigo_equipo }))
+        } else {
+          setActiveTab('crear')
+          setCodigoInventario(placa)
+          setEquipoEncontrado(equipo)
+          setForm(prev => ({ ...prev, codigo_equipo: equipo.codigo_equipo }))
+        }
+      })
+      .catch(error => { if (!cancelled) setToast({ message: buildErrorMessage(error, 'No se pudo abrir el equipo seleccionado'), type: 'error' }) })
+    return () => { cancelled = true }
+  }, [])
+
+  useEffect(() => {
     if (activeTab === 'ver') {
       fetchNovedades()
     } else if (activeTab === 'reportes') {

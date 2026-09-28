@@ -1,24 +1,28 @@
 ---
 gsd_state_version: '1.0'
-milestone: 'Closure hardening wave'
-milestone_status: active_with_external_gaps
-current_phase: 3
-current_phase_name: Code corrections and reproducible QA gates
-current_plan: null
-status: verified_local_external_gates_pending
+milestone: 'Inventory harmony wave (MDL-236)'
+milestone_status: in_progress
+current_phase: 4
+current_phase_name: Inventory navigation and catalog
+current_plan: 04-01
+status: in_progress
 stopped_at: null
-last_updated: '2026-09-14T12:45:00-05:00'
+last_updated: '2026-09-26T18:45:00-05:00'
 progress:
   phases_completed: 2
-  phases_total: 3
+  phases_total: 9
   plans_completed: 10
-  plans_total: 10
+  plans_total: 16
   requirements_completed: 3
   requirements_total: 3
-  percent: 67
+  percent: 22
 ---
 
 # State
+
+## Current focus — MDL-236
+
+Fases 04/05/08 en trabajo desde `develop` en worktree aislado; no se ha desplegado. La retirada de UI de Habilitaciones no equivale a desactivar los endpoints históricos: `Responsables_Equipo` aún es dependencia de permisos. Antes de cerrar, completar cronología, ambientes/horarios, validación SQL real, navegación por rol y responsive. La sección histórica siguiente corresponde al ciclo anterior.
 
 ## Current Focus
 

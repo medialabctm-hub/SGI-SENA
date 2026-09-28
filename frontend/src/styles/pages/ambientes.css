@@ -1359,3 +1359,6 @@
     width: 100%;
   }
 }
+.ambiente-agenda-list { list-style: none; margin: 12px 0; padding: 0; display: grid; gap: 8px; }
+.ambiente-agenda-list li { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding: 10px 12px; border: 1px solid var(--neutral-200); border-radius: 8px; }
+.ambiente-agenda-list span { color: var(--neutral-700); }

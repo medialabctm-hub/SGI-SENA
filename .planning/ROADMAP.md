@@ -1,5 +1,20 @@
 # Roadmap: SGI-SENA — closure hardening
 
+## Ciclo activo 2026-09-26: armonización de inventario (MDL-236)
+
+Base exclusiva: `develop` b50d06a; la rama experimental de Claude solo se consulta como referencia. El historial de hardening de abajo se conserva y no representa el foco actual.
+
+| Fase | Entrega | Estado |
+|---|---|---|
+| 04 | Catálogo Equipos, «Equipos a mi cargo», filtro ambiente, paginación, sidebar | En ejecución; pruebas focales aprobadas |
+| 05 | Ficha y acciones contextuales, enlaces con equipo precargado, responsive | En ejecución; menú y precarga implementados, ficha incompleta |
+| 06 | Cronología integral de equipo, filtros y permisos | Pendiente |
+| 07 | Ficha de ambiente, equipos, responsables y horarios | Pendiente |
+| 08 | Seguimiento de préstamos y PDF histórico filtrado | En ejecución; endpoint y vista implementados, falta MySQL/UAT |
+| 09 | Retiro seguro de Habilitaciones, compatibilidad y revisión final | Parcial; UI retirada, backend pendiente por dependencias de acceso |
+
+El contrato detallado, los límites de seguridad y los gates externos están en `docs/armonizacion-inventario.md`. No se declara completo MDL-236 hasta validar fases 04–09, suites integrales y UAT de roles.
+
 ## Overview
 
 Esta hoja de ruta organiza la segunda tanda de trabajo que se incorporará a la PR #29. La fase es deliberadamente pequeña y paralelizable: dos controles de seguridad independientes y un contrato de despliegue.

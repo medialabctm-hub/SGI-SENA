@@ -142,6 +142,67 @@ describe('EquipoService', () => {
       );
     });
 
+    it('combina ambiente solicitado con inventario_total del Cuentadante', async () => {
+      mockRepository.execute.mockResolvedValue([{ id_ambiente: 2 }, { id_ambiente: 4 }]);
+      mockRepository.findAll.mockResolvedValue({ equipos: [], pagination: {} });
+
+      await service.listarEquipos(
+        { vista_inventario: 'inventario_total', ambientesFiltroIds: [8] }, {}, {}, 3, 'Cuentadante'
+      );
+
+      expect(mockRepository.findAll).toHaveBeenCalledWith(
+        expect.objectContaining({ cuentadanteId: 3, ambientesFiltroIds: [8] }),
+        expect.anything(),
+        expect.anything()
+      );
+    });
+
+    it('intersecta el ambiente solicitado con los ambientes permitidos del Cuentadante', async () => {
+      mockRepository.execute.mockResolvedValue([{ id_ambiente: 2 }, { id_ambiente: 4 }]);
+      mockRepository.findAll.mockResolvedValue({ equipos: [], pagination: {} });
+
+      await service.listarEquipos(
+        { vista_inventario: 'ambientes', ambientesFiltroIds: [4, 8] }, {}, {}, 3, 'Cuentadante'
+      );
+
+      expect(mockRepository.findAll).toHaveBeenCalledWith(
+        expect.objectContaining({ ambientesIds: [2, 4], ambientesFiltroIds: [4] }),
+        expect.anything(),
+        expect.anything()
+      );
+    });
+
+    it('no amplía el alcance de Instructor cuando el ambiente solicitado no está permitido', async () => {
+      mockRepository.execute.mockResolvedValue([{ id_ambiente: 2 }, { id_ambiente: 4 }]);
+      mockRepository.findAll.mockResolvedValue({ equipos: [], pagination: {} });
+
+      await service.listarEquipos({ ambientesFiltroIds: [8] }, {}, {}, 2, 'Instructor');
+
+      expect(mockRepository.findAll).toHaveBeenCalledWith(
+        expect.objectContaining({ ambientesIds: [2, 4], ambientesFiltroIds: [] }),
+        expect.anything(),
+        expect.anything()
+      );
+    });
+
+    it('combina ambientes y cuentadante y preserva el ambiente solicitado en vista todos', async () => {
+      mockRepository.execute.mockResolvedValue([{ id_ambiente: 2 }, { id_ambiente: 4 }]);
+      mockRepository.findAll.mockResolvedValue({ equipos: [], pagination: {} });
+
+      await service.listarEquipos(
+        { vista_inventario: 'todos', ambientesFiltroIds: [8] }, {}, {}, 3, 'Cuentadante'
+      );
+
+      expect(mockRepository.findAll).toHaveBeenCalledWith(
+        expect.objectContaining({
+          cuentadanteOrAmbientes: { ambientesIds: [2, 4], cuentadanteId: 3 },
+          ambientesFiltroIds: [8],
+        }),
+        expect.anything(),
+        expect.anything()
+      );
+    });
+
     it('debe usar solo cuentadanteId si Cuentadante no tiene ambientes', async () => {
       mockRepository.execute.mockResolvedValue([]); // Sin ambientes
       mockRepository.findAll.mockResolvedValue({ equipos: [], pagination: {} });
@@ -153,6 +214,25 @@ describe('EquipoService', () => {
         expect.anything(),
         expect.anything()
       );
+    });
+
+    it('vista ambientes sin ambientes permitidos retorna vacío sin ampliar a su inventario', async () => {
+      mockRepository.execute.mockResolvedValue([]);
+
+      const result = await service.listarEquipos(
+        { vista_inventario: 'ambientes' }, { page: 2, limit: 10 }, {}, 3, 'Cuentadante'
+      );
+
+      expect(result.equipos).toEqual([]);
+      expect(result.pagination).toEqual({
+        page: 2,
+        limit: 10,
+        total: 0,
+        totalPages: 0,
+        hasNext: false,
+        hasPrev: false,
+      });
+      expect(mockRepository.findAll).not.toHaveBeenCalled();
     });
 
     it('debe combinar ambientes y cuentadante para vista por defecto del Cuentadante', async () => {

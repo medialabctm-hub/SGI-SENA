@@ -5,8 +5,9 @@ import Toast from '../components/Toast'
 import DestructiveConfirmModal from '../components/DestructiveConfirmModal'
 import CustomSelect from '../components/CustomSelect'
 import { parseApiResponse, buildErrorMessage } from '../utils/api'
-import { FiDownload, FiSearch, FiList, FiClock, FiEye, FiSettings, FiCheckSquare, FiSquare } from 'react-icons/fi'
-import { useNavigate } from 'react-router-dom'
+import { FiDownload, FiSearch, FiList, FiSettings, FiCheckSquare, FiSquare, FiPlus, FiUpload } from 'react-icons/fi'
+import EquipoActions from '../components/EquipoActions'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import * as XLSX from 'xlsx'
 import { sanitizeExcelRow } from '../utils/excelSecurity'
 import { buildEquiposExportAoa, EQUIPOS_PLANTILLA_COLUMNS, fetchAllEquiposForExport } from '../utils/equiposImportExport'
@@ -17,6 +18,7 @@ import { LoadingScreen } from './LoadingDemo'
 
 export default function ConsultarEquipo() {
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [codigo, setCodigo] = useState('')
   const [loading, setLoading] = useState(false)
   const [equipos, setEquipos] = useState([])
@@ -30,10 +32,15 @@ export default function ConsultarEquipo() {
   // Autorizaciones aprobadas y no usadas para el movimiento actual (equipo + ambiente destino)
   const [autorizacionesDisponibles, setAutorizacionesDisponibles] = useState([])
   // Vista inventario para Cuentadante con ambientes: ambientes | inventario_total | todos
-  const [vistaInventario, setVistaInventario] = useState('todos')
+  const vistaInventario = ['ambientes', 'inventario_total', 'todos'].includes(searchParams.get('vista_inventario'))
+    ? searchParams.get('vista_inventario')
+    : 'todos'
+  const ambienteSeleccionado = searchParams.get('ambiente') || ''
   const [mostrarSelectorVistaInventario, setMostrarSelectorVistaInventario] = useState(false)
   // Search term actually applied to the current list (cleared on "Mostrar todos")
   const [appliedSearch, setAppliedSearch] = useState('')
+  const [page, setPage] = useState(1)
+  const [pagination, setPagination] = useState({ page: 1, total: 0, totalPages: 0 })
   
   const ESTADOS_FISICOS = ['Nuevo', 'Bueno', 'Regular', 'Malo', 'Dañado']
   const ESTADOS_OPERATIVOS = ['Disponible', 'En Uso', 'En Mantenimiento', 'Dañado', 'Dado de Baja']
@@ -152,14 +159,24 @@ export default function ConsultarEquipo() {
   }, [user])
 
   // Construir URL de listado para Cuentadante con ambientes (vista_inventario) y búsqueda por texto opcional
-  function urlListadoEquipos(searchTerm) {
+  function cambiarFiltroEnUrl(nombre, valor) {
+    const siguiente = new URLSearchParams(searchParams)
+    if (valor) siguiente.set(nombre, valor)
+    else siguiente.delete(nombre)
+    setSearchParams(siguiente)
+    setPage(1)
+  }
+
+  function urlListadoEquipos(searchTerm, pageNumber = 1) {
     const params = new URLSearchParams()
-    if (mostrarSelectorVistaInventario && vistaInventario) {
+    if (user?.nombre_rol === 'Cuentadante') {
       params.set('vista_inventario', vistaInventario)
     }
+    if (ambienteSeleccionado) params.set('ambiente', ambienteSeleccionado)
     if (searchTerm && searchTerm.trim()) {
       params.set('search', searchTerm.trim())
     }
+    if (pageNumber > 1) params.set('page', String(pageNumber))
     const query = params.toString()
     return query ? `/api/equipos?${query}` : '/api/equipos'
   }
@@ -171,24 +188,27 @@ export default function ConsultarEquipo() {
     async function cargarEquiposInicial() {
       setLoading(true)
       try {
-        const res = await fetch(urlListadoEquipos(), {
+        const res = await fetch(urlListadoEquipos(appliedSearch, page), {
           credentials: 'include'
         })
         const data = await parseApiResponse(res, 'No se pudo listar los equipos')
         const equiposList = data?.equipos || (Array.isArray(data) ? data : [])
         if (isMounted) {
           setEquipos(equiposList)
-          setAppliedSearch('')
+          setPagination(data?.pagination || { page, total: equiposList.length, totalPages: 1 })
         }
       } catch {
-        if (isMounted) setEquipos([])
+        if (isMounted) {
+          setEquipos([])
+          setPagination({ page, total: 0, totalPages: 0 })
+        }
       } finally {
         if (isMounted) setLoading(false)
       }
     }
     cargarEquiposInicial()
     return () => { isMounted = false }
-  }, [user, vistaInventario, mostrarSelectorVistaInventario]) // Recargar al cambiar vista o al detectar Cuentadante con ambientes
+  }, [user, vistaInventario, ambienteSeleccionado, page]) // Filtros y página se aplican en servidor
 
   async function handleBuscar(e) {
     e.preventDefault()
@@ -206,7 +226,9 @@ export default function ConsultarEquipo() {
       const data = await parseApiResponse(res, 'No se pudo consultar el equipo')
       const equiposList = data?.equipos || (Array.isArray(data) ? data : [])
       setEquipos(equiposList)
+      setPagination(data?.pagination || { page: 1, total: equiposList.length, totalPages: 1 })
       setAppliedSearch(codigo.trim())
+      setPage(1)
     } catch (err) {
       setEquipos([])
       setToast({ message: buildErrorMessage(err, 'No se pudo consultar el equipo'), type: 'error' })
@@ -225,7 +247,9 @@ export default function ConsultarEquipo() {
       const data = await parseApiResponse(res, 'No se pudo listar los equipos')
       const equiposList = data?.equipos || (Array.isArray(data) ? data : [])
       setEquipos(equiposList)
+      setPagination(data?.pagination || { page: 1, total: equiposList.length, totalPages: 1 })
       setAppliedSearch('')
+      setPage(1)
     } catch (err) {
       setEquipos([])
       setToast({ message: buildErrorMessage(err, 'No se pudo listar los equipos'), type: 'error' })
@@ -463,9 +487,10 @@ export default function ConsultarEquipo() {
 
     try {
       const baseParams = {}
-      if (mostrarSelectorVistaInventario && vistaInventario) {
+      if (user?.nombre_rol === 'Cuentadante') {
         baseParams.vista_inventario = vistaInventario
       }
+      if (ambienteSeleccionado) baseParams.ambiente = ambienteSeleccionado
       if (appliedSearch) {
         baseParams.search = appliedSearch
       }
@@ -558,37 +583,63 @@ export default function ConsultarEquipo() {
             onCancel={() => setDeleteConfirm({ open: false, codigo: null, equipo: null })}
           />
           <div className="users-panel">
+          {searchParams.get('aviso') === 'habilitaciones-retiradas' && (
+            <div className="consultar-equipo-retired-notice" role="status">
+              La gestión de habilitaciones de equipos se retiró. Consulte el equipo en esta pantalla y use el registro de uso o el seguimiento de préstamos cuando corresponda.
+            </div>
+          )}
           <div className="users-toolbar">
-            <h2 className="consultar-equipo-header">Consultar Inventario</h2>
-            {mostrarSelectorVistaInventario && (
+            <h2 className="consultar-equipo-header">Equipos</h2>
+            {(user?.nombre_rol === 'Administrador' || user?.nombre_rol === 'Cuentadante') && (
+              <div className="consultar-equipo-actions-row">
+                <button type="button" className="consultar-equipo-btn consultar-equipo-btn-verde" onClick={() => navigate('/equipos?tab=registrar')}>
+                  <FiPlus size={16} /> Registrar equipo
+                </button>
+                <button type="button" className="consultar-equipo-btn consultar-equipo-btn-gris" onClick={() => navigate('/equipos?tab=importar')}>
+                  <FiUpload size={16} /> Importar plantilla
+                </button>
+              </div>
+            )}
+            {user?.nombre_rol === 'Cuentadante' && (
               <div className="consultar-equipo-vista-inventario">
                 <span className="consultar-equipo-vista-label">Vista:</span>
                 <div className="consultar-equipo-vista-tabs">
-                  <button
+                  {mostrarSelectorVistaInventario && <button
                     type="button"
                     className={`consultar-equipo-vista-tab ${vistaInventario === 'ambientes' ? 'active' : ''}`}
-                    onClick={() => setVistaInventario('ambientes')}
+                    onClick={() => cambiarFiltroEnUrl('vista_inventario', 'ambientes')}
                   >
                     Mis ambientes
-                  </button>
+                  </button>}
                   <button
                     type="button"
                     className={`consultar-equipo-vista-tab ${vistaInventario === 'inventario_total' ? 'active' : ''}`}
-                    onClick={() => setVistaInventario('inventario_total')}
+                    onClick={() => cambiarFiltroEnUrl('vista_inventario', 'inventario_total')}
                   >
-                    Mi inventario total
+                    Equipos a mi cargo
                   </button>
                   <button
                     type="button"
                     className={`consultar-equipo-vista-tab ${vistaInventario === 'todos' ? 'active' : ''}`}
-                    onClick={() => setVistaInventario('todos')}
+                    onClick={() => cambiarFiltroEnUrl('vista_inventario', 'todos')}
                   >
-                    Todos
+                    Todos los equipos
                   </button>
                 </div>
               </div>
             )}
             <div className="consultar-equipo-header-row">
+              <label className="consultar-equipo-ambiente-filtro">
+                <span>Ambiente</span>
+                <select value={ambienteSeleccionado} onChange={event => cambiarFiltroEnUrl('ambiente', event.target.value)}>
+                  <option value="">Todos los ambientes</option>
+                  {ambientes.map(ambiente => (
+                    <option key={ambiente.id_ambiente} value={String(ambiente.id_ambiente)}>
+                      {ambiente.codigo_ambiente ? `${ambiente.codigo_ambiente} · ` : ''}{ambiente.nombre_ambiente}
+                    </option>
+                  ))}
+                </select>
+              </label>
               <form onSubmit={handleBuscar} className="consultar-equipo-search-form">
                 <input
                   type="text"
@@ -749,38 +800,38 @@ export default function ConsultarEquipo() {
                       {visibleColumns.includes('status_verificacion') && <th>Estado verificación</th>}
                       {visibleColumns.includes('descripcion') && <th>Descripción</th>}
                       {visibleColumns.includes('specs_completas') && <th>Atributos</th>}
-                      <th className={user?.nombre_rol === 'Administrador' ? 'consultar-equipo-actions-column' : 'consultar-equipo-actions-column-instructor'}>Acciones</th>
+                      <th className="consultar-equipo-actions-column">Acciones</th>
                     </tr>
                   </thead>
                   <tbody>
                     {equipos.map((eq) => (
                       <tr key={eq.codigo_equipo}>
                         {visibleColumns.includes('codigo_inventario') && (
-                          <td>{eq.codigo_inventario || '-'}</td>
+                          <td data-label="Código inventario">{eq.codigo_inventario || '-'}</td>
                         )}
                         {visibleColumns.includes('tipo') && (
-                          <td>
+                          <td data-label="Tipo">
                             {editingCodigo === eq.codigo_equipo ? (
                               <input value={draft.tipo || ''} onChange={e=>onDraft('tipo', e.target.value)} className="cell-input" />
                             ) : (eq.tipo)}
                           </td>
                         )}
                         {visibleColumns.includes('modelo') && (
-                          <td>
+                          <td data-label="Modelo">
                             {editingCodigo === eq.codigo_equipo ? (
                               <input value={draft.modelo || ''} onChange={e=>onDraft('modelo', e.target.value)} className="cell-input" />
                             ) : (eq.modelo || '-')}
                           </td>
                         )}
                         {visibleColumns.includes('consecutivo') && (
-                          <td>
+                          <td data-label="Consecutivo">
                             {editingCodigo === eq.codigo_equipo ? (
                               <input value={draft.consecutivo || ''} onChange={e=>onDraft('consecutivo', e.target.value)} className="cell-input" />
                             ) : (eq.consecutivo || '-')}
                           </td>
                         )}
                         {visibleColumns.includes('estado_fisico') && (
-                          <td>
+                          <td data-label="Estado físico">
                             {editingCodigo === eq.codigo_equipo ? (
                               <CustomSelect
                                 name="estado_fisico"
@@ -794,7 +845,7 @@ export default function ConsultarEquipo() {
                           </td>
                         )}
                         {visibleColumns.includes('estado_operativo') && (
-                          <td>
+                          <td data-label="Estado operativo">
                             {editingCodigo === eq.codigo_equipo ? (
                               <CustomSelect
                                 name="estado_operativo"
@@ -808,21 +859,21 @@ export default function ConsultarEquipo() {
                           </td>
                         )}
                         {visibleColumns.includes('fecha_adquisicion') && (
-                          <td>
+                          <td data-label="Fecha de adquisición">
                             {editingCodigo === eq.codigo_equipo ? (
                               <input type="date" value={draft.fecha_adquisicion || ''} onChange={e=>onDraft('fecha_adquisicion', e.target.value)} className="cell-input" />
                             ) : formatDate(eq.fecha_adquisicion)}
                           </td>
                         )}
                         {visibleColumns.includes('valor_ingreso') && (
-                          <td>
+                          <td data-label="Valor de ingreso">
                             {editingCodigo === eq.codigo_equipo ? (
                               <input type="number" value={draft.valor_ingreso ?? ''} onChange={e=>onDraft('valor_ingreso', e.target.value === '' ? null : Number(e.target.value))} className="cell-input" />
                             ) : formatCurrency(eq.valor_ingreso ?? eq.costo)}
                           </td>
                         )}
                         {visibleColumns.includes('nombre_ambiente') && (
-                          <td>
+                          <td data-label="Ambiente">
                             {editingCodigo === eq.codigo_equipo ? (
                               <div className="consultar-equipo-ambiente-edit">
                                 <CustomSelect
@@ -872,85 +923,34 @@ export default function ConsultarEquipo() {
                           </td>
                         )}
                         {visibleColumns.includes('status_verificacion') && (
-                          <td>
+                          <td data-label="Verificación">
                             <span className={eq.status_verificacion === 'Verificado' ? 'consultar-equipo-badge-verificado' : 'consultar-equipo-badge-no-verificado'}>
                               {eq.status_verificacion || 'No verificado'}
                             </span>
                           </td>
                         )}
                         {visibleColumns.includes('descripcion') && (
-                          <td>
+                          <td data-label="Descripción">
                             {editingCodigo === eq.codigo_equipo ? (
                               <textarea value={draft.descripcion || ''} onChange={e=>onDraft('descripcion', e.target.value)} className="cell-textarea" />
                             ) : (eq.descripcion || '-')}
                           </td>
                         )}
                         {visibleColumns.includes('specs_completas') && (
-                          <td>
+                          <td data-label="Atributos">
                             {editingCodigo === eq.codigo_equipo ? (
                               <textarea value={draft.specs_completas || ''} onChange={e=>onDraft('specs_completas', e.target.value)} className="cell-textarea" />
                             ) : (eq.specs_completas || '-')}
                           </td>
                         )}
-                        <td className="users-actions">
+                        <td className="users-actions" data-label="Acciones">
                           {editingCodigo === eq.codigo_equipo ? (
                             <>
                               <button className="btn btn-verde" type="button" onClick={saveEdit} disabled={loading}>Guardar</button>
                               <button className="btn" type="button" onClick={cancelEdit} disabled={loading}>Cancelar</button>
                             </>
                           ) : (
-                            <>
-                              <button 
-                                className="btn btn-view consultar-equipo-action-button" 
-                                type="button" 
-                                onClick={() => navigate(`/equipos/detalle/${eq.codigo_equipo}`)} 
-                                disabled={loading}
-                                title="Ver detalle completo del equipo"
-                              >
-                                <FiEye size={14} className="consultar-equipo-action-icon" />
-                                Ver Detalle
-                              </button>
-                              <button 
-                                className="btn btn-view consultar-equipo-action-button" 
-                                type="button" 
-                                onClick={() => navigate(`/equipos/historial-verificaciones/${eq.codigo_equipo}`)} 
-                                disabled={loading}
-                                title="Ver historial de verificaciones"
-                              >
-                                <FiClock size={14} className="consultar-equipo-action-icon" />
-                                Historial
-                              </button>
-                              <button 
-                                className="btn btn-view consultar-equipo-action-button" 
-                                type="button" 
-                                onClick={() => navigate(`/equipos/historial-movimientos/${eq.codigo_equipo}`)} 
-                                disabled={loading}
-                                title="Ver historial de movimientos de ambiente"
-                              >
-                                <FiList size={14} className="consultar-equipo-action-icon" />
-                                Movimientos
-                              </button>
-                              {user?.nombre_rol === 'Administrador' && (
-                                <>
-                                  <button 
-                                    className="btn btn-edit consultar-equipo-action-button" 
-                                    type="button" 
-                                    onClick={() => startEdit(eq)} 
-                                    disabled={loading}
-                                  >
-                                    Editar
-                                  </button>
-                                  <button 
-                                    className="btn btn-delete" 
-                                    type="button" 
-                                    onClick={() => confirmDelete(eq.codigo_equipo)} 
-                                    disabled={loading}
-                                  >
-                                    Eliminar
-                                  </button>
-                                </>
-                              )}
-                            </>
+                            <EquipoActions equipo={eq} role={user?.nombre_rol} navigate={navigate} onEdit={() => startEdit(eq)} onDelete={() => confirmDelete(eq.codigo_equipo)} />
                           )}
                         </td>
                       </tr>
@@ -967,6 +967,13 @@ export default function ConsultarEquipo() {
               </div>
             )}
           </div>
+          {!loading && pagination.totalPages > 1 && (
+            <nav className="consultar-equipo-pagination" aria-label="Páginas de equipos">
+              <span>Página {pagination.page} de {pagination.totalPages} · {pagination.total} equipos</span>
+              <button type="button" disabled={page <= 1} onClick={() => setPage(previous => previous - 1)} aria-label="Página anterior">Anterior</button>
+              <button type="button" disabled={page >= pagination.totalPages} onClick={() => setPage(previous => previous + 1)} aria-label="Siguiente página">Siguiente</button>
+            </nav>
+          )}
           </div>
         </main>
       </div>

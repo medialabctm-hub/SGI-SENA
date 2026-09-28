@@ -8,29 +8,28 @@ import { useSocket } from '../contexts/SocketContext';
 import '../styles/pages/equipos.css';
 import '../styles/misEquipos.css';
 import { LoadingScreen } from './LoadingDemo';
+import { Navigate } from 'react-router-dom';
 
 export default function MisEquipos() {
   const [equipos, setEquipos] = useState([]);
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState(null);
-  const [user, setUser] = useState(null);
+  const [user] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem('user') || 'null');
+    } catch {
+      return null;
+    }
+  });
 
   useEffect(() => {
-    fetchMisEquipos();
-    try {
-      const userData = localStorage.getItem('user');
-      if (userData) {
-        setUser(JSON.parse(userData));
-      }
-    } catch (error) {
-      console.error('Error al obtener datos del usuario:', error);
-    }
-  }, []);
+    if (user?.nombre_rol !== 'Cuentadante') fetchMisEquipos();
+  }, [user?.nombre_rol]);
 
   // Suscribirse a actualizaciones en tiempo real de equipos y asignaciones
   const { subscribe } = useSocket();
   useEffect(() => {
-    if (!subscribe) return;
+    if (!subscribe || user?.nombre_rol === 'Cuentadante') return;
 
     const unsubscribeEquipo = subscribe('equipo:updated', () => {
       fetchMisEquipos();
@@ -54,7 +53,7 @@ export default function MisEquipos() {
       unsubscribeAsignacionCreated();
       unsubscribeAsignacionDeleted();
     };
-  }, [subscribe]);
+  }, [subscribe, user?.nombre_rol]);
 
   async function fetchMisEquipos() {
     setLoading(true);
@@ -79,6 +78,10 @@ export default function MisEquipos() {
     } finally {
       setLoading(false);
     }
+  }
+
+  if (user?.nombre_rol === 'Cuentadante') {
+    return <Navigate to="/equipos/consultar?vista_inventario=inventario_total" replace />;
   }
 
   return (

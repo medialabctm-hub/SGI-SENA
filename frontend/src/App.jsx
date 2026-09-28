@@ -11,12 +11,9 @@ import Usuarios from './pages/Usuarios';
 import Aprendices from './pages/Aprendices';
 import Config from './pages/Config';
 import CrearNovedad from './pages/CrearNovedad';
-import AsignarEquipo from './pages/AsignarEquipo';
-import MisEquipos from './pages/MisEquipos';
 import Novedades from './pages/Novedades';
 import Mantenimientos from './pages/Mantenimientos';
 import PaginaNoEncontrada from './pages/PaginaNoEncontrada.jsx';
-import Asignaciones from './pages/Asignaciones';
 import Ambientes from './pages/Ambientes';
 import DetalleAmbiente from './pages/DetalleAmbiente';
 import AsignarAmbientes from './pages/AsignarAmbientes';
@@ -28,6 +25,7 @@ import SolicitarEquipo from './pages/SolicitarEquipo';
 import HistorialMovimientos from './pages/HistorialMovimientos';
 import AutorizacionesMovimiento from './pages/AutorizacionesMovimiento';
 import EquiposPrestados from './pages/EquiposPrestados';
+import InformePrestamos from './pages/InformePrestamos';
 import LoadingDemo from './pages/LoadingDemo';
 // PÁGINAS DESACTIVADAS
 // import HistorialUsoEquipos from './pages/HistorialUsoEquipos';
@@ -197,7 +195,7 @@ export default function App() {
             path="/equipos/asignar"
             element={
               <ProtectedRoute>
-                <AsignarEquipo />
+                <Navigate to="/equipos/consultar?aviso=habilitaciones-retiradas" replace />
               </ProtectedRoute>
             }
           />
@@ -205,7 +203,7 @@ export default function App() {
             path="/mis-equipos"
             element={
               <ProtectedRoute>
-                <MisEquipos />
+                <Navigate to="/equipos/consultar?vista_inventario=inventario_total" replace />
               </ProtectedRoute>
             }
           />
@@ -229,7 +227,7 @@ export default function App() {
             path="/asignaciones"
             element={
               <ProtectedRoute>
-                <Asignaciones />
+                <Navigate to="/equipos/consultar?aviso=habilitaciones-retiradas" replace />
               </ProtectedRoute>
             }
           />
@@ -323,6 +321,7 @@ export default function App() {
               </ProtectedRoute>
             }
           />
+          <Route path="/equipos/prestados/informe" element={<ProtectedRoute><InformePrestamos /></ProtectedRoute>} />
           <Route path="/equipos/solicitar-autorizacion" element={<Navigate to="/equipos/autorizaciones#solicitar" replace />} />
           <Route path="/equipos/autorizaciones-pendientes" element={<Navigate to="/equipos/autorizaciones#pendientes" replace />} />
           <Route

@@ -149,6 +149,22 @@ describe('listarEquipos', () => {
     expect(mockEquipoService.listarEquipos).toHaveBeenCalled();
   });
 
+  it('sends an explicit empty ambiente filter when the requested ambiente does not resolve', async () => {
+    mockExecute.mockResolvedValueOnce([[]]);
+    const req = mockReq({ query: { ambiente: 'Ambiente inexistente' } });
+    const res = mockRes();
+
+    await listarEquipos(req, res);
+
+    expect(mockEquipoService.listarEquipos).toHaveBeenCalledWith(
+      expect.objectContaining({ ambientesFiltroIds: [] }),
+      expect.anything(),
+      expect.anything(),
+      1,
+      'Administrador'
+    );
+  });
+
   it('returns 500 on service error', async () => {
     mockEquipoService.listarEquipos.mockRejectedValueOnce(new Error('DB fail'));
     const req = mockReq();
