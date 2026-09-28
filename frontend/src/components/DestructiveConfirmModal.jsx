@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef, useId } from 'react'
+import { createPortal } from 'react-dom'
 import { FiAlertTriangle } from 'react-icons/fi'
 import '../styles/components/modals.css'
 
@@ -11,18 +12,48 @@ export default function DestructiveConfirmModal({
   confirmText = 'Confirmar',
   cancelText = 'Cancelar',
   confirmationPhrase = 'confirmar accion',
-  loading = false 
+  loading = false,
+  returnFocusRef
 }) {
   const [inputValue, setInputValue] = useState('')
   const [isValid, setIsValid] = useState(false)
+  const id = useId()
+  const titleId = `${id}-title`
+  const messageId = `${id}-message`
+  const inputId = `${id}-input`
+  const hintId = `${id}-hint`
+  const dialogRef = useRef(null)
+  const inputRef = useRef(null)
+  const previousFocusRef = useRef(null)
 
   // Resetear el input cuando se abre/cierra el modal
   useEffect(() => {
-    if (open) {
-      setInputValue('')
-      setIsValid(false)
+    if (!open) return undefined
+
+    previousFocusRef.current = document.activeElement
+    const fallbackFocus = returnFocusRef?.current
+    setInputValue('')
+    setIsValid(false)
+    inputRef.current?.focus()
+
+    return () => {
+      const previousFocus = previousFocusRef.current?.isConnected
+        ? previousFocusRef.current
+        : fallbackFocus?.isConnected
+          ? fallbackFocus
+          : null
+      previousFocus?.focus()
+      previousFocusRef.current = null
     }
-  }, [open])
+  }, [open, returnFocusRef])
+
+  useEffect(() => {
+    if (!open || !loading) return
+    const focusable = dialogRef.current?.querySelector(
+      'input:not(:disabled), button:not(:disabled), [tabindex]:not([tabindex="-1"])'
+    )
+    if (!focusable) dialogRef.current?.focus()
+  }, [open, loading])
 
   // Validar que el texto coincida exactamente (case-insensitive)
   useEffect(() => {
@@ -45,13 +76,52 @@ export default function DestructiveConfirmModal({
     }
   }
 
-  return (
+  const handleKeyDown = (event) => {
+    if (event.key === 'Escape') {
+      if (!loading) onCancel()
+      return
+    }
+    if (event.key !== 'Tab') return
+
+    const focusable = dialogRef.current?.querySelectorAll(
+      'input:not(:disabled), button:not(:disabled), [tabindex]:not([tabindex="-1"])'
+    )
+    if (!focusable?.length) {
+      event.preventDefault()
+      dialogRef.current?.focus()
+      return
+    }
+
+    const first = focusable[0]
+    const last = focusable[focusable.length - 1]
+    if (document.activeElement === dialogRef.current) {
+      event.preventDefault()
+      ;(event.shiftKey ? last : first).focus()
+    } else if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault()
+      last.focus()
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault()
+      first.focus()
+    }
+  }
+
+  const inputIsInvalid = Boolean(inputValue) && !isValid
+
+  return createPortal((
     <div 
       className="destructive-confirm-modal-overlay" 
       onClick={loading ? undefined : onCancel}
     >
       <div 
         className="destructive-confirm-modal-sheet" 
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        aria-describedby={messageId}
+        tabIndex={-1}
+        onKeyDown={handleKeyDown}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="destructive-confirm-modal-header">
@@ -59,21 +129,23 @@ export default function DestructiveConfirmModal({
             <div className="destructive-confirm-modal-icon danger">
               <FiAlertTriangle size={24} color="var(--error-600)" />
             </div>
-            <h3 className="destructive-confirm-modal-title">
+            <h3 id={titleId} className="destructive-confirm-modal-title">
               {title}
             </h3>
           </div>
-          <p className="destructive-confirm-modal-message">
+          <p id={messageId} className="destructive-confirm-modal-message">
             {message}
           </p>
         </div>
         
         <div className="destructive-confirm-modal-body">
           <div className="destructive-confirm-modal-input-wrapper">
-            <label className="destructive-confirm-modal-label">
+            <label className="destructive-confirm-modal-label" htmlFor={inputId}>
               Escribe <strong>"{confirmationPhrase}"</strong> para confirmar:
             </label>
             <input
+              id={inputId}
+              ref={inputRef}
               type="text"
               className={`destructive-confirm-modal-input ${!isValid && inputValue ? 'destructive-confirm-modal-input-error' : ''}`}
               value={inputValue}
@@ -81,10 +153,11 @@ export default function DestructiveConfirmModal({
               onKeyPress={handleKeyPress}
               placeholder={confirmationPhrase}
               disabled={loading}
-              autoFocus
+              aria-invalid={inputIsInvalid ? 'true' : undefined}
+              aria-describedby={inputIsInvalid ? hintId : undefined}
             />
-            {!isValid && inputValue && (
-              <p className="destructive-confirm-modal-hint">
+            {inputIsInvalid && (
+              <p id={hintId} className="destructive-confirm-modal-hint" aria-live="polite">
                 El texto no coincide. Debes escribir exactamente "{confirmationPhrase}"
               </p>
             )}
@@ -109,6 +182,6 @@ export default function DestructiveConfirmModal({
         </div>
       </div>
     </div>
-  )
+  ), document.body)
 }
 

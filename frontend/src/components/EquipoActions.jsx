@@ -1,5 +1,24 @@
 import React, { useEffect, useRef } from 'react'
-import { FiEye, FiMoreHorizontal } from 'react-icons/fi'
+import {
+  FiClock,
+  FiEdit2,
+  FiEye,
+  FiFileText,
+  FiMoreHorizontal,
+  FiRepeat,
+  FiTool,
+  FiTrash2,
+  FiTruck,
+} from 'react-icons/fi'
+
+function ActionButton({ icon: Icon, children, onClick }) {
+  return (
+    <button type="button" onClick={onClick}>
+      <Icon aria-hidden="true" />
+      {children}
+    </button>
+  )
+}
 
 /** Mantiene una sola acción primaria por fila; las demás conservan su ruta y permisos. */
 export default function EquipoActions({ equipo, role, navigate, onEdit, onDelete }) {
@@ -34,17 +53,17 @@ export default function EquipoActions({ equipo, role, navigate, onEdit, onDelete
       }}>
         <summary aria-label={`Más acciones para ${placa}`}><FiMoreHorizontal aria-hidden="true" /> Más acciones</summary>
         <div className="consultar-equipo-more-list">
-          <button type="button" onClick={() => go(`/equipos/historial-verificaciones/${codigo}`)}>Historial de verificaciones</button>
-          <button type="button" onClick={() => go(`/equipos/historial-movimientos/${codigo}`)}>Historial de movimientos</button>
+          <ActionButton icon={FiClock} onClick={() => go(`/equipos/historial-verificaciones/${codigo}`)}>Historial de verificaciones</ActionButton>
+          <ActionButton icon={FiRepeat} onClick={() => go(`/equipos/historial-movimientos/${codigo}`)}>Historial de movimientos</ActionButton>
           {canRegister && <>
-            <button type="button" onClick={() => go(`/novedades?tab=crear&equipo=${codigo}`)}>Registrar novedad</button>
-            <button type="button" onClick={() => go(`/reportes/crear?equipo=${codigo}`)}>Registrar reporte</button>
-            <button type="button" onClick={() => go(`/mantenimientos?tab=crear&equipo=${codigo}`)}>Registrar mantenimiento</button>
-            {equipo.status_verificacion === 'Verificado' && <button type="button" onClick={() => go(`/equipos/autorizaciones?tab=solicitar&equipo=${codigo}`)}>Solicitar movimiento</button>}
+            <ActionButton icon={FiFileText} onClick={() => go(`/novedades?tab=crear&equipo=${codigo}`)}>Registrar novedad</ActionButton>
+            <ActionButton icon={FiFileText} onClick={() => go(`/reportes/crear?equipo=${codigo}`)}>Registrar reporte</ActionButton>
+            <ActionButton icon={FiTool} onClick={() => go(`/mantenimientos?tab=crear&equipo=${codigo}`)}>Registrar mantenimiento</ActionButton>
+            {equipo.status_verificacion === 'Verificado' && <ActionButton icon={FiTruck} onClick={() => go(`/equipos/autorizaciones?tab=solicitar&equipo=${codigo}`)}>Solicitar movimiento</ActionButton>}
           </>}
           {role === 'Administrador' && <>
-            <button type="button" onClick={() => { detailsRef.current?.removeAttribute('open'); onEdit?.() }}>Editar equipo</button>
-            <button type="button" onClick={() => { detailsRef.current?.removeAttribute('open'); onDelete?.() }}>Eliminar equipo</button>
+            <ActionButton icon={FiEdit2} onClick={() => { detailsRef.current?.removeAttribute('open'); onEdit?.() }}>Editar equipo</ActionButton>
+            <ActionButton icon={FiTrash2} onClick={() => { detailsRef.current?.removeAttribute('open'); onDelete?.() }}>Eliminar equipo</ActionButton>
           </>}
         </div>
       </details>

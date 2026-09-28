@@ -4,10 +4,10 @@ milestone: 'Inventory harmony wave (MDL-236)'
 milestone_status: in_progress
 current_phase: 4
 current_phase_name: Inventory navigation and catalog
-current_plan: 04-01
+current_plan: 04-02
 status: in_progress
 stopped_at: null
-last_updated: '2026-09-26T18:45:00-05:00'
+last_updated: '2026-09-28'
 progress:
   phases_completed: 2
   phases_total: 9
@@ -21,6 +21,10 @@ progress:
 # State
 
 ## Current focus — MDL-236
+
+Tanda de diseño MDL-238/239/240 implementada en `codex/sgi-diseno-uat` sobre `35ebfba` (PR3S1G4zZ/Encuentro). Evidencia local: 123 Vitest, 22 utilidades y 22 comprobaciones de navegador PASS; build PASS, lint focal 0 errores/15 advertencias. Ver `phases/04-inventory-navigation/04-02-SUMMARY.md`. Pendiente decisión de publicación y UAT remoto/manual; MDL-237/241 no implementados. No se modificó producción.
+
+2026-09-28: publicación autorizada por el usuario y completada en PR #55, https://github.com/medialabctm-hub/SGI-SENA/pull/55, borrador hacia `PR3S1G4zZ/Encuentro`. Código `d95edb6`: Vitest 123/123, utilidades 22/22 y build repetidos antes del push. La consulta GSD de verificación de fase devuelve `missing`; no se declara ship formal, merge, CI aprobado ni despliegue Railway. Pendientes UAT y aceptación. El párrafo anterior describe la evidencia y decisión previa a publicar.
 
 Fases 04/05/08 en trabajo desde `develop` en worktree aislado; no se ha desplegado. La retirada de UI de Habilitaciones no equivale a desactivar los endpoints históricos: `Responsables_Equipo` aún es dependencia de permisos. Antes de cerrar, completar cronología, ambientes/horarios, validación SQL real, navegación por rol y responsive. La sección histórica siguiente corresponde al ciclo anterior.
 
