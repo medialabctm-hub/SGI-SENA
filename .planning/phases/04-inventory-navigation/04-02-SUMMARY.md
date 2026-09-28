@@ -35,6 +35,7 @@ Levantar Vite local en 127.0.0.1:5175. Ejecutar node e2e/sgi-design-uat.cjs con 
 ## Pendientes y límites
 
 - El usuario autorizó publicar un PR hacia PR3S1G4zZ/Encuentro para vista previa. Se prepara como borrador: GSD verification.status devuelve missing para la fase; no se declara ship formal ni aceptación remota. PR54 es la entrega anterior ya incorporada en la base. No merge ni cambios de producción autorizados en esta tanda.
+- Publicado: PR #55, https://github.com/medialabctm-hub/SGI-SENA/pull/55; head codex/sgi-diseno-uat, base PR3S1G4zZ/Encuentro, código d95edb6. Vitest 123/123, utilidades 22/22 y build repetidos antes de publicar. PR abierto en borrador; sin comprobaciones remotas registradas al consultar. No se confirmó despliegue Railway.
 - Pendiente UAT de Railway, pruebas autenticadas reales, dispositivos físicos, teclado virtual, zoom real 200%, lector de pantalla y formularios con mensajes largos. Las capturas locales pueden mostrar fuentes de respaldo al bloquear orígenes externos.
 - MDL-237 (Roles y Áreas/permisos) y MDL-241 (clasificación/adaptación/retirada de APIs) no implementados. No hubo cambios backend, contratos de API, SQL, autenticación, variables Railway o datos reales.
 - El milestone general sigue en progreso; no se confunde evidencia local con aceptación remota.
