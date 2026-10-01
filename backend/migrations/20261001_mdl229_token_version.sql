@@ -17,7 +17,7 @@ SET @mdl229_existe := (
 
 SET @mdl229_sql := IF(
   @mdl229_existe = 0,
-  'ALTER TABLE Usuarios ADD COLUMN token_version INT NOT NULL DEFAULT 0 COMMENT ''Se incrementa para invalidar las sesiones JWT vigentes (MDL-229)'' AFTER creado_por',
+  'ALTER TABLE Usuarios ADD COLUMN token_version INT NOT NULL DEFAULT 0 COMMENT ''Se incrementa para invalidar las sesiones JWT vigentes (MDL-229)''',
   'SELECT ''MDL-229: token_version ya existe'' AS info'
 );
 
