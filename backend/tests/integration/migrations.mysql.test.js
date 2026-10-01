@@ -3,6 +3,7 @@
  * Corre solo con RUN_MYSQL_INTEGRATION=1 (scripts/run-mysql-integration.js).
  * Recrea el escenario del incidente MDL-229: una BD sin token_version.
  */
+import { jest } from '@jest/globals';
 import mysql from 'mysql2/promise';
 import { runMigrations } from '../../scripts/run-migrations.js';
 
