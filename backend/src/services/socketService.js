@@ -1,6 +1,7 @@
 import { Server } from 'socket.io';
 import { logger } from '../utils/logger.js';
 import { extractTokenFromCookieHeader } from '../utils/sessionCookie.js';
+import { sessionMatchesUser } from '../utils/sessionVersion.js';
 
 /**
  * Servicio de WebSocket para actualizaciones en tiempo real
@@ -41,14 +42,20 @@ class SocketService {
         const { ServiceFactory } = await import('../factories/ServiceFactory.js');
         const jwtService = ServiceFactory.create('jwtService');
         const decoded = jwtService.verify(token);
-        
-        if (decoded && decoded.id) {
-          socket.userId = decoded.id;
-          socket.userRole = decoded.rol;
-          next();
-        } else {
-          next(new Error('Token inválido'));
+
+        if (!decoded || !decoded.id) {
+          return next(new Error('Token inválido'));
         }
+
+        // MDL-229: un JWT revocado (logout, cambio de credenciales/rol) no abre sockets.
+        const user = await ServiceFactory.create('userRepository').findById(decoded.id);
+        if (!user || !sessionMatchesUser(decoded, user)) {
+          return next(new Error('Token inválido o expirado'));
+        }
+
+        socket.userId = decoded.id;
+        socket.userRole = decoded.rol;
+        next();
       } catch (err) {
         logger.error('Error al verificar token en WebSocket', { error: err.message });
         next(new Error('Token inválido o expirado'));

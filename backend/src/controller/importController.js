@@ -1133,8 +1133,10 @@ export async function importarUsuarios(req, res) {
           if (excelPassword) {
             const contrasenaHash = await bcrypt.hash(excelPassword, 10);
             // Quien armó el Excel conoce la clave → forzar cambio en próximo login
+            // MDL-229: contraseña nueva → revocar sesiones previas.
             await defaultDb.execute(
               `UPDATE Usuarios SET
+                token_version = token_version + 1,
                 nombre_usuario = ?, tipo_documento = ?, tipo_documento_otro = ?,
                 telefono = ?, id_rol = ?, estado = ?,
                 contrasena = ?, requiere_cambio_contrasena = 1
@@ -1151,12 +1153,18 @@ export async function importarUsuarios(req, res) {
               ]
             );
           } else {
+            // MDL-229: revocar sesiones solo si cambia rol o estado. token_version
+            // va primero en el SET: MySQL asigna de izquierda a derecha, así que
+            // compara contra los valores previos de id_rol/estado.
             await defaultDb.execute(
               `UPDATE Usuarios SET
+                token_version = token_version + (id_rol <> ? OR estado <> ?),
                 nombre_usuario = ?, tipo_documento = ?, tipo_documento_otro = ?,
                 telefono = ?, id_rol = ?, estado = ?
                WHERE id_usuario = ?`,
               [
+                rolRow.id_rol,
+                estadoValido,
                 nombreUsuario,
                 tipoDocValido,
                 tipoDocOtroValido,

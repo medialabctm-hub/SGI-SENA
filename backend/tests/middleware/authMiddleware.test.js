@@ -44,6 +44,7 @@ const mockUser = {
   correo: 'juan@sena.edu.co',
   id_rol: 2,
   nombre_rol: 'Instructor',
+  token_version: 0,
 };
 
 describe('authenticate()', () => {
@@ -61,7 +62,7 @@ describe('authenticate()', () => {
   });
 
   it('debe adjuntar req.user y llamar next() con token valido', async () => {
-    const mockJwt = { verify: jest.fn().mockReturnValue({ id: 42 }) };
+    const mockJwt = { verify: jest.fn().mockReturnValue({ id: 42, token_version: 0 }) };
     const mockRepo = { findById: jest.fn().mockResolvedValue(mockUser) };
     mockCreate.mockImplementation((n) => n === 'jwtService' ? mockJwt : mockRepo);
     const { req, res, next } = makeContext('Bearer valid.token.here');
@@ -114,7 +115,7 @@ describe('authenticate()', () => {
   });
 
   it('debe autenticar con la cookie httpOnly de sesion (sgi_session) sin header Authorization', async () => {
-    const mockJwt = { verify: jest.fn().mockReturnValue({ id: 42 }) };
+    const mockJwt = { verify: jest.fn().mockReturnValue({ id: 42, token_version: 0 }) };
     const mockRepo = { findById: jest.fn().mockResolvedValue(mockUser) };
     mockCreate.mockImplementation((n) => n === 'jwtService' ? mockJwt : mockRepo);
     const { req, res, next } = makeCookieContext('cookie.jwt.value');
@@ -125,7 +126,7 @@ describe('authenticate()', () => {
   });
 
   it('debe priorizar la cookie de sesion sobre un header Authorization presente', async () => {
-    const mockJwt = { verify: jest.fn().mockReturnValue({ id: 42 }) };
+    const mockJwt = { verify: jest.fn().mockReturnValue({ id: 42, token_version: 0 }) };
     const mockRepo = { findById: jest.fn().mockResolvedValue(mockUser) };
     mockCreate.mockImplementation((n) => n === 'jwtService' ? mockJwt : mockRepo);
     // Header con un valor no-JWT (compatibilidad con codigo legado que aun
@@ -139,13 +140,54 @@ describe('authenticate()', () => {
   });
 
   it('debe caer al header Authorization cuando no hay cookie de sesion', async () => {
-    const mockJwt = { verify: jest.fn().mockReturnValue({ id: 42 }) };
+    const mockJwt = { verify: jest.fn().mockReturnValue({ id: 42, token_version: 0 }) };
     const mockRepo = { findById: jest.fn().mockResolvedValue(mockUser) };
     mockCreate.mockImplementation((n) => n === 'jwtService' ? mockJwt : mockRepo);
     const { req, res, next } = makeContext('Bearer header.jwt.value');
     await authenticate(req, res, next);
     expect(mockJwt.verify).toHaveBeenCalledWith('header.jwt.value');
     expect(next).toHaveBeenCalledWith();
+  });
+
+  describe('revocaci\u00f3n de sesi\u00f3n (MDL-229)', () => {
+    const setup = (payload, user = mockUser) => {
+      const mockJwt = { verify: jest.fn().mockReturnValue(payload) };
+      const mockRepo = { findById: jest.fn().mockResolvedValue(user) };
+      mockCreate.mockImplementation((n) => (n === 'jwtService' ? mockJwt : mockRepo));
+      return makeContext('Bearer revocable.jwt.value');
+    };
+
+    it('rechaza con 401 un token cuyo token_version es anterior al de la BD', async () => {
+      const { req, res, next } = setup({ id: 42, token_version: 0 }, { ...mockUser, token_version: 1 });
+      await authenticate(req, res, next);
+      expect(next).toHaveBeenCalledWith(expect.any(AuthenticationError));
+      expect(next.mock.calls[0][0].message).toBe('Sesi\u00f3n revocada');
+      expect(req.user).toBeUndefined();
+    });
+
+    it('rechaza un token sin el claim token_version (emitido antes de MDL-229)', async () => {
+      const { req, res, next } = setup({ id: 42 });
+      await authenticate(req, res, next);
+      expect(next).toHaveBeenCalledWith(expect.any(AuthenticationError));
+      expect(req.user).toBeUndefined();
+    });
+
+    it('rechaza cuando la fila de usuario no trae token_version (columna ausente)', async () => {
+      const { token_version: _omit, ...sinColumna } = mockUser;
+      const { req, res, next } = setup({ id: 42, token_version: 0 }, sinColumna);
+      await authenticate(req, res, next);
+      expect(next).toHaveBeenCalledWith(expect.any(AuthenticationError));
+    });
+
+    it('optionalAuthenticate no adjunta req.user con una sesi\u00f3n revocada', async () => {
+      const { optionalAuthenticate } = await import(
+        resolve(__dirname, '../../src/middleware/authMiddleware.js')
+      );
+      const { req, res, next } = setup({ id: 42, token_version: 0 }, { ...mockUser, token_version: 2 });
+      await optionalAuthenticate(req, res, next);
+      expect(next).toHaveBeenCalledWith();
+      expect(req.user).toBeUndefined();
+    });
   });
 
   it('debe llamar next(err) si req.headers lanza una excepci\u00f3n (outer catch)', async () => {

@@ -261,6 +261,23 @@ Este cambio no incorpora una migración destructiva de BD; si un release futuro
 incluye migraciones, respaldar MySQL antes y no restaurar el esquema de forma
 automática al hacer rollback de la aplicación.
 
+### Migración MDL-229 (`token_version`)
+
+El release que revoca sesiones JWT requiere la columna `Usuarios.token_version`.
+El backend la lee en cada request autenticado: **aplicar la migración antes de
+desplegar la aplicación**; sin la columna, las rutas autenticadas fallan.
+
+1. Respaldar MySQL.
+2. Ejecutar `backend/migrations/20261001_mdl229_token_version.sql` contra la BD
+   del ambiente. Es idempotente: una segunda ejecución no cambia nada (verificar
+   con `SHOW COLUMNS FROM Usuarios LIKE 'token_version'`).
+3. Desplegar el backend.
+
+Efectos esperados: los JWT emitidos antes del despliegue no traen el claim y
+reciben `401` una sola vez (los usuarios inician sesión de nuevo). El logout y
+los cambios de contraseña, cédula, correo o rol cierran las demás sesiones del
+usuario. La columna es aditiva: el rollback de la aplicación no exige revertirla.
+
 ### Registro de evidencia
 
 Guardar estos datos en el ticket o nota del release, sin incluir secretos:

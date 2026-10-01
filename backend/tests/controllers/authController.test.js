@@ -20,6 +20,8 @@ const mockAuthService = {
   validarTokenRecuperacion: jest.fn(),
   restablecerContrasena: jest.fn(),
   updateUserProfilePhoto: jest.fn(),
+  revokeSession: jest.fn().mockResolvedValue({ revoked: true }),
+  issueSessionToken: jest.fn().mockResolvedValue('jwt-reemitido'),
 };
 
 const mockExecute = jest.fn();
@@ -193,7 +195,29 @@ describe('authController', () => {
   });
 
   describe('logoutUser', () => {
+    it('revoca el JWT en servidor con el token de la cookie (MDL-229)', async () => {
+      req.cookies = { sgi_session: 'jwt-de-la-cookie' };
+      mockAuthService.revokeSession.mockResolvedValueOnce({ revoked: true });
+
+      await logoutUser(req, res, next);
+
+      expect(mockAuthService.revokeSession).toHaveBeenCalledWith('jwt-de-la-cookie');
+      expect(res.clearCookie).toHaveBeenCalled();
+    });
+
+    it('si la revocación falla responde error y no finge cerrar sesión', async () => {
+      const err = new Error('db down');
+      req.cookies = { sgi_session: 'jwt-de-la-cookie' };
+      mockAuthService.revokeSession.mockRejectedValueOnce(err);
+
+      await logoutUser(req, res, next);
+
+      expect(next).toHaveBeenCalledWith(err);
+      expect(res.clearCookie).not.toHaveBeenCalled();
+    });
+
     it('revoca la cookie httpOnly de sesión y responde json', async () => {
+      mockAuthService.revokeSession.mockResolvedValueOnce({ revoked: true });
       await logoutUser(req, res, next);
 
       expect(res.clearCookie).toHaveBeenCalledWith(

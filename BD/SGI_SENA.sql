@@ -51,6 +51,7 @@ CREATE TABLE Usuarios (
   fecha_registro DATETIME DEFAULT NOW(),
   ultimo_acceso DATETIME,
   creado_por INT,
+  token_version INT NOT NULL DEFAULT 0 COMMENT 'Se incrementa para invalidar las sesiones JWT vigentes (MDL-229)',
   FOREIGN KEY (id_rol) REFERENCES Roles(id_rol),
   FOREIGN KEY (creado_por) REFERENCES Usuarios(id_usuario) ON DELETE SET NULL,
   INDEX idx_cedula (cedula),
