@@ -44,6 +44,7 @@ function runJest(environment) {
         '--forceExit',
         'tests/integration/equipmentClaim.mysql.test.js',
         'tests/integration/passwordReset.mysql.test.js',
+        'tests/integration/migrations.mysql.test.js',
       ],
       { env: environment, stdio: 'inherit' },
     );

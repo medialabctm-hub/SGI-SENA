@@ -16,7 +16,8 @@
     "test:coverage": "node --experimental-vm-modules node_modules/jest/bin/jest.js --coverage && node scripts/print-coverage.mjs",
     "check-env": "node scripts/check-env.js",
     "test:smoke": "node scripts/smoke-test.js",
-    "test:mysql": "node scripts/run-mysql-integration.js"
+    "test:mysql": "node scripts/run-mysql-integration.js",
+    "migrate": "node scripts/run-migrations.js"
   },
   "dependencies": {
     "@getbrevo/brevo": "^1.0.0",

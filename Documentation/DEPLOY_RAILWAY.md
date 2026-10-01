@@ -261,17 +261,41 @@ Este cambio no incorpora una migración destructiva de BD; si un release futuro
 incluye migraciones, respaldar MySQL antes y no restaurar el esquema de forma
 automática al hacer rollback de la aplicación.
 
+### Migraciones SQL automáticas (preDeploy)
+
+`railway.toml` y `railway.json` declaran `preDeployCommand`, que ejecuta
+`backend/scripts/run-migrations.js` **antes** de cada despliegue:
+
+- Aplica en orden alfabético los `backend/migrations/*.sql` que falten y los
+  registra (con checksum) en la tabla `schema_migrations`.
+- Si una migración falla, el comando termina con error y **Railway no despliega
+  la versión nueva**: la anterior sigue sirviendo. Revisar el log del paso
+  *Pre-deploy* en Deployments.
+- Un bloqueo `GET_LOCK` evita que dos despliegues corran migraciones a la vez.
+- Manual (por ejemplo, un ambiente sin preDeploy): `cd backend && npm run migrate`
+  con las variables `DB_*` del ambiente.
+
+Reglas para escribir una migración (se validan en el CI `backend-mysql`):
+
+1. Archivo nuevo `backend/migrations/AAAAMMDD_descripcion.sql`; no editar uno ya
+   aplicado (el runner solo avisa del cambio, no lo re-ejecuta).
+2. **Idempotente**: re-ejecutarla no cambia nada (`information_schema` + `PREPARE`
+   para `ADD COLUMN`).
+3. **Aditiva y compatible hacia atrás**: tras un rollback de la aplicación la
+   versión vieja sigue corriendo sobre el esquema nuevo. Nada de `DROP`/`RENAME`
+   en el mismo release que deja de usarlos.
+
+La primera vez que el runner corre en un ambiente re-ejecuta (sin efecto) las
+migraciones que ya se habían aplicado a mano y las registra. El procedimiento de
+autoservicio (`migrate-autoservicio-cierre-clase.js`) sigue siendo un paso
+administrativo aparte.
+
 ### Migración MDL-229 (`token_version`)
 
-El release que revoca sesiones JWT requiere la columna `Usuarios.token_version`.
-El backend la lee en cada request autenticado: **aplicar la migración antes de
-desplegar la aplicación**; sin la columna, las rutas autenticadas fallan.
-
-1. Respaldar MySQL.
-2. Ejecutar `backend/migrations/20261001_mdl229_token_version.sql` contra la BD
-   del ambiente. Es idempotente: una segunda ejecución no cambia nada (verificar
-   con `SHOW COLUMNS FROM Usuarios LIKE 'token_version'`).
-3. Desplegar el backend.
+El release que revoca sesiones JWT requiere la columna `Usuarios.token_version`,
+que `backend/migrations/20261001_mdl229_token_version.sql` agrega (aplicada por
+el preDeploy). El backend la lee en cada request autenticado; sin la columna el
+login responde 500. Verificar con `SHOW COLUMNS FROM Usuarios LIKE 'token_version'`.
 
 Efectos esperados: los JWT emitidos antes del despliegue no traen el claim y
 reciben `401` una sola vez (los usuarios inician sesión de nuevo). El logout y

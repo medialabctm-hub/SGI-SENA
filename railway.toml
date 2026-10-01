@@ -5,6 +5,8 @@ builder = "DOCKERFILE"
 dockerfilePath = "Dockerfile"
 
 [deploy]
+# MDL-229: las migraciones SQL corren antes de desplegar; si fallan, Railway conserva la versión anterior.
+preDeployCommand = ["node /app/backend/scripts/run-migrations.js"]
 startCommand = "/start.sh"
 restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 10
