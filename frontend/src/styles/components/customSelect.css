@@ -104,6 +104,11 @@
   margin-top: 4px;
 }
 
+/* El listado portado debe quedar por encima de los diálogos institucionales. */
+.custom-select-dropdown-portal {
+  z-index: 1000000;
+}
+
 /* Scrollbar personalizado para el dropdown */
 .custom-select-dropdown::-webkit-scrollbar {
   width: 8px;

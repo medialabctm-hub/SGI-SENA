@@ -7,7 +7,8 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 let useHandler;
 let connectionHandler;
 const mockVerify = jest.fn();
-const mockCreate = jest.fn(() => ({ verify: mockVerify }));
+const mockFindById = jest.fn(async (id) => ({ id_usuario: id, token_version: 0 }));
+const mockCreate = jest.fn(() => ({ verify: mockVerify, findById: mockFindById }));
 
 class FakeServer {
   constructor() {
@@ -110,7 +111,7 @@ describe('socketService', () => {
 
   it('initialize debe aceptar token válido y setear userId/userRole', async () => {
     socketService.initialize({});
-    mockVerify.mockReturnValueOnce({ id: 9, rol: 'Instructor' });
+    mockVerify.mockReturnValueOnce({ id: 9, rol: 'Instructor', token_version: 0 });
 
     const next = jest.fn();
     const socket = {
@@ -127,9 +128,39 @@ describe('socketService', () => {
     expect(next).toHaveBeenCalledWith();
   });
 
+  it('initialize debe rechazar un JWT revocado (token_version desfasado) — MDL-229', async () => {
+    socketService.initialize({});
+    mockVerify.mockReturnValueOnce({ id: 9, rol: 'Instructor', token_version: 0 });
+    mockFindById.mockResolvedValueOnce({ id_usuario: 9, token_version: 1 });
+
+    const next = jest.fn();
+    const socket = { handshake: { auth: { token: 'revoked-token' }, query: {} } };
+
+    await useHandler(socket, next);
+
+    expect(socket.userId).toBeUndefined();
+    expect(next).toHaveBeenCalledTimes(1);
+    expect(next.mock.calls[0][0].message).toBe('Token inválido o expirado');
+  });
+
+  it('initialize debe rechazar un JWT sin claim token_version o de usuario inactivo — MDL-229', async () => {
+    socketService.initialize({});
+
+    mockVerify.mockReturnValueOnce({ id: 9, rol: 'Instructor' });
+    const nextSinClaim = jest.fn();
+    await useHandler({ handshake: { auth: { token: 'legacy' }, query: {} } }, nextSinClaim);
+    expect(nextSinClaim.mock.calls[0][0]).toBeInstanceOf(Error);
+
+    mockVerify.mockReturnValueOnce({ id: 9, rol: 'Instructor', token_version: 0 });
+    mockFindById.mockResolvedValueOnce(null);
+    const nextInactivo = jest.fn();
+    await useHandler({ handshake: { auth: { token: 'inactive' }, query: {} } }, nextInactivo);
+    expect(nextInactivo.mock.calls[0][0]).toBeInstanceOf(Error);
+  });
+
   it('initialize debe autenticar con la cookie httpOnly de sesion (sgi_session), sin auth.token', async () => {
     socketService.initialize({});
-    mockVerify.mockReturnValueOnce({ id: 21, rol: 'Aprendiz' });
+    mockVerify.mockReturnValueOnce({ id: 21, rol: 'Aprendiz', token_version: 0 });
 
     const next = jest.fn();
     const socket = {
@@ -149,7 +180,7 @@ describe('socketService', () => {
 
   it('initialize debe priorizar la cookie de sesion sobre auth.token del handshake', async () => {
     socketService.initialize({});
-    mockVerify.mockReturnValueOnce({ id: 22, rol: 'Instructor' });
+    mockVerify.mockReturnValueOnce({ id: 22, rol: 'Instructor', token_version: 0 });
 
     const next = jest.fn();
     const socket = {

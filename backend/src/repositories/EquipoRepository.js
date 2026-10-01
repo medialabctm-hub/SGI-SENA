@@ -116,6 +116,16 @@ export class EquipoRepository extends BaseRepository {
       }
     }
 
+    // El ambiente solicitado es un filtro adicional al alcance determinado por rol/vista.
+    if (filters.ambientesFiltroIds !== undefined) {
+      if (filters.ambientesFiltroIds.length === 0) {
+        conditions.push('1 = 0');
+      } else {
+        conditions.push(`e.id_ambiente IN (${filters.ambientesFiltroIds.map(() => '?').join(',')})`);
+        params.push(...filters.ambientesFiltroIds);
+      }
+    }
+
     // MDL-189 / H-01: alcance Aprendiz / VIEW_OWN — solo equipos con vínculo activo
     if (filters.responsableUsuarioId) {
       conditions.push(`EXISTS (

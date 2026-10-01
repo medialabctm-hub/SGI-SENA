@@ -46,8 +46,6 @@
 .modal-sheet.form-modal {
   max-width: 800px;
   text-align: left;
-  top: 50%;
-  transform: translateY(-50%);
 }
 
 .modal-sheet.form-modal-small {
@@ -58,6 +56,48 @@
   max-width: 1200px;
   max-height: 90vh;
   overflow-y: auto;
+}
+
+/* Viewport-safe shell for reusable form dialogs */
+.modal-overlay.form-dialog-overlay {
+  box-sizing: border-box;
+  min-height: 100vh;
+  min-height: 100dvh;
+  overflow-y: auto;
+  padding: max(1rem, env(safe-area-inset-top, 0px))
+    max(1rem, env(safe-area-inset-right, 0px))
+    max(1rem, env(safe-area-inset-bottom, 0px))
+    max(1rem, env(safe-area-inset-left, 0px));
+}
+
+.modal-sheet.form-dialog {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  flex: 0 1 auto;
+  min-height: 0;
+  max-height: calc(100vh - 2rem);
+  max-height: calc(100dvh - 2rem);
+  overflow: hidden;
+  padding: 0;
+  position: relative;
+  top: auto;
+  width: 100%;
+  transform: none;
+}
+
+.form-dialog .modal-header {
+  align-items: center;
+  flex: 0 0 auto;
+  flex-direction: row;
+  justify-content: space-between;
+}
+
+.form-dialog__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 /* Header del modal */
@@ -171,6 +211,12 @@
   .modal-sheet.form-modal-large {
     max-width: 95%;
     max-height: 95vh;
+  }
+
+  .modal-sheet.form-dialog {
+    max-height: calc(100vh - 2rem);
+    max-height: calc(100dvh - 2rem);
+    max-width: 100%;
   }
 
   .modal-header,

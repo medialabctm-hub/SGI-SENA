@@ -6,7 +6,9 @@
   margin: 0;
 }
 
-/* Selector de vista para Cuentadante con ambientes (Mis ambientes | Mi inventario total | Todos) */
+.consultar-equipo-retired-notice { margin: 0 0 16px; padding: 12px 16px; border-left: 4px solid var(--info-700); background: var(--neutral-50); color: var(--neutral-800); }
+
+/* Vistas de alcance del inventario */
 .consultar-equipo-vista-inventario {
   display: flex;
   align-items: center;
@@ -26,6 +28,7 @@
 }
 
 .consultar-equipo-vista-tab {
+  min-height: 44px;
   padding: 8px 14px;
   border-radius: 8px;
   border: 2px solid var(--neutral-300);
@@ -48,11 +51,37 @@
   color: white;
 }
 
+.consultar-equipo-vista-tab:focus-visible,
+.consultar-equipo-ambiente-filtro select:focus-visible {
+  outline: 3px solid var(--info-700);
+  outline-offset: 2px;
+}
+
 .consultar-equipo-header-row {
   display: flex;
   gap: 12px;
   align-items: center;
   flex-wrap: wrap;
+}
+
+.consultar-equipo-ambiente-filtro {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: var(--neutral-700);
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.consultar-equipo-ambiente-filtro select {
+  min-width: 185px;
+  min-height: 44px;
+  padding: 8px 12px;
+  border: 2px solid var(--neutral-300);
+  border-radius: 8px;
+  background: var(--neutral-50);
+  color: var(--neutral-800);
+  font: inherit;
 }
 
 .consultar-equipo-search-form {
@@ -140,19 +169,75 @@
 
 .consultar-equipo-content {
   margin-top: 12px;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .consultar-equipo-table-wrapper {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
   overflow-x: auto;
 }
+
+.consultar-equipo-pagination {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 16px;
+  color: var(--neutral-700);
+}
+
+.consultar-equipo-pagination button {
+  min-height: 44px;
+  padding: 8px 14px;
+  border: 1px solid var(--neutral-300);
+  border-radius: 8px;
+  background: white;
+  color: var(--neutral-800);
+  cursor: pointer;
+}
+
+.consultar-equipo-pagination button:focus-visible {
+  outline: 3px solid var(--info-700);
+  outline-offset: 2px;
+}
+
+.consultar-equipo-pagination button:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .consultar-equipo-table {
   width: 100%;
 }
 
 .consultar-equipo-actions-column {
-  width: 280px;
+  min-width: 240px;
 }
+
+.consultar-equipo-row-actions { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 8px; }
+.consultar-equipo-row-actions > button,
+.consultar-equipo-more > summary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.consultar-equipo-more > summary { border: 1px solid var(--neutral-300); background: white; color: var(--neutral-800); list-style: none; }
+.consultar-equipo-more > summary::-webkit-details-marker { display: none; }
+.consultar-equipo-more > summary:focus-visible,
+.consultar-equipo-row-actions button:focus-visible { outline: 3px solid var(--info-700); outline-offset: 2px; }
+.consultar-equipo-more { min-width: 0; max-width: 100%; }
+.consultar-equipo-more[open] { flex-basis: 100%; min-width: 0; }
+.consultar-equipo-more-list { display: flex; flex-direction: column; gap: 2px; width: 100%; min-width: 0; max-width: 100%; padding: 6px 0; }
+.consultar-equipo-more-list button { display: flex; align-items: center; gap: 8px; width: 100%; min-width: 0; min-height: 44px; border: 0; border-radius: 6px; background: var(--neutral-50); color: var(--neutral-800); text-align: left; padding: 8px 12px; cursor: pointer; white-space: normal; overflow-wrap: anywhere; }
+.consultar-equipo-more-list button svg { flex: 0 0 auto; }
+.consultar-equipo-more-list button:hover { background: var(--neutral-100); }
 
 .consultar-equipo-actions-column-instructor {
   width: 120px;
@@ -254,6 +339,8 @@
   width: 100%;
   max-width: 900px;
   max-height: 90vh;
+  min-width: 0;
+  box-sizing: border-box;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -332,6 +419,7 @@
   overflow-y: auto;
   flex: 1;
   min-height: 0;
+  min-width: 0;
 }
 
 .consultar-equipo-column-item {
@@ -345,8 +433,9 @@
   background: white;
   border: 2px solid var(--neutral-200);
   position: relative;
-  min-width: 180px;
-  flex: 0 0 auto;
+  min-width: min(180px, 100%);
+  max-width: 100%;
+  flex: 1 1 180px;
   user-select: none;
 }
 
@@ -472,6 +561,24 @@
    sus controles dentro del ancho disponible, sin afectar el scroll horizontal
    intencional de la tabla de resultados. */
 @media (max-width: 768px) {
+  .consultar-equipo-column-filter-modal { padding: 12px; }
+  .consultar-equipo-column-filter-content { width: 100%; max-height: calc(100vh - 24px); }
+  .consultar-equipo-column-filter-header,
+  .consultar-equipo-column-filter-footer { padding: 16px; }
+  .consultar-equipo-column-filter-actions { flex-direction: column; padding: 16px; }
+  .consultar-equipo-column-filter-btn { width: 100%; white-space: normal; }
+  .consultar-equipo-column-list { gap: 10px; padding: 16px; }
+  .consultar-equipo-table-wrapper { overflow-x: auto; }
+  .consultar-equipo-table, .consultar-equipo-table tbody { display: block; width: 100%; min-width: 0; }
+  .consultar-equipo-table thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .consultar-equipo-table tbody tr { display: block; width: 100%; min-width: 0; margin: 0 0 12px; border: 1px solid var(--neutral-200); border-radius: 12px; background: white; overflow: hidden; }
+  .consultar-equipo-table tbody td { display: grid; grid-template-columns: minmax(100px, 38%) minmax(0, 1fr); gap: 8px; width: 100%; min-width: 0; padding: 9px 12px; border-bottom: 1px solid var(--neutral-100); overflow-wrap: anywhere; }
+  .consultar-equipo-table tbody td::before { content: attr(data-label); font-weight: 700; color: var(--neutral-700); }
+  .consultar-equipo-table tbody td:last-child { border-bottom: 0; }
+  .consultar-equipo-table tbody td :is(input, textarea, select) { min-width: 0; max-width: 100%; }
+  .consultar-equipo-table .consultar-equipo-row-actions { min-width: 0; }
+  .consultar-equipo-table .consultar-equipo-more { width: 100%; }
+  .consultar-equipo-table .consultar-equipo-more[open] { width: 100%; }
   .consultar-equipo-vista-inventario {
     align-items: stretch;
     flex-direction: column;
@@ -479,12 +586,13 @@
   }
 
   .consultar-equipo-vista-tabs {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    display: flex;
+    flex-wrap: wrap;
     width: 100%;
   }
 
   .consultar-equipo-vista-tab {
+    flex: 1 1 130px;
     min-width: 0;
     padding: 8px 6px;
     line-height: 1.2;
@@ -497,6 +605,12 @@
   .consultar-equipo-actions-row {
     min-width: 0;
     width: 100%;
+  }
+
+  .consultar-equipo-ambiente-filtro,
+  .consultar-equipo-ambiente-filtro select {
+    width: 100%;
+    min-width: 0;
   }
 
   .consultar-equipo-search-form {

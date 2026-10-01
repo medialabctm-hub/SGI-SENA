@@ -4,6 +4,9 @@
  */
 import { jest } from '@jest/globals';
 import crypto from 'node:crypto';
+import { readFile } from 'node:fs/promises';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import mysql from 'mysql2/promise';
 import bcrypt from 'bcrypt';
 import {
@@ -15,6 +18,10 @@ import { PasswordService } from '../../src/services/PasswordService.js';
 import { ValidationError } from '../../src/utils/errors.js';
 
 const describeMysql = process.env.RUN_MYSQL_INTEGRATION === '1' ? describe : describe.skip;
+const MDL229_MIGRATION = path.resolve(
+  path.dirname(fileURLToPath(import.meta.url)),
+  '../../migrations/20261001_mdl229_token_version.sql',
+);
 const pause = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 async function createMysqlConnectionWithRetry(config) {
@@ -84,6 +91,12 @@ describeMysql('MDL-232: carrera de reset + TTL con MySQL 8 real', () => {
         INDEX idx_token (token)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
     `);
+
+    // MDL-229: se aplica la migración real (dos veces: debe ser idempotente en
+    // MySQL 8) para que el esquema de prueba coincida con el de producción.
+    const migrationSql = await readFile(MDL229_MIGRATION, 'utf8');
+    await admin.query(migrationSql);
+    await admin.query(migrationSql);
 
     pool = mysql.createPool({
       ...config,
@@ -201,5 +214,42 @@ describeMysql('MDL-232: carrera de reset + TTL con MySQL 8 real', () => {
     );
     expect(tokens).toHaveLength(2);
     expect(tokens.every((row) => Number(row.usado) === 1)).toBe(true);
+  });
+
+  it('MDL-229 TV-03: reset OK incrementa token_version exactamente una vez', async () => {
+    const rawToken = crypto.randomBytes(32).toString('hex');
+    const userId = await seedUserWithToken({
+      rawToken,
+      passwordHash: await bcrypt.hash('OldPass123*', 10),
+    });
+    const [[antes]] = await admin.execute('SELECT token_version FROM Usuarios WHERE id_usuario = ?', [userId]);
+    expect(Number(antes.token_version)).toBe(0);
+
+    await authService.restablecerContrasena(rawToken, 'BrandNew9*Pass');
+
+    const [[despues]] = await admin.execute('SELECT token_version FROM Usuarios WHERE id_usuario = ?', [userId]);
+    expect(Number(despues.token_version)).toBe(1);
+  });
+
+  it('MDL-229: la migración es idempotente (una sola columna token_version tras dos ejecuciones)', async () => {
+    const [[row]] = await admin.query(
+      `SELECT COUNT(*) AS total FROM information_schema.COLUMNS
+       WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'Usuarios' AND COLUMN_NAME = 'token_version'`,
+    );
+    expect(Number(row.total)).toBe(1);
+  });
+
+  it('MDL-229: bumps concurrentes no pierden incrementos (UPDATE atómico)', async () => {
+    const userId = await seedUserWithToken({
+      rawToken: crypto.randomBytes(32).toString('hex'),
+      passwordHash: await bcrypt.hash('OldPass123*', 10),
+    });
+    const { UserRepository } = await import('../../src/repositories/UserRepository.js');
+    const repo = new UserRepository({ execute: (...args) => pool.execute(...args) });
+
+    await Promise.all(Array.from({ length: 10 }, () => repo.bumpTokenVersion(userId)));
+
+    const [[row]] = await admin.execute('SELECT token_version FROM Usuarios WHERE id_usuario = ?', [userId]);
+    expect(Number(row.token_version)).toBe(10);
   });
 });

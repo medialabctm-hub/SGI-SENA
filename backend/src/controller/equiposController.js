@@ -71,8 +71,8 @@ export async function listarEquipos(req, res) {
     if (filters.ambiente && filters.ambiente.length > 0) {
       const ambienteIds = [];
       for (const amb of filters.ambiente) {
-        const ambId = parseInt(amb, 10);
-        if (!isNaN(ambId)) {
+        const ambId = Number(amb);
+        if (Number.isSafeInteger(ambId) && ambId > 0) {
           ambienteIds.push(ambId);
         } else {
           // Buscar por código o nombre
@@ -85,9 +85,7 @@ export async function listarEquipos(req, res) {
           }
         }
       }
-      if (ambienteIds.length > 0) {
-        filters.ambientesIds = ambienteIds;
-      }
+      filters.ambientesFiltroIds = [...new Set(ambienteIds)];
       delete filters.ambiente;
     }
 

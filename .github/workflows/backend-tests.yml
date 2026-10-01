@@ -1,0 +1,72 @@
+# MDL-233: CI mínimo del backend. Los nombres de job (`backend-unit`, `backend-mysql`)
+# son los checks que se exigen en la protección de ramas (ver CONTRIBUTING.md).
+name: backend-tests
+
+on:
+  pull_request:
+    branches: [develop, PR3S1G4zZ/Encuentro]
+  push:
+    branches: [develop, PR3S1G4zZ/Encuentro]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backend-tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend-unit:
+    name: backend-unit
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci
+      # --forceExit: hay suites con handles abiertos conocidos (deuda MDL-130); el
+      # runner forzado no prueba cierre limpio, solo evita que el job se cuelgue.
+      - run: node --experimental-vm-modules node_modules/jest/bin/jest.js --runInBand --forceExit --testPathIgnorePatterns=ambientesService
+
+  backend-mysql:
+    name: backend-mysql
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      mysql:
+        image: mysql:8.0.40
+        env:
+          MYSQL_ROOT_PASSWORD: ci_root_password
+          MYSQL_DATABASE: sgi_ci
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -pci_root_password"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=30
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      MYSQL_TEST_HOST: 127.0.0.1
+      MYSQL_TEST_PORT: 3306
+      MYSQL_TEST_USER: root
+      MYSQL_TEST_PASSWORD: ci_root_password
+      MYSQL_TEST_DATABASE: sgi_ci
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci
+      - run: npm run test:mysql

@@ -1,7 +1,11 @@
 import { ServiceFactory } from '../factories/ServiceFactory.js';
 import { logger } from '../utils/logger.js';
 import defaultDb from '../config/dbconfig.js';
-import { SESSION_COOKIE_NAME, buildSessionCookieOptions } from '../utils/sessionCookie.js';
+import {
+  SESSION_COOKIE_NAME,
+  buildSessionCookieOptions,
+  extractSessionToken,
+} from '../utils/sessionCookie.js';
 
 /**
  * Controlador de autenticación - Solo orquestación, sin lógica de negocio
@@ -15,6 +19,15 @@ import { SESSION_COOKIE_NAME, buildSessionCookieOptions } from '../utils/session
  * - Llamar a los servicios apropiados
  * - Formatear y enviar respuestas HTTP
  */
+
+/**
+ * Reemite la cookie de sesión con la versión vigente (MDL-229). El JWT viaja
+ * solo en la cookie httpOnly, nunca en el cuerpo de la respuesta.
+ */
+async function rotateSessionCookie(authService, userId, res) {
+  const token = await authService.issueSessionToken(userId);
+  res.cookie(SESSION_COOKIE_NAME, token, buildSessionCookieOptions());
+}
 
 /**
  * Listar nombres de roles (público, para formulario de registro).
@@ -67,11 +80,14 @@ export const loginUser = async (req, res, next) => {
 };
 
 /**
- * Cierra la sesión revocando la cookie httpOnly.
- * Idempotente y público: debe funcionar incluso si el JWT ya expiró.
+ * Cierra la sesión: revoca el JWT en servidor (token_version, MDL-229) y borra
+ * la cookie httpOnly. Idempotente y público: debe funcionar incluso si el JWT
+ * ya expiró o fue revocado.
  */
 export const logoutUser = async (req, res, next) => {
   try {
+    const authService = ServiceFactory.create('authService');
+    await authService.revokeSession(extractSessionToken(req));
     res.clearCookie(SESSION_COOKIE_NAME, buildSessionCookieOptions());
     return res.json({ message: 'Sesión cerrada correctamente' });
   } catch (error) {
@@ -180,7 +196,9 @@ export const updateUser = async (req, res, next) => {
       ? { id: req.user.id, rol: req.user.rol }
       : {};
     // AuthService borra contrasena_actual del body; no loguear body aquí.
-    const result = await authService.updateUser(id, req.body, actor);
+    const { sessionRotated, ...result } = await authService.updateUser(id, req.body, actor);
+    // MDL-229: autoedición de correo/rol revoca las sesiones; el actor conserva la suya.
+    if (sessionRotated) await rotateSessionCookie(authService, req.user.id, res);
     return res.json(result);
   } catch (error) {
     logger.error('Error en updateUser', { error: error.message, userId: req.params?.id });
@@ -214,11 +232,13 @@ export const cambiarContrasenaObligatorio = async (req, res, next) => {
 
     const { contrasenaActual, nuevaContrasena } = req.body;
     const authService = ServiceFactory.create('authService');
-    const result = await authService.cambiarContrasenaObligatorio(
+    const { sessionRotated, ...result } = await authService.cambiarContrasenaObligatorio(
       req.user.id,
       contrasenaActual,
       nuevaContrasena
     );
+    // MDL-229: el cambio revocó las demás sesiones; esta recibe el JWT nuevo por cookie.
+    if (sessionRotated) await rotateSessionCookie(authService, req.user.id, res);
     return res.json(result);
   } catch (error) {
     logger.error('Error en cambiarContrasenaObligatorio', { error: error.message });

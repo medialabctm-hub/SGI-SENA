@@ -76,7 +76,7 @@ export class UserRepository extends BaseRepository {
       `SELECT u.id_usuario, u.nombre_usuario, u.cedula, u.tipo_documento, u.tipo_documento_otro,
               u.telefono, u.correo, u.contrasena, u.id_rol, u.estado,
               u.requiere_cambio_contrasena, u.foto_perfil, u.fecha_registro, u.ultimo_acceso, u.creado_por,
-              r.nombre_rol
+              u.token_version, r.nombre_rol
        FROM Usuarios u
        LEFT JOIN Roles r ON r.id_rol = u.id_rol
        WHERE u.cedula = ? AND u.estado = "Activo"`,
@@ -93,12 +93,28 @@ export class UserRepository extends BaseRepository {
     return this.findOne(
       `SELECT u.id_usuario, u.nombre_usuario, u.correo, u.telefono, u.cedula,
               u.tipo_documento, u.tipo_documento_otro,
-              u.id_rol, r.nombre_rol, u.requiere_cambio_contrasena, u.foto_perfil
+              u.id_rol, r.nombre_rol, u.requiere_cambio_contrasena, u.foto_perfil,
+              u.token_version
        FROM Usuarios u
        LEFT JOIN Roles r ON r.id_rol = u.id_rol
        WHERE u.id_usuario = ? AND u.estado = "Activo"`,
       [userId]
     );
+  }
+
+  /**
+   * Invalida todas las sesiones JWT vigentes del usuario (MDL-229).
+   * El incremento es atómico en SQL: dos revocaciones concurrentes nunca
+   * dejan la versión sin avanzar.
+   * @param {number} userId - ID del usuario
+   * @returns {Promise<{affectedRows:number}>}
+   */
+  async bumpTokenVersion(userId) {
+    const [result] = await this.db.execute(
+      'UPDATE Usuarios SET token_version = token_version + 1 WHERE id_usuario = ?',
+      [userId]
+    );
+    return { affectedRows: result.affectedRows };
   }
 
   /**
@@ -259,6 +275,12 @@ export class UserRepository extends BaseRepository {
 
     if (updates.length === 0) {
       return { affectedRows: 0 };
+    }
+
+    // MDL-229: cédula, correo o rol cambian la identidad/privilegios de la
+    // cuenta; las sesiones emitidas antes del cambio dejan de ser válidas.
+    if (userData.cedula || userData.correo || userData.idRol) {
+      updates.push('token_version = token_version + 1');
     }
 
     values.push(userId);

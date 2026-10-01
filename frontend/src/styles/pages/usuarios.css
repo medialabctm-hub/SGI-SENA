@@ -523,6 +523,7 @@
   text-transform: capitalize;
 }
 
+.jornada-badge.manana,
 .jornada-badge.mañana {
   background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
   color: #92400e;
@@ -595,6 +596,57 @@
   margin-top: 8px;
   padding-top: 20px;
   border-top: 2px solid var(--neutral-100);
+}
+
+/* Compact, responsive field layout for the user edit dialog */
+.modal-sheet.form-dialog .user-edit-form {
+  box-sizing: border-box;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  margin: 0;
+  max-width: none;
+  padding: 24px 28px 28px;
+}
+
+.user-edit-form .form-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.25rem;
+  padding-bottom: 0;
+}
+
+.user-edit-form .form-row {
+  min-width: 0;
+  margin-bottom: 0;
+}
+
+.user-edit-form input,
+.user-edit-form .custom-select {
+  box-sizing: border-box;
+  max-width: 100%;
+  min-width: 0;
+  width: 100%;
+}
+
+@media (max-width: 640px) {
+  .modal-sheet.form-dialog .user-edit-form {
+    padding: 20px;
+  }
+
+  .user-edit-form .form-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1rem;
+  }
+
+  .user-edit-form .modal-form-actions {
+    flex-direction: column-reverse;
+  }
+
+  .user-edit-form .modal-form-actions > .btn,
+  .user-edit-form .modal-form-actions > .btn-verde {
+    width: 100%;
+  }
 }
 
 /* Modal de aprendices */

@@ -10,6 +10,7 @@ import { uploadEquipoImagePublico, handleUploadError, validateUploadedImageConte
 import { parseFormData } from '../middleware/parseFormData.js';
 import { corsPublic } from '../middleware/corsPublicMiddleware.js';
 import { requireEquipmentEvidenceScopeWhenFiles } from '../middleware/equipmentEvidenceScope.js';
+import { listarPrestamosInforme } from '../controller/prestamosInformeController.js';
 
 const router = express.Router();
 
@@ -386,6 +387,13 @@ router.get('/:codigo/uso/historial',
 // Obtener sesiones activas (en uso) de equipos
 // Admin e Instructor: ven todas las sesiones activas
 // Aprendiz: solo sus propias sesiones activas
+router.get('/uso/informe',
+  authenticate,
+  readLimiter,
+  requirePermission(PERMISSIONS.EQUIPOS.VIEW),
+  listarPrestamosInforme
+);
+
 router.get('/uso/activas', 
   authenticate,
   readLimiter,

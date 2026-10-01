@@ -2,6 +2,7 @@ import { ServiceFactory } from '../factories/ServiceFactory.js';
 import { AuthenticationError } from '../utils/errors.js';
 import { logger } from '../utils/logger.js';
 import { extractSessionToken } from '../utils/sessionCookie.js';
+import { sessionMatchesUser } from '../utils/sessionVersion.js';
 
 /**
  * Middleware de autenticación JWT
@@ -27,6 +28,11 @@ export async function authenticate(req, res, next) {
 
       if (!user) {
         return next(new AuthenticationError('Usuario no encontrado o inactivo'));
+      }
+
+      // MDL-229: sesión revocada (logout, cambio de contraseña/identidad/rol, reset).
+      if (!sessionMatchesUser(payload, user)) {
+        return next(new AuthenticationError('Sesión revocada'));
       }
 
       // Adjuntar información completa al request
@@ -70,6 +76,7 @@ export async function optionalAuthenticate(req, res, next) {
       const userRepository = ServiceFactory.create('userRepository');
       const user = await userRepository.findById(payload.id);
       if (!user) return next();
+      if (!sessionMatchesUser(payload, user)) return next();
 
       req.user = {
         id: user.id_usuario,

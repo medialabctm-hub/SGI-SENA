@@ -27,6 +27,7 @@ import {
 } from '../strategies/ValidationStrategy.js';
 import { normalizeCedula, normalizeCorreo } from '../utils/normalizeIdentity.js';
 import { toPublicUser, toPublicUserList } from '../utils/usuarioPublico.js';
+import { TOKEN_VERSION_CLAIM, sessionMatchesUser } from '../utils/sessionVersion.js';
 
 /**
  * Hash en reposo del token de recuperación (H-09).
@@ -286,6 +287,61 @@ export class AuthService {
   }
 
   /**
+   * Firma el JWT de sesión incluyendo la versión vigente (MDL-229).
+   * @param {Object} usuario - Fila con id_usuario, id_rol y token_version
+   * @returns {string} JWT
+   */
+  signSessionToken(usuario) {
+    return this.jwtService.sign({
+      id: usuario.id_usuario,
+      rol: usuario.id_rol,
+      [TOKEN_VERSION_CLAIM]: Number(usuario.token_version ?? 0),
+    });
+  }
+
+  /**
+   * Emite un JWT nuevo con la versión actual del usuario. Se usa tras un
+   * cambio propio que revoca sesiones (contraseña, correo) para que el
+   * dispositivo que hizo el cambio no quede deslogueado.
+   * @param {number} userId
+   * @returns {Promise<string>} JWT
+   */
+  async issueSessionToken(userId) {
+    const usuario = await this.userRepository.findById(userId);
+    if (!usuario) {
+      throw new AuthenticationError('Usuario no encontrado o inactivo');
+    }
+    return this.signSessionToken(usuario);
+  }
+
+  /**
+   * Logout con revocación (MDL-229): si el token presentado sigue vigente,
+   * incrementa token_version y con ello invalida todas las sesiones del
+   * usuario. Idempotente: un token ausente, expirado o ya revocado no falla.
+   * @param {string|null} token - JWT de la sesión que se cierra
+   * @returns {Promise<{revoked: boolean}>}
+   */
+  async revokeSession(token) {
+    if (!token) return { revoked: false };
+
+    let payload;
+    try {
+      payload = this.jwtService.verify(token);
+    } catch {
+      return { revoked: false };
+    }
+
+    const usuario = await this.userRepository.findById(payload?.id);
+    if (!usuario || !sessionMatchesUser(payload, usuario)) {
+      return { revoked: false };
+    }
+
+    await this.userRepository.bumpTokenVersion(usuario.id_usuario);
+    this.logger.info('Sesión revocada por logout', { userId: usuario.id_usuario });
+    return { revoked: true };
+  }
+
+  /**
    * Autentica un usuario y genera un token JWT
    * @param {string} cedula - Cédula del usuario
    * @param {string} contrasena - Contraseña del usuario
@@ -319,10 +375,7 @@ export class AuthService {
     }
 
     // Generar token JWT
-    const token = this.jwtService.sign({
-      id: usuario.id_usuario,
-      rol: usuario.id_rol,
-    });
+    const token = this.signSessionToken(usuario);
 
     this.logger.info('Usuario autenticado exitosamente', {
       cedula,
@@ -394,10 +447,7 @@ export class AuthService {
     }
 
     // Generar token JWT
-    const token = this.jwtService.sign({
-      id: usuario.id_usuario,
-      rol: usuario.id_rol,
-    });
+    const token = this.signSessionToken(usuario);
 
     this.logger.info('Usuario autenticado exitosamente con placa', {
       cedula,
@@ -671,7 +721,15 @@ export class AuthService {
     }
 
     this.logger.info('Usuario actualizado', { userId });
-    return { message: 'Usuario actualizado correctamente' };
+    const response = { message: 'Usuario actualizado correctamente' };
+
+    // MDL-229: el repositorio hizo bump por cédula/correo/rol. Si el actor se
+    // editó a sí mismo, su sesión actual quedó revocada: se avisa al
+    // controlador para que reemita la cookie (el JWT nunca viaja en este resultado).
+    if (isSelf && (updateData.cedula || updateData.correo || updateData.idRol)) {
+      response.sessionRotated = true;
+    }
+    return response;
   }
 
   async updateUserProfilePhoto(userId, fotoPerfilPath) {
@@ -779,14 +837,19 @@ export class AuthService {
     // Hash de la nueva contraseña
     const nuevaContrasenaHash = await this.passwordService.hash(nuevaContrasena);
 
-    // Actualizar contraseña y quitar el flag de cambio obligatorio
+    // Actualizar contraseña y quitar el flag de cambio obligatorio.
+    // MDL-229: el bump revoca las sesiones abiertas en otros dispositivos.
     await this.userRepository.db.execute(
-      'UPDATE Usuarios SET contrasena = ?, requiere_cambio_contrasena = 0 WHERE id_usuario = ?',
+      `UPDATE Usuarios
+       SET contrasena = ?, requiere_cambio_contrasena = 0, token_version = token_version + 1
+       WHERE id_usuario = ?`,
       [nuevaContrasenaHash, userId]
     );
 
     this.logger.info('Contraseña cambiada exitosamente', { userId });
-    return { message: 'Contraseña cambiada correctamente' };
+    // sessionRotated: el controlador reemite la cookie para que este dispositivo
+    // no quede deslogueado por el bump.
+    return { message: 'Contraseña cambiada correctamente', sessionRotated: true };
   }
 
   /**
@@ -989,8 +1052,11 @@ export class AuthService {
         throw new ValidationError('Token inválido o expirado');
       }
 
+      // MDL-229: reset exitoso → bump en la misma transacción que cambia la contraseña.
       await connection.execute(
-        'UPDATE Usuarios SET contrasena = ?, requiere_cambio_contrasena = 0 WHERE id_usuario = ?',
+        `UPDATE Usuarios
+         SET contrasena = ?, requiere_cambio_contrasena = 0, token_version = token_version + 1
+         WHERE id_usuario = ?`,
         [nuevaContrasenaHash, userId]
       );
 

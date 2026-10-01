@@ -207,6 +207,7 @@ export default function CustomSelect({
     }
     setIsOpen(false)
     setFocusedIndex(-1)
+    selectRef.current?.focus()
   }
 
   const handleToggle = () => {
@@ -225,10 +226,18 @@ export default function CustomSelect({
     if (isOpen && focusedIndex >= 0 && dropdownRef.current) {
       const focusedElement = dropdownRef.current.children[focusedIndex]
       if (focusedElement) {
-        focusedElement.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+        // Scroll only the list: scrollIntoView also moves dialog/page ancestors,
+        // which triggers the outside-scroll listener and closes the popup.
+        const list = dropdownRef.current
+        const optionTop = focusedElement.offsetTop
+        const optionBottom = optionTop + focusedElement.offsetHeight
+        if (optionTop < list.scrollTop) list.scrollTop = optionTop
+        else if (optionBottom > list.scrollTop + list.clientHeight) {
+          list.scrollTop = optionBottom - list.clientHeight
+        }
       }
     }
-  }, [focusedIndex, isOpen])
+  }, [focusedIndex, isOpen, dropdownPosition])
 
   const selectId = id || `custom-select-${name || 'default'}`
 
