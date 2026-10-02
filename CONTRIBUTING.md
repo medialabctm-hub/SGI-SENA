@@ -21,7 +21,7 @@ no esté en esa carpeta no llega a producción: ver el incidente de `token_versi
 
 ## Protección de `develop`
 
-Solo el **dueño/admin del repo** (Presiga) puede cambiar branch protection. No se modifica desde PRs ni desde CI.
+Solo el **dueño/admin del repo** puede cambiar branch protection. No se modifica desde PRs ni desde CI.
 
 Configuración acordada (activarla en GitHub → Settings → Branches → `develop`):
 
