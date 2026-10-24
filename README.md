@@ -1,4 +1,4 @@
-# SGE-SENA
+# SGI-SENA
 
 Sistema de Gestión de Equipos Tecnológicos y Mobiliarios del SENA
 
