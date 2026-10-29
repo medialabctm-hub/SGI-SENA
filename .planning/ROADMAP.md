@@ -11,7 +11,7 @@ Base exclusiva: `develop` b50d06a; la rama experimental de Claude solo se consul
 | 06 | Cronología integral de equipo, filtros y permisos | Pendiente |
 | 07 | Ficha de ambiente, equipos, responsables y horarios | Pendiente |
 | 08 | Seguimiento de préstamos y PDF histórico filtrado | En ejecución; endpoint y vista implementados, falta MySQL/UAT |
-| 09 | Retiro seguro de Habilitaciones, compatibilidad y revisión final | Parcial; UI retirada, backend pendiente por dependencias de acceso |
+| 09 | Retiro seguro de Habilitaciones, compatibilidad y revisión final | Auditoría MDL-241 local entregable (09-01); 125 rutas, sin retiradas inmediatas. Adaptación planificada en 14 planes / 6 waves (09-02 … 09-15: base Encuentro, política común, scheduler manual, acción limitada de estado y evidencias, novedades, duplicados, importación, movimientos, historiales/PII, mantenimiento, reportes/PDF, cierre del PUT general, UI y uso/inicio). Retirada de contratos desktop diferida a SGI-D11; alineación de franja en lecturas heredadas y UI de acciones limitadas diferidas (09-CONTEXT). SQL/UAT pendientes |
 
 El contrato detallado, los límites de seguridad y los gates externos están en `docs/armonizacion-inventario.md`. No se declara completo MDL-236 hasta validar fases 04–09, suites integrales y UAT de roles.
 

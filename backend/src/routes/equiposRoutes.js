@@ -2,7 +2,7 @@ import express from 'express';
 import { registrarEquipo, obtenerEquipoPorCodigo, listarEquipos, actualizarEquipo, eliminarEquipo, asignarEquipo, obtenerMisEquipos, listarAsignaciones, eliminarAsignacion, actualizarAsignacionEquipo, obtenerEquiposAmbientesInstructor, registrarVerificacionInventario, obtenerHistorialEquipo, obtenerHistorialMovimientos, actualizarCuentadantePrincipal, obtenerCuentadantePrincipal, buscarCuentadantePorDocumento, listarCategorias, crearCategoria, actualizarCategoria, eliminarCategoria, registrarInicioUso, registrarFinUso, obtenerHistorialEquipoUso, obtenerSesionesActivas, registrarUsoEquipoExterno, iniciarUsoAutoservicio } from '../controller/equiposController.js';
 import { crearSolicitud, listarPendientesParaAutorizador, contarPendientesParaAutorizador, listarHistorialAutorizador, listarMisSolicitudes, aprobarSolicitud, rechazarSolicitud, listarDisponiblesParaMovimiento, obtenerAutorizadorParaEquipo } from '../controller/autorizacionMovimientoController.js';
 import { authenticate, optionalAuthenticate } from '../middleware/authMiddleware.js';
-import { requirePermission, requireAnyPermission, requireAnyPermissionIfAuthenticated } from '../middleware/authorization.js';
+import { requirePermission, requireAnyPermission, requireAnyPermissionIfAuthenticated, requireRole } from '../middleware/authorization.js';
 import { PERMISSIONS } from '../config/permissions.js';
 import { writeLimiter, readLimiter, strictLimiter, webhookLimiter, searchLimiter, autoservicioIpLimiter, autoservicioIdentifierLimiter } from '../middleware/rateLimiter.js';
 import { validate, registrarEquipoSchema, actualizarEquipoSchema, asignarEquipoSchema, verificarInventarioSchema, solicitudAutorizacionMovimientoSchema, crearCategoriaSchema, actualizarCategoriaSchema, registrarUsoEquipoSchema, actualizarUsoEquipoSchema, registrarUsoEquipoExternoSchema, actualizarAsignacionEquipoSchema, autoservicioIniciarUsoSchema, listarEquiposQuerySchema, validateQuery } from '../validators/equiposValidator.js';
@@ -142,7 +142,7 @@ router.get('/asignaciones',
 // IMPORTANTE: Debe ir ANTES de /:codigo para evitar conflictos
 router.get('/cuentadante-principal', 
   authenticate,
-  requirePermission(PERMISSIONS.EQUIPOS.VIEW),
+  requireRole('Administrador'),
   obtenerCuentadantePrincipal
 );
 
@@ -151,7 +151,7 @@ router.get('/cuentadante-principal',
 router.put('/cuentadante-principal', 
   authenticate,
   writeLimiter,
-  requirePermission(PERMISSIONS.EQUIPOS.UPDATE),
+  requireRole('Administrador'),
   actualizarCuentadantePrincipal
 );
 

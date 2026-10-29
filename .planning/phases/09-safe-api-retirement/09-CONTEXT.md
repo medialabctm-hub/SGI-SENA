@@ -118,6 +118,8 @@ Corresponde a las tareas de la inspección 2026-10-01: SGI-D03 (escrituras), SGI
 - **Rotación/limpieza de `--forceExit` y DDL en request path (D16/MDL-130):** deuda estructural, otra fase.
 - **Cronología integral, ficha de ambiente, informe de préstamos (D08–D10):** fases 06–08.
 - **Snapshot de titularidad/ambiente al prestar** para el informe: capturar contexto futuro, sin reconstruir el pasado.
+- **Franja exacta en lecturas y flujos heredados (A4/D-05) — pendiente de confirmación del usuario:** en la fase 09 la franja exacta ±15 min (America/Bogota) se aplica a las acciones que consumen la política común (09-03). Queda diferido alinearla en `backend/src/utils/verificacionInventarioScope.js` (verificación de inventario, alcance MDL-234), en `backend/src/services/equipoService.js` (catálogo por jornada del reloj del servidor) y en los GET de `backend/src/middleware/equipmentEvidenceScope.js` (lectura de evidencias). Mientras tanto conservan su alcance actual. Diferencia aceptada documentada en 09-10: una responsabilidad `Activa` ya vencida puede listarse en el catálogo y dar 404 en el detalle.
+- **UI de acciones limitadas (D-14) — fase UI posterior:** la entrada de «Solicitar mantenimiento» del Instructor (hoy `Mantenimientos.jsx` redirige al Instructor) y la del cambio de estado limitado (`PATCH /api/equipos/:codigo/estado`). El backend queda implementado en la fase 09 (planes 09-05 y 09-11).
 
 </deferred>
 

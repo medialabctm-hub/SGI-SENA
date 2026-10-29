@@ -60,6 +60,7 @@ jest.unstable_mockModule(path.resolve(__dirname, '../../src/controller/aprendice
 // ── Dynamic import ─────────────────────────────────────────────────────────
 const {
   importarEquipos,
+  obtenerEstadoImportacionEquipos,
   obtenerDuplicadosPendientes,
   procesarDuplicado,
   procesarDuplicadosMasivo,
@@ -179,6 +180,79 @@ describe('importarEquipos', () => {
     await importarEquipos(req, res);
     expect(res.status).toHaveBeenCalledWith(400);
     expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ error: 'Cuentadante inválido' }));
+  });
+
+  it('denies a Cuentadante importing into another Cuentadante inventory', async () => {
+    fakeWorkbook([{ placa: 'A001', tipo: 'PC' }]);
+    mockExecute
+      .mockResolvedValueOnce([[{ id_usuario: 9, nombre_rol: 'Cuentadante', nombre_usuario: 'Otro' }]])
+      .mockResolvedValueOnce([[{ nombre_usuario: 'Otro' }]])
+      .mockResolvedValueOnce([[{ cnt: 1 }]]);
+    const req = mockReq({
+      user: { id: 5, rol: 'Cuentadante' },
+      file: { buffer: Buffer.from('data') },
+      body: { id_cuentadante: '9' }
+    });
+    const res = mockRes();
+
+    await importarEquipos(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(403);
+    expect(mockExecute).not.toHaveBeenCalled();
+  });
+
+  it('denies another user access to an import job created by an Administrator', async () => {
+    fakeWorkbook([{ placa: 'A001', tipo: 'PC' }]);
+    mockExecute
+      .mockResolvedValueOnce([[{ id_usuario: 9, nombre_rol: 'Cuentadante', nombre_usuario: 'Destino' }]])
+      .mockResolvedValueOnce([[{ nombre_usuario: 'Destino' }]])
+      .mockResolvedValueOnce([[{ cnt: 1 }]]);
+    const creatorRes = mockRes();
+    await importarEquipos(mockReq({
+      user: { id: 1, rol: 'Administrador' },
+      file: { buffer: Buffer.from('data') },
+      body: { id_cuentadante: '9' }
+    }), creatorRes);
+    expect(creatorRes.status).toHaveBeenCalledWith(202);
+    const jobId = creatorRes.json.mock.calls.at(-1)[0].job_id;
+    expect(jobId).toEqual(expect.any(String));
+
+    const otherRes = mockRes();
+    await obtenerEstadoImportacionEquipos(mockReq({
+      user: { id: 2, rol: 'Cuentadante' },
+      params: { job_id: jobId }
+    }), otherRes);
+    expect(otherRes.status).toHaveBeenCalledWith(404);
+
+    const creatorStatus = mockRes();
+    await obtenerEstadoImportacionEquipos(mockReq({
+      user: { id: 1, rol: 'Administrador' },
+      params: { job_id: jobId }
+    }), creatorStatus);
+    expect(creatorStatus.status).toHaveBeenCalledWith(200);
+  });
+
+  it('keeps a Cuentadante self-import and its job status available to that Cuentadante', async () => {
+    fakeWorkbook([{ placa: 'A001', tipo: 'PC' }]);
+    mockExecute
+      .mockResolvedValueOnce([[{ nombre_rol: 'Cuentadante' }]])
+      .mockResolvedValueOnce([[{ nombre_usuario: 'Responsable' }]])
+      .mockResolvedValueOnce([[{ cnt: 1 }]]);
+    const creatorRes = mockRes();
+    await importarEquipos(mockReq({
+      user: { id: 5, rol: 'Cuentadante' },
+      file: { buffer: Buffer.from('data') },
+      body: {}
+    }), creatorRes);
+    expect(creatorRes.status).toHaveBeenCalledWith(202);
+    const jobId = creatorRes.json.mock.calls.at(-1)[0].job_id;
+
+    const statusRes = mockRes();
+    await obtenerEstadoImportacionEquipos(mockReq({
+      user: { id: 5, rol: 'Cuentadante' },
+      params: { job_id: jobId }
+    }), statusRes);
+    expect(statusRes.status).toHaveBeenCalledWith(200);
   });
 
   it('returns 500 on DB error', async () => {

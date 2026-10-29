@@ -20,6 +20,7 @@ import request from 'supertest';
 import { describe, it, expect, jest, beforeAll, afterAll } from '@jest/globals';
 import equiposRouter from '../../src/routes/equiposRoutes.js';
 import { iniciarUsoAutoservicio } from '../../src/controller/equiposController.js';
+import defaultDb from '../../src/config/dbconfig.js';
 import {
   autoservicioIpLimiter,
   autoservicioIdentifierLimiter,
@@ -65,6 +66,28 @@ describe('equiposRoutes — montaje de rate limiters públicos', () => {
     expect(handles).not.toContain(autoservicioIpLimiter);
     expect(handles).not.toContain(autoservicioIdentifierLimiter);
   });
+});
+
+describe('equiposRoutes — cuentadante principal administrativo', () => {
+  for (const method of ['get', 'put']) {
+    it(`denies Cuentadante on ${method.toUpperCase()} even with the default equipment permission`, async () => {
+      const route = findRoute('/cuentadante-principal', method);
+      expect(route).toBeDefined();
+      const guard = route.stack.at(-2).handle;
+      const executeSpy = jest.spyOn(defaultDb, 'execute').mockResolvedValue([[]]);
+      const res = { status: jest.fn(), json: jest.fn() };
+      res.status.mockReturnValue(res);
+      const next = jest.fn();
+
+      try {
+        await guard({ user: { id: 5, rol: 'Cuentadante' } }, res, next);
+        expect(res.status).toHaveBeenCalledWith(403);
+        expect(next).not.toHaveBeenCalled();
+      } finally {
+        executeSpy.mockRestore();
+      }
+    });
+  }
 });
 
 describe('equiposRoutes — comportamiento en vivo de /autoservicio/iniciar-uso', () => {

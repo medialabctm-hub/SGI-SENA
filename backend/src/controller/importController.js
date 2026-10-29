@@ -424,6 +424,16 @@ export async function importarEquipos(req, res) {
 
     const userId = req.user?.id || null;
 
+    if (!userId || !['Administrador', 'Cuentadante'].includes(req.user?.rol)) {
+      return res.status(403).json({ success: false, error: 'No autorizado para importar equipos' });
+    }
+
+    if (req.user.rol === 'Cuentadante' && req.body?.id_cuentadante != null &&
+        String(req.body.id_cuentadante).trim() !== '' &&
+        String(req.body.id_cuentadante).trim() !== String(userId)) {
+      return res.status(403).json({ success: false, error: 'Solo puede importar equipos a su propio inventario' });
+    }
+
     // Obtener id_cuentadante del body si se proporciona (OBLIGATORIO para Administradores)
     // Nota: Con multer, los campos del FormData están en req.body
     const id_cuentadante_importacion = req.body?.id_cuentadante 
@@ -497,7 +507,7 @@ export async function importarEquipos(req, res) {
 
     // Procesamiento en segundo plano con progreso real: crear job y devolver job_id
     const jobId = `import_${Date.now()}_${userId}_${Math.random().toString(36).slice(2, 10)}`;
-    importJobsStore.set(jobId, { total: data.length, processed: 0, done: false });
+    importJobsStore.set(jobId, { total: data.length, processed: 0, done: false, createdBy: userId });
 
     runImportEquiposLoop(jobId, data, resultados, idImportacion, userId, cuentadanteFinal, nombreCuentadantePrincipal, headerRowIndex).catch((err) => {
       logger.error('Error en importación en background', { jobId, error: err.message });
@@ -527,7 +537,7 @@ export async function obtenerEstadoImportacionEquipos(req, res) {
       return res.status(400).json({ error: 'Falta job_id' });
     }
     const job = importJobsStore.get(jobId);
-    if (!job) {
+    if (!job || !req.user?.id || Number(job.createdBy) !== Number(req.user.id)) {
       return res.status(404).json({ error: 'Job no encontrado o ya expirado', done: false });
     }
     const total = job.total || 0;

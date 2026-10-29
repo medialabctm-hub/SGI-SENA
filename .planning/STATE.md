@@ -1,26 +1,26 @@
 ---
-gsd_state_version: '1.0'
-milestone: 'Inventory harmony wave (MDL-236)'
-milestone_status: in_progress
-current_phase: 4
-current_phase_name: Inventory navigation and catalog
-current_plan: 04-02
+gsd_state_version: 1.0
+milestone: "'Inventory harmony wave (MDL-236)'"
 status: in_progress
-stopped_at: null
-last_updated: '2026-09-28'
+stopped_at: Phase 9 context gathered
+last_updated: "2026-10-01T16:47:05.836Z"
+state_head: 950314020274dc7faf2d7da87bb0ec6d7588dc10
 progress:
-  phases_completed: 2
-  phases_total: 9
-  plans_completed: 10
-  plans_total: 16
-  requirements_completed: 3
-  requirements_total: 3
-  percent: 22
+  total_phases: 3
+  completed_phases: 0
+  total_plans: 10
+  completed_plans: 10
+milestone_status: in_progress
+current_phase: 9
+current_phase_name: Safe API retirement audit
+current_plan: 09-01
 ---
 
 # State
 
 ## Current focus — MDL-236
+
+2026-09-29: MDL-241 desde Encuentro `1e0800e` (PR #55 ya merged, verificado mediante fetch). Rama aislada `codex/mdl-241-api-audit`. Ver `docs/audits/MDL-241-API-AUDIT.md`, matriz y plan `phases/09-safe-api-retirement/09-01-PLAN.md`: 125 rutas, 7 Important/2 Minor en auditoría, 0 retiradas inmediatas. Primera adaptación local: importación de Cuentadante solo a su patrimonio, estado de job solo al creador y GET/PUT de cuentadante-principal solo Admin. Pruebas RED→GREEN; backend integral 130 suites/2326 tests PASS, 2 suites/10 tests skipped, salida 0 con `--forceExit` (runner no validado como cierre limpio). Revisión independiente sin Critical/Important; Minor: falta E2E HTTP autenticado de importación. Lint focal con 0 errores en rutas/tests; importController conserva dos errores preexistentes de orden de imports. Sin SQL/Railway/producción. Producto decidió conservar préstamo abierto al bloquear y rechazar nuevos usos; aún sin implementar. MDL-241 In Progress; faltan política compartida, decisiones movimiento/horario/desktop y gates externos. Los párrafos siguientes son evidencia histórica, no estado actual de publicación.
 
 Tanda de diseño MDL-238/239/240 implementada en `codex/sgi-diseno-uat` sobre `35ebfba` (PR3S1G4zZ/Encuentro). Evidencia local: 123 Vitest, 22 utilidades y 22 comprobaciones de navegador PASS; build PASS, lint focal 0 errores/15 advertencias. Ver `phases/04-inventory-navigation/04-02-SUMMARY.md`. Pendiente decisión de publicación y UAT remoto/manual; MDL-237/241 no implementados. No se modificó producción.
 
@@ -61,6 +61,10 @@ E2E autenticado, decisión de identidad/capability/cuota para `registro-externo`
 y evidencias físicas de aulas 303/304.
 
 ## Session Continuity
+
+**Last session:** 2026-10-01T16:47:05.081Z
+**Stopped at:** Phase 9 context gathered
+**Resume file:** .planning/phases/09-safe-api-retirement/09-CONTEXT.md
 
 - PR abierta: #29.
 - Base de los worktrees: `feature/autoservicio-atomico-migracion-y-railway-reproducible`.
